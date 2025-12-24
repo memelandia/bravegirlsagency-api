@@ -1,0 +1,41 @@
+# Dependencias
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos de entorno
+.env
+.env.local
+.env.production
+
+# Archivos temporales
+*.log
+.DS_Store
+Thumbs.db
+
+# Archivos del frontend (solo queremos el backend en este repo)
+index.html
+login.html
+dashboard-chatter.html
+dashboard-modelo.html
+dashboard-styles.css
+styles.css
+tailwind.min.css
+script.js
+auth.js
+dashboard-chatter.js
+dashboard-modelo.js
+assets/
+robots.txt
+sitemap.xml
+
+# Archivos de desarrollo local
+backend-proxy.js
+index.js
+backend-node.zip
+*.zip
+INSTRUCCIONES-*.md
+
+# Vercel
+.vercel

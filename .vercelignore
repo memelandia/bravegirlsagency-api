@@ -1,0 +1,17 @@
+# Archivos frontend (no necesarios en el backend)
+*.html
+*.css
+assets/
+dashboard-*.js
+script.js
+auth.js
+robots.txt
+sitemap.xml
+
+# Archivos de desarrollo
+node_modules/
+.env
+backend-proxy.js
+index.js
+backend-node.zip
+*.zip

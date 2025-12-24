@@ -1,0 +1,22 @@
+{
+  "name": "bravegirlsagency-api",
+  "version": "1.0.0",
+  "description": "BraveGirls Agency - API Backend",
+  "main": "api/health.js",
+  "scripts": {
+    "vercel-build": "echo 'Vercel build complete'"
+  },
+  "keywords": [
+    "tailwindcss",
+    "onlyfans",
+    "agency"
+  ],
+  "author": "BraveGirls Agency",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0"
+  }
+}
