@@ -1,0 +1,341 @@
+/* Panel lateral de guías - Estilos adicionales */
+
+/* Botón flotante para abrir panel */
+.btn-guias {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    z-index: 999;
+    transition: all 0.3s ease;
+}
+
+.btn-guias:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+/* Panel lateral */
+.guias-panel {
+    position: fixed;
+    right: -450px;
+    top: 0;
+    width: 450px;
+    height: 100vh;
+    background: #ffffff;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+    z-index: 1000;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateX(0);
+    overflow-y: auto;
+    will-change: transform;
+    color: #2d3748;
+}
+
+.guias-panel.active {
+    transform: translateX(-450px);
+}
+
+.guias-panel * {
+    color: inherit;
+}
+
+.guias-panel-header {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+.guias-panel-header h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.btn-close-panel {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 20px;
+}
+
+.btn-close-panel:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* Pestañas */
+.guias-tabs {
+    display: flex;
+    background: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+    position: sticky;
+    top: 72px;
+    z-index: 9;
+}
+
+.guias-tab {
+    flex: 1;
+    padding: 15px 10px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.guias-tab:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
+.guias-tab.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+    background: white;
+}
+
+/* Contenido del panel */
+.guias-content {
+    padding: 15px;
+}
+
+.guias-content h2 {
+    color: #1a202c;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+.guias-section {
+    display: none;
+}
+
+.guias-section.active {
+    display: block;
+}
+
+/* Acordeones */
+.guia-accordion {
+    margin-bottom: 10px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.guia-accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.guia-accordion-header:hover {
+    background: #e9ecef;
+}
+
+.guia-accordion-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #2d3748;
+    font-weight: 600;
+}
+
+.guia-accordion-icon {
+    font-size: 20px;
+    color: #667eea;
+    transition: transform 0.15s ease;
+    will-change: transform;
+}
+
+.guia-accordion.active .guia-accordion-icon {
+    transform: rotate(180deg);
+}
+
+.guia-accordion-body {
+    display: none;
+}
+
+.guia-accordion.active .guia-accordion-body {
+    display: block;
+}
+
+.guia-accordion-content {
+    padding: 12px 15px;
+    background: white;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #2d3748;
+}
+
+.guia-accordion-content p {
+    margin: 10px 0;
+    color: #2d3748;
+}
+
+.guia-accordion-content strong {
+    color: #1a202c;
+    font-weight: 600;
+}
+
+.guia-accordion-content ul {
+    margin: 10px 0;
+    padding-left: 20px;
+    color: #2d3748;
+}
+
+.guia-accordion-content li {
+    margin: 5px 0;
+    color: #2d3748;
+}
+
+/* Etiquetas de estado */
+.modelo-status {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 10px;
+}
+
+.modelo-status.activa {
+    background: #d4edda;
+    color: #155724;
+}
+
+.modelo-status.vacaciones {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.modelo-status.inactiva {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Info destacada */
+.info-highlight {
+    background: #e7f3ff;
+    border-left: 4px solid #667eea;
+    padding: 12px;
+    margin: 10px 0;
+    border-radius: 4px;
+    color: #2d3748;
+}
+
+.info-highlight strong {
+    color: #1a202c;
+}
+
+.precio-minimo {
+    display: inline-block;
+    background: #ffeaa7;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 600;
+    color: #d63031;
+}
+
+/* Overlay */
+.guias-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    display: none;
+    backdrop-filter: blur(2px);
+}
+
+.guias-overlay.active {
+    display: block;
+}
+
+/* Búsqueda rápida */
+.guias-search {
+    padding: 15px;
+    background: white;
+    border-bottom: 1px solid #e9ecef;
+    position: sticky;
+    top: 130px;
+    z-index: 8;
+}
+
+.guias-search input {
+    width: 100%;
+    padding: 10px 15px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #2d3748;
+    background: white;
+}
+
+.guias-search input::placeholder {
+    color: #a0aec0;
+}
+
+.guias-search input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Contador de resultados de búsqueda */
+.search-counter {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #667eea;
+    font-weight: 600;
+    display: none;
+}
+
+/* Resaltado de resultados de búsqueda */
+.search-highlight {
+    border-left: 3px solid #667eea;
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.search-match {
+    background: #ffd700;
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .guias-panel {
+        width: 100%;
+        right: -100%;
+    }
+    
+    .btn-guias {
+        right: 15px;
+        bottom: 15px;
+    }
+}
