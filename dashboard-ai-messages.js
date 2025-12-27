@@ -230,55 +230,61 @@ async function loadModels() {
         return;
     }
     
-    console.log('🔍 Buscando MODELOS_DATA...');
+    console.log('🔍 Cargando modelos desde OnlyMonster API...');
     
     try {
-        // Obtener datos desde dashboard-guias.js (MODELOS_DATA)
-        if (typeof MODELOS_DATA === 'undefined') {
-            console.error('❌ MODELOS_DATA no está definido');
-            modelsGrid.innerHTML = '<div class="model-card-loading">Error: MODELOS_DATA no cargado</div>';
-            throw new Error('MODELOS_DATA no está cargado. Verifica que dashboard-guias.js esté incluido.');
+        const apiUrl = window.CONFIG?.onlyMonsterApiUrl || 'https://bravegirlsagency-api.vercel.app/api';
+        
+        // Obtener datos desde OnlyMonster
+        const response = await fetch(`${apiUrl}/accounts`);
+        
+        if (!response.ok) {
+            throw new Error(`Error al obtener modelos: ${response.status}`);
         }
         
-        console.log('✅ MODELOS_DATA encontrado:', Object.keys(MODELOS_DATA));
+        const accounts = await response.json();
+        console.log('✅ Modelos obtenidas de OnlyMonster:', accounts.length);
         
-        // Procesar modelos desde MODELOS_DATA
-        const models = Object.entries(MODELOS_DATA).map(([key, data]) => ({
-            id: key,
-            name: data.nombre,
-            username: data.username,
-            instructions: buildModelInstructions(data),
-            emojis: data.emojis_favoritos || '',
-            phrases: data.palabras_tipicas || '',
-            personalidad: data.personalidad || '',
-            intensidad: data.intensidad || 'Media'
-        }));
-        
-        console.log('📊 Total modelos procesadas:', models.length);
-        
-        // Filtrar solo modelos activas
-        const activeModels = models.filter(m => MODELOS_DATA[m.id].status === 'activa');
-        
-        console.log('✅ Modelos activas:', activeModels.length);
-        
-        if (activeModels.length === 0) {
-            console.warn('⚠️ No hay modelos activas');
+        if (accounts.length === 0) {
+            console.warn('⚠️ No hay modelos disponibles');
             modelsGrid.innerHTML = '<div class="model-card-loading">No hay modelos disponibles</div>';
             return;
         }
         
+        // Procesar modelos
+        const models = accounts.map(account => {
+            // Construir instrucciones básicas
+            const instructions = `Soy ${account.name}, modelo de OnlyFans.\n\nPersonalidad: ${account.personality || 'Coqueta y juguetona'}\n\nDatos del perfil de OnlyMonster.`;
+            
+            return {
+                id: account.id,
+                name: account.name,
+                username: account.username,
+                avatar: account.avatar || null,
+                instructions: instructions,
+                emojis: '💕😘🔥💋✨',
+                phrases: '',
+                personalidad: account.personality || 'Coqueta',
+                intensidad: 'Media'
+            };
+        });
+        
         // Guardar en memoria
-        window.availableModels = activeModels;
+        window.availableModels = models;
         window.selectedModelId = null;
         
         console.log('🎨 Generando cards HTML...');
         
         // Generar cards de modelos
-        modelsGrid.innerHTML = activeModels.map(model => {
-            const initials = model.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        modelsGrid.innerHTML = models.map(model => {
+            // Si tiene avatar, usarlo, sino usar iniciales
+            const avatarContent = model.avatar 
+                ? `<img src="${model.avatar}" alt="${model.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` 
+                : model.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+            
             return `
                 <div class="model-card" data-model-id="${model.id}" onclick="selectModel('${model.id}')">
-                    <div class="model-avatar">${initials}</div>
+                    <div class="model-avatar">${avatarContent}</div>
                     <div class="model-name">${model.name}</div>
                     <div class="model-username">${model.username}</div>
                 </div>
