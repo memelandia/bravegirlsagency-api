@@ -174,12 +174,28 @@ function buildUserPrompt(messageType, context) {
             const familiarity = context?.familiarity || 'regular';
             
             let timeContext = '';
-            if (timeOfDay === 'mañana') {
-                timeContext = 'Es por la mañana (6:00-12:00). Contextos posibles: despertando, desayunando, empezando el dia, saliendo de casa, camino al trabajo/gym';
+            let timeExamples = '';
+            if (timeOfDay === 'manana') {
+                timeContext = '⏰ ES POR LA MAÑANA (6:00-12:00). CONTEXTO OBLIGATORIO: acabas de despertar, desayunando, arreglándote, saliendo de casa, camino al trabajo/gym, empezando el día.';
+                timeExamples = `EJEMPLOS PARA MAÑANA (USA ESTOS CONTEXTOS):
+- "holaa guapo, recien me levanto y no se que ponerme jaja tu que tal??"
+- "buenos dias cariño!! que tal dormiste?? yo recien desayunando aqui"
+- "oye que tal tu mañana?? yo saliendo de casa ahora mismo"
+- "bebe me acabo de levantar y ya pienso en ti jaja como dormiste??"`;
             } else if (timeOfDay === 'tarde') {
-                timeContext = 'Es por la tarde (12:00-20:00). Contextos posibles: comiendo, en el trabajo, volviendo a casa, en el gym, descansando';
+                timeContext = '⏰ ES POR LA TARDE (12:00-20:00). CONTEXTO OBLIGATORIO: comiendo, en el trabajo/estudio, volviendo a casa, en el gym, descansando, haciendo planes.';
+                timeExamples = `EJEMPLOS PARA TARDE (USA ESTOS CONTEXTOS):
+- "holaa que tal tu tarde?? yo aqui en casa aburrida jaja"
+- "oye estoy saliendo del gym y estoy agotada, tu que haces??"
+- "que planes tienes para hoy?? yo no se que hacer jaja"
+- "bebe estoy comiendo y pensando en ti, como va tu dia??"`;
             } else {
-                timeContext = 'Es por la noche (20:00-6:00). Contextos posibles: cenando, saliendo de la ducha, en la cama, aburrida en casa, preparandose para dormir';
+                timeContext = '⏰ ES POR LA NOCHE (20:00-6:00). CONTEXTO OBLIGATORIO: cenando, saliendo de la ducha, en la cama, aburrida en casa, preparándose para dormir, viendo series.';
+                timeExamples = `EJEMPLOS PARA NOCHE (USA ESTOS CONTEXTOS):
+- "holaa guapo, estoy en casa viendo una peli, tu que tal??"
+- "bebe recien salgo de la ducha... me visto o que hacemos??"
+- "ayy que aburrida estoy en la cama, escribeme jaja"
+- "oye que tal tu noche?? yo aqui preparandome para dormir"`;
             }
             
             let familiarityContext = '';
@@ -209,9 +225,13 @@ function buildUserPrompt(messageType, context) {
 
 OBJETIVO: Generar interaccion y respuestas. Son mensajes 1 a 1, personales, cercanos.
 
-MOMENTO DEL DIA: ${timeContext}
+${timeContext}
+
+${timeExamples}
 
 ${familiarityContext}
+
+⚠️ IMPORTANTE: Los mensajes DEBEN estar adaptados al momento del día especificado arriba. NO menciones cosas de otro momento del día.
 
 Los mensajes deben:
 - Ser circunstanciales al momento del dia (menciona que estas haciendo AHORA)
@@ -219,21 +239,9 @@ Los mensajes deben:
 - Ser coquetos, juguetones, cercanos (ajustado al nivel de familiaridad)
 - Incluir emojis naturales
 - Ser conversacionales, como si le escribieras a un amigo/conocido
+- Cada mensaje debe empezar en minusculas, sin tildes, sin signos de apertura
 
-IMPORTANTE: Adapta el nivel de intimidad al tipo de suscriptor. Con nuevos, se MAS CAUTELOSA.
-
-EJEMPLOS DEL ESTILO (ajusta según familiaridad):
-PARA NUEVOS/REGULARES:
-- "hola guapo, que tal tu dia?? yo aqui en casa aburrida jaja"
-- "oye te puedo hacer una pregunta?? es rapida jaja"
-- "que tal el viernes?? yo recien salgo del gym y estoy cansadisima"
-
-PARA FRECUENTES:
-- "bebee que tal tu dia??? escribeme que te cuento que braguitas me puse hoy"
-- "bebe recien salgo de la ducha... me visto o que hacemos?"
-- "amorr te puedo hacer una pregunta??"
-
-IMPORTANTE: Cada mensaje debe empezar en minusculas, sin tildes, sin signos de apertura.
+⚠️ REPITO: Adapta el nivel de intimidad al tipo de suscriptor. Con nuevos, se MAS CAUTELOSA.
 
 Formato de respuesta:
 [Mensaje 1]
