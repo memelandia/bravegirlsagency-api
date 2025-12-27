@@ -217,12 +217,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 // 
 
 async function loadModels() {
-    const modelSelect = document.getElementById('model-select');
+    const modelsGrid = document.getElementById('models-grid');
     
     try {
         // Obtener datos desde dashboard-guias.js (MODELOS_DATA)
         if (typeof MODELOS_DATA === 'undefined') {
-            throw new Error('MODELOS_DATA no est� cargado. Verifica que dashboard-guias.js est� incluido.');
+            throw new Error('MODELOS_DATA no está cargado. Verifica que dashboard-guias.js esté incluido.');
         }
         
         // Procesar modelos desde MODELOS_DATA
@@ -241,30 +241,51 @@ async function loadModels() {
         const activeModels = models.filter(m => MODELOS_DATA[m.id].status === 'activa');
         
         if (activeModels.length === 0) {
-            console.warn(' No hay modelos activas');
-            modelSelect.innerHTML = '<option value="">No hay modelos disponibles</option>';
+            console.warn('⚠️ No hay modelos activas');
+            modelsGrid.innerHTML = '<div class="model-card-loading">No hay modelos disponibles</div>';
             return;
         }
         
         // Guardar en memoria
         window.availableModels = activeModels;
+        window.selectedModelId = null;
         
-        // Llenar select
-        modelSelect.innerHTML = '<option value="">Selecciona una modelo...</option>';
-        activeModels.forEach(model => {
-            const option = document.createElement('option');
-            option.value = model.id;
-            option.textContent = `${model.name} ${model.username}`;
-            modelSelect.appendChild(option);
-        });
+        // Generar cards de modelos
+        modelsGrid.innerHTML = activeModels.map(model => {
+            const initials = model.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+            return `
+                <div class="model-card" data-model-id="${model.id}" onclick="selectModel('${model.id}')">
+                    <div class="model-avatar">${initials}</div>
+                    <div class="model-name">${model.name}</div>
+                    <div class="model-username">${model.username}</div>
+                </div>
+            `;
+        }).join('');
         
-        console.log(' Modelos cargadas:', activeModels.length);
+        console.log('✅ Modelos cargadas:', activeModels.length);
         
     } catch (error) {
-        console.error(' Error cargando modelos:', error);
-        modelSelect.innerHTML = '<option value="">Error al cargar modelos</option>';
+        console.error('❌ Error cargando modelos:', error);
+        modelsGrid.innerHTML = '<div class="model-card-loading">Error al cargar modelos</div>';
     }
 }
+
+// Seleccionar modelo
+window.selectModel = function(modelId) {
+    console.log('📋 Modelo seleccionado:', modelId);
+    
+    // Actualizar selección visual
+    document.querySelectorAll('.model-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    document.querySelector(`[data-model-id="${modelId}"]`).classList.add('selected');
+    
+    // Guardar modelo seleccionado
+    window.selectedModelId = modelId;
+    
+    // Validar formulario
+    checkFormValid();
+};
 
 // Construir instrucciones completas desde los datos de la modelo
 function buildModelInstructions(modelData) {
@@ -302,32 +323,10 @@ function buildModelInstructions(modelData) {
 // 
 
 function setupEventListeners() {
-    const modelSelect = document.getElementById('model-select');
     const messageTypeBtns = document.querySelectorAll('.message-type-btn');
     const generateBtn = document.getElementById('generate-btn');
     
     console.log('✅ Event listeners configurados. Botones encontrados:', messageTypeBtns.length);
-    
-    // Cambio de modelo
-    modelSelect.addEventListener('change', function() {
-        const modelId = this.value;
-        console.log('📋 Modelo seleccionado:', modelId);
-        
-        if (!modelId) {
-            document.getElementById('model-instructions').classList.add('hidden');
-            return;
-        }
-        
-        const model = window.availableModels.find(m => m.id === modelId);
-        if (model && model.instructions) {
-            document.getElementById('instructions-text').textContent = model.instructions;
-            document.getElementById('model-instructions').classList.remove('hidden');
-        } else {
-            document.getElementById('model-instructions').classList.add('hidden');
-        }
-        
-        checkFormValid();
-    });
     
     // Selección de tipo de mensaje
     messageTypeBtns.forEach((btn, index) => {
@@ -379,14 +378,13 @@ function setupEventListeners() {
 }
 
 function checkFormValid() {
-    const modelSelect = document.getElementById('model-select');
     const generateBtn = document.getElementById('generate-btn');
     const activeType = document.querySelector('.message-type-btn.active');
     
-    const isValid = modelSelect.value !== '' && activeType !== null;
+    const isValid = window.selectedModelId && activeType !== null;
     
     console.log('✔️ Validación de formulario:', {
-        modeloSeleccionado: modelSelect.value !== '',
+        modeloSeleccionado: !!window.selectedModelId,
         tipoSeleccionado: activeType !== null,
         esValido: isValid
     });
@@ -413,7 +411,7 @@ async function generateMessages() {
     const generateBtn = document.getElementById('generate-btn');
     
     // Obtener datos
-    const modelId = modelSelect.value;
+    const modelId = window.selectedModelId;
     const model = window.availableModels.find(m => m.id === modelId);
     const messageType = activeType.dataset.type;
     

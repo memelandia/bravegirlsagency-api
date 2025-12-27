@@ -85,6 +85,53 @@
             background: rgba(255, 255, 255, 0.1);
             border-color: rgba(255, 107, 179, 0.3);
         }
+        .model-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            position: relative;
+        }
+        .model-card:hover {
+            border-color: rgba(255, 107, 179, 0.5);
+            background: rgba(255, 107, 179, 0.05);
+            transform: translateY(-2px);
+        }
+        .model-card.selected {
+            border-color: #FF6BB3;
+            background: rgba(255, 107, 179, 0.1);
+            box-shadow: 0 0 20px rgba(255, 107, 179, 0.3);
+        }
+        .model-avatar {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #FF6BB3, #FFD700);
+            border-radius: 50%;
+            margin: 0 auto 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .model-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+        .model-username {
+            font-size: 0.75rem;
+            color: #9CA3AF;
+        }
+        .model-card-loading {
+            text-align: center;
+            padding: 2rem;
+            color: #6B7280;
+            grid-column: 1 / -1;
+        }
         .message-type-btn {
             background: rgba(255, 255, 255, 0.03);
             border: 2px solid rgba(255, 255, 255, 0.1);
@@ -356,13 +403,9 @@
 
         <!-- Selector de Modelo -->
         <div class="card-glass" style="margin-bottom: 1.5rem;">
-            <h2 class="text-lg font-semibold mb-3">📋 Selecciona la Modelo</h2>
-            <select id="model-select" class="w-full">
-                <option value="">Cargando modelos...</option>
-            </select>
-            <div id="model-instructions" class="mt-3 p-3 bg-white/5 rounded-lg hidden">
-                <p class="text-sm text-gray-400 mb-2">Instrucciones de la modelo:</p>
-                <p id="instructions-text" class="text-sm"></p>
+            <h2 class="text-lg font-semibold mb-4">📋 Selecciona la Modelo</h2>
+            <div id="models-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="model-card-loading">Cargando modelos...</div>
             </div>
         </div>
 
