@@ -257,12 +257,11 @@ function displayMessages(messages) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'generated-message';
         messageDiv.innerHTML = `
+            <div class="message-number">${index + 1}</div>
+            <div class="message-content">${escapeHtml(message)}</div>
             <button class="copy-btn" onclick="copyMessage(this, ${index})">
                 📋 Copiar
             </button>
-            <div style="padding-right: 80px;">
-                ${escapeHtml(message)}
-            </div>
         `;
         container.appendChild(messageDiv);
     });
@@ -279,15 +278,16 @@ function displayMessages(messages) {
 
 window.copyMessage = function(button, index) {
     const messageDiv = button.parentElement;
-    const textDiv = messageDiv.querySelector('div');
+    const textDiv = messageDiv.querySelector('.message-content');
     const text = textDiv.textContent.trim();
     
     navigator.clipboard.writeText(text).then(() => {
-        button.textContent = '✅ Copiado';
+        const originalText = button.innerHTML;
+        button.innerHTML = '✓ Copiado';
         button.classList.add('copied');
         
         setTimeout(() => {
-            button.textContent = '📋 Copiar';
+            button.innerHTML = originalText;
             button.classList.remove('copied');
         }, 2000);
     }).catch(err => {
