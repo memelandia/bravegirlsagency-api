@@ -579,27 +579,18 @@ function displayMessages(messages) {
         return;
     }
     
+    console.log('📝 Mostrando', messages.length, 'mensajes');
+    
     container.innerHTML = messages.map((message, index) => {
-        // Limitar a 90 caracteres y máximo 2 líneas visuales
-        let shortMsg = message;
-        if (shortMsg.length > 90) {
-            shortMsg = shortMsg.slice(0, 87) + '...';
-        }
-        // Si tiene más de 2 saltos de línea, recorta
-        const lines = shortMsg.split(/\r?\n/);
-        if (lines.length > 2) {
-            shortMsg = lines.slice(0,2).join(' ') + '...';
-        }
-        const escapedMsg = escapeForAttr(shortMsg);
         return `
         <div class="message-item" data-message-index="${index}">
             <div class="message-number">${index + 1}</div>
-            <div class="message-content">${escapeHtml(shortMsg)}</div>
+            <div class="message-content">${escapeHtml(message)}</div>
             <div class="message-actions">
-                <button class="copy-btn" onclick="window.copyMessage(\`${escapedMsg}\`, this)">
+                <button class="copy-btn" onclick="window.copyMessage(\`${escapeForAttr(message)}\`, this)">
                     📋 Copiar
                 </button>
-                <button class="fav-btn" onclick="window.toggleFavorite(\`${escapedMsg}\`, this)">
+                <button class="fav-btn" onclick="window.toggleFavorite(\`${escapeForAttr(message)}\`, this)">
                     ⭐ Fav
                 </button>
                 <button class="regen-btn" onclick="window.regenerateMessage(${index})">
@@ -608,6 +599,8 @@ function displayMessages(messages) {
             </div>
         </div>
     `}).join('');
+    
+    console.log('✅ HTML de mensajes generado');
     
     results.classList.remove('hidden');
     
