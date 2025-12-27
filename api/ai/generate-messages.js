@@ -257,21 +257,44 @@ Formato de respuesta:
 
 FOTO/VIDEO: ${photoDescription}
 
-OBJETIVO: Generar engagement (likes, comments, que quieran mas).
+OBJETIVO: Generar CURIOSIDAD, ENGAGEMENT y que te escriban al DM (mensaje privado) para jugar o interactuar.
 
 Las descripciones deben:
-- Complementar la foto sin describir lo obvio
-- Generar curiosidad, deseo o juego
-- Ser sugerentes pero no explicitas
-- Incluir emojis naturales
-- Ser cortas (1-2 lineas maximo)
+- Describir la foto de forma LLAMATIVA y sugerente (menciona lo que se ve: ropa, pose, lugar, expresión)
+- Generar CURIOSIDAD sobre lo que NO se ve en la foto
+- Incluir preguntas o invitaciones que generen respuestas
+- Algunas deben terminar con llamada a ESCRIBIR AL DM
+- Emojis naturales (2-3 por mensaje)
+- Ser cortas pero impactantes (1-3 líneas máximo)
+- Tono juguetón, coqueto, cercano
 
-ENFOQUES:
-- Descripcion 1: Sugerente/intrigante
-- Descripcion 2: Divertida/cercana
-- Descripcion 3: Misteriosa/coqueta
+ESTRATEGIAS:
+1. CURIOSIDAD: "te imaginas lo que hay debajo?", "esto es solo el principio", "esto no es ni la mitad"
+2. PREGUNTA DIRECTA: "te gusta lo que ves?", "con quien te gustaria estar asi?", "que harias si estuvieras aqui?"
+3. INVITACIÓN AL DM: "escribeme si quieres ver mas", "dime al dm lo que piensas", "si te puso duro/mojada escribeme"
+4. DESCRIPCIÓN SUGERENTE: Menciona la ropa/pose/situación de forma sensual
 
-IMPORTANTE: Cada descripcion en minusculas, sin tildes, sin signos de apertura.
+EJEMPLOS DE ESTILO:
+
+CON INVITACIÓN AL DM:
+- "nueva lenceria negra 😈 crees que me queda bien o mejor sin nada?? escribeme lo que piensas"
+- "recien salgo de la ducha y no se que ponerme... ayudame a elegir al dm? 🙈💕"
+- "alguien quiere jugar conmigo?? manda dm si te atreves jaja 😏🔥"
+
+SIN INVITACIÓN AL DM (solo curiosidad):
+- "esto es solo el principio... te imaginas lo que viene despues? 😈"
+- "mirror selfie con mi conjunto favorito, te gusta lo que ves?? 👀💕"
+- "posando en la cama pensando en cosas malas jaja que harias si estuvieras aqui? 😏"
+
+DESCRIPCIÓN + PREGUNTA:
+- "body transparente y nada debajo, demasiado atrevido o te gusta asi?? 🙈🔥"
+- "en cuatro en la cama esperandote... vienes o que?? 😈💕"
+
+⚠️ IMPORTANTE: 
+- Menciona detalles visuales de la foto (color de ropa, pose, lugar)
+- NO todas tienen que invitar al DM, alterna estrategias
+- Mantén el estilo informal (minúsculas, sin tildes, sin ¿ al inicio)
+- Genera curiosidad sobre lo que NO está en la foto
 
 Formato de respuesta:
 [Descripcion 1]
