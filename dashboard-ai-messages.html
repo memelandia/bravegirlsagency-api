@@ -5,532 +5,183 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generador IA - BraveGirls Agency</title>
     <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
-    
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    
-    <!-- Tailwind CSS -->
     <link rel="stylesheet" href="tailwind.min.css">
-    
-    <!-- Dashboard Guías CSS -->
     <link rel="stylesheet" href="dashboard-guias.css">
     
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #0A0A0A; color: #FFFFFF; min-height: 100vh; }
+        .dashboard-container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .card-glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1rem; padding: 1.5rem; }
+        .header-dashboard { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1rem; padding: 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .btn-primary { background: linear-gradient(135deg, #FF6BB3, #FFD700); color: #0A0A0A; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; border: none; cursor: pointer; transition: all 0.3s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255, 107, 179, 0.3); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        .models-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .model-card { background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 0.75rem; padding: 1rem; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .model-card:hover { border-color: rgba(255, 107, 179, 0.5); transform: translateY(-2px); }
+        .model-card.selected { border-color: #FF6BB3; background: rgba(255, 107, 179, 0.1); }
+        .model-avatar { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #FF6BB3, #FFD700); margin: 0 auto 0.75rem; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; }
+        .model-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; }
+        .model-username { font-size: 0.8rem; color: #9CA3AF; }
+        
+        .message-type-btn { background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 0.75rem; padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .message-type-btn:hover { border-color: rgba(255, 107, 179, 0.3); }
+        .message-type-btn.active { border-color: #FF6BB3; background: rgba(255, 107, 179, 0.1); }
+        
+        .message-item { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem; }
+        .message-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+        .message-actions button { background: rgba(255, 255, 255, 0.1); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+        .message-actions button:hover { background: rgba(255, 107, 179, 0.3); }
+        
+        /* Estilos para select */
+        select { 
+            width: 100%; 
+            padding: 0.75rem; 
+            background: #1F2937 !important; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 0.5rem; 
+            color: white !important; 
             font-family: 'Inter', sans-serif;
-            background: #0A0A0A;
-            color: #FFFFFF;
-            min-height: 100vh;
-        }
-        .dashboard-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        .card-glass {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            transition: all 0.3s;
-        }
-        .card-glass:hover {
-            border-color: rgba(255, 107, 179, 0.3);
-        }
-        .header-dashboard {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #FF6BB3, #FFD700);
-            color: #0A0A0A;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(255, 107, 179, 0.3);
-        }
-        .btn-primary:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.05);
-            color: #FFFFFF;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 107, 179, 0.3);
-        }
-        .model-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            padding: 1rem;
-            border-radius: 0.75rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-align: center;
-            position: relative;
-        }
-        .model-card:hover {
-            border-color: rgba(255, 107, 179, 0.5);
-            background: rgba(255, 107, 179, 0.05);
-            transform: translateY(-2px);
-        }
-        .model-card.selected {
-            border-color: #FF6BB3;
-            background: rgba(255, 107, 179, 0.1);
-            box-shadow: 0 0 20px rgba(255, 107, 179, 0.3);
-        }
-        .model-avatar {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #FF6BB3, #FFD700);
-            border-radius: 50%;
-            margin: 0 auto 0.75rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
-        .model-name {
-            font-weight: 600;
-            font-size: 0.95rem;
-            margin-bottom: 0.25rem;
-        }
-        .model-username {
-            font-size: 0.75rem;
-            color: #9CA3AF;
-        }
-        .model-card-loading {
-            text-align: center;
-            padding: 2rem;
-            color: #6B7280;
-            grid-column: 1 / -1;
-        }
-        .message-type-btn {
-            background: rgba(255, 255, 255, 0.03);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            padding: 1rem;
-            border-radius: 0.75rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-align: left;
-        }
-        .message-type-btn:hover {
-            border-color: rgba(255, 107, 179, 0.5);
-            background: rgba(255, 107, 179, 0.05);
-        }
-        .message-type-btn.active {
-            border-color: #FF6BB3;
-            background: rgba(255, 107, 179, 0.1);
-        }
-        .message-item, .generated-message {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 0.5rem;
-            padding: 0.875rem 1rem;
-            margin-bottom: 0.75rem;
-            position: relative;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            transition: all 0.3s;
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-        }
-        .message-item:hover, .generated-message:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 107, 179, 0.3);
-        }
-        .message-number {
-            flex-shrink: 0;
-            width: 24px;
-            height: 24px;
-            background: linear-gradient(135deg, #FF6BB3, #FFD700);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #0A0A0A;
-        }
-        .message-content {
-            flex: 1;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            color: #E5E7EB;
-        }
-        .message-actions {
-            flex-shrink: 0;
-            display: flex;
-            gap: 0.35rem;
-            align-items: center;
-        }
-        .copy-btn, .fav-btn, .regen-btn {
-            flex-shrink: 0;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #9CA3AF;
-            padding: 0.35rem 0.65rem;
-            border-radius: 0.375rem;
-            font-size: 0.7rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-        .copy-btn:hover, .regen-btn:hover {
-            background: rgba(255, 107, 179, 0.1);
-            border-color: rgba(255, 107, 179, 0.3);
-            color: #FF6BB3;
-        }
-        .fav-btn:hover {
-            background: rgba(255, 215, 0, 0.1);
-            border-color: rgba(255, 215, 0, 0.3);
-            color: #FFD700;
-        }
-        .fav-btn.favorited {
-            background: rgba(255, 215, 0, 0.1);
-            border-color: rgba(255, 215, 0, 0.3);
-            color: #FFD700;
-        }
-        .copy-btn.copied {
-            background: rgba(34, 197, 94, 0.1);
-            border-color: rgba(34, 197, 94, 0.3);
-            color: #22C55E;
-        }
-        .columns-container {
-            display: grid;
-            grid-template-columns: 1fr 300px 300px;
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-        @media (max-width: 1400px) {
-            .columns-container {
-                grid-template-columns: 1fr 250px;
-            }
-            #favorites-column {
-                display: none;
-            }
-        }
-        @media (max-width: 1024px) {
-            .columns-container {
-                grid-template-columns: 1fr;
-            }
-            #history-column {
-                display: none;
-            }
-        }
-        .sidebar-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 0.75rem;
-            padding: 1rem;
-            max-height: 600px;
-            overflow-y: auto;
-        }
-        .sidebar-card h3 {
-            font-size: 0.95rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-            color: #9CA3AF;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .history-item, .favorite-item {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 0.5rem;
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
-            font-size: 0.85rem;
-            line-height: 1.4;
-            color: #D1D5DB;
-            cursor: pointer;
-            transition: all 0.3s;
-            position: relative;
-        }
-        .history-item:hover, .favorite-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 107, 179, 0.3);
-        }
-        .history-item .model-badge, .favorite-item .model-badge {
-            display: inline-block;
-            background: rgba(255, 107, 179, 0.1);
-            border: 1px solid rgba(255, 107, 179, 0.3);
-            color: #FF6BB3;
-            padding: 0.15rem 0.5rem;
-            border-radius: 9999px;
-            font-size: 0.65rem;
-            font-weight: 600;
-            margin-bottom: 0.35rem;
-        }
-        .history-item .timestamp, .favorite-item .timestamp {
-            font-size: 0.65rem;
-            color: #6B7280;
-            margin-top: 0.35rem;
-        }
-        .favorite-item .remove-fav {
-            position: absolute;
-            top: 0.5rem;
-            right: 0.5rem;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            color: #EF4444;
-            padding: 0.15rem 0.4rem;
-            border-radius: 0.25rem;
-            font-size: 0.65rem;
             cursor: pointer;
         }
-        .favorite-item .remove-fav:hover {
-            background: rgba(239, 68, 68, 0.2);
+        select option { 
+            background: #1F2937 !important; 
+            color: white !important; 
+            padding: 0.5rem;
         }
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(255, 107, 179, 0.2);
-            border-top-color: #FF6BB3;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 2rem auto;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .model-badge {
-            display: inline-block;
-            background: rgba(255, 107, 179, 0.1);
-            border: 1px solid rgba(255, 107, 179, 0.3);
-            color: #FF6BB3;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-        textarea, select, input {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 0.5rem;
-            padding: 0.75rem;
-            color: #E5E7EB;
-            width: 100%;
-            font-family: inherit;
-            font-size: 0.95rem;
-        }
-        textarea:focus, select:focus, input:focus {
+        select:focus {
             outline: none;
-            border-color: rgba(255, 107, 179, 0.5);
-            background: rgba(255, 255, 255, 0.08);
+            border-color: #FF6BB3;
         }
-        select option {
-            background: #1F2937;
-            color: #E5E7EB;
-        }
-        .logout-btn {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            color: #FCA5A5;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .logout-btn:hover {
-            background: rgba(239, 68, 68, 0.2);
-            color: #FEE2E2;
-        }
-        .back-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #FFFFFF;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .back-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 107, 179, 0.3);
-        }
+        
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
     <div class="dashboard-container">
-        <!-- Header -->
         <div class="header-dashboard">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-2xl font-bold" style="background: linear-gradient(135deg, #FF6BB3, #FFD700); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                        🤖 Generador de Mensajes IA
-                    </h1>
-                    <p class="text-gray-400 text-sm mt-1">Genera mensajes únicos y personalizados con inteligencia artificial</p>
-                </div>
-                <div class="flex gap-3">
-                    <a href="dashboard-chatter.html" class="back-btn">← Volver al Dashboard</a>
-                    <button id="logout-btn" class="logout-btn">Cerrar Sesión</button>
-                </div>
+            <div>
+                <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">🤖 Generador de Mensajes IA</h1>
+                <p style="color: #9CA3AF;">Genera mensajes únicos y personalizados con inteligencia artificial</p>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <a href="dashboard-chatter.html" class="btn-primary" style="text-decoration: none; background: rgba(255,255,255,0.1); display: inline-flex; align-items: center;">← Volver al Dashboard</a>
+                <button id="logout-btn" class="btn-primary" style="background: rgba(220, 38, 38, 0.8);">Cerrar Sesión</button>
             </div>
         </div>
 
         <!-- Selector de Modelo -->
         <div class="card-glass" style="margin-bottom: 1.5rem;">
-            <h2 class="text-lg font-semibold mb-4">📋 Selecciona la Modelo</h2>
-            <div id="models-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div class="model-card-loading">Cargando modelos...</div>
+            <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">📋 Selecciona la Modelo</h2>
+            <div id="models-grid" class="models-grid">
+                <div style="text-align: center; color: #6B7280; padding: 2rem;">Cargando modelos...</div>
             </div>
         </div>
 
-        <!-- Selector de Tipo de Mensaje -->
+        <!-- Tipo de Mensaje -->
         <div class="card-glass" style="margin-bottom: 1.5rem;">
-            <h2 class="text-lg font-semibold mb-4">📝 Tipo de Mensaje</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">📝 Tipo de Mensaje</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
                 <div class="message-type-btn" data-type="masivo">
-                    <div class="text-2xl mb-2">💬</div>
-                    <div class="font-semibold mb-1">Mensaje Masivo</div>
-                    <div class="text-xs text-gray-400">Para interactuar con tus suscrips</div>
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">💬</div>
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">Mensaje Masivo</div>
+                    <div style="font-size: 0.8rem; color: #9CA3AF;">Para interactuar con tus suscrips</div>
                 </div>
                 <div class="message-type-btn" data-type="posteo">
-                    <div class="text-2xl mb-2">📸</div>
-                    <div class="font-semibold mb-1">Descripción de Posteo</div>
-                    <div class="text-xs text-gray-400">Para acompañar fotos/videos</div>
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">📸</div>
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">Descripción de Posteo</div>
+                    <div style="font-size: 0.8rem; color: #9CA3AF;">Para acompañar fotos/videos</div>
                 </div>
                 <div class="message-type-btn" data-type="venta">
-                    <div class="text-2xl mb-2">💰</div>
-                    <div class="font-semibold mb-1">Venta de Pack</div>
-                    <div class="text-xs text-gray-400">Para vender contenido bloqueado</div>
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">💰</div>
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">Venta de Pack</div>
+                    <div style="font-size: 0.8rem; color: #9CA3AF;">Para vender contenido bloqueado</div>
                 </div>
             </div>
         </div>
 
-        <!-- Momento del día (solo para masivo) -->
-        <div id="time-section" class="card-glass hidden" style="margin-bottom: 1.5rem;">
-            <h2 class="text-lg font-semibold mb-3">⏰ Momento del Día</h2>
-            <select id="time-of-day" class="w-full" style="margin-bottom: 1rem;">
-                <option value="mañana">🌅 Mañana (6:00 - 12:00)</option>
-                <option value="tarde" selected>☀️ Tarde (12:00 - 20:00)</option>
-                <option value="noche">🌙 Noche (20:00 - 6:00)</option>
-            </select>
-            
-            <h2 class="text-lg font-semibold mb-3 mt-4">👥 Nivel de Familiaridad con Suscriptor</h2>
-            <select id="familiarity" class="w-full">
-                <option value="nuevo">🆕 Nuevo/Desconocido (primer contacto o poca interacción)</option>
-                <option value="regular" selected>💬 Regular (ya han hablado varias veces)</option>
-                <option value="frecuente">🔥 Frecuente (cliente habitual, mucha confianza)</option>
-            </select>
-            <p style="font-size: 0.75rem; color: #6B7280; margin-top: 0.5rem;">
-                Esto ajusta el tono: más respetuoso con nuevos, más íntimo con frecuentes
-            </p>
-        </div>
-
-        <!-- Descripción de foto (solo para posteo) -->
-        <div id="photo-section" class="card-glass hidden" style="margin-bottom: 1.5rem;">
-            <h2 class="text-lg font-semibold mb-3">📷 Describe la Foto/Video</h2>
-            <textarea 
-                id="photo-description" 
-                rows="2" 
-                placeholder="Ej: foto en lencería negra mirando a cámara / video bailando en bikini / selfie en el gym con top deportivo..."
-            ></textarea>
-        </div>
-
-        <!-- Contexto de pack (solo para venta) -->
-        <div id="pack-section" class="card-glass hidden" style="margin-bottom: 1.5rem;">
-            <h2 class="text-lg font-semibold mb-3">📦 Describe el Contenido del Pack</h2>
-            <textarea 
-                id="pack-context" 
-                rows="3" 
-                placeholder="Ej: 10 fotos en lencería roja, 2 videos de 30 segundos jugando con mi cuerpo, contenido muy caliente..."
-            ></textarea>
+        <!-- Contexto -->
+        <div id="context-section" class="card-glass hidden" style="margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">⚙️ Contexto</h2>
+            <div id="context-masivo" class="hidden" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; color: #9CA3AF; font-size: 0.9rem;">Hora del día</label>
+                    <select id="time-of-day">
+                        <option value="manana">Mañana</option>
+                        <option value="tarde" selected>Tarde</option>
+                        <option value="noche">Noche</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; color: #9CA3AF; font-size: 0.9rem;">Nivel de familiaridad</label>
+                    <select id="familiarity">
+                        <option value="nuevo">Nuevo</option>
+                        <option value="regular" selected>Regular</option>
+                        <option value="frecuente">Frecuente</option>
+                    </select>
+                </div>
+            </div>
+            <div id="context-posteo" class="hidden">
+                <label style="display: block; margin-bottom: 0.5rem; color: #9CA3AF; font-size: 0.9rem;">Describe la foto/video</label>
+                <textarea id="photo-description" placeholder="Ej: Foto en lencería negra, mirando a cámara..." style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; color: white; min-height: 80px; resize: vertical;"></textarea>
+            </div>
+            <div id="context-venta" class="hidden">
+                <label style="display: block; margin-bottom: 0.5rem; color: #9CA3AF; font-size: 0.9rem;">Describe el contenido del pack</label>
+                <textarea id="pack-description" placeholder="Ej: 5 fotos + 2 videos de 30 seg masturbándome..." style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; color: white; min-height: 80px; resize: vertical;"></textarea>
+            </div>
         </div>
 
         <!-- Botón Generar -->
-        <div class="text-center" style="margin-bottom: 2rem;">
-            <button id="generate-btn" class="btn-primary" disabled>
-                ✨ Generar 3 Mensajes
-            </button>
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <button id="generate-btn" class="btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;" disabled>🔥 Generar 3 Mensajes</button>
         </div>
 
         <!-- Loading -->
-        <div id="loading" class="hidden">
-            <div class="spinner"></div>
-            <p class="text-center text-gray-400 mt-4">Generando mensajes únicos...</p>
+        <div id="loading" class="card-glass hidden" style="text-align: center; padding: 2rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
+            <div style="font-size: 1.2rem; font-weight: 600;">Generando mensajes...</div>
+            <div style="color: #9CA3AF; margin-top: 0.5rem;">Esto puede tardar unos segundos</div>
+        </div>
+
+        <!-- Layout 3 Columnas: Resultados | Historial | Favoritos -->
+        <div style="display: grid; grid-template-columns: 1fr 350px 350px; gap: 1.5rem; align-items: start;">
+            <!-- Resultados -->
+            <div id="results" class="card-glass hidden">
+                <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">✨ Mensajes Generados</h2>
+                <div id="messages-container"></div>
+            </div>
+
+            <!-- Historial -->
+            <div class="card-glass">
+                <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">📜 Historial</h2>
+                <div id="history-list" style="max-height: 600px; overflow-y: auto;">
+                    <p class="text-gray-400 text-sm text-center py-4">No hay historial aún</p>
+                </div>
+            </div>
+
+            <!-- Favoritos -->
+            <div class="card-glass">
+                <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">⭐ Favoritos</h2>
+                <div id="favorites-list" style="max-height: 600px; overflow-y: auto;">
+                    <p class="text-gray-400 text-sm text-center py-4">No hay favoritos aún</p>
+                </div>
+            </div>
         </div>
 
         <!-- Error -->
-        <div id="error-message" class="hidden card-glass" style="border-color: rgba(239, 68, 68, 0.5); background: rgba(239, 68, 68, 0.1);">
-            <p class="text-red-400 text-center"></p>
-        </div>
-
-        <!-- Resultados con Historial y Favoritos -->
-        <div id="results" class="hidden">
-            <div class="columns-container">
-                <!-- Columna Principal: Mensajes Nuevos -->
-                <div>
-                    <div class="card-glass">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <h2 class="text-xl font-semibold">✨ Mensajes Generados</h2>
-                            <span style="font-size: 0.75rem; color: #6B7280;">Selecciona y copia el que más te guste</span>
-                        </div>
-                        <div id="messages-container"></div>
-                    </div>
-                </div>
-
-                <!-- Columna Historial -->
-                <div id="history-column">
-                    <div class="sidebar-card">
-                        <h3>📜 Historial</h3>
-                        <div id="history-container">
-                            <p style="font-size: 0.8rem; color: #6B7280; text-align: center; padding: 2rem 0;">
-                                Sin historial aún
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Columna Favoritos -->
-                <div id="favorites-column">
-                    <div class="sidebar-card">
-                        <h3>⭐ Favoritos</h3>
-                        <div id="favorites-container">
-                            <p style="font-size: 0.8rem; color: #6B7280; text-align: center; padding: 2rem 0;">
-                                Sin favoritos aún
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div id="error-message" class="card-glass hidden" style="border-color: rgba(220, 38, 38, 0.5); background: rgba(220, 38, 38, 0.1); margin-top: 1.5rem;">
+            <h3 style="color: #FCA5A5; font-weight: 600; margin-bottom: 0.5rem;">❌ Error</h3>
+            <p style="color: #FCA5A5;"></p>
         </div>
     </div>
 
     <script src="config.js"></script>
-    <script src="dashboard-ai-messages.js"></script>
+    <script src="dashboard-guias.js"></script>
+    <script src="dashboard-ai-messages-final.js"></script>
 </body>
 </html>
