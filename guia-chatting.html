@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía de Chatting Profesional - BraveGirls Agency</title>
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0A0A0A 0%, #1a1a2e 100%);
+            color: #E0E0E0;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        
+        /* Header */
+        .header {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 107, 179, 0.2);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, #FF6BB3, #9D50E0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .btn-back {
+            padding: 0.7rem 1.5rem;
+            background: linear-gradient(135deg, #FF6BB3, #9D50E0);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .btn-back:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 107, 179, 0.4);
+        }
+        
+        /* Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 3rem;
+        }
+        
+        /* Sidebar Navigation */
+        .sidebar {
+            position: sticky;
+            top: 100px;
+            height: fit-content;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+        
+        .sidebar h3 {
+            font-size: 0.9rem;
+            color: #FF6BB3;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .nav-link {
+            display: block;
+            padding: 0.6rem 0.8rem;
+            color: #B0B0B0;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            margin-bottom: 0.3rem;
+            transition: all 0.2s ease;
+        }
+        
+        .nav-link:hover, .nav-link.active {
+            background: rgba(255, 107, 179, 0.1);
+            color: #FF6BB3;
+            transform: translateX(5px);
+        }
+        
+        /* Content */
+        .content {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 3rem;
+        }
+        
+        .section {
+            margin-bottom: 4rem;
+            scroll-margin-top: 100px;
+        }
+        
+        .section h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #FF6BB3, #9D50E0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .section h3 {
+            font-size: 1.4rem;
+            color: #FF6BB3;
+            margin: 2rem 0 1rem 0;
+        }
+        
+        .section h4 {
+            font-size: 1.1rem;
+            color: #9D50E0;
+            margin: 1.5rem 0 0.8rem 0;
+        }
+        
+        .section p {
+            margin-bottom: 1rem;
+            color: #D0D0D0;
+        }
+        
+        /* Highlights */
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(255, 107, 179, 0.1), rgba(157, 80, 224, 0.1));
+            border-left: 4px solid #FF6BB3;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+        }
+        
+        .highlight-box p {
+            margin: 0;
+            font-weight: 500;
+        }
+        
+        /* Lists */
+        ul {
+            margin: 1rem 0 1rem 2rem;
+            color: #D0D0D0;
+        }
+        
+        ul li {
+            margin-bottom: 0.6rem;
+            line-height: 1.6;
+        }
+        
+        /* Do/Don't Lists */
+        .do-list, .dont-list {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        .do-list {
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .dont-list {
+            border-left: 4px solid #F44336;
+        }
+        
+        .do-list h4 {
+            color: #4CAF50;
+        }
+        
+        .dont-list h4 {
+            color: #F44336;
+        }
+        
+        /* Examples */
+        .example {
+            background: rgba(157, 80, 224, 0.1);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-style: italic;
+            margin: 1rem 0;
+            border-left: 3px solid #9D50E0;
+        }
+        
+        /* Key Points */
+        .key-point {
+            display: inline-block;
+            background: linear-gradient(135deg, #FF6BB3, #9D50E0);
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 0.3rem;
+        }
+        
+        /* Emoji */
+        .emoji {
+            font-size: 1.3em;
+            margin-right: 0.3rem;
+        }
+        
+        /* Strong Text */
+        strong {
+            color: #FF6BB3;
+            font-weight: 600;
+        }
+        
+        /* Quote */
+        blockquote {
+            background: rgba(255, 107, 179, 0.05);
+            border-left: 4px solid #FF6BB3;
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            font-style: italic;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                position: static;
+                margin-bottom: 2rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+            
+            .content {
+                padding: 1.5rem;
+            }
+            
+            .section h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <h1>📘 Guía de Chatting Profesional</h1>
+            <a href="dashboard-chatter.html" class="btn-back">← Volver al Dashboard</a>
+        </div>
+    </div>
+    
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <h3>📑 Índice</h3>
+            <a href="#psicologia" class="nav-link active">🧠 Psicología del Fan</a>
+            <a href="#conexion" class="nav-link">💞 Construcción de Conexión</a>
+            <a href="#inicio" class="nav-link">💬 Inicio de Conversaciones</a>
+            <a href="#venta" class="nav-link">💸 Cómo Entrar en la Venta</a>
+            <a href="#scripts" class="nav-link">📜 Uso Correcto de Scripts</a>
+            <a href="#no-compra" class="nav-link">🚫 Cuando el Fan No Compra</a>
+            <a href="#mantener" class="nav-link">🔁 Mantener Conversación Viva</a>
+            <a href="#poder" class="nav-link">👑 Posición de Poder</a>
+            <a href="#reglas" class="nav-link">🛑 Reglas DO & DON'T</a>
+        </aside>
+        
+        <!-- Content -->
+        <main class="content">
+            <!-- Header Section -->
+            <div class="section">
+                <h2>📘 Guía Oficial de Chatting – OnlyFans</h2>
+                <p style="font-size: 1.1rem; color: #FF6BB3;">Estándar de Comunicación y Ventas de la Agencia</p>
+            </div>
+            
+            <!-- Section 1: Psicología -->
+            <section id="psicologia" class="section">
+                <h2><span class="emoji">🧠</span>1. Psicología del Fan en OnlyFans</h2>
+                
+                <div class="highlight-box">
+                    <p>Los fans no pagan solo por contenido. Pagan por <strong>emociones</strong>.</p>
+                </div>
+                
+                <p>Un fan está en OnlyFans porque busca:</p>
+                <ul>
+                    <li><span class="emoji">💬</span><strong>Atención</strong> – que alguien le responda y lo escuche</li>
+                    <li><span class="emoji">❤️</span><strong>Conexión</strong> – sentirse especial, no uno más</li>
+                    <li><span class="emoji">😈</span><strong>Fantasía</strong> – escapar de su rutina</li>
+                    <li><span class="emoji">🔥</span><strong>Validación</strong> – sentirse deseado</li>
+                    <li><span class="emoji">🎮</span><strong>Tensión y control</strong> – querer más sin tenerlo todo</li>
+                </ul>
+                
+                <blockquote>
+                    👉 El trabajo del chatter es <strong>provocar estas emociones</strong> y <strong>guiar al fan hacia la compra de forma natural</strong>, nunca forzada.
+                </blockquote>
+            </section>
+            
+            <!-- Section 2: Conexión -->
+            <section id="conexion" class="section">
+                <h2><span class="emoji">💞</span>3. Construcción de Conexión</h2>
+                
+                <h3>3.1 Tono Personal</h3>
+                <ul>
+                    <li>Llamar al fan por su <strong>nombre</strong></li>
+                    <li>Usar <strong>emojis</strong> con moderación</li>
+                    <li>Reflejar su energía</li>
+                </ul>
+                
+                <h3>3.2 Hacerlo Sentir Especial</h3>
+                <p>Ejemplos:</p>
+                <div class="example">
+                    "me gusta cómo me hablas…"
+                </div>
+                <div class="example">
+                    "contigo es diferente 😌"
+                </div>
+                
+                <h3>3.3 Preguntas Abiertas</h3>
+                <p>Evitar preguntas de sí/no. Usar:</p>
+                <ul>
+                    <li>"¿qué estás haciendo ahora?"</li>
+                    <li>"¿qué te apetece de verdad?"</li>
+                    <li>"cuéntame algo real de tu día"</li>
+                </ul>
+                
+                <h3>3.4 Misterio y Tensión</h3>
+                <ul>
+                    <li>❌ No contar todo</li>
+                    <li>✅ Dejar siempre algo pendiente</li>
+                </ul>
+                <div class="example">
+                    "quizá luego te lo cuente… si te portas bien 😏"
+                </div>
+            </section>
+            
+            <!-- Section 3: Inicio -->
+            <section id="inicio" class="section">
+                <h2><span class="emoji">💬</span>4. Inicio de Conversaciones</h2>
+                
+                <div class="highlight-box">
+                    <p><strong>Objetivo inicial:</strong> hacer que el fan hable.</p>
+                </div>
+                
+                <h3>Herramientas:</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0;">
+                    <span class="key-point">Coqueteo suave</span>
+                    <span class="key-point">Juegos simples</span>
+                    <span class="key-point">Halagos</span>
+                    <span class="key-point">Teasing ligero</span>
+                </div>
+                
+                <h3>Estructura recomendada:</h3>
+                <ul>
+                    <li>1. Llamar la atención</li>
+                    <li>2. Pregunta o tease</li>
+                    <li>3. Crear ritmo</li>
+                    <li>4. Confirmar que está tranquilo</li>
+                    <li>5. Transicionar a script o venta</li>
+                </ul>
+            </section>
+            
+            <!-- Section 4: Venta -->
+            <section id="venta" class="section">
+                <h2><span class="emoji">💸</span>5. Cómo Entrar en la Venta</h2>
+                
+                <div class="highlight-box">
+                    <p>❌ Nunca vender en frío<br>
+                    ✅ Siempre calentar primero</p>
+                </div>
+                
+                <h3>Señales de compra:</h3>
+                <ul>
+                    <li>Pregunta qué llevas puesto</li>
+                    <li>Habla de fantasías</li>
+                    <li>Reacciona fuerte a teasers</li>
+                    <li>Dice "muéstrame más"</li>
+                    <li>Usa emojis 🔥😈💦</li>
+                </ul>
+                
+                <h3>Transiciones suaves:</h3>
+                <div class="example">
+                    "¿quieres que te enseñe algo solo para ti?"
+                </div>
+                <div class="example">
+                    "creo que tengo un vídeo que te va a gustar…"
+                </div>
+                
+                <h3>Transiciones más directas:</h3>
+                <div class="example">
+                    "me estás poniendo… ¿quieres lo bueno de verdad?"
+                </div>
+                <div class="example">
+                    "puedo darte justo lo que estás pensando…"
+                </div>
+            </section>
+            
+            <!-- Section 5: Scripts -->
+            <section id="scripts" class="section">
+                <h2><span class="emoji">📜</span>6. Uso Correcto de Scripts</h2>
+                
+                <p>Los scripts existen para:</p>
+                <ul>
+                    <li><span class="emoji">🧱</span>Dar estructura</li>
+                    <li><span class="emoji">❌</span>Evitar errores</li>
+                    <li><span class="emoji">💰</span>Maximizar ventas</li>
+                    <li><span class="emoji">📊</span>Mantener consistencia</li>
+                </ul>
+                
+                <h3>Reglas clave:</h3>
+                <ul>
+                    <li>❌ No copiar y pegar sin pensar</li>
+                    <li>✅ Adaptar al mensaje del fan</li>
+                    <li><span class="emoji">🎭</span>Mantener la personalidad del perfil</li>
+                    <li><span class="emoji">🪜</span>Seguir la escalera PPV (teaser → PPV → PPV)</li>
+                    <li><span class="emoji">📁</span>No mezclar colecciones sin motivo</li>
+                </ul>
+                
+                <div class="highlight-box">
+                    <p>🔑 <strong>Regla de oro:</strong> El script <strong>guía la conversación</strong>, no la reemplaza.</p>
+                </div>
+            </section>
+            
+            <!-- Section 6: No Compra -->
+            <section id="no-compra" class="section">
+                <h2><span class="emoji">🚫</span>7. Cuando el Fan No Compra</h2>
+                
+                <h3>7.1 Si Duda</h3>
+                <p>Usar lógica emocional:</p>
+                <div class="example">
+                    "quiero que lo disfrutes como lo imaginas…"
+                </div>
+                <div class="example">
+                    "tranquilo, no tengo prisa 😌"
+                </div>
+                
+                <h3>7.2 Si Dice "Es Caro"</h3>
+                <ul>
+                    <li>Reencuadrar valor</li>
+                    <li>Teasing suave</li>
+                    <li>Downsells solo si están aprobados</li>
+                </ul>
+                <p>Ejemplos:</p>
+                <div class="example">
+                    "es el vídeo más íntimo que hice…"
+                </div>
+                <div class="example">
+                    "podemos empezar más suave si quieres…"
+                </div>
+                
+                <h3>7.3 Si Ghostea</h3>
+                <ul>
+                    <li>Esperar 30–60 minutos</li>
+                    <li>Enviar <strong>un solo mensaje</strong></li>
+                </ul>
+                <div class="example">
+                    "¿te puse tímido? qué mono…"
+                </div>
+                <p>Si no responde → <strong>se corta la interacción</strong>.</p>
+            </section>
+            
+            <!-- Section 7: Mantener -->
+            <section id="mantener" class="section">
+                <h2><span class="emoji">🔁</span>8. Mantener la Conversación Viva</h2>
+                
+                <p>Si el fan responde poco:</p>
+                <ul>
+                    <li>Preguntar algo más</li>
+                    <li>Usar humor</li>
+                    <li>Hacerlo imaginar</li>
+                    <li>Añadir picante</li>
+                </ul>
+                
+                <h3>Ejemplo:</h3>
+                <div class="example">
+                    <strong>Fan:</strong> "no sé"<br>
+                    <strong>Tú:</strong> "entonces déjame adivinar… ¿quieres que tome el control? 😏"
+                </div>
+            </section>
+            
+            <!-- Section 8: Poder -->
+            <section id="poder" class="section">
+                <h2><span class="emoji">👑</span>9. Posición de Poder (Siempre)</h2>
+                
+                <div class="dont-list">
+                    <h4>❌ Nunca:</h4>
+                    <ul>
+                        <li>Rogar</li>
+                        <li>Perseguir</li>
+                        <li>Disculparte de más</li>
+                        <li>Mostrar inseguridad</li>
+                        <li>Sobreexplicar</li>
+                    </ul>
+                </div>
+                
+                <div class="do-list">
+                    <h4>✅ El chatter:</h4>
+                    <ul>
+                        <li>Marca el ritmo</li>
+                        <li>Mantiene tensión</li>
+                        <li>Decide cuándo se vende</li>
+                    </ul>
+                </div>
+            </section>
+            
+            <!-- Section 9: Reglas -->
+            <section id="reglas" class="section">
+                <h2><span class="emoji">🛑</span>10. Reglas DO & DON'T</h2>
+                
+                <div class="do-list">
+                    <h4>✅ DO (Obligatorio)</h4>
+                    <ul>
+                        <li>Seguir scripts y precios</li>
+                        <li>Mantener personaje</li>
+                        <li>Calentar antes de vender</li>
+                        <li>Registrar ventas</li>
+                        <li>Ser profesional y consistente</li>
+                    </ul>
+                </div>
+                
+                <div class="dont-list">
+                    <h4>❌ DON'T (Prohibido)</h4>
+                    <ul>
+                        <li>Faltar el respeto</li>
+                        <li>Usar palabras no aprobadas</li>
+                        <li>Romper personaje</li>
+                        <li>Inventar precios</li>
+                        <li>Decir que no eres la creadora</li>
+                        <li>Compartir datos reales</li>
+                        <li>Hablar de la agencia</li>
+                        <li>Insistir tras un "no"</li>
+                    </ul>
+                </div>
+            </section>
+            
+            <!-- Final -->
+            <section class="section">
+                <h2><span class="emoji">🎯</span>Recordatorio Final</h2>
+                
+                <div class="highlight-box">
+                    <p><strong>La misión del chatter es clara:</strong></p>
+                    <ul style="margin-top: 1rem;">
+                        <li><span class="emoji">🌟</span>Hacer sentir especial al fan</li>
+                        <li><span class="emoji">🔥</span>Mantener tensión constante</li>
+                        <li><span class="emoji">💸</span>Vender de forma natural</li>
+                        <li><span class="emoji">🛡️</span>Proteger la marca</li>
+                    </ul>
+                </div>
+                
+                <p style="font-size: 1.1rem; text-align: center; margin-top: 2rem;">
+                    El chatter que domina estos fundamentos <strong>vende más, dura más y escala dentro de la agencia</strong>.
+                </p>
+            </section>
+        </main>
+    </div>
+    
+    <script>
+        // Smooth scroll
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetSection = document.querySelector(targetId);
+                
+                if (targetSection) {
+                    targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    
+                    // Update active link
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                }
+            });
+        });
+        
+        // Highlight active section on scroll
+        const sections = document.querySelectorAll('.section[id]');
+        const navLinks = document.querySelectorAll('.nav-link');
+        
+        window.addEventListener('scroll', () => {
+            let current = '';
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= sectionTop - 150) {
+                    current = section.getAttribute('id');
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

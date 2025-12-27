@@ -1,0 +1,19 @@
+{
+  "name": "bravegirls-backend-proxy",
+  "version": "1.0.0",
+  "description": "Backend proxy para OnlyMonster API - BraveGirls Agency",
+  "main": "backend-proxy.js",
+  "scripts": {
+    "start": "node backend-proxy.js",
+    "dev": "nodemon backend-proxy.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "node-fetch": "^2.6.7",
+    "dotenv": "^16.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
