@@ -227,23 +227,31 @@ async function loadModels() {
     
     if (!modelsGrid) {
         console.error('❌ No se encontró el elemento models-grid');
+        alert('ERROR: No se encontró el elemento models-grid en el HTML');
         return;
     }
     
     console.log('🔍 Cargando modelos desde OnlyMonster API...');
+    console.log('📍 API URL:', window.CONFIG?.onlyMonsterApiUrl || 'https://bravegirlsagency-api.vercel.app/api');
     
     try {
         const apiUrl = window.CONFIG?.onlyMonsterApiUrl || 'https://bravegirlsagency-api.vercel.app/api';
+        const endpoint = `${apiUrl}/accounts`;
+        
+        console.log('🌐 Haciendo fetch a:', endpoint);
         
         // Obtener datos desde OnlyMonster
-        const response = await fetch(`${apiUrl}/accounts`);
+        const response = await fetch(endpoint);
+        
+        console.log('📡 Respuesta recibida:', response.status, response.statusText);
         
         if (!response.ok) {
-            throw new Error(`Error al obtener modelos: ${response.status}`);
+            throw new Error(`Error al obtener modelos: ${response.status} ${response.statusText}`);
         }
         
         const accounts = await response.json();
-        console.log('✅ Modelos obtenidas de OnlyMonster:', accounts.length);
+        console.log('✅ Datos recibidos:', accounts);
+        console.log('📊 Total modelos:', accounts.length);
         
         if (accounts.length === 0) {
             console.warn('⚠️ No hay modelos disponibles');
@@ -253,6 +261,7 @@ async function loadModels() {
         
         // Procesar modelos
         const models = accounts.map(account => {
+            console.log('🔄 Procesando modelo:', account.name);
             // Construir instrucciones básicas
             const instructions = `Soy ${account.name}, modelo de OnlyFans.\n\nPersonalidad: ${account.personality || 'Coqueta y juguetona'}\n\nDatos del perfil de OnlyMonster.`;
             
@@ -269,6 +278,8 @@ async function loadModels() {
             };
         });
         
+        console.log('📦 Modelos procesadas:', models);
+        
         // Guardar en memoria
         window.availableModels = models;
         window.selectedModelId = null;
@@ -276,7 +287,7 @@ async function loadModels() {
         console.log('🎨 Generando cards HTML...');
         
         // Generar cards de modelos
-        modelsGrid.innerHTML = models.map(model => {
+        const cardsHTML = models.map(model => {
             // Si tiene avatar, usarlo, sino usar iniciales
             const avatarContent = model.avatar 
                 ? `<img src="${model.avatar}" alt="${model.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` 
@@ -291,12 +302,19 @@ async function loadModels() {
             `;
         }).join('');
         
+        console.log('📝 HTML generado (primeros 200 chars):', cardsHTML.substring(0, 200));
+        
+        modelsGrid.innerHTML = cardsHTML;
+        
         console.log('✅ Cards generadas correctamente');
+        console.log('🔢 Cards en el DOM:', modelsGrid.querySelectorAll('.model-card').length);
         
     } catch (error) {
         console.error('❌ Error en loadModels():', error);
         console.error('Stack trace:', error.stack);
-        modelsGrid.innerHTML = `<div class="model-card-loading">Error: ${error.message}</div>`;
+        const errorMsg = `Error: ${error.message}`;
+        modelsGrid.innerHTML = `<div class="model-card-loading">${errorMsg}</div>`;
+        alert('ERROR al cargar modelos: ' + error.message);
     }
 }
 
@@ -316,37 +334,6 @@ window.selectModel = function(modelId) {
     // Validar formulario
     checkFormValid();
 };
-
-// Construir instrucciones completas desde los datos de la modelo
-function buildModelInstructions(modelData) {
-    let instructions = `Soy ${modelData.nombre}, modelo de OnlyFans.\n\n`;
-    
-    if (modelData.personalidad) {
-        instructions += `PERSONALIDAD: ${modelData.personalidad}\n\n`;
-    }
-    
-    if (modelData.descripcion) {
-        instructions += `DESCRIPCI�N: ${modelData.descripcion}\n\n`;
-    }
-    
-    if (modelData.palabras_tipicas) {
-        instructions += `FRASES T�PICAS: ${modelData.palabras_tipicas}\n\n`;
-    }
-    
-    if (modelData.cosas_no_decir) {
-        instructions += ` NUNCA MENCIONAR: ${modelData.cosas_no_decir}\n\n`;
-    }
-    
-    if (modelData.pais) {
-        instructions += `Pa�s: ${modelData.pais}\n`;
-    }
-    
-    if (modelData.hobbies) {
-        instructions += `Hobbies: ${modelData.hobbies}\n`;
-    }
-    
-    return instructions;
-}
 
 // 
 // EVENT LISTENERS
@@ -433,16 +420,27 @@ function checkFormValid() {
 // 
 
 async function generateMessages() {
-    const modelSelect = document.getElementById('model-select');
     const activeType = document.querySelector('.message-type-btn.active');
     const loading = document.getElementById('loading');
     const results = document.getElementById('results');
     const errorMessage = document.getElementById('error-message');
     const generateBtn = document.getElementById('generate-btn');
     
+    // Validar que hay modelo seleccionado
+    if (!window.selectedModelId) {
+        console.error('❌ No hay modelo seleccionado');
+        return;
+    }
+    
     // Obtener datos
     const modelId = window.selectedModelId;
     const model = window.availableModels.find(m => m.id === modelId);
+    
+    if (!model) {
+        console.error('❌ Modelo no encontrado:', modelId);
+        return;
+    }
+    
     const messageType = activeType.dataset.type;
     
     // Contexto seg�n tipo
