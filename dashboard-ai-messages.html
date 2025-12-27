@@ -59,6 +59,12 @@
             border-color: #FF6BB3;
         }
         
+        .context-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
         .hidden { display: none !important; }
     </style>
 </head>
@@ -108,7 +114,7 @@
         <!-- Contexto -->
         <div id="context-section" class="card-glass hidden" style="margin-bottom: 1.5rem;">
             <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">⚙️ Contexto</h2>
-            <div id="context-masivo" class="hidden" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div id="context-masivo" class="hidden context-grid">
                 <div>
                     <label style="display: block; margin-bottom: 0.5rem; color: #9CA3AF; font-size: 0.9rem;">Hora del día</label>
                     <select id="time-of-day">
@@ -118,11 +124,10 @@
                     </select>
                 </div>
                 <div>
-                    <label style="display: block; margin-bottom: 0.5rem; color: #9CA3AF; font-size: 0.9rem;">Nivel de familiaridad</label>
-                    <select id="familiarity">
-                        <option value="nuevo">Nuevo</option>
-                        <option value="regular" selected>Regular</option>
-                        <option value="frecuente">Frecuente</option>
+                    <label style="display: block; margin-bottom: 0.5rem; color: #9CA3AF; font-size: 0.9rem;">Temporada</label>
+                    <select id="season">
+                        <option value="invierno" selected>Invierno ❄️ (frío)</option>
+                        <option value="verano">Verano ☀️ (calor)</option>
                     </select>
                 </div>
             </div>
@@ -181,7 +186,7 @@
     </div>
 
     <script src="config.js"></script>
-    <script src="dashboard-guias.js"></script>
-    <script src="dashboard-ai-messages-final.js"></script>
+    <script src="dashboard-guias.js?v=20251227-1830"></script>
+    <script src="dashboard-ai-messages-final.js?v=20251227-1830"></script>
 </body>
 </html>

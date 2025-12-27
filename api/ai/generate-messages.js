@@ -188,7 +188,7 @@ function buildUserPrompt(messageType, context) {
     switch (messageType) {
         case 'masivo':
             const timeOfDay = context?.timeOfDay || 'tarde';
-            const familiarity = context?.familiarity || 'regular';
+            const season = context?.season || 'invierno';
             
             let timeContext = '';
             let timeExamples = '';
@@ -215,27 +215,17 @@ function buildUserPrompt(messageType, context) {
 - "oye que tal tu noche?? yo aqui preparandome para dormir"`;
             }
             
-            let familiarityContext = '';
-            if (familiarity === 'nuevo') {
-                familiarityContext = `FAMILIARIDAD: Suscriptor NUEVO/DESCONOCIDO
-- NO uses apodos muy íntimos ("bebe", "amor")
-- Usa "hola", "que tal", "guapo" (más formal)
-- NO menciones cosas muy personales o íntimas
-- Tono amigable pero respetuoso
-- NO digas "no puedo dejar de pensar en ti" ni frases muy intensas
-- Evita preguntas demasiado atrevidas`;
-            } else if (familiarity === 'regular') {
-                familiarityContext = `FAMILIARIDAD: Suscriptor REGULAR
-- Puedes usar apodos cariñosos: "guapo", "amorr", "cariño"
-- Tono cercano y juguetón
-- Preguntas ligeras y coquetas
-- Menciona cosas casuales (ropa, actividades)`;
+            let seasonContext = '';
+            if (season === 'invierno') {
+                seasonContext = `🌨️ TEMPORADA: INVIERNO (frío)
+- Menciona: frío, lluvia, ropa de abrigo, quedarse en casa con manta, calefacción, chocolate caliente
+- NO menciones: calor, playa, bikini, bronceado, aire acondicionado, piscina
+- Ejemplos: "hace mucho frio hoy", "me quiero quedar en casa con la manta", "tengo un frio que no veas", "la lluvia no para"`;
             } else {
-                familiarityContext = `FAMILIARIDAD: Suscriptor FRECUENTE/HABITUAL
-- Usa apodos íntimos: "bebe", "amor", "amorr"
-- Tono muy cercano y cómplice
-- Puedes ser más atrevida y directa
-- Menciona cosas más personales o picantes`;
+                seasonContext = `☀️ TEMPORADA: VERANO (calor)
+- Menciona: calor, playa, piscina, bikini, bronceado, aire acondicionado, sed
+- NO menciones: frío, lluvia, abrigo, manta, calefacción
+- Ejemplos: "hace un calor increible", "me voy a la piscina", "estoy en bikini en casa", "necesito aire acondicionado"`;
             }
             
             return `Genera 3 mensajes masivos DIFERENTES para enviar a tus suscriptores de OnlyFans.
@@ -246,7 +236,7 @@ ${timeContext}
 
 ${timeExamples}
 
-${familiarityContext}
+${seasonContext}
 
 ⚠️ IMPORTANTE: Los mensajes DEBEN estar adaptados al momento del día especificado arriba. NO menciones cosas de otro momento del día.
 

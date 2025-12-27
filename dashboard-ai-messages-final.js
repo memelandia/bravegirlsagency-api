@@ -1,4 +1,5 @@
 // dashboard-ai-messages.js - Generador IA limpio y definitivo
+// Última actualización: 27/12/2025 17:30 - Lucy agregada
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Iniciando Generador IA...');
@@ -157,11 +158,11 @@ async function generateMessages() {
     let context = null;
     if (messageType === 'masivo') {
         const timeOfDay = document.getElementById('time-of-day').value;
-        const familiarity = document.getElementById('familiarity').value;
-        context = { timeOfDay, familiarity };
+        const season = document.getElementById('season').value;
+        context = { timeOfDay, season };
         console.log('📝 Contexto masivo:', context);
         console.log('  - Hora del día:', timeOfDay);
-        console.log('  - Familiaridad:', familiarity);
+        console.log('  - Temporada:', season);
     } else if (messageType === 'posteo') {
         const photoDescription = document.getElementById('photo-description').value;
         context = photoDescription;
