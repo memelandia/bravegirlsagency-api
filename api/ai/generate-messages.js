@@ -108,7 +108,7 @@ function buildSystemPrompt(modelName, instructions, emojis, phrases) {
 VARIANTE REGIONAL: Andaluza (Córdoba)
 - Usa acento andaluz suave y natural, SIN exageraciones
 - NO uses acortamientos extremos como "to" por "todo"
-- Usa expresiones naturales de Córdoba: "illo", "tio", "ostras", "jolin"
+- Usa expresiones naturales de Córdoba: "iyo", "tio", "jolin"
 - Mantén la esencia andaluza pero legible y clara`;
     } else if (modelLower.includes('vicky') || modelLower.includes('lexi')) {
         regionalRules = `
@@ -117,11 +117,18 @@ VARIANTE REGIONAL: Argentina
 - Conjuga verbos en argentino: "tenés", "querés", "vení", "mirá"
 - Expresiones argentinas: "che", "boludo/a", "re", "acá", "mal", "posta"
 - "Mina" en vez de "chica", "chabón" en vez de "chico"`;
+    } else if (modelLower.includes('bella') || modelLower.includes('bellarey')) {
+        regionalRules = `
+VARIANTE REGIONAL: Madrid, España (Bella)
+- Usa "tú" y vosotros
+- Expresiones típicas de Bella: "ostras", "que chulo", "me mola", "guapo/bonito", "cotilla", "joer que sueño"
+- Emojis favoritos: 🫶🏼✨🙈🙌🏼😌💕
+- Expresiones favoritas: 😳🤤😮‍💨😅🥹😇😍🤭😏`;
     } else {
         regionalRules = `
 VARIANTE REGIONAL: Madrid, España
 - Usa "tú" y vosotros
-- Expresiones madrileñas: "tío/tía", "guay", "molar", "flipar", "ostras"
+- Expresiones madrileñas: "tío/tía", "guay", "molar", "flipar"
 - Nada latino (no "subs", "gustao", "videito")`;
     }
 
