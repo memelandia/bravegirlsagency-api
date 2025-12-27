@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     }
     
     try {
-        const { modelName, instructions, emojis, phrases, messageType, packContext } = req.body;
+        const { modelName, instructions, emojis, phrases, messageType, context } = req.body;
         
         // Validar datos requeridos
         if (!modelName || !messageType) {
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
         
         // Construir el prompt según el tipo de mensaje
         const systemPrompt = buildSystemPrompt(modelName, instructions, emojis, phrases);
-        const userPrompt = buildUserPrompt(messageType, packContext);
+        const userPrompt = buildUserPrompt(messageType, context);
         
         console.log('🤖 Llamando a OpenAI...');
         
@@ -163,20 +163,44 @@ IMPORTANTE: Genera EXACTAMENTE 3 mensajes diferentes separados por "---" (tres g
 Cada mensaje debe ser único, espontáneo y sonar como si lo escribieras desde tu móvil en ese momento.`;
 }
 
-function buildUserPrompt(messageType, packContext) {
+function buildUserPrompt(messageType, context) {
     switch (messageType) {
-        case 'captacion':
-            return `Genera 3 mensajes DIFERENTES de captacion para enviar a potenciales suscriptores.
-El objetivo es que se suscriban a tu OnlyFans de forma natural y atractiva.
+        case 'masivo':
+            const timeOfDay = context || 'tarde';
+            let timeContext = '';
+            
+            if (timeOfDay === 'mañana') {
+                timeContext = 'Es por la mañana (6:00-12:00). Contextos posibles: despertando, desayunando, empezando el dia, saliendo de casa, camino al trabajo/gym';
+            } else if (timeOfDay === 'tarde') {
+                timeContext = 'Es por la tarde (12:00-20:00). Contextos posibles: comiendo, en el trabajo, volviendo a casa, en el gym, descansando';
+            } else {
+                timeContext = 'Es por la noche (20:00-6:00). Contextos posibles: cenando, saliendo de la ducha, en la cama, aburrida en casa, preparandose para dormir';
+            }
+            
+            return `Genera 3 mensajes masivos DIFERENTES para enviar a tus suscriptores de OnlyFans.
+
+OBJETIVO: Generar interaccion y respuestas. Son mensajes 1 a 1, personales, cercanos.
+
+MOMENTO DEL DIA: ${timeContext}
+
+Los mensajes deben:
+- Ser circunstanciales al momento del dia (menciona que estas haciendo AHORA)
+- Generar curiosidad o pregunta que invite a responder
+- Ser coquetos, juguetones, cercanos
+- Usar apodos cariñosos: "bebe", "amor", "amorr", "guapo"
+- Incluir emojis naturales
+- Ser conversacionales, como si le escribieras a un amigo/novio
+
+EJEMPLOS DEL ESTILO (NO COPIES, INSPIRATE):
+- "bebee que tal tu dia??? escribeme que te cuento que braguitas me puse hoy"
+- "amorr te puedo hacer una pregunta??"
+- "hola amorr que tal el curro?? ya estas libre para mi?"
+- "bebe recien salgo de la ducha... me visto o que hacemos?"
+- "esta noche la verdad me apetece hacer algo estoy muy aburridaa, que tienes en mente?"
+- "joderr que aburrimiento, juegas a algo conmigo? jjaja"
+- "que haces? recien llego del gymm"
 
 IMPORTANTE: Cada mensaje debe empezar en minusculas, sin tildes, sin signos de apertura.
-
-ENFOQUES DIFERENTES:
-- Mensaje 1: Curioso/misterioso (genera intriga)
-- Mensaje 2: Directo/cercano (conexion personal)
-- Mensaje 3: Jugueton/coqueto (sensual pero sutil)
-
-Recuerda: todo en minusculas, sin tildes, alarga vocales para naturalidad, usa emoticonos.
 
 Formato de respuesta:
 [Mensaje 1]
@@ -186,18 +210,27 @@ Formato de respuesta:
 [Mensaje 3]`;
         
         case 'posteo':
-            return `Genera 3 descripciones DIFERENTES para acompañar un posteo (foto o video) en tu feed de OnlyFans.
-El objetivo es generar engagement, que los fans comenten, den like o quieran mas.
+            const photoDescription = context || 'foto sensual';
+            
+            return `Genera 3 descripciones DIFERENTES para acompañar este posteo en tu feed de OnlyFans:
 
-IMPORTANTE: Cada descripcion debe empezar en minusculas, sin tildes, sin signos de apertura.
+FOTO/VIDEO: ${photoDescription}
 
-ENFOQUES DIFERENTES:
-- Descripcion 1: Sugerente/intrigante (genera curiosidad)
-- Descripcion 2: Divertida/cercana (buen rollo)
-- Descripcion 3: Misteriosa/sexy (juego y coqueteo)
+OBJETIVO: Generar engagement (likes, comments, que quieran mas).
 
-NO describas la foto, solo escribe un texto atractivo que la acompañe.
-Recuerda: todo en minusculas, sin tildes, alarga vocales, usa emoticonos.
+Las descripciones deben:
+- Complementar la foto sin describir lo obvio
+- Generar curiosidad, deseo o juego
+- Ser sugerentes pero no explicitas
+- Incluir emojis naturales
+- Ser cortas (1-2 lineas maximo)
+
+ENFOQUES:
+- Descripcion 1: Sugerente/intrigante
+- Descripcion 2: Divertida/cercana
+- Descripcion 3: Misteriosa/coqueta
+
+IMPORTANTE: Cada descripcion en minusculas, sin tildes, sin signos de apertura.
 
 Formato de respuesta:
 [Descripcion 1]
@@ -207,22 +240,28 @@ Formato de respuesta:
 [Descripcion 3]`;
         
         case 'venta':
+            const packContent = context || 'Pack de fotos y videos exclusivos';
+            
             return `Genera 3 mensajes DIFERENTES para vender este contenido bloqueado (pack):
 
 CONTENIDO DEL PACK:
-${packContext || 'Pack de fotos y videos exclusivos'}
+${packContent}
 
-El objetivo es describir el contenido de forma atractiva y generar ganas de comprarlo.
+OBJETIVO: Describir el contenido de forma atractiva y generar ganas de comprarlo.
 
-IMPORTANTE: Cada mensaje debe empezar en minusculas, sin tildes, sin signos de apertura.
+Los mensajes deben:
+- Describir que contiene el pack de forma sexy
+- Generar deseo y urgencia
+- Ser naturales, no sonar comerciales
+- Incluir emojis apropiados
+- NO mencionar precio
 
-ENFOQUES DIFERENTES:
-- Mensaje 1: Descriptivo/detallado (explica que hay)
+ENFOQUES:
+- Mensaje 1: Descriptivo/detallado (que contiene)
 - Mensaje 2: Jugueton/tentador (genera deseo)
-- Mensaje 3: Directo/urgente (cierra la venta)
+- Mensaje 3: Directo/urgente (cierra venta)
 
-NO menciones el precio, solo describe el contenido de forma natural y sexy.
-Recuerda: todo en minusculas, sin tildes, alarga vocales, usa emoticonos.
+IMPORTANTE: Cada mensaje en minusculas, sin tildes, sin signos de apertura.
 
 Formato de respuesta:
 [Mensaje 1]

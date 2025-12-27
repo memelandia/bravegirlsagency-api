@@ -155,12 +155,24 @@ function setupEventListeners() {
             // Agregar active al clickeado
             this.classList.add('active');
             
-            // Mostrar/ocultar contexto si es venta
+            // Mostrar/ocultar secciones según tipo
             const type = this.dataset.type;
-            if (type === 'venta') {
-                contextSection.classList.remove('hidden');
-            } else {
-                contextSection.classList.add('hidden');
+            const timeSection = document.getElementById('time-section');
+            const photoSection = document.getElementById('photo-section');
+            const packSection = document.getElementById('pack-section');
+            
+            // Ocultar todas
+            timeSection.classList.add('hidden');
+            photoSection.classList.add('hidden');
+            packSection.classList.add('hidden');
+            
+            // Mostrar la correspondiente
+            if (type === 'masivo') {
+                timeSection.classList.remove('hidden');
+            } else if (type === 'posteo') {
+                photoSection.classList.remove('hidden');
+            } else if (type === 'venta') {
+                packSection.classList.remove('hidden');
             }
             
             checkFormValid();
@@ -187,7 +199,6 @@ function checkFormValid() {
 async function generateMessages() {
     const modelSelect = document.getElementById('model-select');
     const activeType = document.querySelector('.message-type-btn.active');
-    const packContext = document.getElementById('pack-context').value;
     const loading = document.getElementById('loading');
     const results = document.getElementById('results');
     const errorMessage = document.getElementById('error-message');
@@ -197,6 +208,16 @@ async function generateMessages() {
     const modelId = modelSelect.value;
     const model = window.availableModels.find(m => m.id === modelId);
     const messageType = activeType.dataset.type;
+    
+    // Contexto según tipo
+    let context = null;
+    if (messageType === 'masivo') {
+        context = document.getElementById('time-of-day').value;
+    } else if (messageType === 'posteo') {
+        context = document.getElementById('photo-description').value;
+    } else if (messageType === 'venta') {
+        context = document.getElementById('pack-context').value;
+    }
     
     // UI: mostrar loading
     generateBtn.disabled = true;
@@ -218,7 +239,7 @@ async function generateMessages() {
                 emojis: model.emojis,
                 phrases: model.phrases,
                 messageType: messageType,
-                packContext: messageType === 'venta' ? packContext : null
+                context: context
             })
         });
         

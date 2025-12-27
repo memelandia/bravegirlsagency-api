@@ -262,10 +262,10 @@
         <div class="card-glass" style="margin-bottom: 1.5rem;">
             <h2 class="text-lg font-semibold mb-4">📝 Tipo de Mensaje</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="message-type-btn" data-type="captacion">
-                    <div class="text-2xl mb-2">👋</div>
-                    <div class="font-semibold mb-1">Mensaje de Captación</div>
-                    <div class="text-xs text-gray-400">Para atraer nuevos suscriptores</div>
+                <div class="message-type-btn" data-type="masivo">
+                    <div class="text-2xl mb-2">💬</div>
+                    <div class="font-semibold mb-1">Mensaje Masivo</div>
+                    <div class="text-xs text-gray-400">Para interactuar con tus suscrips</div>
                 </div>
                 <div class="message-type-btn" data-type="posteo">
                     <div class="text-2xl mb-2">📸</div>
@@ -280,8 +280,28 @@
             </div>
         </div>
 
-        <!-- Contexto Adicional (solo para venta) -->
-        <div id="context-section" class="card-glass hidden" style="margin-bottom: 1.5rem;">
+        <!-- Momento del día (solo para masivo) -->
+        <div id="time-section" class="card-glass hidden" style="margin-bottom: 1.5rem;">
+            <h2 class="text-lg font-semibold mb-3">⏰ Momento del Día</h2>
+            <select id="time-of-day" class="w-full">
+                <option value="mañana">🌅 Mañana (6:00 - 12:00)</option>
+                <option value="tarde" selected>☀️ Tarde (12:00 - 20:00)</option>
+                <option value="noche">🌙 Noche (20:00 - 6:00)</option>
+            </select>
+        </div>
+
+        <!-- Descripción de foto (solo para posteo) -->
+        <div id="photo-section" class="card-glass hidden" style="margin-bottom: 1.5rem;">
+            <h2 class="text-lg font-semibold mb-3">📷 Describe la Foto/Video</h2>
+            <textarea 
+                id="photo-description" 
+                rows="2" 
+                placeholder="Ej: foto en lencería negra mirando a cámara / video bailando en bikini / selfie en el gym con top deportivo..."
+            ></textarea>
+        </div>
+
+        <!-- Contexto de pack (solo para venta) -->
+        <div id="pack-section" class="card-glass hidden" style="margin-bottom: 1.5rem;">
             <h2 class="text-lg font-semibold mb-3">📦 Describe el Contenido del Pack</h2>
             <textarea 
                 id="pack-context" 
