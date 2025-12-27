@@ -1,7 +1,7 @@
 // dashboard-ai-messages.js - Generador de mensajes con IA
 
 // 
-// CONFIGURACI”N Y STORAGE
+// CONFIGURACIÔøΩN Y STORAGE
 // 
 
 const STORAGE_KEYS = {
@@ -9,7 +9,7 @@ const STORAGE_KEYS = {
     FAVORITES: 'ai_messages_favorites'
 };
 
-let currentGeneration = null; // Guarda contexto de la ˙ltima generaciÛn
+let currentGeneration = null; // Guarda contexto de la ÔøΩltima generaciÔøΩn
 
 // 
 // FUNCIONES DE ALMACENAMIENTO (localStorage)
@@ -18,14 +18,14 @@ let currentGeneration = null; // Guarda contexto de la ˙ltima generaciÛn
 function saveToHistory(modelId, modelName, messageType, message) {
     const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORY) || '[]');
     history.unshift({
-        id: Date.now() + Math.random(), // ID ˙nico
+        id: Date.now() + Math.random(), // ID ÔøΩnico
         modelId,
         modelName,
         messageType,
         message,
         timestamp: Date.now()
     });
-    // Mantener solo ˙ltimos 50
+    // Mantener solo ÔøΩltimos 50
     if (history.length > 50) history.splice(50);
     localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
     renderHistory();
@@ -74,10 +74,12 @@ function getFavorites() {
 
 function renderHistory() {
     const container = document.getElementById('history-container');
+    if (!container) return;
+    
     const history = getHistory();
 
     if (history.length === 0) {
-        container.innerHTML = '<p style="font-size: 0.8rem; color: #6B7280; text-align: center; padding: 2rem 0;">Sin historial a˙n</p>';
+        container.innerHTML = '<p style="font-size: 0.8rem; color: #6B7280; text-align: center; padding: 2rem 0;">Sin historial a√∫n</p>';
         return;
     }
 
@@ -90,25 +92,34 @@ function renderHistory() {
         byModel[item.modelId].items.push(item);
     });
 
-    container.innerHTML = Object.entries(byModel).map(([modelId, data]) => `
-        <div style="margin-bottom: 1rem;">
-            <div class="model-badge">${data.name}</div>
-            ${data.items.slice(0, 10).map(item => `
-                <div class="history-item" onclick="copyFromHistory('\'${escapeForAttr(item.message)}'\')">
+    container.innerHTML = Object.entries(byModel).map(([modelId, data]) => {
+        const itemsHtml = data.items.slice(0, 10).map(item => {
+            const escapedMsg = escapeForAttr(item.message);
+            return `
+                <div class="history-item" onclick="window.copyFromHistory(\`${escapedMsg}\`)">
                     ${escapeHtml(item.message)}
                     <div class="timestamp">${formatTime(item.timestamp)}</div>
                 </div>
-            `).join('')}
+            `;
+        }).join('');
+        
+        return `
+        <div style="margin-bottom: 1rem;">
+            <div class="model-badge">${data.name}</div>
+            ${itemsHtml}
         </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function renderFavorites() {
     const container = document.getElementById('favorites-container');
+    if (!container) return;
+    
     const favorites = getFavorites();
 
     if (favorites.length === 0) {
-        container.innerHTML = '<p style="font-size: 0.8rem; color: #6B7280; text-align: center; padding: 2rem 0;">Sin favoritos a˙n</p>';
+        container.innerHTML = '<p style="font-size: 0.8rem; color: #6B7280; text-align: center; padding: 2rem 0;">Sin favoritos a√∫n</p>';
         return;
     }
 
@@ -121,20 +132,27 @@ function renderFavorites() {
         byModel[item.modelId].items.push(item);
     });
 
-    container.innerHTML = Object.entries(byModel).map(([modelId, data]) => `
-        <div style="margin-bottom: 1rem;">
-            <div class="model-badge">${data.name}</div>
-            ${data.items.map(item => `
-                <div class="favorite-item" onclick="copyFromHistory('\'${escapeForAttr(item.message)}'\')">
-                    <button class="remove-fav" onclick="event.stopPropagation(); removeFromFavorites(${item.id})">
-                         Quitar
+    container.innerHTML = Object.entries(byModel).map(([modelId, data]) => {
+        const itemsHtml = data.items.map(item => {
+            const escapedMsg = escapeForAttr(item.message);
+            return `
+                <div class="favorite-item" onclick="window.copyFromHistory(\`${escapedMsg}\`)">
+                    <button class="remove-fav" onclick="event.stopPropagation(); window.removeFromFavorites(${item.id})">
+                        √ó Quitar
                     </button>
                     ${escapeHtml(item.message)}
                     <div class="timestamp">${formatTime(item.timestamp)}</div>
                 </div>
-            `).join('')}
+            `;
+        }).join('');
+        
+        return `
+        <div style="margin-bottom: 1rem;">
+            <div class="model-badge">${data.name}</div>
+            ${itemsHtml}
         </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function formatTime(timestamp) {
@@ -154,16 +172,16 @@ function formatTime(timestamp) {
 }
 
 // 
-// INICIALIZACI”N
+// INICIALIZACIÔøΩN
 // 
 
 document.addEventListener('DOMContentLoaded', async function() {
     console.log(' Generador IA iniciando...');
     
-    // Verificar autenticaciÛn
+    // Verificar autenticaciÔøΩn
     const currentUser = sessionStorage.getItem('currentUser');
     if (!currentUser) {
-        console.warn(' No hay usuario en sesiÛn');
+        console.warn(' No hay usuario en sesiÔøΩn');
         window.location.href = 'login.html';
         return;
     }
@@ -204,7 +222,7 @@ async function loadModels() {
     try {
         // Obtener datos desde dashboard-guias.js (MODELOS_DATA)
         if (typeof MODELOS_DATA === 'undefined') {
-            throw new Error('MODELOS_DATA no est· cargado. Verifica que dashboard-guias.js estÈ incluido.');
+            throw new Error('MODELOS_DATA no estÔøΩ cargado. Verifica que dashboard-guias.js estÔøΩ incluido.');
         }
         
         // Procesar modelos desde MODELOS_DATA
@@ -257,11 +275,11 @@ function buildModelInstructions(modelData) {
     }
     
     if (modelData.descripcion) {
-        instructions += `DESCRIPCI”N: ${modelData.descripcion}\n\n`;
+        instructions += `DESCRIPCIÔøΩN: ${modelData.descripcion}\n\n`;
     }
     
     if (modelData.palabras_tipicas) {
-        instructions += `FRASES TÕPICAS: ${modelData.palabras_tipicas}\n\n`;
+        instructions += `FRASES TÔøΩPICAS: ${modelData.palabras_tipicas}\n\n`;
     }
     
     if (modelData.cosas_no_decir) {
@@ -269,7 +287,7 @@ function buildModelInstructions(modelData) {
     }
     
     if (modelData.pais) {
-        instructions += `PaÌs: ${modelData.pais}\n`;
+        instructions += `PaÔøΩs: ${modelData.pais}\n`;
     }
     
     if (modelData.hobbies) {
@@ -307,7 +325,7 @@ function setupEventListeners() {
         checkFormValid();
     });
     
-    // SelecciÛn de tipo de mensaje
+    // SelecciÔøΩn de tipo de mensaje
     messageTypeBtns.forEach(btn => {
         btn.addEventListener('click', function() {
             // Quitar active de todos
@@ -315,7 +333,7 @@ function setupEventListeners() {
             // Agregar active al clickeado
             this.classList.add('active');
             
-            // Mostrar/ocultar secciones seg˙n tipo
+            // Mostrar/ocultar secciones segÔøΩn tipo
             const type = this.dataset.type;
             const timeSection = document.getElementById('time-section');
             const photoSection = document.getElementById('photo-section');
@@ -339,7 +357,7 @@ function setupEventListeners() {
         });
     });
     
-    // BotÛn generar
+    // BotÔøΩn generar
     generateBtn.addEventListener('click', generateMessages);
 }
 
@@ -369,16 +387,20 @@ async function generateMessages() {
     const model = window.availableModels.find(m => m.id === modelId);
     const messageType = activeType.dataset.type;
     
-    // Contexto seg˙n tipo
+    // Contexto segÔøΩn tipo
     let context = null;
     if (messageType === 'masivo') {
-        const timeOfDay = document.getElementById('time-of-day').value;
-        const familiarity = document.getElementById('familiarity').value;
+        const timeOfDayEl = document.getElementById('time-of-day');
+        const familiarityEl = document.getElementById('familiarity');
+        const timeOfDay = timeOfDayEl ? timeOfDayEl.value : 'tarde';
+        const familiarity = familiarityEl ? familiarityEl.value : 'regular';
         context = { timeOfDay, familiarity };
     } else if (messageType === 'posteo') {
-        context = document.getElementById('photo-description').value;
+        const photoEl = document.getElementById('photo-description');
+        context = photoEl ? photoEl.value : '';
     } else if (messageType === 'venta') {
-        context = document.getElementById('pack-context').value;
+        const packEl = document.getElementById('pack-context');
+        context = packEl ? packEl.value : '';
     }
     
     // UI: mostrar loading
@@ -413,7 +435,7 @@ async function generateMessages() {
         const data = await response.json();
         console.log(' Mensajes generados:', data);
         
-        // Guardar contexto para regeneraciÛn individual
+        // Guardar contexto para regeneraciÔøΩn individual
         currentGeneration = {
             modelId: model.id,
             modelName: model.name,
@@ -496,7 +518,7 @@ async function regenerateMessage(index) {
             newMessage
         );
 
-        // Efecto de Èxito
+        // Efecto de ÔøΩxito
         messageContent.style.opacity = '1';
         messageDiv.style.background = 'rgba(34, 197, 94, 0.05)';
         setTimeout(() => {
@@ -522,23 +544,30 @@ function displayMessages(messages) {
     const container = document.getElementById('messages-container');
     const results = document.getElementById('results');
     
-    container.innerHTML = messages.map((message, index) => `
+    if (!container) {
+        console.error('messages-container no encontrado');
+        return;
+    }
+    
+    container.innerHTML = messages.map((message, index) => {
+        const escapedMsg = escapeForAttr(message);
+        return `
         <div class="message-item" data-message-index="${index}">
             <div class="message-number">${index + 1}</div>
             <div class="message-content">${escapeHtml(message)}</div>
             <div class="message-actions">
-                <button class="copy-btn" onclick="copyMessage('\'${escapeForAttr(message)}'\', this)">
-                     Copiar
+                <button class="copy-btn" onclick="window.copyMessage(\`${escapedMsg}\`, this)">
+                    üìã Copiar
                 </button>
-                <button class="fav-btn" onclick="toggleFavorite('\'${escapeForAttr(message)}'\', this)">
-                     Fav
+                <button class="fav-btn" onclick="window.toggleFavorite(\`${escapedMsg}\`, this)">
+                    ‚≠ê Fav
                 </button>
-                <button class="regen-btn" onclick="regenerateMessage(${index})">
-                     Regenerar
+                <button class="regen-btn" onclick="window.regenerateMessage(${index})">
+                    ‚Üª Regenerar
                 </button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
     
     results.classList.remove('hidden');
     
@@ -554,7 +583,7 @@ window.copyMessage = function(message, button) {
     navigator.clipboard.writeText(message).then(() => {
         const originalText = button.textContent;
         button.classList.add('copied');
-        button.textContent = ' Copiado';
+        button.textContent = '‚úÖ Copiado';
         setTimeout(() => {
             button.classList.remove('copied');
             button.textContent = originalText;
@@ -564,6 +593,8 @@ window.copyMessage = function(message, button) {
         alert('Error al copiar el mensaje');
     });
 };
+
+window.regenerateMessage = regenerateMessage;
 
 window.toggleFavorite = function(message, button) {
     if (!currentGeneration) return;
@@ -577,7 +608,7 @@ window.toggleFavorite = function(message, button) {
         if (fav) {
             removeFromFavorites(fav.id);
             button.classList.remove('favorited');
-            button.textContent = ' Fav';
+            button.textContent = '‚≠ê Fav';
         }
     } else {
         // Agregar a favoritos
@@ -589,9 +620,9 @@ window.toggleFavorite = function(message, button) {
         );
         if (success) {
             button.classList.add('favorited');
-            button.textContent = ' Favorito';
+            button.textContent = '‚òÖ Favorito';
         } else {
-            alert('Este mensaje ya est· en favoritos');
+            alert('Este mensaje ya est√° en favoritos');
         }
     }
 };
@@ -600,7 +631,7 @@ window.copyFromHistory = function(message) {
     navigator.clipboard.writeText(message).then(() => {
         // Mostrar feedback temporal
         const toast = document.createElement('div');
-        toast.textContent = ' Copiado';
+        toast.textContent = '‚úÖ Copiado';
         toast.style.cssText = `
             position: fixed;
             bottom: 20px;
@@ -620,7 +651,6 @@ window.copyFromHistory = function(message) {
 };
 
 window.removeFromFavorites = removeFromFavorites;
-window.regenerateMessage = regenerateMessage;
 
 // 
 // UTILIDADES
