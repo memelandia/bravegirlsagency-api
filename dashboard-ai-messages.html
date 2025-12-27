@@ -139,7 +139,13 @@
             line-height: 1.5;
             color: #E5E7EB;
         }
-        .copy-btn {
+        .message-actions {
+            flex-shrink: 0;
+            display: flex;
+            gap: 0.35rem;
+            align-items: center;
+        }
+        .copy-btn, .fav-btn, .regen-btn {
             flex-shrink: 0;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -151,15 +157,111 @@
             transition: all 0.3s;
             white-space: nowrap;
         }
-        .copy-btn:hover {
+        .copy-btn:hover, .regen-btn:hover {
             background: rgba(255, 107, 179, 0.1);
             border-color: rgba(255, 107, 179, 0.3);
             color: #FF6BB3;
+        }
+        .fav-btn:hover {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: rgba(255, 215, 0, 0.3);
+            color: #FFD700;
+        }
+        .fav-btn.favorited {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: rgba(255, 215, 0, 0.3);
+            color: #FFD700;
         }
         .copy-btn.copied {
             background: rgba(34, 197, 94, 0.1);
             border-color: rgba(34, 197, 94, 0.3);
             color: #22C55E;
+        }
+        .columns-container {
+            display: grid;
+            grid-template-columns: 1fr 300px 300px;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        @media (max-width: 1400px) {
+            .columns-container {
+                grid-template-columns: 1fr 250px;
+            }
+            #favorites-column {
+                display: none;
+            }
+        }
+        @media (max-width: 1024px) {
+            .columns-container {
+                grid-template-columns: 1fr;
+            }
+            #history-column {
+                display: none;
+            }
+        }
+        .sidebar-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .sidebar-card h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .history-item, .favorite-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: #D1D5DB;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .history-item:hover, .favorite-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 107, 179, 0.3);
+        }
+        .history-item .model-badge, .favorite-item .model-badge {
+            display: inline-block;
+            background: rgba(255, 107, 179, 0.1);
+            border: 1px solid rgba(255, 107, 179, 0.3);
+            color: #FF6BB3;
+            padding: 0.15rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-bottom: 0.35rem;
+        }
+        .history-item .timestamp, .favorite-item .timestamp {
+            font-size: 0.65rem;
+            color: #6B7280;
+            margin-top: 0.35rem;
+        }
+        .favorite-item .remove-fav {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #EF4444;
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.65rem;
+            cursor: pointer;
+        }
+        .favorite-item .remove-fav:hover {
+            background: rgba(239, 68, 68, 0.2);
         }
         .spinner {
             width: 40px;
@@ -344,14 +446,43 @@
             <p class="text-red-400 text-center"></p>
         </div>
 
-        <!-- Resultados -->
+        <!-- Resultados con Historial y Favoritos -->
         <div id="results" class="hidden">
-            <div class="card-glass">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h2 class="text-xl font-semibold">✨ Mensajes Generados</h2>
-                    <span style="font-size: 0.75rem; color: #6B7280;">Selecciona y copia el que más te guste</span>
+            <div class="columns-container">
+                <!-- Columna Principal: Mensajes Nuevos -->
+                <div>
+                    <div class="card-glass">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h2 class="text-xl font-semibold">✨ Mensajes Generados</h2>
+                            <span style="font-size: 0.75rem; color: #6B7280;">Selecciona y copia el que más te guste</span>
+                        </div>
+                        <div id="messages-container"></div>
+                    </div>
                 </div>
-                <div id="messages-container"></div>
+
+                <!-- Columna Historial -->
+                <div id="history-column">
+                    <div class="sidebar-card">
+                        <h3>📜 Historial</h3>
+                        <div id="history-container">
+                            <p style="font-size: 0.8rem; color: #6B7280; text-align: center; padding: 2rem 0;">
+                                Sin historial aún
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna Favoritos -->
+                <div id="favorites-column">
+                    <div class="sidebar-card">
+                        <h3>⭐ Favoritos</h3>
+                        <div id="favorites-container">
+                            <p style="font-size: 0.8rem; color: #6B7280; text-align: center; padding: 2rem 0;">
+                                Sin favoritos aún
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
