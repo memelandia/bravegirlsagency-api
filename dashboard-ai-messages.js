@@ -212,7 +212,9 @@ async function generateMessages() {
     // Contexto según tipo
     let context = null;
     if (messageType === 'masivo') {
-        context = document.getElementById('time-of-day').value;
+        const timeOfDay = document.getElementById('time-of-day').value;
+        const familiarity = document.getElementById('familiarity').value;
+        context = { timeOfDay, familiarity };
     } else if (messageType === 'posteo') {
         context = document.getElementById('photo-description').value;
     } else if (messageType === 'venta') {

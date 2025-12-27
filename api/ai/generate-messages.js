@@ -166,9 +166,10 @@ Cada mensaje debe ser único, espontáneo y sonar como si lo escribieras desde t
 function buildUserPrompt(messageType, context) {
     switch (messageType) {
         case 'masivo':
-            const timeOfDay = context || 'tarde';
-            let timeContext = '';
+            const timeOfDay = context?.timeOfDay || 'tarde';
+            const familiarity = context?.familiarity || 'regular';
             
+            let timeContext = '';
             if (timeOfDay === 'mañana') {
                 timeContext = 'Es por la mañana (6:00-12:00). Contextos posibles: despertando, desayunando, empezando el dia, saliendo de casa, camino al trabajo/gym';
             } else if (timeOfDay === 'tarde') {
@@ -177,28 +178,56 @@ function buildUserPrompt(messageType, context) {
                 timeContext = 'Es por la noche (20:00-6:00). Contextos posibles: cenando, saliendo de la ducha, en la cama, aburrida en casa, preparandose para dormir';
             }
             
+            let familiarityContext = '';
+            if (familiarity === 'nuevo') {
+                familiarityContext = `FAMILIARIDAD: Suscriptor NUEVO/DESCONOCIDO
+- NO uses apodos muy íntimos ("bebe", "amor")
+- Usa "hola", "que tal", "guapo" (más formal)
+- NO menciones cosas muy personales o íntimas
+- Tono amigable pero respetuoso
+- NO digas "no puedo dejar de pensar en ti" ni frases muy intensas
+- Evita preguntas demasiado atrevidas`;
+            } else if (familiarity === 'regular') {
+                familiarityContext = `FAMILIARIDAD: Suscriptor REGULAR
+- Puedes usar apodos cariñosos: "guapo", "amorr", "cariño"
+- Tono cercano y juguetón
+- Preguntas ligeras y coquetas
+- Menciona cosas casuales (ropa, actividades)`;
+            } else {
+                familiarityContext = `FAMILIARIDAD: Suscriptor FRECUENTE/HABITUAL
+- Usa apodos íntimos: "bebe", "amor", "amorr"
+- Tono muy cercano y cómplice
+- Puedes ser más atrevida y directa
+- Menciona cosas más personales o picantes`;
+            }
+            
             return `Genera 3 mensajes masivos DIFERENTES para enviar a tus suscriptores de OnlyFans.
 
 OBJETIVO: Generar interaccion y respuestas. Son mensajes 1 a 1, personales, cercanos.
 
 MOMENTO DEL DIA: ${timeContext}
 
+${familiarityContext}
+
 Los mensajes deben:
 - Ser circunstanciales al momento del dia (menciona que estas haciendo AHORA)
 - Generar curiosidad o pregunta que invite a responder
-- Ser coquetos, juguetones, cercanos
-- Usar apodos cariñosos: "bebe", "amor", "amorr", "guapo"
+- Ser coquetos, juguetones, cercanos (ajustado al nivel de familiaridad)
 - Incluir emojis naturales
-- Ser conversacionales, como si le escribieras a un amigo/novio
+- Ser conversacionales, como si le escribieras a un amigo/conocido
 
-EJEMPLOS DEL ESTILO (NO COPIES, INSPIRATE):
+IMPORTANTE: Adapta el nivel de intimidad al tipo de suscriptor. Con nuevos, se MAS CAUTELOSA.
+
+EJEMPLOS DEL ESTILO (ajusta según familiaridad):
+PARA NUEVOS/REGULARES:
+- "hola guapo, que tal tu dia?? yo aqui en casa aburrida jaja"
+- "oye te puedo hacer una pregunta?? es rapida jaja"
+- "que tal el viernes?? yo recien salgo del gym y estoy cansadisima"
+
+PARA FRECUENTES:
 - "bebee que tal tu dia??? escribeme que te cuento que braguitas me puse hoy"
-- "amorr te puedo hacer una pregunta??"
-- "hola amorr que tal el curro?? ya estas libre para mi?"
 - "bebe recien salgo de la ducha... me visto o que hacemos?"
-- "esta noche la verdad me apetece hacer algo estoy muy aburridaa, que tienes en mente?"
-- "joderr que aburrimiento, juegas a algo conmigo? jjaja"
-- "que haces? recien llego del gymm"
+- "amorr te puedo hacer una pregunta??"
 
 IMPORTANTE: Cada mensaje debe empezar en minusculas, sin tildes, sin signos de apertura.
 

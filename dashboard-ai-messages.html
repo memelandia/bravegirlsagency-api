@@ -185,16 +185,22 @@
         }
         textarea, select, input {
             background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 0.5rem;
             padding: 0.75rem;
-            color: #FFFFFF;
+            color: #E5E7EB;
             width: 100%;
             font-family: inherit;
+            font-size: 0.95rem;
         }
         textarea:focus, select:focus, input:focus {
             outline: none;
             border-color: rgba(255, 107, 179, 0.5);
+            background: rgba(255, 255, 255, 0.08);
+        }
+        select option {
+            background: #1F2937;
+            color: #E5E7EB;
         }
         .logout-btn {
             background: rgba(239, 68, 68, 0.1);
@@ -283,11 +289,21 @@
         <!-- Momento del día (solo para masivo) -->
         <div id="time-section" class="card-glass hidden" style="margin-bottom: 1.5rem;">
             <h2 class="text-lg font-semibold mb-3">⏰ Momento del Día</h2>
-            <select id="time-of-day" class="w-full">
+            <select id="time-of-day" class="w-full" style="margin-bottom: 1rem;">
                 <option value="mañana">🌅 Mañana (6:00 - 12:00)</option>
                 <option value="tarde" selected>☀️ Tarde (12:00 - 20:00)</option>
                 <option value="noche">🌙 Noche (20:00 - 6:00)</option>
             </select>
+            
+            <h2 class="text-lg font-semibold mb-3 mt-4">👥 Nivel de Familiaridad con Suscriptor</h2>
+            <select id="familiarity" class="w-full">
+                <option value="nuevo">🆕 Nuevo/Desconocido (primer contacto o poca interacción)</option>
+                <option value="regular" selected>💬 Regular (ya han hablado varias veces)</option>
+                <option value="frecuente">🔥 Frecuente (cliente habitual, mucha confianza)</option>
+            </select>
+            <p style="font-size: 0.75rem; color: #6B7280; margin-top: 0.5rem;">
+                Esto ajusta el tono: más respetuoso con nuevos, más íntimo con frecuentes
+            </p>
         </div>
 
         <!-- Descripción de foto (solo para posteo) -->
