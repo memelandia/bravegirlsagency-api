@@ -142,11 +142,15 @@ REGLAS DE ESCRITURA ESTRICTAS:
 3. PROHIBIDO usar ¡ al inicio, solo ! al final si es necesario
 4. NO uses tildes/acentos (escribe "que" en vez de "qué", "mas" en vez de "más")
 5. Pocas comas, escribe fluido como en WhatsApp
-6. Alarga vocales para naturalidad: "ayyyy", "jajaja", "holaaaa", "asiii"
-7. Usa emoticonos apropiados (1-3 por mensaje máximo)
+6. Alarga vocales para naturalidad: "ayyyy", "jajaja", "holaaaa", "asiii", "tan ricoo", "muy mojadaa"
+7. Usa emoticonos apropiados según tipo de mensaje:
+   - Mensajes masivos: 1-3 emojis máximo
+   - Mensajes PPV (venta): 3-5 emojis (más expresivos)
 8. Acorta palabras naturalmente: "suscrips" (suscriptores), "profes" (profesores)
 9. Tono sensual/juguetón/cercano según contexto
-10. Cada mensaje debe tener máximo 2 líneas y máximo 90 caracteres (si es posible)
+10. Longitud según tipo de mensaje:
+    - Mensajes masivos: máximo 2 líneas cortas
+    - Mensajes PPV: 2-4 líneas (pueden ser más largos y descriptivos)
 11. NO uses palabras cliché: "tentador", "irresistible", "seductor", "provocativo"
 12. Escribe como mensaje real de móvil, NO perfecto
 13. Si hay cosas que NO debes mencionar en tu perfil, EVÍTALAS completamente
@@ -271,33 +275,59 @@ Formato de respuesta:
         case 'venta':
             const packContent = context || 'Pack de fotos y videos exclusivos';
             
-            return `Genera 3 mensajes DIFERENTES para vender este contenido bloqueado (pack):
+            return `Genera 3 mensajes PPV (Pay-Per-View) DIFERENTES para vender este contenido bloqueado en OnlyFans:
 
 CONTENIDO DEL PACK:
 ${packContent}
 
-OBJETIVO: Describir el contenido de forma atractiva y generar ganas de comprarlo.
+OBJETIVO: Vender el pack describiendo el contenido de forma EXPLICITA, DETALLADA y generando URGENCIA.
 
-Los mensajes deben:
-- Describir que contiene el pack de forma sexy
-- Generar deseo y urgencia
-- Ser naturales, no sonar comerciales
-- Incluir emojis apropiados
-- NO mencionar precio
+CARACTERÍSTICAS DE MENSAJES PPV:
+✅ MÁS LARGOS que mensajes normales (2-4 líneas está bien)
+✅ MÁS EMOJIS (3-5 emojis por mensaje)
+✅ MÁS EXPLÍCITOS y sexuales (usa palabras directas)
+✅ DESCRIPTIVOS (detalla QUÉ se ve, QUÉ haces, CÓMO lo haces)
+✅ CREAR URGENCIA (precio bajo, oferta única, tiempo limitado)
+✅ LLAMADA A LA ACCIÓN (abre el pack, no te lo pierdas, prepárate, etc.)
+
+VOCABULARIO PERMITIDO (sé explicita):
+- follando, polla, coño, correrse, mojada/o, chorreando
+- masturbación, dedos, dildo, culito, tetas, braguitas
+- gime/gemidos, viciosa, cerda, caliente, empapada
+- chupar, lamer, meter, entrar y salir, cabalgar
+
+ELEMENTOS QUE DEBE INCLUIR:
+1. Descripción visual del contenido (qué se ve)
+2. Acción específica (qué estás haciendo)
+3. Sensación/emoción (cómo te sientes, cómo te pones)
+4. Generar deseo en el suscriptor (qué le provocarás)
+5. Emojis que refuercen lo sexual/urgente
 
 ENFOQUES:
-- Mensaje 1: Descriptivo/detallado (que contiene)
-- Mensaje 2: Jugueton/tentador (genera deseo)
-- Mensaje 3: Directo/urgente (cierra venta)
+- Mensaje 1: DESCRIPTIVO + URGENCIA (describe contenido + oferta/precio/tiempo limitado)
+- Mensaje 2: EXPLÍCITO + SEDUCTOR (describe acciones sexuales detalladas + genera deseo)
+- Mensaje 3: PROVOCADOR + DIRECTO (pregunta + invita a acción + promesa de placer)
 
-IMPORTANTE: Cada mensaje en minusculas, sin tildes, sin signos de apertura.
+EJEMPLOS DE REFERENCIA (NO copies, úsalos como inspiración):
+📌 "12 fotos al precio mas bajo que he dejado nunca 😱 si no lo ves ahora puede que ya no lo vuelvas a tener mas..🫣 mi parte mas atrevida a un solo click 😏"
+📌 "nuevo video follando 🥵🥵 por favor no te pierdas esta follada tremenda con una polla bestial 💦💦 lo que moja mi coño no es normal 🙈🙈 +15 minutos"
+📌 "como me he follado de ladito pensando que eres tuu🙈🙈, me he grabadoo porque se que te encanta verme tan cerdita y tan humeda, como me meto mi dildo y entra tan facil mientras gimo tan fuertee😈"
+📌 "guapo… me apetece un monton hacer una videollamada contigo 🙈.. por que no abres este pack y te regalo una tiradita de ruleta? seguro que te toca justo la videollamada conmigo 😏"
+📌 "amooor, quiero que veas la cara de viciosa que pongo mientras me masturbo 🥵🥵 y lo mojadita que estoy al correrme 😋 disfrutemos 🔥🔥"
+
+IMPORTANTE:
+- Todo en minúsculas
+- Sin tildes
+- Sin signos de apertura (¿ ¡)
+- Alarga vocales para sensualidad: "tan ricoo", "tan mojadaa", "muy calentee"
+- Adapta el TONO a la personalidad de la modelo (dulce, atrevida, dominante, etc.)
 
 Formato de respuesta:
-[Mensaje 1]
+[Mensaje PPV 1]
 ---
-[Mensaje 2]
+[Mensaje PPV 2]
 ---
-[Mensaje 3]`;
+[Mensaje PPV 3]`;
         
         default:
             return 'Genera 3 mensajes diferentes.';
