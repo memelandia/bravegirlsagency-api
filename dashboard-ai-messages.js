@@ -176,21 +176,22 @@ function formatTime(timestamp) {
 // 
 
 document.addEventListener('DOMContentLoaded', async function() {
-    console.log(' Generador IA iniciando...');
+    console.log('🚀 Generador IA iniciando...');
+    console.log('📦 MODELOS_DATA disponible?', typeof MODELOS_DATA !== 'undefined');
     
-    // Verificar autenticaci�n
+    // Verificar autenticación
     const currentUser = sessionStorage.getItem('currentUser');
     if (!currentUser) {
-        console.warn(' No hay usuario en sesi�n');
+        console.warn('⚠️ No hay usuario en sesión');
         window.location.href = 'login.html';
         return;
     }
     
     const user = JSON.parse(currentUser);
-    console.log(' Usuario:', user.name, '- Tipo:', user.type);
+    console.log('👤 Usuario:', user.name, '- Tipo:', user.type);
     
     if (user.type !== 'chatter') {
-        console.warn(' Usuario no es chatter');
+        console.warn('⚠️ Usuario no es chatter');
         window.location.href = 'login.html';
         return;
     }
@@ -202,14 +203,19 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
     
     // Cargar modelos
+    console.log('📋 Intentando cargar modelos...');
     await loadModels();
     
     // Event listeners
+    console.log('🎯 Configurando event listeners...');
     setupEventListeners();
     
     // Cargar historial y favoritos
+    console.log('📚 Cargando historial y favoritos...');
     renderHistory();
     renderFavorites();
+    
+    console.log('✅ Inicialización completa');
 });
 
 // 
@@ -219,11 +225,22 @@ document.addEventListener('DOMContentLoaded', async function() {
 async function loadModels() {
     const modelsGrid = document.getElementById('models-grid');
     
+    if (!modelsGrid) {
+        console.error('❌ No se encontró el elemento models-grid');
+        return;
+    }
+    
+    console.log('🔍 Buscando MODELOS_DATA...');
+    
     try {
         // Obtener datos desde dashboard-guias.js (MODELOS_DATA)
         if (typeof MODELOS_DATA === 'undefined') {
+            console.error('❌ MODELOS_DATA no está definido');
+            modelsGrid.innerHTML = '<div class="model-card-loading">Error: MODELOS_DATA no cargado</div>';
             throw new Error('MODELOS_DATA no está cargado. Verifica que dashboard-guias.js esté incluido.');
         }
+        
+        console.log('✅ MODELOS_DATA encontrado:', Object.keys(MODELOS_DATA));
         
         // Procesar modelos desde MODELOS_DATA
         const models = Object.entries(MODELOS_DATA).map(([key, data]) => ({
@@ -237,8 +254,12 @@ async function loadModels() {
             intensidad: data.intensidad || 'Media'
         }));
         
+        console.log('📊 Total modelos procesadas:', models.length);
+        
         // Filtrar solo modelos activas
         const activeModels = models.filter(m => MODELOS_DATA[m.id].status === 'activa');
+        
+        console.log('✅ Modelos activas:', activeModels.length);
         
         if (activeModels.length === 0) {
             console.warn('⚠️ No hay modelos activas');
@@ -249,6 +270,8 @@ async function loadModels() {
         // Guardar en memoria
         window.availableModels = activeModels;
         window.selectedModelId = null;
+        
+        console.log('🎨 Generando cards HTML...');
         
         // Generar cards de modelos
         modelsGrid.innerHTML = activeModels.map(model => {
@@ -262,11 +285,12 @@ async function loadModels() {
             `;
         }).join('');
         
-        console.log('✅ Modelos cargadas:', activeModels.length);
+        console.log('✅ Cards generadas correctamente');
         
     } catch (error) {
-        console.error('❌ Error cargando modelos:', error);
-        modelsGrid.innerHTML = '<div class="model-card-loading">Error al cargar modelos</div>';
+        console.error('❌ Error en loadModels():', error);
+        console.error('Stack trace:', error.stack);
+        modelsGrid.innerHTML = `<div class="model-card-loading">Error: ${error.message}</div>`;
     }
 }
 
