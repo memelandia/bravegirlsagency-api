@@ -306,9 +306,13 @@ function setupEventListeners() {
     const messageTypeBtns = document.querySelectorAll('.message-type-btn');
     const generateBtn = document.getElementById('generate-btn');
     
+    console.log('✅ Event listeners configurados. Botones encontrados:', messageTypeBtns.length);
+    
     // Cambio de modelo
     modelSelect.addEventListener('change', function() {
         const modelId = this.value;
+        console.log('📋 Modelo seleccionado:', modelId);
+        
         if (!modelId) {
             document.getElementById('model-instructions').classList.add('hidden');
             return;
@@ -325,31 +329,44 @@ function setupEventListeners() {
         checkFormValid();
     });
     
-    // Selecci�n de tipo de mensaje
-    messageTypeBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
+    // Selección de tipo de mensaje
+    messageTypeBtns.forEach((btn, index) => {
+        console.log(`🔘 Botón ${index}:`, btn.dataset.type);
+        
+        btn.addEventListener('click', function(e) {
+            console.log('🖱️ Click en tipo de mensaje:', this.dataset.type);
+            
             // Quitar active de todos
             messageTypeBtns.forEach(b => b.classList.remove('active'));
             // Agregar active al clickeado
             this.classList.add('active');
             
-            // Mostrar/ocultar secciones seg�n tipo
+            // Mostrar/ocultar secciones según tipo
             const type = this.dataset.type;
             const timeSection = document.getElementById('time-section');
             const photoSection = document.getElementById('photo-section');
             const packSection = document.getElementById('pack-section');
             
+            console.log('📂 Secciones encontradas:', {
+                time: !!timeSection,
+                photo: !!photoSection,
+                pack: !!packSection
+            });
+            
             // Ocultar todas
-            timeSection.classList.add('hidden');
-            photoSection.classList.add('hidden');
-            packSection.classList.add('hidden');
+            if (timeSection) timeSection.classList.add('hidden');
+            if (photoSection) photoSection.classList.add('hidden');
+            if (packSection) packSection.classList.add('hidden');
             
             // Mostrar la correspondiente
-            if (type === 'masivo') {
+            if (type === 'masivo' && timeSection) {
+                console.log('⏰ Mostrando sección de tiempo');
                 timeSection.classList.remove('hidden');
-            } else if (type === 'posteo') {
+            } else if (type === 'posteo' && photoSection) {
+                console.log('📷 Mostrando sección de foto');
                 photoSection.classList.remove('hidden');
-            } else if (type === 'venta') {
+            } else if (type === 'venta' && packSection) {
+                console.log('💰 Mostrando sección de pack');
                 packSection.classList.remove('hidden');
             }
             
@@ -367,7 +384,20 @@ function checkFormValid() {
     const activeType = document.querySelector('.message-type-btn.active');
     
     const isValid = modelSelect.value !== '' && activeType !== null;
+    
+    console.log('✔️ Validación de formulario:', {
+        modeloSeleccionado: modelSelect.value !== '',
+        tipoSeleccionado: activeType !== null,
+        esValido: isValid
+    });
+    
     generateBtn.disabled = !isValid;
+    
+    if (isValid) {
+        console.log('🟢 Botón HABILITADO');
+    } else {
+        console.log('🔴 Botón DESHABILITADO');
+    }
 }
 
 // 
