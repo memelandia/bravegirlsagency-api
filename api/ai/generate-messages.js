@@ -138,15 +138,15 @@ ${regionalRules}
 
 REGLAS DE ESCRITURA ESTRICTAS:
 1. NUNCA empieces frases con mayúscula (todo en minúsculas)
-2. NO uses ¿ al inicio de preguntas, solo ? al final
-3. NO uses ¡ al inicio, solo ! al final si es necesario
+2. PROHIBIDO usar ¿ al inicio de preguntas, solo ? al final
+3. PROHIBIDO usar ¡ al inicio, solo ! al final si es necesario
 4. NO uses tildes/acentos (escribe "que" en vez de "qué", "mas" en vez de "más")
 5. Pocas comas, escribe fluido como en WhatsApp
 6. Alarga vocales para naturalidad: "ayyyy", "jajaja", "holaaaa", "asiii"
 7. Usa emoticonos apropiados (1-3 por mensaje máximo)
 8. Acorta palabras naturalmente: "suscrips" (suscriptores), "profes" (profesores)
 9. Tono sensual/juguetón/cercano según contexto
-10. Máximo 2-3 líneas cortas por mensaje
+10. Cada mensaje debe tener máximo 2 líneas y máximo 90 caracteres (si es posible)
 11. NO uses palabras cliché: "tentador", "irresistible", "seductor", "provocativo"
 12. Escribe como mensaje real de móvil, NO perfecto
 13. Si hay cosas que NO debes mencionar en tu perfil, EVÍTALAS completamente
@@ -156,11 +156,11 @@ EJEMPLOS DEL ESTILO:
 ✅ "ayy que calor tengo hoy jajaj me voy a sacar esta camiseta 😏"
 ✅ "ostras que ganas tenia de subir esto, espero que te guste 🙈"
 
-❌ "¡Hola, guapo! ¿Qué tal estás?" (muy formal, con mayúsculas, con tildes)
+❌ "¡Hola, guapo! ¿Qué tal estás?" (muy formal, con mayúsculas, con tildes, con ¿ al inicio)
 ❌ "Tengo contenido muy tentador para ti" (cliché, muy comercial)
 
 IMPORTANTE: Genera EXACTAMENTE 3 mensajes diferentes separados por "---" (tres guiones en una línea aparte).
-Cada mensaje debe ser único, espontáneo y sonar como si lo escribieras desde tu móvil en ese momento.`;
+Cada mensaje debe ser único, espontáneo, sonar como si lo escribieras desde tu móvil en ese momento y cumplir con la longitud máxima.`;
 }
 
 function buildUserPrompt(messageType, context) {
