@@ -241,30 +241,35 @@ ${seasonContext}
 ⚠️ IMPORTANTE: Los mensajes DEBEN estar adaptados al momento del día especificado arriba. NO menciones cosas de otro momento del día.
 
 DISTRIBUCIÓN DE LOS 3 MENSAJES:
-1. Mensaje 1 y 2: Interacción pura, preguntas, conversación cercana
-2. Mensaje 3: Más provocativo y sugerente (pero SUTIL), que genere curiosidad sexual/sensual sin ser explícito
+1. Mensaje 1 y 2: Interacción pura, preguntas, conversación cercana (1-2 líneas)
+2. Mensaje 3: Más provocativo y sugerente (pero SUTIL), que genere curiosidad sexual/sensual sin ser explícito (MÁXIMO 1 línea + pregunta corta)
 
 Los mensajes deben:
 - Ser circunstanciales al momento del dia (menciona que estas haciendo AHORA)
-- Mensaje 3 debe incluir algo provocativo pero indirecto: ropa que te pusiste, algo que te paso, como te sientes, que estas pensando hacer
+- Mensaje 3 debe ser CORTO: máximo 1 línea descriptiva + 1 pregunta breve
+- Mensaje 3 debe incluir algo provocativo pero indirecto: ropa que te pusiste, algo que te paso, como te sientes
 - Generar curiosidad o pregunta que invite a responder
-- Ser coquetos, juguetones, cercanos (ajustado al nivel de familiaridad)
-- Incluir emojis naturales
+- Ser coquetos, juguetones, cercanos
+- Incluir emojis naturales (2-3 máximo)
 - Ser conversacionales, como si le escribieras a un amigo/conocido
 - Cada mensaje debe empezar en minusculas, sin tildes, sin signos de apertura
 
-EJEMPLOS DE MENSAJE 3 PROVOCATIVO PERO SUTIL:
+EJEMPLOS DE MENSAJE 3 PROVOCATIVO PERO CORTO:
 MAÑANA:
-- "bebe recien salgo de la ducha y no se que ropa interior ponerme jaja cual te gusta mas a ti??"
-- "me estoy arreglando y no se si este vestido es demasiado corto para salir, que opinas??"
+- "recien salgo de la ducha y no se que ropa interior ponerme jaja cual prefieres??"
+- "me estoy arreglando y este vestido es muy corto, no crees??"
 
 TARDE:
-- "acabo de llegar a casa y me quiero quitar esta ropa ya, hace demasiado calor jaja tu como estas??"
-- "estoy en casa sola y aburrida... se me ocurren cosas malas que hacer jaja"
+- "acabo de llegar a casa y me quiero quitar esta ropa ya jaja tu como estas??"
+- "estoy en casa sola y aburrida... se me ocurren cosas malas jaja que haces??"
 
 NOCHE:
-- "me voy a la cama pero antes quiero sacarme unas fotitos, me ayudas a elegir lenceria??"
-- "recien salgo de la ducha y estoy en toalla pensando en ti jaja que haces despierto??"
+- "me voy a la cama pero antes quiero sacarme unas fotitos, me ayudas a elegir??"
+- "recien salgo de la ducha y estoy en toalla, tu que haces despierto??"
+
+INVIERNO:
+- "tengo frio y quiero estar en la cama con alguien jaja tu que haces??"
+- "estoy en casa con una mantita y sin mucha ropa, hace frio pero asi estoy bien jaja"
 
 ⚠️ REPITO: Adapta el nivel de intimidad al tipo de suscriptor. Con nuevos, se MAS CAUTELOSA.
 
