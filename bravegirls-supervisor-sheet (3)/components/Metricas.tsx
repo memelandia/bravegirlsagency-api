@@ -12,6 +12,7 @@ import {
   ErrorStatus,
   WEEKS
 } from '../types';
+import { supervisionAPI } from '../api-service';
 
 interface Props {
   archivedData?: any;
@@ -55,25 +56,20 @@ const Metricas: React.FC<Props> = ({ archivedData }) => {
         const loadAllData = async () => {
             try {
                 // 1. Weekly Data
-                const weeklyRes = await fetch('https://bravegirlsagency-api.vercel.app/api/supervision/semanal');
-                const weeklyJson = await weeklyRes.json();
-                if (weeklyJson.success) setWeeklyData(weeklyJson.data);
+                const weeklyData = await supervisionAPI.getSemanal();
+                setWeeklyData(weeklyData);
 
                 // 2. Checklist Data
-                const checklistRes = await fetch('https://bravegirlsagency-api.vercel.app/api/supervision/checklist');
-                const checklistJson = await checklistRes.json();
-                if (checklistJson.success) setChecklistData(checklistJson.data);
+                const checklistData = await supervisionAPI.getChecklist();
+                setChecklistData(checklistData);
 
                 // 3. VIP Data (Fans + Status)
-                // Note: Metricas needs the fans list primarily
-                const vipFansRes = await fetch('https://bravegirlsagency-api.vercel.app/api/supervision/vip-fans');
-                const vipFansJson = await vipFansRes.json();
-                if (vipFansJson.success) setVipData(vipFansJson.data);
+                const vipFansData = await supervisionAPI.getVipFans();
+                setVipData(vipFansData);
 
                 // 4. Errors Data
-                const errorsRes = await fetch('https://bravegirlsagency-api.vercel.app/api/supervision/errores');
-                const errorsJson = await errorsRes.json();
-                if (errorsJson.success) setErrorData(errorsJson.data);
+                const errorsData = await supervisionAPI.getErrores();
+                setErrorData(errorsData);
 
             } catch (err) {
                 console.error("Error loading metrics data from API", err);

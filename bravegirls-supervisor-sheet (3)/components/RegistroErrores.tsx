@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ErrorLogEntry, ErrorType, Severity, ErrorStatus, CHATTERS, ACCOUNTS, CHATTER_COLORS, ACCOUNT_COLORS } from '../types';
-
-const API_URL = 'https://bravegirlsagency-api.vercel.app/api/supervision/errores';
+import { supervisionAPI } from '../api-service';
 
 const SEVERITY_BORDER_COLORS = {
   [Severity.GRAVE]: 'border-l-red-500',
@@ -32,6 +31,7 @@ const RegistroErrores: React.FC<Props> = ({ archivedData, isReadOnly = false, on
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'OPEN'>('OPEN');
   const [isLoading, setIsLoading] = useState(true);
   const initialized = useRef(false);
+  const isFirstRun = useRef(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -39,27 +39,9 @@ const RegistroErrores: React.FC<Props> = ({ archivedData, isReadOnly = false, on
         setEntries(archivedData.errors);
         setIsLoading(false);
       } else {
-        try {
-          const response = await fetch(API_URL);
-          const result = await response.json();
-          if (result.success) {
-            setEntries(result.data);
-          }
-        } catch (error) {
-          console.error('Error loading from API, using localStorage:', error);
-          const savedData = localStorage.getItem('registro_errores_data');
-          if (savedData) {
-            try {
-              setEntries(JSON.parse(savedData));
-            } catch (e) {
-              console.error("Failed to parse error log data", e);
-            }
-          } else {
-            setEntries([]);
-          }
-        } finally {
-          setIsLoading(false);
-        }
+        const result = await supervisionAPI.getErrores();
+        setEntries(result);
+        setIsLoading(false);
       }
       initialized.current = true;
     };
@@ -68,22 +50,16 @@ const RegistroErrores: React.FC<Props> = ({ archivedData, isReadOnly = false, on
 
   useEffect(() => {
     const saveData = async () => {
-      if (initialized.current && !isReadOnly && !isLoading) {
-        // Backup localStorage
-        localStorage.setItem('registro_errores_data', JSON.stringify(entries));
-        
-        // Save to backend
-        try {
-          await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: entries })
-          });
-          if (onShowToast) onShowToast('Incidencias guardadas', 'success');
-        } catch (error) {
-          console.error('Error saving to API:', error);
-          if (onShowToast) onShowToast('Error al guardar', 'error');
-        }
+      if (isLoading) return;
+
+      if (isFirstRun.current) {
+        isFirstRun.current = false;
+        return;
+      }
+
+      if (initialized.current && !isReadOnly) {
+        const success = await supervisionAPI.saveErrores(entries);
+        if (!success && onShowToast) onShowToast('Error al guardar', 'error');
       }
     };
     saveData();

@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ACCOUNT_COLORS, ACCOUNTS } from '../types';
+import { supervisionAPI } from '../api-service';
 
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
-const API_URL = 'https://bravegirlsagency-api.vercel.app/api/supervision/vip-repaso';
-const API_FANS_URL = 'https://bravegirlsagency-api.vercel.app/api/supervision/vip-fans';
 
 type FanType = 'WHALE' | 'LOYALTY';
 
@@ -52,6 +51,7 @@ const VipRepasoMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
+  const isFirstRun = useRef(true);
   const todayDate = new Date().getDate();
 
   // Load Data
@@ -63,41 +63,12 @@ const VipRepasoMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
         setIsLoading(false);
       } else {
         // 1. Load Status
-        try {
-          const response = await fetch(API_URL);
-          const result = await response.json();
-          if (result.success) {
-            setDailyStatus(result.data);
-          }
-        } catch (error) {
-          console.error('Error loading status from API:', error);
-        }
+        const statusData = await supervisionAPI.getVipRepaso();
+        setDailyStatus(statusData);
 
-        // 2. Load Fans (API First)
-        try {
-          const response = await fetch(API_FANS_URL);
-          const result = await response.json();
-          if (result.success && Array.isArray(result.data)) {
-            setFans(result.data);
-          } else {
-            throw new Error("Invalid fans data");
-          }
-        } catch (error) {
-          console.error('Error loading fans from API, using localStorage:', error);
-          // Fallback
-          const savedFans = localStorage.getItem('vip_fans_list');
-          if (savedFans) {
-            try { 
-              const parsed = JSON.parse(savedFans);
-              const migrated = parsed.map((f: any) => ({
-                ...f,
-                type: f.type || 'WHALE',
-                chatLink: f.chatLink || ''
-              }));
-              setFans(migrated); 
-            } catch(e) { console.error(e); }
-          }
-        }
+        // 2. Load Fans
+        const fansData = await supervisionAPI.getVipFans();
+        setFans(fansData);
         
         setIsLoading(false);
       }
@@ -109,22 +80,16 @@ const VipRepasoMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
   // Save Data (Only Status here, Fans are saved on action)
   useEffect(() => {
     const saveData = async () => {
-      if (initialized.current && !isReadOnly && !isLoading) {
-        // Backup localStorage
-        localStorage.setItem('vip_fans_list', JSON.stringify(fans));
-        localStorage.setItem('vip_daily_status', JSON.stringify(dailyStatus));
-        
-        // Save status to backend
-        try {
-          await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: dailyStatus })
-          });
-        } catch (error) {
-          console.error('Error saving to API:', error);
-          if (onShowToast) onShowToast('Error al guardar estado VIP', 'error');
-        }
+      if (isLoading) return;
+      
+      if (isFirstRun.current) {
+        isFirstRun.current = false;
+        return;
+      }
+
+      if (initialized.current && !isReadOnly) {
+        const success = await supervisionAPI.saveVipRepaso(dailyStatus);
+        if (!success && onShowToast) onShowToast('Error al guardar estado VIP', 'error');
       }
     };
     saveData();
@@ -148,16 +113,11 @@ const VipRepasoMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
     setNewFanLink('');
 
     // API Call
-    try {
-      await fetch(API_FANS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newFan)
-      });
-      if (onShowToast) onShowToast('Fan agregado correctamente', 'success');
-    } catch (e) {
-      console.error("Error saving fan", e);
-      if (onShowToast) onShowToast('Error al guardar fan', 'error');
+    const success = await supervisionAPI.saveVipFan(newFan);
+    if (success) {
+        if (onShowToast) onShowToast('Fan agregado correctamente', 'success');
+    } else {
+        if (onShowToast) onShowToast('Error al guardar fan', 'error');
     }
   };
 
@@ -169,11 +129,7 @@ const VipRepasoMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
       setFans(prevFans => prevFans.filter(f => f.id !== id));
 
       // API Call
-      try {
-        await fetch(`${API_FANS_URL}?id=${id}`, { method: 'DELETE' });
-      } catch (e) {
-        console.error("Error deleting fan", e);
-      }
+      await supervisionAPI.deleteVipFan(id);
     }
   };
 
@@ -190,15 +146,7 @@ const VipRepasoMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
       setFans(prev => prev.map(f => f.id === id ? updatedFan : f));
 
       // API Call
-      try {
-        await fetch(API_FANS_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatedFan)
-        });
-      } catch (e) {
-        console.error("Error updating fan", e);
-      }
+      await supervisionAPI.saveVipFan(updatedFan);
   };
 
   const toggleStatus = (fanId: string, day: number) => {

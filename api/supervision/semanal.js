@@ -18,38 +18,12 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const { rows } = await sql`
-        SELECT 
-          id, mes, semana, week_index, chatter, cuenta,
-          facturacion, nuevos_fans, meta_semanal, meta_mensual,
-          meta_facturacion, facturacion_mensual_objetivo,
-          posteos, historias, pendientes, resueltos, impacto,
-          tiempo_respuesta, estado_objetivo
+        SELECT id, data
         FROM supervision_semanal
-        ORDER BY week_index, chatter, cuenta
       `;
 
-      // Convertir snake_case a camelCase para el frontend
-      const data = rows.map(row => ({
-        id: row.id,
-        mes: row.mes,
-        semana: row.semana,
-        weekIndex: row.week_index,
-        chatter: row.chatter,
-        cuenta: row.cuenta,
-        facturacion: row.facturacion,
-        nuevosFans: row.nuevos_fans,
-        metaSemanal: row.meta_semanal,
-        metaMensual: row.meta_mensual,
-        metaFacturacion: row.meta_facturacion,
-        facturacionMensualObjetivo: row.facturacion_mensual_objetivo,
-        posteos: row.posteos,
-        historias: row.historias,
-        pendientes: row.pendientes,
-        resueltos: row.resueltos,
-        impacto: row.impacto,
-        tiempoRespuesta: row.tiempo_respuesta,
-        estadoObjetivo: row.estado_objetivo
-      }));
+      // Map rows to just return the data object
+      const data = rows.map(row => row.data);
 
       return res.status(200).json({ success: true, data });
     }
@@ -64,24 +38,11 @@ export default async function handler(req, res) {
       // Borrar todos los registros existentes
       await sql`DELETE FROM supervision_semanal`;
 
-      // Insertar todos los nuevos registros
+      // Insertar todos los nuevos registros como JSONB
       for (const row of data) {
         await sql`
-          INSERT INTO supervision_semanal (
-            id, mes, semana, week_index, chatter, cuenta,
-            facturacion, nuevos_fans, meta_semanal, meta_mensual,
-            meta_facturacion, facturacion_mensual_objetivo,
-            posteos, historias, pendientes, resueltos, impacto,
-            tiempo_respuesta, estado_objetivo
-          ) VALUES (
-            ${row.id}, ${row.mes || ''}, ${row.semana}, ${row.weekIndex},
-            ${row.chatter}, ${row.cuenta}, ${row.facturacion || ''},
-            ${row.nuevosFans || ''}, ${row.metaSemanal || ''}, ${row.metaMensual || ''},
-            ${row.metaFacturacion || ''}, ${row.facturacionMensualObjetivo || ''},
-            ${row.posteos || ''}, ${row.historias || ''}, ${row.pendientes || ''},
-            ${row.resueltos || ''}, ${row.impacto || ''}, ${row.tiempoRespuesta || ''},
-            ${row.estadoObjetivo || ''}
-          )
+          INSERT INTO supervision_semanal (id, data)
+          VALUES (${row.id}, ${JSON.stringify(row)})
         `;
       }
 

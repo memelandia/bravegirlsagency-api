@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { WeeklySupervisionRow, WEEKS, GoalStatus, GOAL_COLORS, CHECKLIST_ROWS, CHATTER_COLORS, ACCOUNT_COLORS, CHATTERS, ACCOUNTS } from '../types';
-
-const API_URL = 'https://bravegirlsagency-api.vercel.app/api/supervision/semanal';
+import { supervisionAPI } from '../api-service';
 
 interface Props {
   archivedData?: any;
@@ -15,6 +14,7 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
   const [filterAccount, setFilterAccount] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const initialized = useRef(false);
+  const isFirstRun = useRef(true);
 
   // Initialize Data
   useEffect(() => {
@@ -52,11 +52,10 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
         });
         
         try {
-          const response = await fetch(API_URL);
-          const result = await response.json();
-          if (result.success && result.data.length > 0) {
+          const result = await supervisionAPI.getSemanal();
+          if (result && result.length > 0) {
             // If data exists in backend, use it
-            setRows(result.data);
+            setRows(result);
           } else {
             // Use initial empty rows
             setRows(initialRows);
@@ -87,22 +86,16 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
   // Persistence
   useEffect(() => {
     const saveData = async () => {
-      if (initialized.current && !isReadOnly && !isLoading) {
-        // Backup localStorage
-        localStorage.setItem('supervision_semanal_data', JSON.stringify(rows));
-        
-        // Save to backend
-        try {
-          await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: rows })
-          });
-          // if (onShowToast) onShowToast('Datos semanales guardados', 'success'); // Too frequent
-        } catch (error) {
-          console.error('Error saving to API:', error);
-          if (onShowToast) onShowToast('Error al guardar datos semanales', 'error');
-        }
+      if (isLoading) return;
+
+      if (isFirstRun.current) {
+        isFirstRun.current = false;
+        return;
+      }
+
+      if (initialized.current && !isReadOnly) {
+        const success = await supervisionAPI.saveSemanal(rows);
+        if (!success && onShowToast) onShowToast('Error al guardar datos semanales', 'error');
       }
     };
     saveData();

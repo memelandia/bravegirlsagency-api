@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { CHECKLIST_ROWS, Status, STATUS_COLORS, CHATTER_COLORS, ACCOUNT_COLORS } from '../types';
+import { supervisionAPI } from '../api-service';
 
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 const SUB_HEADERS = ['Tiempos', 'Scripts', 'Precios', 'Masivos'];
-
-const API_URL = 'https://bravegirlsagency-api.vercel.app/api/supervision/checklist';
 
 interface Props {
   archivedData?: any;
@@ -16,6 +15,7 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
   const [data, setData] = useState<Record<string, Status>>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
+  const isFirstRun = useRef(true);
   const [isLoading, setIsLoading] = useState(true);
   
   const todayDate = new Date().getDate();
@@ -26,25 +26,9 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
         setData(archivedData.checklist);
         setIsLoading(false);
       } else {
-        try {
-          const response = await fetch(API_URL);
-          const result = await response.json();
-          if (result.success) {
-            setData(result.data);
-          }
-        } catch (error) {
-          console.error('Error loading from API, using localStorage:', error);
-          const savedData = localStorage.getItem('checklist_mes_data');
-          if (savedData) {
-            try {
-              setData(JSON.parse(savedData));
-            } catch (e) {
-              console.error("Failed to parse checklist data", e);
-            }
-          }
-        } finally {
-          setIsLoading(false);
-        }
+        const result = await supervisionAPI.getChecklist();
+        setData(result);
+        setIsLoading(false);
       }
       initialized.current = true;
     };
@@ -53,21 +37,17 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
 
   useEffect(() => {
     const saveData = async () => {
-      if (initialized.current && !isReadOnly && !isLoading) {
-        // Backup en localStorage
-        localStorage.setItem('checklist_mes_data', JSON.stringify(data));
-        
-        // Guardar en backend
-        try {
-          await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data })
-          });
-          // if (onShowToast) onShowToast('Checklist guardado', 'success'); // Too frequent
-        } catch (error) {
-          console.error('Error saving to API:', error);
-          if (onShowToast) onShowToast('Error al guardar checklist', 'error');
+      if (isLoading) return;
+
+      if (isFirstRun.current) {
+        isFirstRun.current = false;
+        return;
+      }
+
+      if (initialized.current && !isReadOnly) {
+        const success = await supervisionAPI.saveChecklist(data);
+        if (!success && onShowToast) {
+             onShowToast('Error al guardar checklist', 'error');
         }
       }
     };

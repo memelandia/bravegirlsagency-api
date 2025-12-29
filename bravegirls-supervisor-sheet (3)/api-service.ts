@@ -131,5 +131,44 @@ export const supervisionAPI = {
       localStorage.setItem('supervision_semanal_data', JSON.stringify(data));
       return false;
     }
+  },
+
+  // VIP Fans
+  async getVipFans() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vip-fans`);
+      const result = await response.json();
+      return result.success ? result.data : [];
+    } catch (error) {
+      console.error('Error loading VIP fans:', error);
+      const local = localStorage.getItem('vip_fans_list');
+      return local ? JSON.parse(local) : [];
+    }
+  },
+
+  async saveVipFan(fan: any) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vip-fans`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fan)
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Error saving VIP fan:', error);
+      return false;
+    }
+  },
+
+  async deleteVipFan(id: string) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vip-fans?id=${id}`, {
+        method: 'DELETE'
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Error deleting VIP fan:', error);
+      return false;
+    }
   }
 };
