@@ -42,7 +42,7 @@ export default async function handler(req, res) {
       for (const row of data) {
         await sql`
           INSERT INTO supervision_semanal (id, data)
-          VALUES (${row.id}, ${JSON.stringify(row)})
+          VALUES (${row.id}, ${JSON.stringify(row)}::jsonb)
         `;
       }
 
