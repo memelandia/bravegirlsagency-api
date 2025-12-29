@@ -34,14 +34,18 @@ module.exports = async function handler(req, res) {
       // Transacción simple: Borrar y Reinsertar
       await sql`DELETE FROM supervision_semanal`;
 
-      // Insertar registros
-      for (const row of data) {
-        // Aseguramos que data sea un string JSON válido y lo casteamos a jsonb
+      // Insertar registros en paralelo para evitar timeouts
+      await Promise.all(data.map(async (row) => {
+        if (!row.id) return; // Skip invalid rows
+        
+        // Convertimos a string JSON
+        const jsonStr = JSON.stringify(row);
+        
         await sql`
           INSERT INTO supervision_semanal (id, data)
-          VALUES (${row.id}, ${JSON.stringify(row)}::jsonb)
+          VALUES (${row.id}, ${jsonStr}::jsonb)
         `;
-      }
+      }));
 
       return res.status(200).json({ success: true, message: 'Data saved successfully' });
     }
