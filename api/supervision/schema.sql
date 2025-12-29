@@ -51,30 +51,10 @@ CREATE INDEX idx_errores_fecha ON registro_errores(fecha);
 CREATE INDEX idx_errores_chatter ON registro_errores(chatter);
 CREATE INDEX idx_errores_estado ON registro_errores(estado);
 
--- Tabla para Supervisión Semanal
+-- Tabla para Supervisión Semanal (Formato Flexible JSONB)
+-- NOTA: Si ya existe una tabla antigua, ejecutar DROP TABLE supervision_semanal; primero.
 CREATE TABLE IF NOT EXISTS supervision_semanal (
   id TEXT PRIMARY KEY,
-  mes TEXT,
-  semana TEXT,               -- Semana 1, Semana 2, Semana 3, Semana 4
-  week_index INTEGER,
-  chatter TEXT,
-  cuenta TEXT,
-  facturacion TEXT,
-  nuevos_fans TEXT,
-  meta_semanal TEXT,
-  meta_mensual TEXT,
-  meta_facturacion TEXT,     -- NUEVO
-  facturacion_mensual_objetivo TEXT, -- NUEVO
-  posteos TEXT,
-  historias TEXT,
-  pendientes TEXT,
-  resueltos TEXT,
-  impacto TEXT,
-  tiempo_respuesta TEXT,
-  estado_objetivo TEXT,      -- Cumplido, Cerca, Fallido
+  data JSONB NOT NULL,       -- Guardamos todo el objeto de la fila aquí para flexibilidad
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE INDEX idx_semanal_semana ON supervision_semanal(semana);
-CREATE INDEX idx_semanal_chatter ON supervision_semanal(chatter);
-CREATE INDEX idx_semanal_cuenta ON supervision_semanal(cuenta);
