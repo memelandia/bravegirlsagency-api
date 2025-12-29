@@ -149,7 +149,76 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
 
   const updateRow = (id: string, field: keyof WeeklySupervisionRow, value: any) => {
     if (isReadOnly) return;
-    setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+    
+    setRows(prev => {
+      const targetRow = prev.find(r => r.id === id);
+      if (!targetRow) return prev;
+
+      // Logic for Fans Syncing (Same Account, Same Week)
+      if (field === 'nuevosFans') {
+        return prev.map(r => {
+          if (r.semana === targetRow.semana && r.cuenta === targetRow.cuenta) {
+            return { ...r, [field]: value };
+          }
+          return r;
+        });
+      }
+
+      // Logic for Meta Facturacion Calculation
+      if (field === 'facturacionMensualObjetivo') {
+         const monthlyGoal = parseFloat(value.replace(/[^0-9.]/g, '')) || 0;
+         const weeklyGoal = monthlyGoal > 0 ? monthlyGoal / WEEKS.length : 0;
+         const formattedWeekly = weeklyGoal > 0 ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(weeklyGoal) : '';
+         
+         return prev.map(r => {
+             if (r.id === id) {
+                 return { 
+                     ...r, 
+                     [field]: value,
+                     metaFacturacion: formattedWeekly
+                 };
+             }
+             return r;
+         });
+      }
+
+      return prev.map(r => r.id === id ? { ...r, [field]: value } : r);
+    });
+  };
+
+  const getFansChange = (currentFans: string, weekIndex: number, account: string) => {
+      if (weekIndex === 0) return null;
+      const currentVal = parseFloat(currentFans.replace(/[^0-9.]/g, '')) || 0;
+      
+      // Find previous week row for same account (any chatter)
+      const prevWeekName = WEEKS[weekIndex - 1];
+      const prevRow = rows.find(r => r.semana === prevWeekName && r.cuenta === account);
+      
+      if (!prevRow) return null;
+      
+      const prevVal = parseFloat(prevRow.nuevosFans.replace(/[^0-9.]/g, '')) || 0;
+      if (prevVal === 0) return null;
+
+      const diff = currentVal - prevVal;
+      const percent = (diff / prevVal) * 100;
+      
+      return {
+          percent: Math.round(percent),
+          isPositive: diff >= 0
+      };
+  };
+
+  const copyWeekStats = (week: string, chatter: string) => {
+      const weekRows = rows.filter(r => r.semana === week && r.chatter === chatter);
+      if (weekRows.length === 0) return;
+
+      const lines = weekRows.map(r => {
+          return `${r.cuenta}: Fact: ${r.facturacion || '$0'} | Fans: ${r.nuevosFans || '0'} | Meta: ${r.estadoObjetivo || '-'}`;
+      });
+
+      const text = `📊 Reporte ${chatter} - ${week}\n${lines.join('\n')}`;
+      navigator.clipboard.writeText(text);
+      if (onShowToast) onShowToast('Reporte copiado al portapapeles', 'info');
   };
 
   return (
@@ -200,132 +269,184 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto bg-white dark:bg-gray-800">
-          <table className="w-full text-sm border-collapse min-w-[1000px]">
-              <thead className="sticky top-0 z-10 shadow-md">
-                  <tr className="bg-[#111827] dark:bg-black text-white text-[10px] uppercase tracking-wider font-bold">
-                      <th className="p-3 text-left w-24 border-r border-gray-700">Semana</th>
-                      <th className="p-3 text-left w-32 border-r border-gray-700">Chatter</th>
-                      <th className="p-3 text-left w-32 border-r border-gray-700">Cuenta</th>
-                      <th className="p-3 text-right w-32 border-r border-gray-700">Facturación ($)</th>
-                      <th className="p-3 text-right w-32 border-r border-gray-700">Meta Fact. ($)</th>
-                      <th className="p-3 text-right w-32 border-r border-gray-700">Fact. Mens. Obj. ($)</th>
-                      <th className="p-3 text-right w-24 border-r border-gray-700">Fans</th>
-                      <th className="p-3 text-center w-36 border-r border-gray-700">Estado Meta</th>
-                      <th className="p-3 text-center w-20 border-r border-gray-700">Posts</th>
-                      <th className="p-3 text-center w-20 border-r border-gray-700">Stories</th>
-                      <th className="p-3 text-left border-r border-gray-700 min-w-[200px]">Pendientes</th>
-                      <th className="p-3 text-center w-20">OK?</th>
-                  </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {filteredRows.map(row => {
-                      const weekColor = row.weekIndex % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-800/50';
-                      return (
-                          <tr key={row.id} className={`${weekColor} hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors`}>
-                              <td className="p-2 border-r border-gray-100 dark:border-gray-700 font-bold text-gray-500 dark:text-gray-400 text-xs">{row.semana}</td>
-                              <td className="p-2 border-r border-gray-100 dark:border-gray-700">
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${CHATTER_COLORS[row.chatter] || 'bg-gray-100'}`}>{row.chatter}</span>
-                              </td>
-                              <td className="p-2 border-r border-gray-100 dark:border-gray-700">
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${ACCOUNT_COLORS[row.cuenta] || 'border-gray-200'}`}>{row.cuenta}</span>
-                              </td>
-                              <td className="p-2 border-r border-gray-100 dark:border-gray-700">
-                                  <input 
-                                      type="text" 
-                                      value={row.facturacion}
-                                      disabled={isReadOnly}
-                                      onChange={(e) => updateRow(row.id, 'facturacion', e.target.value)}
-                                      onBlur={() => handleCurrencyBlur(row.id, 'facturacion')}
-                                      placeholder="$0"
-                                      className="w-full text-right bg-transparent outline-none font-mono text-gray-700 dark:text-gray-200 placeholder-gray-300 text-xs font-bold"
-                                  />
-                              </td>
-                              <td className="p-2 border-r border-gray-100 dark:border-gray-700">
-                                  <input 
-                                      type="text" 
-                                      value={row.metaFacturacion}
-                                      disabled={isReadOnly}
-                                      onChange={(e) => updateRow(row.id, 'metaFacturacion', e.target.value)}
-                                      onBlur={() => handleCurrencyBlur(row.id, 'metaFacturacion')}
-                                      placeholder="$0"
-                                      className="w-full text-right bg-transparent outline-none font-mono text-gray-700 dark:text-gray-200 placeholder-gray-300 text-xs font-bold"
-                                  />
-                              </td>
-                              <td className="p-2 border-r border-gray-100 dark:border-gray-700">
-                                  <input 
-                                      type="text" 
-                                      value={row.facturacionMensualObjetivo}
-                                      disabled={isReadOnly}
-                                      onChange={(e) => updateRow(row.id, 'facturacionMensualObjetivo', e.target.value)}
-                                      onBlur={() => handleCurrencyBlur(row.id, 'facturacionMensualObjetivo')}
-                                      placeholder="$0"
-                                      className="w-full text-right bg-transparent outline-none font-mono text-gray-700 dark:text-gray-200 placeholder-gray-300 text-xs font-bold"
-                                  />
-                              </td>
-                              <td className="p-2 border-r border-gray-100 dark:border-gray-700">
-                                   <input 
-                                      type="text" 
-                                      value={row.nuevosFans}
-                                      disabled={isReadOnly}
-                                      onChange={(e) => updateRow(row.id, 'nuevosFans', e.target.value)}
-                                      placeholder="0"
-                                      className="w-full text-right bg-transparent outline-none font-mono text-gray-700 dark:text-gray-200 placeholder-gray-300 text-xs"
-                                  />
-                              </td>
-                              <td className="p-2 border-r border-gray-100 dark:border-gray-700">
-                                  <select
-                                      value={row.estadoObjetivo}
-                                      disabled={isReadOnly}
-                                      onChange={(e) => updateRow(row.id, 'estadoObjetivo', e.target.value)}
-                                      className={`w-full text-[10px] font-bold p-1 rounded border cursor-pointer outline-none appearance-none text-center ${GOAL_COLORS[row.estadoObjetivo] || 'bg-white border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'}`}
-                                  >
-                                      <option value="">- Seleccionar -</option>
-                                      {Object.values(GoalStatus).map(s => s && <option key={s} value={s}>{s}</option>)}
-                                  </select>
-                              </td>
-                              <td className="p-2 border-r border-gray-100 dark:border-gray-700 text-center">
-                                  <input 
-                                     type="checkbox" 
-                                     checked={row.posteos === 'Sí'}
-                                     disabled={isReadOnly}
-                                     onChange={(e) => updateRow(row.id, 'posteos', e.target.checked ? 'Sí' : 'No')}
-                                     className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                  />
-                              </td>
-                              <td className="p-2 border-r border-gray-100 dark:border-gray-700 text-center">
-                                   <input 
-                                     type="checkbox" 
-                                     checked={row.historias === 'Sí'}
-                                     disabled={isReadOnly}
-                                     onChange={(e) => updateRow(row.id, 'historias', e.target.checked ? 'Sí' : 'No')}
-                                     className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                  />
-                              </td>
-                              <td className="p-2 border-r border-gray-100 dark:border-gray-700">
-                                  <input 
-                                      type="text" 
-                                      value={row.pendientes}
-                                      disabled={isReadOnly}
-                                      onChange={(e) => updateRow(row.id, 'pendientes', e.target.value)}
-                                      placeholder="Escribir..."
-                                      className="w-full bg-transparent outline-none text-gray-600 dark:text-gray-300 text-xs placeholder-gray-300"
-                                  />
-                              </td>
-                              <td className="p-2 text-center">
-                                   <input 
-                                     type="checkbox" 
-                                     checked={row.resueltos === 'Sí'}
-                                     disabled={isReadOnly}
-                                     onChange={(e) => updateRow(row.id, 'resueltos', e.target.checked ? 'Sí' : 'No')}
-                                     className="w-4 h-4 rounded text-green-600 focus:ring-green-500 cursor-pointer"
-                                  />
-                              </td>
-                          </tr>
-                      );
-                  })}
-              </tbody>
-          </table>
+      <div className="flex-1 overflow-auto bg-white dark:bg-gray-800 p-4">
+          {/* Group by Week */}
+          {WEEKS.map((week, wIdx) => {
+              // Filter rows for this week
+              const weekRows = filteredRows.filter(r => r.semana === week);
+              if (weekRows.length === 0) return null;
+
+              // Group by Chatter within Week
+              const chattersInWeek = Array.from(new Set(weekRows.map(r => r.chatter)));
+
+              return (
+                  <div key={week} className="mb-8 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                      <div className="bg-gray-100 dark:bg-gray-900 p-3 border-b border-gray-200 dark:border-gray-700 font-black text-gray-700 dark:text-gray-200 uppercase tracking-widest text-xs flex justify-between items-center">
+                          <span>📅 {week}</span>
+                      </div>
+                      
+                      {chattersInWeek.map(chatter => {
+                          const chatterRows = weekRows.filter(r => r.chatter === chatter);
+                          if (chatterRows.length === 0) return null;
+
+                          return (
+                              <div key={`${week}-${chatter}`} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
+                                  {/* Chatter Header with Copy Button */}
+                                  <div className="bg-gray-50 dark:bg-gray-800/50 p-2 px-4 flex justify-between items-center">
+                                      <div className="flex items-center gap-2">
+                                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${CHATTER_COLORS[chatter]}`}>{chatter}</span>
+                                      </div>
+                                      <button 
+                                        onClick={() => copyWeekStats(week, chatter)}
+                                        className="text-[10px] bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 px-2 py-1 rounded text-gray-600 dark:text-gray-300 flex items-center gap-1 transition-colors"
+                                        title="Copiar reporte"
+                                      >
+                                          📋 Copiar
+                                      </button>
+                                  </div>
+
+                                  <table className="w-full text-sm border-collapse">
+                                      <thead className="bg-white dark:bg-gray-800 text-[10px] text-gray-400 uppercase font-medium border-b border-gray-100 dark:border-gray-700">
+                                          <tr>
+                                              <th className="p-2 text-left w-32 pl-4">Cuenta</th>
+                                              <th className="p-2 text-right w-28">Facturación</th>
+                                              <th className="p-2 text-right w-28">Meta Fact.</th>
+                                              <th className="p-2 text-right w-28">Obj. Mensual</th>
+                                              <th className="p-2 text-right w-24">Fans</th>
+                                              <th className="p-2 text-center w-28">Estado Meta</th>
+                                              <th className="p-2 text-center w-16">Posts</th>
+                                              <th className="p-2 text-center w-16">Stories</th>
+                                              <th className="p-2 text-center w-24">T. Resp (min)</th>
+                                              <th className="p-2 text-left">Observación</th>
+                                              <th className="p-2 text-center w-16">OK?</th>
+                                          </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                                          {chatterRows.map(row => {
+                                              const fansChange = getFansChange(row.nuevosFans, row.weekIndex, row.cuenta);
+                                              return (
+                                                  <tr key={row.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors">
+                                                      <td className="p-2 pl-4">
+                                                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${ACCOUNT_COLORS[row.cuenta]}`}>{row.cuenta}</span>
+                                                      </td>
+                                                      <td className="p-2">
+                                                          <input 
+                                                              type="text" 
+                                                              value={row.facturacion}
+                                                              disabled={isReadOnly}
+                                                              onChange={(e) => updateRow(row.id, 'facturacion', e.target.value)}
+                                                              onBlur={() => handleCurrencyBlur(row.id, 'facturacion')}
+                                                              placeholder="$0"
+                                                              className="w-full text-right bg-transparent outline-none font-mono text-gray-700 dark:text-gray-200 placeholder-gray-300 text-xs font-bold"
+                                                          />
+                                                      </td>
+                                                      <td className="p-2">
+                                                          <input 
+                                                              type="text" 
+                                                              value={row.metaFacturacion}
+                                                              disabled={true} // Calculated automatically
+                                                              placeholder="$0"
+                                                              className="w-full text-right bg-transparent outline-none font-mono text-gray-500 dark:text-gray-400 text-xs"
+                                                          />
+                                                      </td>
+                                                      <td className="p-2">
+                                                          <input 
+                                                              type="text" 
+                                                              value={row.facturacionMensualObjetivo}
+                                                              disabled={isReadOnly}
+                                                              onChange={(e) => updateRow(row.id, 'facturacionMensualObjetivo', e.target.value)}
+                                                              onBlur={() => handleCurrencyBlur(row.id, 'facturacionMensualObjetivo')}
+                                                              placeholder="$0"
+                                                              className="w-full text-right bg-transparent outline-none font-mono text-gray-700 dark:text-gray-200 placeholder-gray-300 text-xs"
+                                                          />
+                                                      </td>
+                                                      <td className="p-2 relative group">
+                                                           <div className="flex items-center justify-end gap-2">
+                                                               {fansChange && (
+                                                                   <span className={`text-[9px] font-bold ${fansChange.isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                                                                       {fansChange.isPositive ? '▲' : '▼'} {Math.abs(fansChange.percent)}%
+                                                                   </span>
+                                                               )}
+                                                               <input 
+                                                                  type="text" 
+                                                                  value={row.nuevosFans}
+                                                                  disabled={isReadOnly}
+                                                                  onChange={(e) => updateRow(row.id, 'nuevosFans', e.target.value)}
+                                                                  placeholder="0"
+                                                                  className="w-12 text-right bg-transparent outline-none font-mono text-gray-700 dark:text-gray-200 placeholder-gray-300 text-xs"
+                                                              />
+                                                           </div>
+                                                      </td>
+                                                      <td className="p-2">
+                                                          <select
+                                                              value={row.estadoObjetivo}
+                                                              disabled={isReadOnly}
+                                                              onChange={(e) => updateRow(row.id, 'estadoObjetivo', e.target.value)}
+                                                              className={`w-full text-[10px] font-bold p-1 rounded border cursor-pointer outline-none appearance-none text-center ${GOAL_COLORS[row.estadoObjetivo] || 'bg-white border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'}`}
+                                                          >
+                                                              <option value="">-</option>
+                                                              {Object.values(GoalStatus).map(s => s && <option key={s} value={s}>{s}</option>)}
+                                                          </select>
+                                                      </td>
+                                                      <td className="p-2 text-center">
+                                                          <input 
+                                                             type="checkbox" 
+                                                             checked={row.posteos === 'Sí'}
+                                                             disabled={isReadOnly}
+                                                             onChange={(e) => updateRow(row.id, 'posteos', e.target.checked ? 'Sí' : 'No')}
+                                                             className="w-3 h-3 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                          />
+                                                      </td>
+                                                      <td className="p-2 text-center">
+                                                           <input 
+                                                             type="checkbox" 
+                                                             checked={row.historias === 'Sí'}
+                                                             disabled={isReadOnly}
+                                                             onChange={(e) => updateRow(row.id, 'historias', e.target.checked ? 'Sí' : 'No')}
+                                                             className="w-3 h-3 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                          />
+                                                      </td>
+                                                      <td className="p-2">
+                                                          <input 
+                                                              type="text" 
+                                                              value={row.tiempoRespuesta}
+                                                              disabled={isReadOnly}
+                                                              onChange={(e) => updateRow(row.id, 'tiempoRespuesta', e.target.value)}
+                                                              placeholder="min"
+                                                              className="w-full text-center bg-transparent outline-none font-mono text-gray-700 dark:text-gray-200 placeholder-gray-300 text-xs"
+                                                          />
+                                                      </td>
+                                                      <td className="p-2">
+                                                          <input 
+                                                              type="text" 
+                                                              value={row.pendientes}
+                                                              disabled={isReadOnly}
+                                                              onChange={(e) => updateRow(row.id, 'pendientes', e.target.value)}
+                                                              placeholder="..."
+                                                              className="w-full bg-transparent outline-none text-gray-600 dark:text-gray-300 text-xs placeholder-gray-300"
+                                                          />
+                                                      </td>
+                                                      <td className="p-2 text-center">
+                                                           <input 
+                                                             type="checkbox" 
+                                                             checked={row.resueltos === 'Sí'}
+                                                             disabled={isReadOnly}
+                                                             onChange={(e) => updateRow(row.id, 'resueltos', e.target.checked ? 'Sí' : 'No')}
+                                                             className="w-3 h-3 rounded text-green-600 focus:ring-green-500 cursor-pointer"
+                                                          />
+                                                      </td>
+                                                  </tr>
+                                              );
+                                          })}
+                                      </tbody>
+                                  </table>
+                              </div>
+                          );
+                      })}
+                  </div>
+              );
+          })}
+          
           {filteredRows.length === 0 && (
               <div className="flex flex-col items-center justify-center p-10 text-gray-400">
                   <span className="text-2xl mb-2">🔍</span>
