@@ -22,6 +22,16 @@ CREATE TABLE IF NOT EXISTS vip_repaso (
 
 CREATE INDEX idx_vip_key ON vip_repaso(key);
 
+-- Tabla para Lista de Fans VIP (para no depender de localStorage)
+CREATE TABLE IF NOT EXISTS vip_fans (
+  id TEXT PRIMARY KEY,       -- UUID o timestamp generado en frontend
+  name TEXT NOT NULL,
+  account TEXT NOT NULL,
+  type TEXT NOT NULL,        -- WHALE o LOYALTY
+  chat_link TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Tabla para Registro de Errores
 CREATE TABLE IF NOT EXISTS registro_errores (
   id TEXT PRIMARY KEY,       -- Generado en frontend con Date.now()
