@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS supervision_semanal (
   nuevos_fans TEXT,
   meta_semanal TEXT,
   meta_mensual TEXT,
+  meta_facturacion TEXT,     -- NUEVO
+  facturacion_mensual_objetivo TEXT, -- NUEVO
   posteos TEXT,
   historias TEXT,
   pendientes TEXT,

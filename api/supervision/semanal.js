@@ -21,6 +21,7 @@ export default async function handler(req, res) {
         SELECT 
           id, mes, semana, week_index, chatter, cuenta,
           facturacion, nuevos_fans, meta_semanal, meta_mensual,
+          meta_facturacion, facturacion_mensual_objetivo,
           posteos, historias, pendientes, resueltos, impacto,
           tiempo_respuesta, estado_objetivo
         FROM supervision_semanal
@@ -39,6 +40,8 @@ export default async function handler(req, res) {
         nuevosFans: row.nuevos_fans,
         metaSemanal: row.meta_semanal,
         metaMensual: row.meta_mensual,
+        metaFacturacion: row.meta_facturacion,
+        facturacionMensualObjetivo: row.facturacion_mensual_objetivo,
         posteos: row.posteos,
         historias: row.historias,
         pendientes: row.pendientes,
@@ -67,12 +70,14 @@ export default async function handler(req, res) {
           INSERT INTO supervision_semanal (
             id, mes, semana, week_index, chatter, cuenta,
             facturacion, nuevos_fans, meta_semanal, meta_mensual,
+            meta_facturacion, facturacion_mensual_objetivo,
             posteos, historias, pendientes, resueltos, impacto,
             tiempo_respuesta, estado_objetivo
           ) VALUES (
             ${row.id}, ${row.mes || ''}, ${row.semana}, ${row.weekIndex},
             ${row.chatter}, ${row.cuenta}, ${row.facturacion || ''},
             ${row.nuevosFans || ''}, ${row.metaSemanal || ''}, ${row.metaMensual || ''},
+            ${row.metaFacturacion || ''}, ${row.facturacionMensualObjetivo || ''},
             ${row.posteos || ''}, ${row.historias || ''}, ${row.pendientes || ''},
             ${row.resueltos || ''}, ${row.impacto || ''}, ${row.tiempoRespuesta || ''},
             ${row.estadoObjetivo || ''}
