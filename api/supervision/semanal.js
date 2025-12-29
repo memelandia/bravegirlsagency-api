@@ -4,9 +4,9 @@
  * Usa Vercel Postgres como base de datos
  */
 
-import { sql } from '@vercel/postgres';
+const { sql } = require('@vercel/postgres');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // CORS Headers explícitos (Respaldo a vercel.json)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
@@ -32,9 +32,6 @@ export default async function handler(req, res) {
       }
 
       // Transacción simple: Borrar y Reinsertar
-      // Nota: En producción idealmente usaríamos una transacción BEGIN/COMMIT, 
-      // pero @vercel/postgres lo maneja por query.
-      
       await sql`DELETE FROM supervision_semanal`;
 
       // Insertar registros
@@ -53,7 +50,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('CRITICAL API ERROR:', error);
-    // Devolvemos JSON incluso en error 500 para evitar "Unexpected token A" en el cliente
     return res.status(500).json({ 
       success: false, 
       error: 'Database connection failed', 
@@ -61,4 +57,4 @@ export default async function handler(req, res) {
       hint: 'Ensure Vercel Project is linked to Postgres Storage'
     });
   }
-}
+};

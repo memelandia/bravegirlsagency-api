@@ -4,9 +4,9 @@
  * Usa Vercel Postgres como base de datos
  */
 
-import { sql } from '@vercel/postgres';
+const { sql } = require('@vercel/postgres');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // CORS Headers explícitos
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
@@ -62,4 +62,4 @@ export default async function handler(req, res) {
       details: error.message 
     });
   }
-}
+};
