@@ -7,9 +7,10 @@
 import { sql } from '@vercel/postgres';
 
 export default async function handler(req, res) {
+  // CORS Headers explícitos
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
       await sql`DELETE FROM registro_errores`;
 
       // Insertar todos los nuevos registros
-      for (const entry of data) {
+      await Promise.all(data.map(async (entry) => {
         await sql`
           INSERT INTO registro_errores (
             id, fecha, cuenta, chatter, tipo, gravedad, detalle, traslado, estado, link
@@ -47,14 +48,18 @@ export default async function handler(req, res) {
             ${entry.traslado || ''}, ${entry.estado || ''}, ${entry.link || ''}
           )
         `;
-      }
+      }));
 
       return res.status(200).json({ success: true, message: 'Data saved' });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
-    console.error('Error in supervision/errores API:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('API Error in errores:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Database error', 
+      details: error.message 
+    });
   }
 }

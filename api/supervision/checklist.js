@@ -7,10 +7,10 @@
 import { sql } from '@vercel/postgres';
 
 export default async function handler(req, res) {
-  // CORS Headers
+  // CORS Headers explícitos
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -41,21 +41,27 @@ export default async function handler(req, res) {
       // Upsert cada entrada
       const entries = Object.entries(data);
       
-      for (const [key, status] of entries) {
-        await sql`
+      // Usamos Promise.all para paralelizar y acelerar
+      await Promise.all(entries.map(async ([key, status]) => {
+         await sql`
           INSERT INTO checklist_mes (key, status, updated_at)
           VALUES (${key}, ${status}, CURRENT_TIMESTAMP)
           ON CONFLICT (key) 
           DO UPDATE SET status = ${status}, updated_at = CURRENT_TIMESTAMP
         `;
-      }
+      }));
 
-      return res.status(200).json({ success: true, message: 'Data saved' });
+      return res.status(200).json({ success: true, message: 'Checklist saved' });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
+
   } catch (error) {
-    console.error('Error in supervision/checklist API:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('API Error in checklist:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Database error', 
+      details: error.message 
+    });
   }
 }
