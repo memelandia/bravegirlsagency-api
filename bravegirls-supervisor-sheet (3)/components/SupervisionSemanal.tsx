@@ -12,6 +12,7 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
   const [rows, setRows] = useState<WeeklySupervisionRow[]>([]);
   const [filterChatter, setFilterChatter] = useState<string>('');
   const [filterAccount, setFilterAccount] = useState<string>('');
+  const [filterWeek, setFilterWeek] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const initialized = useRef(false);
   const isFirstRun = useRef(true);
@@ -106,9 +107,10 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
     return rows.filter(row => {
       const matchChatter = filterChatter ? row.chatter === filterChatter : true;
       const matchAccount = filterAccount ? row.cuenta === filterAccount : true;
-      return matchChatter && matchAccount;
+      const matchWeek = filterWeek ? row.semana === filterWeek : true;
+      return matchChatter && matchAccount && matchWeek;
     });
-  }, [rows, filterChatter, filterAccount]);
+  }, [rows, filterChatter, filterAccount, filterWeek]);
 
   const summary = useMemo(() => {
     let totalFacturacion = 0;
@@ -233,6 +235,22 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
             </div>
             
             <div className="flex gap-2">
+                <button
+                    onClick={handleNewMonth}
+                    disabled={isReadOnly}
+                    className="bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg text-xs font-bold px-3 py-2 transition-colors flex items-center gap-1"
+                    title="Limpiar planilla para nuevo mes"
+                >
+                    🗑️ Nuevo Mes
+                </button>
+                <select 
+                    value={filterWeek} 
+                    onChange={(e) => setFilterWeek(e.target.value)}
+                    className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-bold p-2 outline-none text-gray-700 dark:text-gray-200"
+                >
+                    <option value="">📅 Todas Semanas</option>
+                    {WEEKS.map(w => <option key={w} value={w}>{w}</option>)}
+                </select>
                 <select 
                     value={filterChatter} 
                     onChange={(e) => setFilterChatter(e.target.value)}
@@ -317,6 +335,7 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
                                               <th className="p-2 text-center w-16">Posts</th>
                                               <th className="p-2 text-center w-16">Stories</th>
                                               <th className="p-2 text-center w-24">T. Resp (min)</th>
+                                              <th className="p-2 text-center w-16">Impacto %</th>
                                               <th className="p-2 text-left">Observación</th>
                                               <th className="p-2 text-center w-16">OK?</th>
                                           </tr>
@@ -414,6 +433,16 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
                                                               onChange={(e) => updateRow(row.id, 'tiempoRespuesta', e.target.value)}
                                                               placeholder="min"
                                                               className="w-full text-center bg-transparent outline-none font-mono text-gray-700 dark:text-gray-200 placeholder-gray-300 text-xs"
+                                                          />
+                                                      </td>
+                                                      <td className="p-2 text-center">
+                                                          <input 
+                                                              type="text" 
+                                                              value={row.impacto}
+                                                              disabled={isReadOnly}
+                                                              onChange={(e) => updateRow(row.id, 'impacto', e.target.value)}
+                                                              placeholder="%"
+                                                              className="w-full text-center bg-transparent outline-none text-gray-700 dark:text-gray-200 text-xs font-bold"
                                                           />
                                                       </td>
                                                       <td className="p-2">
