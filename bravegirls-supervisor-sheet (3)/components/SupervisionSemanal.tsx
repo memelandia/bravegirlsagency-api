@@ -210,6 +210,30 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
       };
   };
 
+  const handleNewMonth = () => {
+    if (isReadOnly) return;
+    if (!window.confirm('⚠️ ¿Estás seguro de iniciar un NUEVO MES?\n\nEsto limpiará visualmente la planilla para que ingreses nuevos datos.\nLos datos anteriores NO se borran de la base de datos, pero esta vista quedará vacía.')) {
+      return;
+    }
+
+    setRows(prev => prev.map(r => ({
+      ...r,
+      facturacion: '',
+      nuevosFans: '',
+      metaSemanal: '',
+      metaMensual: '',
+      metaFacturacion: '',
+      facturacionMensualObjetivo: '',
+      posteos: '',
+      historias: '',
+      pendientes: '',
+      resueltos: '',
+      impacto: '',
+      tiempoRespuesta: '',
+      estadoObjetivo: GoalStatus.EMPTY
+    })));
+  };
+
   const copyWeekStats = (week: string, chatter: string) => {
       const weekRows = rows.filter(r => r.semana === week && r.chatter === chatter);
       if (weekRows.length === 0) return;
