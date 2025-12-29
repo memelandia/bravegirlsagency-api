@@ -1,10 +1,56 @@
 /**
  * API Endpoint: /api/supervision/semanal
  * Guarda y carga datos de SUPERVISION_SEMANAL
- * Usa Vercel Postgres como base de datos
+ * Usa Vercel Postgres con esquema Relacional (Columnas)
  */
 
 const { sql } = require('@vercel/postgres');
+
+// Helper to map DB snake_case to Frontend camelCase
+const toCamel = (row) => ({
+  id: row.id,
+  mes: row.mes,
+  semana: row.semana,
+  weekIndex: row.week_index,
+  chatter: row.chatter,
+  cuenta: row.cuenta,
+  facturacion: row.facturacion,
+  nuevosFans: row.nuevos_fans,
+  metaSemanal: row.meta_semanal,
+  metaMensual: row.meta_mensual,
+  metaFacturacion: row.meta_facturacion,
+  facturacionMensualObjetivo: row.facturacion_mensual_objetivo,
+  posteos: row.posteos,
+  historias: row.historias,
+  pendientes: row.pendientes,
+  resueltos: row.resueltos,
+  impacto: row.impacto,
+  tiempoRespuesta: row.tiempo_respuesta,
+  estadoObjetivo: row.estado_objetivo
+});
+
+// Helper to map Frontend camelCase to DB snake_case
+const toSnake = (row) => ({
+  id: row.id,
+  mes: row.mes,
+  semana: row.semana,
+  week_index: row.weekIndex,
+  chatter: row.chatter,
+  cuenta: row.cuenta,
+  facturacion: row.facturacion,
+  nuevos_fans: row.nuevosFans,
+  meta_semanal: row.metaSemanal,
+  meta_mensual: row.metaMensual,
+  meta_facturacion: row.metaFacturacion,
+  facturacion_mensual_objetivo: row.facturacionMensualObjetivo,
+  posteos: row.posteos,
+  historias: row.historias,
+  pendientes: row.pendientes,
+  resueltos: row.resueltos,
+  impacto: row.impacto,
+  tiempo_respuesta: row.tiempoRespuesta,
+  estado_objetivo: row.estadoObjetivo
+});
 
 module.exports = async function handler(req, res) {
   // CORS Headers explícitos (Respaldo a vercel.json)
@@ -19,8 +65,9 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const { rows } = await sql`SELECT id, data FROM supervision_semanal`;
-      const data = rows.map(row => row.data);
+      // Select all columns
+      const { rows } = await sql`SELECT * FROM supervision_semanal ORDER BY week_index ASC, id ASC`;
+      const data = rows.map(toCamel);
       return res.status(200).json({ success: true, data });
     }
 
@@ -31,21 +78,28 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Data must be an array' });
       }
 
-      // Transacción simple: Borrar y Reinsertar
-      await sql`DELETE FROM supervision_semanal`;
+      // Map to snake_case for DB
+      const mappedData = data.map(toSnake);
+      const jsonPayload = JSON.stringify(mappedData);
 
-      // Insertar registros en paralelo para evitar timeouts
-      await Promise.all(data.map(async (row) => {
-        if (!row.id) return; // Skip invalid rows
+      // Transaction: Delete all and Bulk Insert using jsonb_populate_recordset
+      // This is extremely efficient and atomic
+      await sql`BEGIN`;
+      try {
+        await sql`DELETE FROM supervision_semanal`;
         
-        // Convertimos a string JSON
-        const jsonStr = JSON.stringify(row);
+        if (mappedData.length > 0) {
+          await sql`
+            INSERT INTO supervision_semanal 
+            SELECT * FROM jsonb_populate_recordset(null::supervision_semanal, ${jsonPayload}::jsonb)
+          `;
+        }
         
-        await sql`
-          INSERT INTO supervision_semanal (id, data)
-          VALUES (${row.id}, ${jsonStr}::jsonb)
-        `;
-      }));
+        await sql`COMMIT`;
+      } catch (err) {
+        await sql`ROLLBACK`;
+        throw err;
+      }
 
       return res.status(200).json({ success: true, message: 'Data saved successfully' });
     }
