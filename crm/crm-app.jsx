@@ -169,6 +169,7 @@ function CRMApp() {
                                 <ConfiguracionView 
                                     models={models}
                                     chatters={chatters}
+                                    assignments={assignments}
                                     socialAccounts={socialAccounts}
                                     supervisors={supervisors}
                                     staff={staff}
@@ -277,12 +278,45 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedNode, setSelectedNode] = useState(null);
+    const [showAssignModal, setShowAssignModal] = useState(false);
+    const [pendingConnection, setPendingConnection] = useState(null);
     
-    const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
+    const onConnect = useCallback(async (params) => {
+        // Validar que sea chatter → modelo
+        const [sourceType, sourceId] = params.source.split('-');
+        const [targetType, targetId] = params.target.split('-');
+        
+        if (sourceType !== 'chatter' || targetType !== 'model') {
+            alert('⚠️ Solo puedes conectar Chatters a Modelos');
+            return;
+        }
+        
+        // Guardar conexión pendiente y mostrar modal
+        setPendingConnection({
+            chatter_id: parseInt(sourceId),
+            model_id: parseInt(targetId),
+            params: params
+        });
+        setShowAssignModal(true);
+    }, []);
+    
+    const handleConfirmConnection = async (assignmentData) => {
+        try {
+            await CRMService.createAssignment(assignmentData);
+            // Agregar edge visual
+            setEdges((eds) => addEdge(pendingConnection.params, eds));
+            setShowAssignModal(false);
+            setPendingConnection(null);
+            // Recargar datos
+            window.location.reload();
+        } catch (error) {
+            alert('Error al crear asignación: ' + error.message);
+        }
+    };
     
     useEffect(() => {
         generateFlowData();
-    }, [models, chatters, assignments, supervisors]);
+    }, [models, chatters, assignments, supervisors, searchTerm]);
     
     const generateFlowData = () => {
         const newNodes = [];
@@ -366,8 +400,29 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
             });
         });
         
-        setNodes(newNodes);
-        setEdges(newEdges);
+        // Aplicar búsqueda si existe
+        let filteredNodes = newNodes;
+        let filteredEdges = newEdges;
+        
+        if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            filteredNodes = newNodes.filter(node => {
+                const label = typeof node.data.label === 'string' 
+                    ? node.data.label 
+                    : node.data.label?.props?.children?.[0]?.props?.children || '';
+                const labelText = typeof label === 'string' ? label : '';
+                return labelText.toLowerCase().includes(term);
+            });
+            
+            // Filtrar edges que conecten nodos visibles
+            const visibleIds = filteredNodes.map(n => n.id);
+            filteredEdges = newEdges.filter(e => 
+                visibleIds.includes(e.source) && visibleIds.includes(e.target)
+            );
+        }
+        
+        setNodes(filteredNodes);
+        setEdges(filteredEdges);
     };
     
     const onNodeClick = (event, node) => {
@@ -408,7 +463,22 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
             </div>
             
             {selectedNode && (
-                <NodeDetailSidebar node={selectedNode} onClose={() => setSelectedNode(null)} />
+                <NodeDetailSidebar 
+                    node={selectedNode} 
+                    models={models}
+                    chatters={chatters}
+                    assignments={assignments}
+                    onClose={() => setSelectedNode(null)} 
+                />
+            )}
+            
+            {showAssignModal && pendingConnection && (
+                <QuickAssignModal 
+                    chatter={chatters.find(c => c.id === pendingConnection.chatter_id)}
+                    model={models.find(m => m.id === pendingConnection.model_id)}
+                    onConfirm={handleConfirmConnection}
+                    onCancel={() => { setShowAssignModal(false); setPendingConnection(null); }}
+                />
             )}
         </div>
     );
@@ -417,13 +487,63 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
 // ============================================
 // NODE DETAIL SIDEBAR
 // ============================================
-function NodeDetailSidebar({ node, onClose }) {
+function NodeDetailSidebar({ node, models, chatters, assignments, onClose }) {
+    const [type, id] = node.id.split('-');
+    
+    let entity, relatedData, relatedLabel;
+    
+    if (type === 'chatter') {
+        entity = chatters.find(c => c.id === parseInt(id));
+        relatedData = assignments
+            .filter(a => a.chatter_id === parseInt(id))
+            .map(a => {
+                const model = models.find(m => m.id === a.model_id);
+                return { ...a, _model: model };
+            });
+        relatedLabel = 'Modelos Asignados';
+    } else if (type === 'model') {
+        entity = models.find(m => m.id === parseInt(id));
+        relatedData = assignments
+            .filter(a => a.model_id === parseInt(id))
+            .map(a => {
+                const chatter = chatters.find(c => c.id === a.chatter_id);
+                return { ...a, _chatter: chatter };
+            });
+        relatedLabel = 'Chatters Asignados';
+    } else if (type === 'supervisor') {
+        entity = { id: parseInt(id), nombre: node.data.label.replace('👔 ', '') };
+        relatedData = [];
+        relatedLabel = 'Supervisión';
+    }
+    
+    if (!entity) {
+        return (
+            <div style={{
+                position: 'fixed',
+                right: 0,
+                top: 0,
+                width: '350px',
+                height: '100vh',
+                background: 'rgba(20, 20, 20, 0.98)',
+                borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+                padding: '2rem',
+                overflowY: 'auto',
+                zIndex: 100
+            }}>
+                <div className="crm-flex-between crm-mb-4">
+                    <h3 className="crm-card-title">Entidad no encontrada</h3>
+                    <button className="crm-modal-close" onClick={onClose}>✕</button>
+                </div>
+            </div>
+        );
+    }
+    
     return (
         <div style={{
             position: 'fixed',
             right: 0,
             top: 0,
-            width: '350px',
+            width: '400px',
             height: '100vh',
             background: 'rgba(20, 20, 20, 0.98)',
             borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
@@ -435,13 +555,126 @@ function NodeDetailSidebar({ node, onClose }) {
                 <h3 className="crm-card-title">Detalles</h3>
                 <button className="crm-modal-close" onClick={onClose}>✕</button>
             </div>
-            <div className="crm-card">
-                <p style={{color: 'rgba(255,255,255,0.7)'}}>
-                    ID: {node.id}
-                </p>
-                <p style={{marginTop: '0.5rem', color: 'rgba(255,255,255,0.7)'}}>
-                    Tipo: {node.className?.replace('react-flow__node-', '') || 'N/A'}
-                </p>
+            
+            <div className="crm-card" style={{marginBottom: '1rem'}}>
+                {type === 'chatter' && (
+                    <>
+                        <h2 style={{fontSize: '1.5rem', marginBottom: '1rem'}}>👤 {entity.nombre}</h2>
+                        <div style={{display: 'grid', gap: '0.75rem'}}>
+                            <div>
+                                <strong>Estado:</strong>{' '}
+                                <span className={`crm-badge crm-badge-${entity.estado === 'activo' ? 'success' : entity.estado === 'prueba' ? 'warning' : 'secondary'}`}>
+                                    {entity.estado}
+                                </span>
+                            </div>
+                            <div><strong>Nivel:</strong> {entity.nivel}</div>
+                            <div><strong>País:</strong> {entity.pais || 'N/A'}</div>
+                        </div>
+                    </>
+                )}
+                {type === 'model' && (
+                    <>
+                        <h2 style={{fontSize: '1.5rem', marginBottom: '1rem'}}>💎 @{entity.handle}</h2>
+                        <div style={{display: 'grid', gap: '0.75rem'}}>
+                            <div><strong>Facturación:</strong> ${entity.estimado_facturacion_mensual?.toLocaleString() || 0}/mes</div>
+                            <div>
+                                <strong>Prioridad:</strong>{' '}
+                                <span className="crm-badge crm-badge-info">{entity.prioridad}/5</span>
+                            </div>
+                        </div>
+                    </>
+                )}
+                {type === 'supervisor' && (
+                    <>
+                        <h2 style={{fontSize: '1.5rem', marginBottom: '1rem'}}>👔 {entity.nombre}</h2>
+                        <p style={{color: 'rgba(255,255,255,0.7)'}}>Supervisor de toda la operación</p>
+                    </>
+                )}
+            </div>
+            
+            {relatedData.length > 0 && (
+                <div className="crm-card">
+                    <h4 style={{marginBottom: '1rem', fontSize: '1.1rem'}}>{relatedLabel} ({relatedData.length})</h4>
+                    <div style={{display: 'grid', gap: '0.75rem'}}>
+                        {relatedData.map(item => (
+                            <div key={item.id} style={{
+                                padding: '0.75rem',
+                                background: 'rgba(255,255,255,0.03)',
+                                borderRadius: '0.5rem',
+                                borderLeft: '3px solid #8B5CF6'
+                            }}>
+                                <div style={{fontWeight: 600, marginBottom: '0.25rem'}}>
+                                    {type === 'chatter' ? `💎 @${item._model?.handle}` : `👤 ${item._chatter?.nombre}`}
+                                </div>
+                                <div style={{fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)'}}>
+                                    Estado: <span className={`crm-badge crm-badge-${item.estado === 'activa' ? 'success' : 'warning'}`} style={{padding: '0.15rem 0.5rem', fontSize: '0.75rem'}}>
+                                        {item.estado}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            
+            {relatedData.length === 0 && type !== 'supervisor' && (
+                <div className="crm-card">
+                    <p style={{color: 'rgba(255,255,255,0.5)', textAlign: 'center', padding: '2rem'}}>
+                        Sin asignaciones activas
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ============================================
+// QUICK ASSIGN MODAL (desde mapa)
+// ============================================
+function QuickAssignModal({ chatter, model, onConfirm, onCancel }) {
+    const [estado, setEstado] = useState('activa');
+    
+    const handleConfirm = () => {
+        onConfirm({
+            chatter_id: chatter.id,
+            model_id: model.id,
+            horario: {},
+            estado: estado
+        });
+    };
+    
+    return (
+        <div className="crm-modal-overlay" onClick={onCancel}>
+            <div className="crm-modal" style={{maxWidth: '500px'}} onClick={(e) => e.stopPropagation()}>
+                <div className="crm-modal-header">
+                    <h3 className="crm-modal-title">✨ Confirmar Asignación</h3>
+                    <button className="crm-modal-close" onClick={onCancel}>✕</button>
+                </div>
+                <div className="crm-modal-body">
+                    <div style={{textAlign: 'center', padding: '1rem', background: 'rgba(139, 92, 246, 0.1)', borderRadius: '0.75rem', marginBottom: '1.5rem'}}>
+                        <div style={{fontSize: '2rem', marginBottom: '0.5rem'}}>👤 ➜ 💎</div>
+                        <div style={{fontSize: '1.1rem', fontWeight: 600}}>
+                            {chatter.nombre} → @{model.handle}
+                        </div>
+                    </div>
+                    
+                    <div className="crm-form-group">
+                        <label className="crm-label">Estado de la asignación</label>
+                        <select className="crm-input" value={estado} onChange={(e) => setEstado(e.target.value)}>
+                            <option value="activa">✅ Activa</option>
+                            <option value="prueba">⚠️ Prueba</option>
+                            <option value="reemplazo">🔄 Reemplazo</option>
+                        </select>
+                    </div>
+                    
+                    <p style={{fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)', marginTop: '1rem'}}>
+                        💡 Podrás configurar horarios detallados desde la pestaña "Asignaciones" en Configuración.
+                    </p>
+                </div>
+                <div className="crm-modal-footer">
+                    <button type="button" className="crm-btn crm-btn-secondary" onClick={onCancel}>Cancelar</button>
+                    <button type="button" className="crm-btn crm-btn-primary" onClick={handleConfirm}>✓ Confirmar Asignación</button>
+                </div>
             </div>
         </div>
     );
@@ -526,8 +759,16 @@ function MarketingView({ staff }) {
                         <span className="crm-badge crm-badge-info">{staffByRole.VA_EDITOR.length}</span>
                     </div>
                     {staffByRole.VA_EDITOR.map(s => (
-                        <div key={s.id} style={{padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
-                            {s.nombre}
+                        <div key={s.id} style={{padding: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem'}}>
+                                <strong>{s.nombre}</strong>
+                                <span className={`crm-badge crm-badge-${s.estado === 'activo' ? 'success' : 'warning'}`} style={{fontSize: '0.75rem'}}>
+                                    {s.estado}
+                                </span>
+                            </div>
+                            <div style={{fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)'}}>
+                                {s.modelos_asignados?.length || 0} modelos asignados
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -538,8 +779,16 @@ function MarketingView({ staff }) {
                         <span className="crm-badge crm-badge-info">{staffByRole.AM_UPLOAD.length}</span>
                     </div>
                     {staffByRole.AM_UPLOAD.map(s => (
-                        <div key={s.id} style={{padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
-                            {s.nombre}
+                        <div key={s.id} style={{padding: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem'}}>
+                                <strong>{s.nombre}</strong>
+                                <span className={`crm-badge crm-badge-${s.estado === 'activo' ? 'success' : 'warning'}`} style={{fontSize: '0.75rem'}}>
+                                    {s.estado}
+                                </span>
+                            </div>
+                            <div style={{fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)'}}>
+                                {s.modelos_asignados?.length || 0} modelos asignados
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -550,8 +799,16 @@ function MarketingView({ staff }) {
                         <span className="crm-badge crm-badge-info">{staffByRole.CD.length}</span>
                     </div>
                     {staffByRole.CD.map(s => (
-                        <div key={s.id} style={{padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
-                            {s.nombre}
+                        <div key={s.id} style={{padding: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem'}}>
+                                <strong>{s.nombre}</strong>
+                                <span className={`crm-badge crm-badge-${s.estado === 'activo' ? 'success' : 'warning'}`} style={{fontSize: '0.75rem'}}>
+                                    {s.estado}
+                                </span>
+                            </div>
+                            <div style={{fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)'}}>
+                                {s.modelos_asignados?.length || 0} modelos asignados
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -563,7 +820,7 @@ function MarketingView({ staff }) {
 // ============================================
 // CONFIGURACION VIEW (CRUD)
 // ============================================
-function ConfiguracionView({ models, chatters, socialAccounts, supervisors, staff, onRefresh }) {
+function ConfiguracionView({ models, chatters, assignments, socialAccounts, supervisors, staff, onRefresh }) {
     const [activeTab, setActiveTab] = useState('models');
     
     return (
@@ -574,6 +831,9 @@ function ConfiguracionView({ models, chatters, socialAccounts, supervisors, staf
                 </div>
                 <div className={`crm-tab ${activeTab === 'chatters' ? 'active' : ''}`} onClick={() => setActiveTab('chatters')}>
                     👤 Chatters
+                </div>
+                <div className={`crm-tab ${activeTab === 'assignments' ? 'active' : ''}`} onClick={() => setActiveTab('assignments')}>
+                    🔗 Asignaciones
                 </div>
                 <div className={`crm-tab ${activeTab === 'social' ? 'active' : ''}`} onClick={() => setActiveTab('social')}>
                     📱 Redes Sociales
@@ -588,9 +848,10 @@ function ConfiguracionView({ models, chatters, socialAccounts, supervisors, staf
             
             {activeTab === 'models' && <ModelsTable models={models} onRefresh={onRefresh} />}
             {activeTab === 'chatters' && <ChattersTable chatters={chatters} onRefresh={onRefresh} />}
+            {activeTab === 'assignments' && <AssignmentsTable assignments={assignments} chatters={chatters} models={models} onRefresh={onRefresh} />}
             {activeTab === 'social' && <SocialAccountsTable socialAccounts={socialAccounts} models={models} onRefresh={onRefresh} />}
             {activeTab === 'supervisors' && <SupervisorsTable supervisors={supervisors} onRefresh={onRefresh} />}
-            {activeTab === 'staff' && <StaffTable staff={staff} onRefresh={onRefresh} />}
+            {activeTab === 'staff' && <StaffTable staff={staff} models={models} onRefresh={onRefresh} />}
         </div>
     );
 }
@@ -878,6 +1139,177 @@ function ChatterModal({ chatter, onClose, onSave }) {
     );
 }
 
+// ============================================
+// ASSIGNMENTS TABLE
+// ============================================
+function AssignmentsTable({ assignments, chatters, models, onRefresh }) {
+    const [showModal, setShowModal] = useState(false);
+    const [editingAssignment, setEditingAssignment] = useState(null);
+    
+    const handleDelete = async (id) => {
+        if (confirm('¿Eliminar esta asignación?')) {
+            await CRMService.deleteAssignment(id);
+            onRefresh();
+        }
+    };
+    
+    const getChatterName = (chatterId) => {
+        const chatter = chatters.find(c => c.id === chatterId);
+        return chatter ? chatter.nombre : 'N/A';
+    };
+    
+    const getModelHandle = (modelId) => {
+        const model = models.find(m => m.id === modelId);
+        return model ? `@${model.handle}` : 'N/A';
+    };
+    
+    return (
+        <div>
+            <div className="crm-flex-between crm-mb-4">
+                <h2 className="crm-card-title">Asignaciones Chatter ↔ Modelo ({assignments.length})</h2>
+                <button className="crm-btn crm-btn-primary crm-btn-sm" onClick={() => { setEditingAssignment(null); setShowModal(true); }}>
+                    ➕ Nueva Asignación
+                </button>
+            </div>
+            
+            <div className="crm-table-container">
+                <table className="crm-table">
+                    <thead>
+                        <tr>
+                            <th>Chatter</th>
+                            <th>Modelo</th>
+                            <th>Estado</th>
+                            <th>Horario</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {assignments.map(assignment => (
+                            <tr key={assignment.id}>
+                                <td><strong>{getChatterName(assignment.chatter_id)}</strong></td>
+                                <td><strong>{getModelHandle(assignment.model_id)}</strong></td>
+                                <td>
+                                    <span className={`crm-badge ${assignment.estado === 'activa' ? 'crm-badge-success' : assignment.estado === 'prueba' ? 'crm-badge-warning' : 'crm-badge-info'}`}>
+                                        {assignment.estado}
+                                    </span>
+                                </td>
+                                <td style={{fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)'}}>
+                                    {assignment.horario && Object.keys(assignment.horario).length > 0 
+                                        ? `${Object.keys(assignment.horario).length} días` 
+                                        : 'Sin horario'}
+                                </td>
+                                <td>
+                                    <div className="crm-table-actions">
+                                        <button className="crm-btn crm-btn-secondary crm-btn-sm" onClick={() => { setEditingAssignment(assignment); setShowModal(true); }}>✏️</button>
+                                        <button className="crm-btn crm-btn-danger crm-btn-sm" onClick={() => handleDelete(assignment.id)}>🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            
+            {showModal && <AssignmentModal assignment={editingAssignment} chatters={chatters} models={models} onClose={() => setShowModal(false)} onSave={onRefresh} />}
+        </div>
+    );
+}
+
+function AssignmentModal({ assignment, chatters, models, onClose, onSave }) {
+    const [formData, setFormData] = useState(assignment || { 
+        chatter_id: chatters[0]?.id || '', 
+        model_id: models[0]?.id || '', 
+        horario: {}, 
+        estado: 'activa' 
+    });
+    
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        // Validar duplicados
+        if (!assignment) {
+            const exists = await CRMService.getAssignments();
+            const duplicate = exists.data?.find(a => 
+                a.chatter_id === parseInt(formData.chatter_id) && 
+                a.model_id === parseInt(formData.model_id)
+            );
+            if (duplicate) {
+                alert('⚠️ Esta asignación ya existe. Un chatter no puede estar asignado dos veces al mismo modelo.');
+                return;
+            }
+        }
+        
+        if (assignment) {
+            await CRMService.updateAssignment(assignment.id, formData);
+        } else {
+            await CRMService.createAssignment(formData);
+        }
+        onSave();
+        onClose();
+    };
+    
+    return (
+        <div className="crm-modal-overlay" onClick={onClose}>
+            <div className="crm-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="crm-modal-header">
+                    <h3 className="crm-modal-title">{assignment ? 'Editar Asignación' : 'Nueva Asignación'}</h3>
+                    <button className="crm-modal-close" onClick={onClose}>✕</button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="crm-modal-body">
+                        <div className="crm-form-group">
+                            <label className="crm-label">Chatter *</label>
+                            <select className="crm-input" value={formData.chatter_id} onChange={(e) => setFormData({...formData, chatter_id: parseInt(e.target.value)})} required>
+                                {chatters.map(chatter => (
+                                    <option key={chatter.id} value={chatter.id}>{chatter.nombre} ({chatter.nivel})</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="crm-form-group">
+                            <label className="crm-label">Modelo *</label>
+                            <select className="crm-input" value={formData.model_id} onChange={(e) => setFormData({...formData, model_id: parseInt(e.target.value)})} required>
+                                {models.map(model => (
+                                    <option key={model.id} value={model.id}>@{model.handle} (Prioridad: {model.prioridad})</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="crm-form-group">
+                            <label className="crm-label">Estado</label>
+                            <select className="crm-input" value={formData.estado} onChange={(e) => setFormData({...formData, estado: e.target.value})}>
+                                <option value="activa">Activa</option>
+                                <option value="prueba">Prueba</option>
+                                <option value="reemplazo">Reemplazo</option>
+                            </select>
+                        </div>
+                        <div className="crm-form-group">
+                            <label className="crm-label">Horario (opcional)</label>
+                            <p style={{fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.5rem'}}>
+                                Formato JSON: {`{"L": ["09:00-17:00"], "M": ["09:00-17:00"]}`}
+                            </p>
+                            <textarea 
+                                className="crm-input" 
+                                value={JSON.stringify(formData.horario, null, 2)} 
+                                onChange={(e) => {
+                                    try {
+                                        setFormData({...formData, horario: JSON.parse(e.target.value)});
+                                    } catch (err) {
+                                        // Mantener valor mientras edita
+                                    }
+                                }}
+                                rows="4"
+                            />
+                        </div>
+                    </div>
+                    <div className="crm-modal-footer">
+                        <button type="button" className="crm-btn crm-btn-secondary" onClick={onClose}>Cancelar</button>
+                        <button type="submit" className="crm-btn crm-btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
 // Social Accounts Table
 function SocialAccountsTable({ socialAccounts, models, onRefresh }) {
     const [showModal, setShowModal] = useState(false);
@@ -1112,7 +1544,7 @@ function SupervisorModal({ supervisor, onClose, onSave }) {
 }
 
 // Staff Table
-function StaffTable({ staff, onRefresh }) {
+function StaffTable({ staff, models, onRefresh }) {
     const [showModal, setShowModal] = useState(false);
     const [editingStaff, setEditingStaff] = useState(null);
     
@@ -1173,13 +1605,23 @@ function StaffTable({ staff, onRefresh }) {
                 </table>
             </div>
             
-            {showModal && <StaffModal staff={editingStaff} onClose={() => setShowModal(false)} onSave={onRefresh} />}
+            {showModal && <StaffModal staff={editingStaff} models={models} onClose={() => setShowModal(false)} onSave={onRefresh} />}
         </div>
     );
 }
 
-function StaffModal({ staff, onClose, onSave }) {
+function StaffModal({ staff, models, onClose, onSave }) {
     const [formData, setFormData] = useState(staff || { nombre: '', rol: 'AM_UPLOAD', estado: 'activo', modelos_asignados: [] });
+    
+    const toggleModel = (modelId) => {
+        const current = formData.modelos_asignados || [];
+        setFormData({
+            ...formData,
+            modelos_asignados: current.includes(modelId)
+                ? current.filter(id => id !== modelId)
+                : [...current, modelId]
+        });
+    };
     
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -1220,6 +1662,23 @@ function StaffModal({ staff, onClose, onSave }) {
                                 <option value="prueba">Prueba</option>
                                 <option value="pausado">Pausado</option>
                             </select>
+                        </div>
+                        <div className="crm-form-group">
+                            <label className="crm-label">Modelos Asignados ({(formData.modelos_asignados || []).length}/{models.length})</label>
+                            <div style={{display: 'grid', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto', padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem'}}>
+                                {models.map(model => (
+                                    <label key={model.id} style={{display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', padding: '0.5rem', borderRadius: '0.25rem', background: (formData.modelos_asignados || []).includes(model.id) ? 'rgba(139, 92, 246, 0.2)' : 'transparent'}}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={(formData.modelos_asignados || []).includes(model.id)}
+                                            onChange={() => toggleModel(model.id)}
+                                            style={{width: '18px', height: '18px'}}
+                                        />
+                                        <span>💎 @{model.handle}</span>
+                                        <span className="crm-badge crm-badge-info" style={{marginLeft: 'auto', fontSize: '0.7rem'}}>P{model.prioridad}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                     </div>
                     <div className="crm-modal-footer">
