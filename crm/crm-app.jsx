@@ -605,8 +605,6 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
             });
         });
         
-        yOffset += 200;
-        
         // ========================================
         // NIVEL 2: CHATTERS (Grouped by level)
         // ========================================
@@ -615,9 +613,6 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
             mid: chatters.filter(c => c.nivel === 'mid' && c.estado === 'activo'),
             junior: chatters.filter(c => c.nivel === 'junior' && c.estado === 'activo'),
         };
-        
-        let xOffset = 100;
-        const columnWidth = 280;
         
         Object.entries(chattersByLevel).forEach(([level, group]) => {
             group.forEach((chatter, idx) => {
@@ -708,11 +703,7 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
                     className: `react-flow__node-chatter react-flow__node-chatter-${level}`,
                 });
             });
-            xOffset += columnWidth;
         });
-        
-        const maxChattersInColumn = Math.max(...Object.values(chattersByLevel).map(g => g.length), 1);
-        yOffset += maxChattersInColumn * 180 + 80;
         
         // ========================================
         // NIVEL 3: MODELS (Sorted by priority)
