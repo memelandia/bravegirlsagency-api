@@ -599,13 +599,13 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
                 
                 {/* Leyenda */}
                 <div style={{marginTop: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center'}}>
-                    <span style={{fontSize: '0.85rem', opacity: 0.7'}}>Leyenda:</span>
+                    <span style={{fontSize: '0.85rem', opacity: 0.7}}>Leyenda:</span>
                     <span className="crm-badge" style={{background: 'rgba(139,92,246,0.15)', color: '#8B5CF6'}}>👔 Supervisores</span>
                     <span className="crm-badge" style={{background: 'rgba(59,130,246,0.15)', color: '#3B82F6'}}>👑 Senior</span>
                     <span className="crm-badge" style={{background: 'rgba(245,158,11,0.15)', color: '#F59E0B'}}>⭐ Mid</span>
                     <span className="crm-badge" style={{background: 'rgba(100,116,139,0.15)', color: '#64748B'}}>🌱 Junior</span>
                     <span className="crm-badge" style={{background: 'rgba(255,107,179,0.15)', color: '#FF6BB3'}}>💎 Modelos</span>
-                    <div style={{marginLeft: 'auto', fontSize: '0.85rem', opacity: 0.7'}}>
+                    <div style={{marginLeft: 'auto', fontSize: '0.85rem', opacity: 0.7}}>
                         Promedio: <strong>{avgModelsPerChatter}</strong> modelos por chatter
                     </div>
                 </div>
