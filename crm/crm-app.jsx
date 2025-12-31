@@ -1039,9 +1039,9 @@ function ChattersTable({ chatters, onRefresh }) {
                                     </span>
                                 </td>
                                 <td>
-                                    <span className={`crm-badge ${chatter.nivel === 'senior' ? 'crm-badge-info' : chatter.nivel === 'mid' ? 'crm-badge-warning' : 'crm-badge-secondary'}`}>
-                                        {chatter.nivel}
-                                    </span>
+                                    {chatter.nivel === 'senior' && <span className="crm-badge crm-badge-info" style={{background: 'rgba(59, 130, 246, 0.2)', color: '#93C5FD', borderColor: 'rgba(59, 130, 246, 0.4)', fontWeight: '700'}}>👑 SENIOR</span>}
+                                    {chatter.nivel === 'mid' && <span className="crm-badge crm-badge-warning" style={{background: 'rgba(245, 158, 11, 0.2)', color: '#FCD34D', borderColor: 'rgba(245, 158, 11, 0.4)', fontWeight: '700'}}>⭐ MID</span>}
+                                    {chatter.nivel === 'junior' && <span className="crm-badge crm-badge-secondary" style={{background: 'rgba(148, 163, 184, 0.2)', color: '#CBD5E1', borderColor: 'rgba(148, 163, 184, 0.4)', fontWeight: '600'}}>🌱 JUNIOR</span>}
                                 </td>
                                 <td>{chatter.pais || '-'}</td>
                                 <td>
@@ -1135,6 +1135,119 @@ function ChatterModal({ chatter, onClose, onSave }) {
                     </div>
                 </form>
             </div>
+        </div>
+    );
+}
+
+// ============================================
+// SCHEDULE SELECTOR - Selector Visual de Horarios
+// ============================================
+function ScheduleSelector({ schedule, onChange }) {
+    const days = [
+        { key: 'L', label: 'Lunes' },
+        { key: 'M', label: 'Martes' },
+        { key: 'X', label: 'Miércoles' },
+        { key: 'J', label: 'Jueves' },
+        { key: 'V', label: 'Viernes' },
+        { key: 'S', label: 'Sábado' },
+        { key: 'D', label: 'Domingo' }
+    ];
+    
+    const toggleDay = (dayKey) => {
+        const newSchedule = {...schedule};
+        if (newSchedule[dayKey]) {
+            delete newSchedule[dayKey];
+        } else {
+            newSchedule[dayKey] = ['09:00-17:00'];
+        }
+        onChange(newSchedule);
+    };
+    
+    const updateTimeRange = (dayKey, index, newRange) => {
+        const newSchedule = {...schedule};
+        if (!newSchedule[dayKey]) newSchedule[dayKey] = [];
+        newSchedule[dayKey][index] = newRange;
+        onChange(newSchedule);
+    };
+    
+    const addTimeSlot = (dayKey) => {
+        const newSchedule = {...schedule};
+        if (!newSchedule[dayKey]) newSchedule[dayKey] = [];
+        newSchedule[dayKey].push('18:00-22:00');
+        onChange(newSchedule);
+    };
+    
+    const removeTimeSlot = (dayKey, index) => {
+        const newSchedule = {...schedule};
+        newSchedule[dayKey].splice(index, 1);
+        if (newSchedule[dayKey].length === 0) {
+            delete newSchedule[dayKey];
+        }
+        onChange(newSchedule);
+    };
+    
+    return (
+        <div style={{padding: '1rem', background: 'rgba(30, 41, 59, 0.3)', borderRadius: '0.75rem', border: '1px solid rgba(148, 163, 184, 0.1)'}}>
+            {days.map(day => {
+                const isActive = schedule[day.key] !== undefined;
+                return (
+                    <div key={day.key} style={{marginBottom: '0.75rem', padding: '0.75rem', background: isActive ? 'rgba(255, 107, 179, 0.05)' : 'rgba(255, 255, 255, 0.02)', borderRadius: '0.5rem', border: '1px solid', borderColor: isActive ? 'rgba(255, 107, 179, 0.2)' : 'rgba(148, 163, 184, 0.1)', transition: 'all 0.2s ease'}}>
+                        <label style={{display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', marginBottom: isActive ? '0.75rem' : '0'}}>
+                            <input 
+                                type="checkbox"
+                                checked={isActive}
+                                onChange={() => toggleDay(day.key)}
+                                style={{width: '20px', height: '20px', cursor: 'pointer', accentColor: '#FF6BB3'}}
+                            />
+                            <span style={{fontWeight: isActive ? '600' : '500', color: isActive ? 'var(--crm-text-primary)' : 'var(--crm-text-secondary)', fontSize: '0.95rem'}}>{day.label}</span>
+                        </label>
+                        
+                        {isActive && schedule[day.key]?.map((timeRange, idx) => {
+                            const [start, end] = timeRange.split('-');
+                            return (
+                                <div key={idx} style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: idx > 0 ? '0.5rem' : '0'}}>
+                                    <input 
+                                        type="time"
+                                        value={start}
+                                        onChange={(e) => updateTimeRange(day.key, idx, `${e.target.value}-${end}`)}
+                                        className="crm-input"
+                                        style={{flex: 1, padding: '0.5rem', fontSize: '0.9rem'}}
+                                    />
+                                    <span style={{color: 'var(--crm-text-secondary)'}}>→</span>
+                                    <input 
+                                        type="time"
+                                        value={end}
+                                        onChange={(e) => updateTimeRange(day.key, idx, `${start}-${e.target.value}`)}
+                                        className="crm-input"
+                                        style={{flex: 1, padding: '0.5rem', fontSize: '0.9rem'}}
+                                    />
+                                    {schedule[day.key].length > 1 && (
+                                        <button 
+                                            type="button"
+                                            onClick={() => removeTimeSlot(day.key, idx)}
+                                            className="crm-btn crm-btn-danger crm-btn-sm"
+                                            style={{padding: '0.4rem 0.6rem', fontSize: '0.8rem'}}
+                                        >
+                                            🗑️
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                        
+                        {isActive && (
+                            <button 
+                                type="button"
+                                onClick={() => addTimeSlot(day.key)}
+                                className="crm-btn crm-btn-secondary crm-btn-sm"
+                                style={{marginTop: '0.5rem', fontSize: '0.85rem', padding: '0.4rem 0.75rem'}}
+                            >
+                                ➕ Agregar horario
+                            </button>
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }
@@ -1282,21 +1395,10 @@ function AssignmentModal({ assignment, chatters, models, onClose, onSave }) {
                             </select>
                         </div>
                         <div className="crm-form-group">
-                            <label className="crm-label">Horario (opcional)</label>
-                            <p style={{fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.5rem'}}>
-                                Formato JSON: {`{"L": ["09:00-17:00"], "M": ["09:00-17:00"]}`}
-                            </p>
-                            <textarea 
-                                className="crm-input" 
-                                value={JSON.stringify(formData.horario, null, 2)} 
-                                onChange={(e) => {
-                                    try {
-                                        setFormData({...formData, horario: JSON.parse(e.target.value)});
-                                    } catch (err) {
-                                        // Mantener valor mientras edita
-                                    }
-                                }}
-                                rows="4"
+                            <label className="crm-label">Horario Semanal</label>
+                            <ScheduleSelector 
+                                schedule={formData.horario || {}} 
+                                onChange={(newSchedule) => setFormData({...formData, horario: newSchedule})}
                             />
                         </div>
                     </div>
