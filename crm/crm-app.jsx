@@ -95,6 +95,40 @@ const CRMService = {
 };
 
 // ============================================
+// UTILITY FUNCTIONS
+// ============================================
+const getCountryFlag = (country) => {
+    const flags = {
+        'Venezuela': '🇻🇪',
+        'Colombia': '🇨🇴',
+        'Argentina': '🇦🇷',
+        'México': '🇲🇽',
+        'Mexico': '🇲🇽',
+        'Perú': '🇵🇪',
+        'Peru': '🇵🇪',
+        'Chile': '🇨🇱',
+        'Ecuador': '🇪🇨',
+        'Bolivia': '🇧🇴',
+        'Uruguay': '🇺🇾',
+        'Paraguay': '🇵🇾',
+        'Brasil': '🇧🇷',
+        'Brazil': '🇧🇷',
+        'España': '🇪🇸',
+        'Spain': '🇪🇸',
+        'USA': '🇺🇸',
+        'Estados Unidos': '🇺🇸',
+    };
+    return flags[country] || '🌎';
+};
+
+const getRevenueColor = (revenue) => {
+    if (revenue >= 10000) return { bg: 'rgba(16, 185, 129, 0.15)', text: '#10B981', label: 'ALTO' };
+    if (revenue >= 5000) return { bg: 'rgba(59, 130, 246, 0.15)', text: '#3B82F6', label: 'MEDIO' };
+    if (revenue >= 2000) return { bg: 'rgba(245, 158, 11, 0.15)', text: '#F59E0B', label: 'BAJO' };
+    return { bg: 'rgba(100, 116, 139, 0.15)', text: '#64748B', label: 'NUEVO' };
+};
+
+// ============================================
 // MAIN APP COMPONENT
 // ============================================
 function CRMApp() {
@@ -1187,21 +1221,38 @@ function ModelsTable({ models, onRefresh }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {models.map(model => (
-                            <tr key={model.id}>
-                                <td><strong>@{model.handle}</strong></td>
-                                <td>${model.estimado_facturacion_mensual?.toLocaleString() || 0}</td>
-                                <td>
-                                    <span className="crm-badge crm-badge-info">{model.prioridad}/5</span>
-                                </td>
-                                <td>
-                                    <div className="crm-table-actions">
-                                        <button className="crm-btn crm-btn-secondary crm-btn-sm" onClick={() => handleEdit(model)}>✏️</button>
-                                        <button className="crm-btn crm-btn-danger crm-btn-sm" onClick={() => handleDelete(model.id)}>🗑️</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                        {models.map(model => {
+                            const revenueStyle = getRevenueColor(model.estimado_facturacion_mensual || 0);
+                            return (
+                                <tr key={model.id}>
+                                    <td><strong>💎 @{model.handle}</strong></td>
+                                    <td>
+                                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                                            <span style={{fontWeight: '700', fontSize: '1rem'}}>${(model.estimado_facturacion_mensual || 0).toLocaleString()}</span>
+                                            <span style={{
+                                                background: revenueStyle.bg,
+                                                color: revenueStyle.text,
+                                                padding: '2px 8px',
+                                                borderRadius: '4px',
+                                                fontSize: '0.7rem',
+                                                fontWeight: '700'
+                                            }}>
+                                                {revenueStyle.label}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span className="crm-badge crm-badge-info">{'⭐'.repeat(model.prioridad)}</span>
+                                    </td>
+                                    <td>
+                                        <div className="crm-table-actions">
+                                            <button className="crm-btn crm-btn-secondary crm-btn-sm" onClick={() => handleEdit(model)}>✏️</button>
+                                            <button className="crm-btn crm-btn-danger crm-btn-sm" onClick={() => handleDelete(model.id)}>🗑️</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -1332,12 +1383,11 @@ function ChattersTable({ chatters, onRefresh }) {
                                         {chatter.estado}
                                     </span>
                                 </td>
-                                <td>
-                                    {chatter.nivel === 'senior' && <span className="crm-badge crm-badge-info" style={{background: 'rgba(59, 130, 246, 0.2)', color: '#93C5FD', borderColor: 'rgba(59, 130, 246, 0.4)', fontWeight: '700'}}>👑 SENIOR</span>}
+                                <td>{chatter.nivel === 'senior' && <span className="crm-badge crm-badge-info" style={{background: 'rgba(59, 130, 246, 0.2)', color: '#93C5FD', borderColor: 'rgba(59, 130, 246, 0.4)', fontWeight: '700'}}>👑 SENIOR</span>}
                                     {chatter.nivel === 'mid' && <span className="crm-badge crm-badge-warning" style={{background: 'rgba(245, 158, 11, 0.2)', color: '#FCD34D', borderColor: 'rgba(245, 158, 11, 0.4)', fontWeight: '700'}}>⭐ MID</span>}
                                     {chatter.nivel === 'junior' && <span className="crm-badge crm-badge-secondary" style={{background: 'rgba(148, 163, 184, 0.2)', color: '#CBD5E1', borderColor: 'rgba(148, 163, 184, 0.4)', fontWeight: '600'}}>🌱 JUNIOR</span>}
                                 </td>
-                                <td>{chatter.pais || '-'}</td>
+                                <td style={{fontSize: '1.1rem'}}>{getCountryFlag(chatter.pais)} <span style={{fontSize: '0.9rem', marginLeft: '0.5rem'}}>{chatter.pais || '-'}</span></td>
                                 <td>
                                     <div className="crm-table-actions">
                                         <button className="crm-btn crm-btn-secondary crm-btn-sm" onClick={() => handleEdit(chatter)}>✏️</button>
@@ -1562,13 +1612,20 @@ function AssignmentsTable({ assignments, chatters, models, onRefresh }) {
     
     const getChatterName = (chatterId) => {
         const chatter = chatters.find(c => c.id === chatterId);
-        return chatter ? chatter.nombre : 'N/A';
+        return chatter ? `${getCountryFlag(chatter.pais)} ${chatter.nombre}` : 'N/A';
     };
     
     const getModelHandle = (modelId) => {
         const model = models.find(m => m.id === modelId);
         return model ? `@${model.handle}` : 'N/A';
     };
+    
+    // Ordenar asignaciones por nombre de chatter
+    const sortedAssignments = [...assignments].sort((a, b) => {
+        const chatterA = chatters.find(c => c.id === a.chatter_id);
+        const chatterB = chatters.find(c => c.id === b.chatter_id);
+        return (chatterA?.nombre || '').localeCompare(chatterB?.nombre || '');
+    });
     
     return (
         <div>
@@ -1591,7 +1648,7 @@ function AssignmentsTable({ assignments, chatters, models, onRefresh }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {assignments.map(assignment => (
+                        {sortedAssignments.map(assignment => (
                             <tr key={assignment.id}>
                                 <td><strong>{getChatterName(assignment.chatter_id)}</strong></td>
                                 <td><strong>{getModelHandle(assignment.model_id)}</strong></td>
@@ -1623,36 +1680,66 @@ function AssignmentsTable({ assignments, chatters, models, onRefresh }) {
 }
 
 function AssignmentModal({ assignment, chatters, models, onClose, onSave }) {
-    const [formData, setFormData] = useState(assignment || { 
+    const [formData, setFormData] = useState(assignment ? {
+        chatter_id: assignment.chatter_id,
+        model_ids: [assignment.model_id], // Convertir a array para edición
+        horario: assignment.horario || {},
+        estado: assignment.estado
+    } : { 
         chatter_id: chatters[0]?.id || '', 
-        model_id: models[0]?.id || '', 
+        model_ids: [], // Múltiples modelos
         horario: {}, 
         estado: 'activa' 
     });
     
+    const toggleModel = (modelId) => {
+        const current = formData.model_ids || [];
+        const newIds = current.includes(modelId)
+            ? current.filter(id => id !== modelId)
+            : [...current, modelId];
+        setFormData({...formData, model_ids: newIds});
+    };
+    
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Validar duplicados
-        if (!assignment) {
-            const exists = await CRMService.getAssignments();
-            const duplicate = exists.data?.find(a => 
-                a.chatter_id === parseInt(formData.chatter_id) && 
-                a.model_id === parseInt(formData.model_id)
-            );
-            if (duplicate) {
-                alert('⚠️ Esta asignación ya existe. Un chatter no puede estar asignado dos veces al mismo modelo.');
-                return;
-            }
+        if (formData.model_ids.length === 0) {
+            alert('⚠️ Debes seleccionar al menos un modelo');
+            return;
         }
         
-        if (assignment) {
-            await CRMService.updateAssignment(assignment.id, formData);
-        } else {
-            await CRMService.createAssignment(formData);
+        try {
+            if (assignment) {
+                // Editar asignación existente
+                await CRMService.updateAssignment(assignment.id, {
+                    ...formData,
+                    model_id: formData.model_ids[0] // Solo actualizar el primero si es edición
+                });
+            } else {
+                // Crear múltiples asignaciones
+                for (const model_id of formData.model_ids) {
+                    // Validar duplicados
+                    const exists = await CRMService.getAssignments();
+                    const duplicate = exists.data?.find(a => 
+                        a.chatter_id === parseInt(formData.chatter_id) && 
+                        a.model_id === model_id
+                    );
+                    if (!duplicate) {
+                        await CRMService.createAssignment({
+                            chatter_id: formData.chatter_id,
+                            model_id: model_id,
+                            horario: formData.horario,
+                            estado: formData.estado
+                        });
+                    }
+                }
+            }
+            onSave();
+            onClose();
+        } catch (error) {
+            console.error('Error al guardar:', error);
+            alert('Error al guardar la asignación');
         }
-        onSave();
-        onClose();
     };
     
     return (
@@ -1666,19 +1753,46 @@ function AssignmentModal({ assignment, chatters, models, onClose, onSave }) {
                     <div className="crm-modal-body">
                         <div className="crm-form-group">
                             <label className="crm-label">Chatter *</label>
-                            <select className="crm-input" value={formData.chatter_id} onChange={(e) => setFormData({...formData, chatter_id: parseInt(e.target.value)})} required>
+                            <select 
+                                className="crm-input" 
+                                value={formData.chatter_id} 
+                                onChange={(e) => setFormData({...formData, chatter_id: parseInt(e.target.value)})} 
+                                required
+                                disabled={assignment} // No cambiar chatter en edición
+                            >
                                 {chatters.map(chatter => (
-                                    <option key={chatter.id} value={chatter.id}>{chatter.nombre} ({chatter.nivel})</option>
+                                    <option key={chatter.id} value={chatter.id}>
+                                        {getCountryFlag(chatter.pais)} {chatter.nombre} ({chatter.nivel})
+                                    </option>
                                 ))}
                             </select>
                         </div>
                         <div className="crm-form-group">
-                            <label className="crm-label">Modelo *</label>
-                            <select className="crm-input" value={formData.model_id} onChange={(e) => setFormData({...formData, model_id: parseInt(e.target.value)})} required>
-                                {models.map(model => (
-                                    <option key={model.id} value={model.id}>@{model.handle} (Prioridad: {model.prioridad})</option>
-                                ))}
-                            </select>
+                            <label className="crm-label">
+                                {assignment ? 'Modelo *' : `Modelos * (${formData.model_ids.length} seleccionados)`}
+                            </label>
+                            {assignment ? (
+                                <select className="crm-input" value={formData.model_ids[0]} onChange={(e) => setFormData({...formData, model_ids: [parseInt(e.target.value)]})} required>
+                                    {models.map(model => (
+                                        <option key={model.id} value={model.id}>@{model.handle} (P{model.prioridad})</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <div style={{maxHeight: '200px', overflowY: 'auto', border: '1px solid rgba(148,163,184,0.2)', borderRadius: '0.5rem', padding: '0.5rem', background: 'rgba(15,23,42,0.4)'}}>
+                                    {models.sort((a, b) => b.prioridad - a.prioridad).map(model => (
+                                        <label key={model.id} style={{display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', cursor: 'pointer', borderRadius: '0.25rem', background: formData.model_ids.includes(model.id) ? 'rgba(139,92,246,0.2)' : 'transparent'}}>
+                                            <input 
+                                                type="checkbox"
+                                                checked={formData.model_ids.includes(model.id)}
+                                                onChange={() => toggleModel(model.id)}
+                                                style={{width: '18px', height: '18px'}}
+                                            />
+                                            <span style={{flex: 1}}>💎 @{model.handle}</span>
+                                            <span style={{fontSize: '0.7rem', opacity: 0.7}}>P{model.prioridad}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <div className="crm-form-group">
                             <label className="crm-label">Estado</label>
