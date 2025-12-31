@@ -235,18 +235,33 @@ module.exports = async (req, res) => {
         if (path === 'staff') {
             if (req.method === 'GET') {
                 const result = await pool.query('SELECT * FROM crm_staff ORDER BY rol, nombre ASC');
-                return res.status(200).json({ success: true, data: result.rows });
+                // Parsear modelos_asignados de JSON string a array
+                const data = result.rows.map(row => ({
+                    ...row,
+                    modelos_asignados: typeof row.modelos_asignados === 'string' 
+                        ? JSON.parse(row.modelos_asignados) 
+                        : (row.modelos_asignados || [])
+                }));
+                return res.status(200).json({ success: true, data });
             }
             if (req.method === 'POST') {
                 const { nombre, rol, estado, modelos_asignados } = req.body;
                 if (!nombre || !rol) return res.status(400).json({ error: 'Nombre y rol son requeridos' });
                 const validRoles = ['EDITOR_REELS', 'PROGRAMADOR_PPV', 'AM_UPLOAD', 'CD', 'VA_EDITOR'];
                 if (!validRoles.includes(rol)) return res.status(400).json({ error: 'Rol inválido' });
+                
+                // Asegurar que modelos_asignados sea un array válido
+                const modelosArray = Array.isArray(modelos_asignados) ? modelos_asignados : [];
+                
                 const result = await pool.query(
                     'INSERT INTO crm_staff (nombre, rol, estado, modelos_asignados, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING *',
-                    [nombre, rol, estado || 'activo', JSON.stringify(modelos_asignados || [])]
+                    [nombre, rol, estado || 'activo', JSON.stringify(modelosArray)]
                 );
-                return res.status(201).json({ success: true, data: result.rows[0] });
+                
+                // Parsear respuesta
+                const newStaff = result.rows[0];
+                newStaff.modelos_asignados = modelosArray;
+                return res.status(201).json({ success: true, data: newStaff });
             }
         }
         
@@ -255,7 +270,12 @@ module.exports = async (req, res) => {
             if (req.method === 'GET') {
                 const result = await pool.query('SELECT * FROM crm_staff WHERE id = $1', [id]);
                 if (result.rows.length === 0) return res.status(404).json({ error: 'Staff no encontrado' });
-                return res.status(200).json({ success: true, data: result.rows[0] });
+                // Parsear modelos_asignados
+                const staff = result.rows[0];
+                staff.modelos_asignados = typeof staff.modelos_asignados === 'string' 
+                    ? JSON.parse(staff.modelos_asignados) 
+                    : (staff.modelos_asignados || []);
+                return res.status(200).json({ success: true, data: staff });
             }
             if (req.method === 'PUT') {
                 const { nombre, rol, estado, modelos_asignados } = req.body;
@@ -263,12 +283,20 @@ module.exports = async (req, res) => {
                     const validRoles = ['EDITOR_REELS', 'PROGRAMADOR_PPV', 'AM_UPLOAD', 'CD', 'VA_EDITOR'];
                     if (!validRoles.includes(rol)) return res.status(400).json({ error: 'Rol inválido' });
                 }
+                
+                // Asegurar que modelos_asignados sea un array válido
+                const modelosArray = Array.isArray(modelos_asignados) ? modelos_asignados : [];
+                
                 const result = await pool.query(
                     'UPDATE crm_staff SET nombre = $1, rol = $2, estado = $3, modelos_asignados = $4, updated_at = NOW() WHERE id = $5 RETURNING *',
-                    [nombre, rol, estado, JSON.stringify(modelos_asignados), id]
+                    [nombre, rol, estado, JSON.stringify(modelosArray), id]
                 );
                 if (result.rows.length === 0) return res.status(404).json({ error: 'Staff no encontrado' });
-                return res.status(200).json({ success: true, data: result.rows[0] });
+                
+                // Parsear respuesta
+                const updatedStaff = result.rows[0];
+                updatedStaff.modelos_asignados = modelosArray;
+                return res.status(200).json({ success: true, data: updatedStaff });
             }
             if (req.method === 'DELETE') {
                 const result = await pool.query('DELETE FROM crm_staff WHERE id = $1 RETURNING *', [id]);
