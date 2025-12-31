@@ -1,6 +1,6 @@
 // crm-app.jsx - CRM Visual Main Application
 const { useState, useEffect, useCallback } = React;
-const { ReactFlow, Controls, Background, useNodesState, useEdgesState, addEdge, Panel } = window.ReactFlowRenderer;
+const { ReactFlow, Controls, Background, useNodesState, useEdgesState, addEdge, Panel } = window.ReactFlow || {};
 
 // API Configuration
 const API_BASE = window.CONFIG?.onlyMonsterApiUrl || 'https://bravegirlsagency-api.vercel.app/api';
