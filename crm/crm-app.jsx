@@ -745,7 +745,7 @@ function ModeloRedesView({ models, socialAccounts }) {
 // ============================================
 function MarketingView({ staff }) {
     const staffByRole = {
-        'EDITOR_REELS': staff.filter(s => s.rol === 'EDITOR_REELS'),
+        'EDITOR_REELS': staff.filter(s => s.rol === 'EDITOR_REELS' || s.rol === 'VA_EDITOR'),
         'PROGRAMADOR_PPV': staff.filter(s => s.rol === 'PROGRAMADOR_PPV'),
         'AM_UPLOAD': staff.filter(s => s.rol === 'AM_UPLOAD'),
         'CD': staff.filter(s => s.rol === 'CD'),
@@ -1692,7 +1692,9 @@ function StaffTable({ staff, models, onRefresh }) {
             'CD': '🎨 Director Creativo',
             'EDITOR_REELS': '🎬 Editor Reels',
             'PROGRAMADOR_PPV': '🎞️ Programador PPV',
-            'AM_UPLOAD': '📤 Account Manager'
+            'AM_UPLOAD': '📤 Account Manager',
+            // Compatibilidad con rol antiguo
+            'VA_EDITOR': '⚠️ Editor/PPV (Actualizar)'
         };
         return labels[rol] || rol;
     };
@@ -1744,7 +1746,7 @@ function StaffTable({ staff, models, onRefresh }) {
 }
 
 function StaffModal({ staff, models, onClose, onSave }) {
-    const [formData, setFormData] = useState(staff || { nombre: '', rol: 'AM_UPLOAD', estado: 'activo', modelos_asignados: [] });
+    const [formData, setFormData] = useState(staff || { nombre: '', rol: 'EDITOR_REELS', estado: 'activo', modelos_asignados: [] });
     
     const toggleModel = (modelId) => {
         const current = formData.modelos_asignados || [];
