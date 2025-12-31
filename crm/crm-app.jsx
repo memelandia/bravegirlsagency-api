@@ -1935,16 +1935,24 @@ function StaffModal({ staff, models, onClose, onSave }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            console.log('Guardando staff:', formData);
+            let response;
             if (staff) {
-                await CRMService.updateStaff(staff.id, formData);
+                response = await CRMService.updateStaff(staff.id, formData);
             } else {
-                await CRMService.createStaff(formData);
+                response = await CRMService.createStaff(formData);
             }
-            onSave();
-            onClose();
+            console.log('Respuesta del servidor:', response);
+            
+            if (response.success) {
+                onSave();
+                onClose();
+            } else {
+                throw new Error(response.error || 'Error desconocido');
+            }
         } catch (error) {
             console.error('Error al guardar staff:', error);
-            alert('Error al guardar. Por favor intenta de nuevo.');
+            alert('Error al guardar: ' + (error.message || 'Por favor intenta de nuevo'));
         }
     };
     
