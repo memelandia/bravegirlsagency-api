@@ -321,70 +321,173 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
     const generateFlowData = () => {
         const newNodes = [];
         const newEdges = [];
-        let yOffset = 0;
+        let yOffset = 50;
         
-        // Supervisors at top
+        // ========================================
+        // NIVEL 1: SUPERVISORS (Top Management)
+        // ========================================
+        const centerX = 600;
         supervisors.forEach((sup, idx) => {
+            const supervisedChatters = assignments.filter(a => {
+                const chatter = chatters.find(c => c.id === a.chatter_id);
+                return chatter?.estado === 'activo';
+            }).length;
+            
             newNodes.push({
                 id: `supervisor-${sup.id}`,
                 type: 'default',
-                data: { label: `👔 ${sup.nombre}` },
-                position: { x: 200 + (idx * 250), y: yOffset },
+                data: { 
+                    label: (
+                        <div style={{textAlign: 'center', minWidth: '220px'}}>
+                            <div style={{fontSize: '2rem', marginBottom: '0.5rem'}}>👔</div>
+                            <div style={{fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.5rem'}}>
+                                {sup.nombre}
+                            </div>
+                            <div style={{fontSize: '0.75rem', opacity: 0.7, marginBottom: '0.5rem'}}>
+                                Supervisor Principal
+                            </div>
+                            <div style={{display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap'}}>
+                                <span style={{background: 'rgba(139,92,246,0.2)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem'}}>
+                                    {chatters.filter(c => c.estado === 'activo').length} Chatters
+                                </span>
+                                <span style={{background: 'rgba(255,107,179,0.2)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem'}}>
+                                    {models.length} Modelos
+                                </span>
+                            </div>
+                        </div>
+                    )
+                },
+                position: { x: centerX - 110 + (idx * 280), y: yOffset },
                 className: 'react-flow__node-supervisor',
             });
         });
         
-        yOffset += 150;
+        yOffset += 200;
         
-        // Group chatters by status
-        const chattersByStatus = {
-            activo: chatters.filter(c => c.estado === 'activo'),
-            prueba: chatters.filter(c => c.estado === 'prueba'),
-            pausa: chatters.filter(c => c.estado === 'pausa'),
+        // ========================================
+        // NIVEL 2: CHATTERS (Grouped by level)
+        // ========================================
+        const chattersByLevel = {
+            senior: chatters.filter(c => c.nivel === 'senior' && c.estado === 'activo'),
+            mid: chatters.filter(c => c.nivel === 'mid' && c.estado === 'activo'),
+            junior: chatters.filter(c => c.nivel === 'junior' && c.estado === 'activo'),
         };
         
-        let xOffset = 50;
-        Object.entries(chattersByStatus).forEach(([status, group]) => {
+        let xOffset = 100;
+        const columnWidth = 280;
+        
+        Object.entries(chattersByLevel).forEach(([level, group]) => {
             group.forEach((chatter, idx) => {
+                // Calcular estadísticas del chatter
+                const chatterAssignments = assignments.filter(a => a.chatter_id === chatter.id && a.estado === 'activa');
+                const assignedModels = chatterAssignments.length;
+                const totalRevenue = chatterAssignments.reduce((sum, a) => {
+                    const model = models.find(m => m.id === a.model_id);
+                    return sum + (model?.estimado_facturacion_mensual || 0);
+                }, 0);
+                
+                // Emoji por nivel
+                const levelEmoji = level === 'senior' ? '👑' : level === 'mid' ? '⭐' : '🌱';
+                const levelColor = level === 'senior' ? '#3B82F6' : level === 'mid' ? '#F59E0B' : '#64748B';
+                
                 newNodes.push({
                     id: `chatter-${chatter.id}`,
                     type: 'default',
                     data: { 
                         label: (
-                            <div>
-                                <strong>👤 {chatter.nombre}</strong>
-                                <div style={{fontSize: '0.75rem', opacity: 0.7}}>{chatter.nivel}</div>
+                            <div style={{minWidth: '240px'}}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem'}}>
+                                    <div style={{fontSize: '1.5rem'}}>{levelEmoji}</div>
+                                    <div style={{flex: 1}}>
+                                        <div style={{fontSize: '1rem', fontWeight: '700', lineHeight: '1.2'}}>
+                                            {chatter.nombre}
+                                        </div>
+                                        <div style={{fontSize: '0.7rem', opacity: 0.7, textTransform: 'uppercase', color: levelColor, fontWeight: '600'}}>
+                                            {level}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: '0.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.7rem'}}>
+                                    <div>
+                                        <div style={{opacity: 0.6, fontSize: '0.65rem'}}>Modelos</div>
+                                        <div style={{fontWeight: '700', fontSize: '0.85rem'}}>{assignedModels}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{opacity: 0.6, fontSize: '0.65rem'}}>Revenue</div>
+                                        <div style={{fontWeight: '700', fontSize: '0.85rem'}}>${(totalRevenue/1000).toFixed(0)}k</div>
+                                    </div>
+                                </div>
+                                {chatter.pais && (
+                                    <div style={{marginTop: '0.5rem', fontSize: '0.65rem', opacity: 0.6}}>
+                                        📍 {chatter.pais}
+                                    </div>
+                                )}
                             </div>
                         )
                     },
-                    position: { x: xOffset, y: yOffset + (idx * 100) },
-                    className: 'react-flow__node-chatter',
+                    position: { x: xOffset, y: yOffset + (idx * 180) },
+                    className: `react-flow__node-chatter react-flow__node-chatter-${level}`,
                 });
             });
-            xOffset += 250;
+            xOffset += columnWidth;
         });
         
-        yOffset += Math.max(...Object.values(chattersByStatus).map(g => g.length)) * 100 + 100;
+        const maxChattersInColumn = Math.max(...Object.values(chattersByLevel).map(g => g.length), 1);
+        yOffset += maxChattersInColumn * 180 + 80;
         
-        // Models
-        models.forEach((model, idx) => {
+        // ========================================
+        // NIVEL 3: MODELS (Sorted by priority)
+        // ========================================
+        const sortedModels = [...models].sort((a, b) => b.prioridad - a.prioridad);
+        const modelsPerRow = 5;
+        
+        sortedModels.forEach((model, idx) => {
+            const row = Math.floor(idx / modelsPerRow);
+            const col = idx % modelsPerRow;
+            
+            // Calcular chatters asignados
+            const modelAssignments = assignments.filter(a => a.model_id === model.id && a.estado === 'activa');
+            const assignedChatters = modelAssignments.length;
+            
+            // Prioridad visual
+            const priorityStars = '⭐'.repeat(model.prioridad);
+            const priorityColor = model.prioridad >= 4 ? '#FF6BB3' : model.prioridad >= 3 ? '#F59E0B' : '#94A3B8';
+            
             newNodes.push({
                 id: `model-${model.id}`,
                 type: 'default',
                 data: { 
                     label: (
-                        <div>
-                            <strong>💎 @{model.handle}</strong>
-                            <div style={{fontSize: '0.7rem', opacity: 0.8}}>
-                                ${model.estimado_facturacion_mensual?.toLocaleString() || 0}
+                        <div style={{minWidth: '200px', maxWidth: '220px'}}>
+                            <div style={{display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.75rem'}}>
+                                <div style={{fontSize: '1.5rem'}}>💎</div>
+                                <div style={{flex: 1, minWidth: 0}}>
+                                    <div style={{fontSize: '0.95rem', fontWeight: '700', lineHeight: '1.2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                        @{model.handle}
+                                    </div>
+                                    <div style={{fontSize: '0.65rem', color: priorityColor, fontWeight: '600', marginTop: '2px'}}>
+                                        {priorityStars}
+                                    </div>
+                                </div>
                             </div>
-                            <div style={{fontSize: '0.65rem'}}>
-                                Prioridad: {model.prioridad}/5
+                            <div style={{borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: '0.5rem', display: 'grid', gap: '0.5rem', fontSize: '0.7rem'}}>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                    <span style={{opacity: 0.6}}>Facturación/mes</span>
+                                    <span style={{fontWeight: '700', color: '#10B981', fontSize: '0.85rem'}}>
+                                        ${(model.estimado_facturacion_mensual || 0).toLocaleString()}
+                                    </span>
+                                </div>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                    <span style={{opacity: 0.6}}>Chatters</span>
+                                    <span style={{background: 'rgba(59,130,246,0.15)', padding: '2px 8px', borderRadius: '4px', fontWeight: '600', fontSize: '0.75rem'}}>
+                                        {assignedChatters}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     )
                 },
-                position: { x: 50 + (idx * 200), y: yOffset },
+                position: { x: 50 + (col * 240), y: yOffset + (row * 180) },
                 className: 'react-flow__node-model',
             });
         });
@@ -429,21 +532,82 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
         setSelectedNode(node);
     };
     
+    // Calcular estadísticas globales
+    const activeAssignments = assignments.filter(a => a.estado === 'activa').length;
+    const activeChatters = chatters.filter(c => c.estado === 'activo').length;
+    const totalRevenue = models.reduce((sum, m) => sum + (m.estimado_facturacion_mensual || 0), 0);
+    const avgModelsPerChatter = activeChatters > 0 ? (activeAssignments / activeChatters).toFixed(1) : 0;
+    
     return (
         <div>
-            <div className="crm-flex-between crm-mb-4">
-                <input 
-                    type="text" 
-                    placeholder="🔍 Buscar en el mapa..."
-                    className="crm-input"
-                    style={{maxWidth: '300px'}}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <div className="crm-flex crm-gap-4">
-                    <span className="crm-badge crm-badge-info">👔 Supervisores</span>
-                    <span className="crm-badge crm-badge-success">👤 Chatters</span>
-                    <span className="crm-badge crm-badge-warning">💎 Modelos</span>
+            {/* Header con estadísticas */}
+            <div style={{marginBottom: '1.5rem'}}>
+                <div className="crm-flex-between" style={{marginBottom: '1rem'}}>
+                    <div>
+                        <h2 style={{fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.25rem'}}>Estructura Organizacional</h2>
+                        <p style={{opacity: 0.7, fontSize: '0.9rem'}}>Mapa interactivo de toda la operación</p>
+                    </div>
+                    <input 
+                        type="text" 
+                        placeholder="🔍 Buscar persona o modelo..."
+                        className="crm-input"
+                        style={{maxWidth: '280px'}}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                
+                {/* Métricas clave */}
+                <div className="crm-grid crm-grid-4" style={{gap: '1rem'}}>
+                    <div className="crm-card" style={{padding: '1rem'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                            <div style={{background: 'rgba(139, 92, 246, 0.15)', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '1.5rem'}}>👔</div>
+                            <div>
+                                <div style={{fontSize: '1.75rem', fontWeight: '700', lineHeight: '1'}}>{supervisors.length}</div>
+                                <div style={{fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem'}}>Supervisores</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="crm-card" style={{padding: '1rem'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                            <div style={{background: 'rgba(59, 130, 246, 0.15)', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '1.5rem'}}>👤</div>
+                            <div>
+                                <div style={{fontSize: '1.75rem', fontWeight: '700', lineHeight: '1'}}>{activeChatters}</div>
+                                <div style={{fontSize: '0.75rem', opacity: 0.7', marginTop: '0.25rem'}}>Chatters Activos</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="crm-card" style={{padding: '1rem'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                            <div style={{background: 'rgba(255, 107, 179, 0.15)', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '1.5rem'}}>💎</div>
+                            <div>
+                                <div style={{fontSize: '1.75rem', fontWeight: '700', lineHeight: '1'}}>{models.length}</div>
+                                <div style={{fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem'}}>Modelos Totales</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="crm-card" style={{padding: '1rem'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                            <div style={{background: 'rgba(16, 185, 129, 0.15)', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '1.5rem'}}>💰</div>
+                            <div>
+                                <div style={{fontSize: '1.75rem', fontWeight: '700', lineHeight: '1', color: '#10B981'}}>${(totalRevenue/1000).toFixed(0)}k</div>
+                                <div style={{fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem'}}>Revenue Mensual</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Leyenda */}
+                <div style={{marginTop: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center'}}>
+                    <span style={{fontSize: '0.85rem', opacity: 0.7'}}>Leyenda:</span>
+                    <span className="crm-badge" style={{background: 'rgba(139,92,246,0.15)', color: '#8B5CF6'}}>👔 Supervisores</span>
+                    <span className="crm-badge" style={{background: 'rgba(59,130,246,0.15)', color: '#3B82F6'}}>👑 Senior</span>
+                    <span className="crm-badge" style={{background: 'rgba(245,158,11,0.15)', color: '#F59E0B'}}>⭐ Mid</span>
+                    <span className="crm-badge" style={{background: 'rgba(100,116,139,0.15)', color: '#64748B'}}>🌱 Junior</span>
+                    <span className="crm-badge" style={{background: 'rgba(255,107,179,0.15)', color: '#FF6BB3'}}>💎 Modelos</span>
+                    <div style={{marginLeft: 'auto', fontSize: '0.85rem', opacity: 0.7'}}>
+                        Promedio: <strong>{avgModelsPerChatter}</strong> modelos por chatter
+                    </div>
                 </div>
             </div>
             
