@@ -38,18 +38,17 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid data format' });
       }
 
-      // Upsert cada entrada
-      const entries = Object.entries(data);
-      
-      // Usamos Promise.all para paralelizar y acelerar
-      await Promise.all(entries.map(async ([key, status]) => {
-         await sql`
-          INSERT INTO checklist_mes (key, status, updated_at)
-          VALUES (${key}, ${status}, CURRENT_TIMESTAMP)
-          ON CONFLICT (key) 
-          DO UPDATE SET status = ${status}, updated_at = CURRENT_TIMESTAMP
-        `;
-      }));
+      // Upsert masivo usando JSONB y jsonb_each_text
+      // Esto reduce 1000+ queries a solo 1 query
+      const jsonPayload = JSON.stringify(data);
+
+      await sql`
+        INSERT INTO checklist_mes (key, status, updated_at)
+        SELECT key, value, CURRENT_TIMESTAMP
+        FROM jsonb_each_text(${jsonPayload}::jsonb)
+        ON CONFLICT (key) 
+        DO UPDATE SET status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP
+      `;
 
       return res.status(200).json({ success: true, message: 'Checklist saved' });
     }

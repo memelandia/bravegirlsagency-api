@@ -10,88 +10,88 @@ const API_BASE = window.CONFIG?.onlyMonsterApiUrl || 'https://bravegirlsagency-a
 // ============================================
 const CRMService = {
     // Models
-    getModels: () => fetch(`${API_BASE}/crm/models`).then(r => r.json()),
-    createModel: (data) => fetch(`${API_BASE}/crm/models`, {
+    getModels: () => fetch(`${API_BASE}/crm?path=models`).then(r => r.json()),
+    createModel: (data) => fetch(`${API_BASE}/crm?path=models`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(r => r.json()),
-    updateModel: (id, data) => fetch(`${API_BASE}/crm/models/${id}`, {
+    updateModel: (id, data) => fetch(`${API_BASE}/crm?path=models/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(r => r.json()),
-    deleteModel: (id) => fetch(`${API_BASE}/crm/models/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    deleteModel: (id) => fetch(`${API_BASE}/crm?path=models/${id}`, { method: 'DELETE' }).then(r => r.json()),
     
     // Chatters
-    getChatters: () => fetch(`${API_BASE}/crm/chatters`).then(r => r.json()),
-    createChatter: (data) => fetch(`${API_BASE}/crm/chatters`, {
+    getChatters: () => fetch(`${API_BASE}/crm?path=chatters`).then(r => r.json()),
+    createChatter: (data) => fetch(`${API_BASE}/crm?path=chatters`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(r => r.json()),
-    updateChatter: (id, data) => fetch(`${API_BASE}/crm/chatters/${id}`, {
+    updateChatter: (id, data) => fetch(`${API_BASE}/crm?path=chatters/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(r => r.json()),
-    deleteChatter: (id) => fetch(`${API_BASE}/crm/chatters/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    deleteChatter: (id) => fetch(`${API_BASE}/crm?path=chatters/${id}`, { method: 'DELETE' }).then(r => r.json()),
     
     // Assignments
-    getAssignments: () => fetch(`${API_BASE}/crm/assignments`).then(r => r.json()),
-    createAssignment: (data) => fetch(`${API_BASE}/crm/assignments`, {
+    getAssignments: () => fetch(`${API_BASE}/crm?path=assignments`).then(r => r.json()),
+    createAssignment: (data) => fetch(`${API_BASE}/crm?path=assignments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(r => r.json()),
-    updateAssignment: (id, data) => fetch(`${API_BASE}/crm/assignments/${id}`, {
+    updateAssignment: (id, data) => fetch(`${API_BASE}/crm?path=assignments/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(r => r.json()),
-    deleteAssignment: (id) => fetch(`${API_BASE}/crm/assignments/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    deleteAssignment: (id) => fetch(`${API_BASE}/crm?path=assignments/${id}`, { method: 'DELETE' }).then(r => r.json()),
     
     // Social Accounts
-    getSocialAccounts: () => fetch(`${API_BASE}/crm/social-accounts`).then(r => r.json()),
-    createSocialAccount: (data) => fetch(`${API_BASE}/crm/social-accounts`, {
+    getSocialAccounts: () => fetch(`${API_BASE}/crm?path=social-accounts`).then(r => r.json()),
+    createSocialAccount: (data) => fetch(`${API_BASE}/crm?path=social-accounts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(r => r.json()),
-    updateSocialAccount: (id, data) => fetch(`${API_BASE}/crm/social-accounts/${id}`, {
+    updateSocialAccount: (id, data) => fetch(`${API_BASE}/crm?path=social-accounts/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(r => r.json()),
-    deleteSocialAccount: (id) => fetch(`${API_BASE}/crm/social-accounts/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    deleteSocialAccount: (id) => fetch(`${API_BASE}/crm?path=social-accounts/${id}`, { method: 'DELETE' }).then(r => r.json()),
     
     // Supervisors
-    getSupervisors: () => fetch(`${API_BASE}/crm/supervisors`).then(r => r.json()),
-    createSupervisor: (data) => fetch(`${API_BASE}/crm/supervisors`, {
+    getSupervisors: () => fetch(`${API_BASE}/crm?path=supervisors`).then(r => r.json()),
+    createSupervisor: (data) => fetch(`${API_BASE}/crm?path=supervisors`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(r => r.json()),
-    updateSupervisor: (id, data) => fetch(`${API_BASE}/crm/supervisors/${id}`, {
+    updateSupervisor: (id, data) => fetch(`${API_BASE}/crm?path=supervisors/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(r => r.json()),
-    deleteSupervisor: (id) => fetch(`${API_BASE}/crm/supervisors/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    deleteSupervisor: (id) => fetch(`${API_BASE}/crm?path=supervisors/${id}`, { method: 'DELETE' }).then(r => r.json()),
     
     // Staff
-    getStaff: () => fetch(`${API_BASE}/crm/staff`).then(r => r.json()),
-    createStaff: (data) => fetch(`${API_BASE}/crm/staff`, {
+    getStaff: () => fetch(`${API_BASE}/crm?path=staff`).then(r => r.json()),
+    createStaff: (data) => fetch(`${API_BASE}/crm?path=staff`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(r => r.json()),
-    updateStaff: (id, data) => fetch(`${API_BASE}/crm/staff/${id}`, {
+    updateStaff: (id, data) => fetch(`${API_BASE}/crm?path=staff/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }).then(r => r.json()),
-    deleteStaff: (id) => fetch(`${API_BASE}/crm/staff/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    deleteStaff: (id) => fetch(`${API_BASE}/crm?path=staff/${id}`, { method: 'DELETE' }).then(r => r.json()),
 };
 
 // ============================================

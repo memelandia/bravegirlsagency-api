@@ -238,13 +238,15 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
       const weekRows = rows.filter(r => r.semana === week && r.chatter === chatter);
       if (weekRows.length === 0) return;
 
-      const lines = weekRows.map(r => {
-          return `${r.cuenta}: Fact: ${r.facturacion || '$0'} | Fans: ${r.nuevosFans || '0'} | Meta: ${r.estadoObjetivo || '-'}`;
+      let text = `📊 Supervisión Semanal - ${chatter} - ${week}\n\n`;
+
+      weekRows.forEach(r => {
+          text += `🔹 ${r.cuenta}:\n`;
+          text += `Facturación: ${r.facturacion || '$0'} | Meta Fact: ${r.metaFacturacion || '$0'} | Obj. Mensual: ${r.facturacionMensualObjetivo || '$0'} | Estado Meta: ${r.estadoObjetivo || '-'} | Posts: ${r.posteos || 'No'} | Stories: ${r.historias || 'No'} | T. Resp: ${r.tiempoRespuesta || '-'} min | Obs: ${r.pendientes || '-'}\n\n`;
       });
 
-      const text = `📊 Reporte ${chatter} - ${week}\n${lines.join('\n')}`;
       navigator.clipboard.writeText(text);
-      if (onShowToast) onShowToast('Reporte copiado al portapapeles', 'info');
+      if (onShowToast) onShowToast('Reporte detallado copiado', 'info');
   };
 
   return (
@@ -334,9 +336,9 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
                           return (
                               <div key={`${week}-${chatter}`} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
                                   {/* Chatter Header with Copy Button */}
-                                  <div className="bg-gray-50 dark:bg-gray-800/50 p-2 px-4 flex justify-between items-center">
+                                  <div className="bg-gray-100 dark:bg-gray-800 p-2 px-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 mb-2">
                                       <div className="flex items-center gap-2">
-                                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${CHATTER_COLORS[chatter]}`}>{chatter}</span>
+                                          <span className={`px-3 py-1 rounded-md text-xs font-black uppercase tracking-wide shadow-sm ${CHATTER_COLORS[chatter]}`}>{chatter}</span>
                                       </div>
                                       <button 
                                         onClick={() => copyWeekStats(week, chatter)}

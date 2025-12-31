@@ -197,7 +197,7 @@ ${entry.detalle || '-'}
                                     value={entry.fecha}
                                     disabled={isReadOnly}
                                     onChange={(e) => updateEntry(entry.id, 'fecha', e.target.value)}
-                                    className="text-xs font-bold text-gray-500 dark:text-gray-400 bg-transparent border-none p-0 focus:ring-0 cursor-pointer"
+                                    className="text-xs font-bold text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                                 />
                                 <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
                                 <select
@@ -269,7 +269,7 @@ ${entry.detalle || '-'}
                                     value={entry.gravedad}
                                     disabled={isReadOnly}
                                     onChange={(e) => updateEntry(entry.id, 'gravedad', e.target.value)}
-                                    className="w-full text-xs font-bold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded px-2 py-1.5 cursor-pointer focus:ring-2 focus:ring-blue-500"
+                                    className="w-full text-xs font-bold text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-500 rounded px-2 py-1.5 cursor-pointer focus:ring-2 focus:ring-blue-500 shadow-sm"
                                 >
                                     <option value="">Seleccionar Nivel...</option>
                                     {Object.values(Severity).map(s => <option key={s} value={s}>{s}</option>)}

@@ -211,18 +211,27 @@ const VipRepasoMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
       document.body.removeChild(a);
   };
 
+  const copyLink = (e: React.MouseEvent, link: string) => {
+      e.stopPropagation();
+      if (!link) return;
+      navigator.clipboard.writeText(link);
+      if (onShowToast) onShowToast('Link copiado al portapapeles', 'info');
+  };
+
   const renderTableSection = (title: string, icon: string, data: VipFan[], headerColor: string) => (
     <>
         <tr className="sticky z-20 top-12">
-            <td colSpan={33} className={`px-4 py-3 font-black text-sm uppercase tracking-widest ${headerColor} border-b border-gray-300 dark:border-gray-700`}>
+            <td className={`sticky left-0 z-30 px-4 py-3 font-black text-sm uppercase tracking-widest ${headerColor} border-b border-gray-300 dark:border-gray-700 border-r`}>
                 <span className="mr-2 text-lg">{icon}</span> {title} ({data.length})
             </td>
+            <td colSpan={31} className={`px-4 py-3 ${headerColor} border-b border-gray-300 dark:border-gray-700`}></td>
         </tr>
         {data.length === 0 && (
             <tr>
-                <td colSpan={33} className="p-6 text-center text-gray-400 text-xs italic">
-                    No hay fans en esta categoría.
+                <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-6 text-center text-gray-400 text-xs italic">
+                    Sin fans
                 </td>
+                <td colSpan={31} className="bg-gray-50/50 dark:bg-gray-800/50"></td>
             </tr>
         )}
         {data.map((fan) => {
@@ -231,19 +240,17 @@ const VipRepasoMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
             <tr key={fan.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group">
                 <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 border-b border-r border-gray-200 dark:border-gray-700 p-2 font-bold text-gray-800 dark:text-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-64 min-w-[250px]">
                     <div className="flex justify-between items-center group/cell pl-2">
-                    <div className="flex flex-col">
-                         <div className="flex items-center gap-2">
-                             <span className="text-sm text-gray-900 dark:text-gray-100 truncate max-w-[120px]" title={fan.name}>{fan.name}</span>
+                    <div className="flex flex-col w-full pr-2">
+                         <div className="flex items-center justify-between w-full">
+                             <span className="text-sm text-gray-900 dark:text-gray-100 truncate max-w-[140px]" title={fan.name}>{fan.name}</span>
                              {fan.chatLink && (
-                                <a 
-                                    href={fan.chatLink} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    className="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/30 p-0.5 rounded"
-                                    title="Ir al chat"
+                                <button 
+                                    onClick={(e) => copyLink(e, fan.chatLink!)}
+                                    className="text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 p-1 rounded transition-colors"
+                                    title="Copiar Link"
                                 >
-                                    🔗
-                                </a>
+                                    📋
+                                </button>
                              )}
                          </div>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded border w-fit mt-1 ${accountColor}`}>

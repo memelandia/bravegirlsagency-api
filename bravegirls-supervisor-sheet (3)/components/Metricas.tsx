@@ -45,6 +45,33 @@ const Metricas: React.FC<Props> = ({ archivedData }) => {
   // Filters & State
   const [filterWeek, setFilterWeek] = useState<string>(''); // '' = All Month
   const [copied, setCopied] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const loadAllData = async () => {
+    setIsRefreshing(true);
+    try {
+        // 1. Weekly Data
+        const weeklyData = await supervisionAPI.getSemanal();
+        setWeeklyData(weeklyData);
+
+        // 2. Checklist Data
+        const checklistData = await supervisionAPI.getChecklist();
+        setChecklistData(checklistData);
+
+        // 3. VIP Data (Fans + Status)
+        const vipFansData = await supervisionAPI.getVipFans();
+        setVipData(vipFansData);
+
+        // 4. Errors Data
+        const errorsData = await supervisionAPI.getErrores();
+        setErrorData(errorsData);
+
+    } catch (err) {
+        console.error("Error loading metrics data from API", err);
+    } finally {
+        setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (archivedData) {
@@ -53,42 +80,6 @@ const Metricas: React.FC<Props> = ({ archivedData }) => {
         setVipData(archivedData.vip || []);
         setErrorData(archivedData.errors || []);
     } else {
-        const loadAllData = async () => {
-            try {
-                // 1. Weekly Data
-                const weeklyData = await supervisionAPI.getSemanal();
-                setWeeklyData(weeklyData);
-
-                // 2. Checklist Data
-                const checklistData = await supervisionAPI.getChecklist();
-                setChecklistData(checklistData);
-
-                // 3. VIP Data (Fans + Status)
-                const vipFansData = await supervisionAPI.getVipFans();
-                setVipData(vipFansData);
-
-                // 4. Errors Data
-                const errorsData = await supervisionAPI.getErrores();
-                setErrorData(errorsData);
-
-            } catch (err) {
-                console.error("Error loading metrics data from API", err);
-                // Fallback to localStorage
-                try {
-                    const w = localStorage.getItem('supervision_semanal_data');
-                    if (w) setWeeklyData(JSON.parse(w));
-
-                    const c = localStorage.getItem('checklist_mes_data');
-                    if (c) setChecklistData(JSON.parse(c));
-
-                    const v = localStorage.getItem('vip_fans_list');
-                    if (v) setVipData(JSON.parse(v));
-
-                    const e = localStorage.getItem('registro_errores_data');
-                    if (e) setErrorData(JSON.parse(e));
-                } catch (e) { console.error(e); }
-            }
-        };
         loadAllData();
     }
   }, [archivedData]);
@@ -118,10 +109,12 @@ const Metricas: React.FC<Props> = ({ archivedData }) => {
     // 2. Process Weekly Data (Filtered)
     activeWeeklyData.forEach(row => {
       const billing = parseFloat(row.facturacion.replace(/[^0-9.-]+/g,"")) || 0;
+      const fans = parseFloat(row.nuevosFans.replace(/[^0-9.-]+/g,"")) || 0;
       const respTime = parseFloat(row.tiempoRespuesta.replace(/[^0-9.]/g, ""));
 
       if (chatterStats[row.chatter]) {
         chatterStats[row.chatter].totalBilling += billing;
+        chatterStats[row.chatter].totalNewFans += fans;
 
         if (!isNaN(respTime) && respTime > 0) {
             if (!responseTimeAccumulator[row.chatter]) responseTimeAccumulator[row.chatter] = { total: 0, count: 0 };
@@ -286,6 +279,18 @@ const Metricas: React.FC<Props> = ({ archivedData }) => {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+                {/* Refresh Button */}
+                {!archivedData && (
+                    <button 
+                        onClick={loadAllData}
+                        disabled={isRefreshing}
+                        className={`p-2 rounded-lg border transition-all ${isRefreshing ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white hover:bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600'}`}
+                        title="Actualizar datos"
+                    >
+                        <span className={`block ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
+                    </button>
+                )}
+
                 {/* Week Filter */}
                 <div className="relative">
                     <select 

@@ -35,16 +35,16 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid data format' });
       }
 
-      const entries = Object.entries(data);
+      const jsonPayload = JSON.stringify(data);
       
-      await Promise.all(entries.map(async ([key, status]) => {
-        await sql`
-          INSERT INTO vip_repaso (key, status, updated_at)
-          VALUES (${key}, ${status}, CURRENT_TIMESTAMP)
-          ON CONFLICT (key) 
-          DO UPDATE SET status = ${status}, updated_at = CURRENT_TIMESTAMP
-        `;
-      }));
+      // Upsert masivo optimizado
+      await sql`
+        INSERT INTO vip_repaso (key, status, updated_at)
+        SELECT key, value, CURRENT_TIMESTAMP
+        FROM jsonb_each_text(${jsonPayload}::jsonb)
+        ON CONFLICT (key) 
+        DO UPDATE SET status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP
+      `;
 
       return res.status(200).json({ success: true, message: 'Data saved' });
     }
