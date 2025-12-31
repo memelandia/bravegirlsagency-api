@@ -338,19 +338,55 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
                 type: 'default',
                 data: { 
                     label: (
-                        <div style={{textAlign: 'center', minWidth: '220px'}}>
-                            <div style={{fontSize: '2rem', marginBottom: '0.5rem'}}>👔</div>
-                            <div style={{fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.5rem'}}>
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '100%',
+                            padding: '0.5rem'
+                        }}>
+                            <div style={{fontSize: '2.5rem', marginBottom: '0.5rem'}}>👔</div>
+                            <div style={{
+                                fontSize: '1.2rem',
+                                fontWeight: '700',
+                                marginBottom: '0.25rem',
+                                textAlign: 'center',
+                                width: '100%'
+                            }}>
                                 {sup.nombre}
                             </div>
-                            <div style={{fontSize: '0.75rem', opacity: 0.7, marginBottom: '0.5rem'}}>
+                            <div style={{
+                                fontSize: '0.75rem',
+                                opacity: 0.7,
+                                marginBottom: '0.75rem',
+                                textAlign: 'center'
+                            }}>
                                 Supervisor Principal
                             </div>
-                            <div style={{display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap'}}>
-                                <span style={{background: 'rgba(139,92,246,0.2)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem'}}>
+                            <div style={{
+                                display: 'flex',
+                                gap: '0.5rem',
+                                justifyContent: 'center',
+                                flexWrap: 'wrap',
+                                width: '100%'
+                            }}>
+                                <span style={{
+                                    background: 'rgba(139,92,246,0.2)',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: '600'
+                                }}>
                                     {chatters.filter(c => c.estado === 'activo').length} Chatters
                                 </span>
-                                <span style={{background: 'rgba(255,107,179,0.2)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem'}}>
+                                <span style={{
+                                    background: 'rgba(255,107,179,0.2)',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: '600'
+                                }}>
                                     {models.length} Modelos
                                 </span>
                             </div>
@@ -395,30 +431,64 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
                     type: 'default',
                     data: { 
                         label: (
-                            <div style={{minWidth: '240px'}}>
-                                <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem'}}>
-                                    <div style={{fontSize: '1.5rem'}}>{levelEmoji}</div>
-                                    <div style={{flex: 1}}>
-                                        <div style={{fontSize: '1rem', fontWeight: '700', lineHeight: '1.2'}}>
-                                            {chatter.nombre}
-                                        </div>
-                                        <div style={{fontSize: '0.7rem', opacity: 0.7, textTransform: 'uppercase', color: levelColor, fontWeight: '600'}}>
-                                            {level}
-                                        </div>
-                                    </div>
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                width: '100%',
+                                padding: '0.5rem'
+                            }}>
+                                <div style={{
+                                    fontSize: '2rem',
+                                    marginBottom: '0.5rem'
+                                }}>
+                                    {levelEmoji}
                                 </div>
-                                <div style={{borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: '0.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.7rem'}}>
+                                <div style={{
+                                    fontSize: '1.1rem',
+                                    fontWeight: '700',
+                                    textAlign: 'center',
+                                    marginBottom: '0.25rem',
+                                    width: '100%'
+                                }}>
+                                    {chatter.nombre}
+                                </div>
+                                <div style={{
+                                    fontSize: '0.75rem',
+                                    opacity: 0.7,
+                                    textTransform: 'uppercase',
+                                    color: levelColor,
+                                    fontWeight: '600',
+                                    marginBottom: '0.75rem',
+                                    textAlign: 'center'
+                                }}>
+                                    {level}
+                                </div>
+                                <div style={{
+                                    borderTop: '1px solid rgba(0,0,0,0.1)',
+                                    paddingTop: '0.5rem',
+                                    display: 'grid',
+                                    gridTemplateColumns: '1fr 1fr',
+                                    gap: '1rem',
+                                    width: '100%',
+                                    textAlign: 'center'
+                                }}>
                                     <div>
-                                        <div style={{opacity: 0.6, fontSize: '0.65rem'}}>Modelos</div>
-                                        <div style={{fontWeight: '700', fontSize: '0.85rem'}}>{assignedModels}</div>
+                                        <div style={{opacity: 0.6, fontSize: '0.65rem', marginBottom: '0.25rem'}}>Modelos</div>
+                                        <div style={{fontWeight: '700', fontSize: '1rem'}}>{assignedModels}</div>
                                     </div>
                                     <div>
-                                        <div style={{opacity: 0.6, fontSize: '0.65rem'}}>Revenue</div>
-                                        <div style={{fontWeight: '700', fontSize: '0.85rem'}}>${(totalRevenue/1000).toFixed(0)}k</div>
+                                        <div style={{opacity: 0.6, fontSize: '0.65rem', marginBottom: '0.25rem'}}>Revenue</div>
+                                        <div style={{fontWeight: '700', fontSize: '1rem'}}>${(totalRevenue/1000).toFixed(0)}k</div>
                                     </div>
                                 </div>
                                 {chatter.pais && (
-                                    <div style={{marginTop: '0.5rem', fontSize: '0.65rem', opacity: 0.6}}>
+                                    <div style={{
+                                        marginTop: '0.5rem',
+                                        fontSize: '0.65rem',
+                                        opacity: 0.6,
+                                        textAlign: 'center'
+                                    }}>
                                         📍 {chatter.pais}
                                     </div>
                                 )}
@@ -458,28 +528,67 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
                 type: 'default',
                 data: { 
                     label: (
-                        <div style={{minWidth: '200px', maxWidth: '220px'}}>
-                            <div style={{display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.75rem'}}>
-                                <div style={{fontSize: '1.5rem'}}>💎</div>
-                                <div style={{flex: 1, minWidth: 0}}>
-                                    <div style={{fontSize: '0.95rem', fontWeight: '700', lineHeight: '1.2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
-                                        @{model.handle}
-                                    </div>
-                                    <div style={{fontSize: '0.65rem', color: priorityColor, fontWeight: '600', marginTop: '2px'}}>
-                                        {priorityStars}
-                                    </div>
-                                </div>
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            width: '100%',
+                            padding: '0.5rem'
+                        }}>
+                            <div style={{fontSize: '2rem', marginBottom: '0.5rem'}}>💎</div>
+                            <div style={{
+                                fontSize: '1rem',
+                                fontWeight: '700',
+                                textAlign: 'center',
+                                marginBottom: '0.25rem',
+                                width: '100%',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                            }}>
+                                @{model.handle}
                             </div>
-                            <div style={{borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: '0.5rem', display: 'grid', gap: '0.5rem', fontSize: '0.7rem'}}>
-                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                    <span style={{opacity: 0.6}}>Facturación/mes</span>
-                                    <span style={{fontWeight: '700', color: '#10B981', fontSize: '0.85rem'}}>
+                            <div style={{
+                                fontSize: '0.75rem',
+                                color: priorityColor,
+                                fontWeight: '600',
+                                marginBottom: '0.75rem',
+                                textAlign: 'center'
+                            }}>
+                                {priorityStars}
+                            </div>
+                            <div style={{
+                                borderTop: '1px solid rgba(0,0,0,0.1)',
+                                paddingTop: '0.5rem',
+                                width: '100%'
+                            }}>
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    marginBottom: '0.5rem'
+                                }}>
+                                    <span style={{opacity: 0.6, fontSize: '0.7rem'}}>Facturación/mes</span>
+                                    <span style={{
+                                        fontWeight: '700',
+                                        color: '#10B981',
+                                        fontSize: '0.85rem'
+                                    }}>
                                         ${(model.estimado_facturacion_mensual || 0).toLocaleString()}
                                     </span>
                                 </div>
-                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                    <span style={{opacity: 0.6}}>Chatters</span>
-                                    <span style={{background: 'rgba(59,130,246,0.15)', padding: '2px 8px', borderRadius: '4px', fontWeight: '600', fontSize: '0.75rem'}}>
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                }}>
+                                    <span style={{opacity: 0.6, fontSize: '0.7rem'}}>Chatters</span>
+                                    <span style={{
+                                        background: 'rgba(59,130,246,0.15)',
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        fontWeight: '600',
+                                        fontSize: '0.75rem'
+                                    }}>
                                         {assignedChatters}
                                     </span>
                                 </div>

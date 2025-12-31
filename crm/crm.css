@@ -950,7 +950,7 @@ select option:active {
 
 .react-flow__node {
     border-radius: 1rem;
-    padding: 1.5rem;
+    padding: 0 !important;
     border: 2px solid;
     background: white;
     color: #0F172A;
@@ -962,16 +962,14 @@ select option:active {
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     font-weight: 500;
     cursor: pointer;
-    overflow: hidden;
-    word-wrap: break-word;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    min-width: 200px;
-    line-height: 1.5;
+    overflow: visible !important;
+    min-width: 220px !important;
+    width: auto !important;
+}
+
+/* Eliminar padding del contenedor interno de React Flow */
+.react-flow__node > div {
+    padding: 0 !important;
 }
 
 .react-flow__node:hover {
@@ -1101,28 +1099,28 @@ select option:active {
 }
 
 /* ============================================
-   EDGES - Connection Lines - VISIBILIDAD MÁXIMA
+   EDGES - FLECHAS ULTRA VISIBLES CON RESPLANDOR
    ============================================ */
 
 .react-flow__edge-path {
-    stroke: #A78BFA !important;
-    stroke-width: 5px !important;
-    filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.8)) drop-shadow(0 0 4px rgba(167, 139, 250, 1));
+    stroke: #E879F9 !important;
+    stroke-width: 6px !important;
+    filter: drop-shadow(0 0 10px #E879F9) drop-shadow(0 0 20px #E879F9) !important;
     transition: all 0.2s ease;
 }
 
 .react-flow__edge:hover .react-flow__edge-path {
-    stroke: #C4B5FD !important;
-    stroke-width: 6px !important;
-    filter: drop-shadow(0 0 12px rgba(196, 181, 253, 1)) drop-shadow(0 0 6px rgba(196, 181, 253, 1));
+    stroke: #F0ABFC !important;
+    stroke-width: 8px !important;
+    filter: drop-shadow(0 0 15px #F0ABFC) drop-shadow(0 0 30px #F0ABFC) !important;
 }
 
 .react-flow__edge.animated .react-flow__edge-path {
     stroke-dasharray: 10 !important;
     stroke: #FB7ADB !important;
-    stroke-width: 5px !important;
+    stroke-width: 6px !important;
     animation: dash 25s linear infinite;
-    filter: drop-shadow(0 0 8px rgba(251, 122, 219, 0.8));
+    filter: drop-shadow(0 0 10px #FB7ADB) drop-shadow(0 0 20px #FB7ADB) !important;
 }
 
 @keyframes dash {
@@ -1133,24 +1131,24 @@ select option:active {
 
 .react-flow__edge.selected .react-flow__edge-path {
     stroke: #FB7ADB !important;
-    stroke-width: 6px !important;
-    filter: drop-shadow(0 0 12px rgba(251, 122, 219, 1));
+    stroke-width: 8px !important;
+    filter: drop-shadow(0 0 15px #FB7ADB) drop-shadow(0 0 30px #FB7ADB) !important;
 }
 
-/* Flechas (arrowheads) - MÁS GRANDES Y BRILLANTES */
+/* Flechas (arrowheads) - MUCHO MÁS GRANDES Y BRILLANTES */
 .react-flow__arrowhead {
-    fill: #A78BFA !important;
-    filter: drop-shadow(0 0 4px rgba(167, 139, 250, 1));
+    fill: #E879F9 !important;
+    filter: drop-shadow(0 0 8px #E879F9) !important;
 }
 
 .react-flow__edge.animated .react-flow__arrowhead {
     fill: #FB7ADB !important;
-    filter: drop-shadow(0 0 4px rgba(251, 122, 219, 1));
+    filter: drop-shadow(0 0 8px #FB7ADB) !important;
 }
 
 .react-flow__edge.selected .react-flow__arrowhead {
     fill: #FB7ADB !important;
-    filter: drop-shadow(0 0 4px rgba(251, 122, 219, 1));
+    filter: drop-shadow(0 0 8px #FB7ADB) !important;
 }
 
 .react-flow__edge-text {
