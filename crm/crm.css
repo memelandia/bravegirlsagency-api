@@ -635,45 +635,76 @@ select.crm-input,
     padding-right: 3rem;
     /* Forzar tema oscuro en el dropdown */
     color-scheme: dark;
+    font-weight: 500;
 }
 
-/* Firefox - Estilos específicos para options */
+/* ============================================
+   OPTIONS - Estilos mejorados para legibilidad
+   ============================================ */
+
+/* Todos los navegadores - Base */
+.crm-input option,
+.crm-select option,
+select.crm-input option {
+    background-color: #1E293B !important;
+    color: #F1F5F9 !important;
+    padding: 12px 16px !important;
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+    line-height: 1.5 !important;
+    border: none !important;
+}
+
+/* Opción seleccionada actualmente (checked) */
+.crm-input option:checked,
+.crm-select option:checked,
+select.crm-input option:checked {
+    background-color: #7C3AED !important;
+    background: linear-gradient(135deg, #7C3AED, #9333EA) !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Hover state */
+.crm-input option:hover,
+.crm-select option:hover,
+select.crm-input option:hover {
+    background-color: #334155 !important;
+    color: #FF6BB3 !important;
+}
+
+/* Firefox específico */
 @-moz-document url-prefix() {
     .crm-input option,
-    .crm-select option {
-        background: #1E293B;
-        color: #F1F5F9;
+    .crm-select option,
+    select.crm-input option {
+        background-color: #1E293B !important;
+        color: #F1F5F9 !important;
+    }
+    
+    .crm-input option:checked,
+    .crm-select option:checked,
+    select.crm-input option:checked {
+        background-color: #7C3AED !important;
+        color: #FFFFFF !important;
     }
 }
 
-.crm-select option {
-    background: var(--crm-bg-dark);
-    color: var(--crm-text-primary);
-    padding: 0.75rem 1rem;
-}
-
-/* Estilos para dropdown del select */
-.crm-input option,
-.crm-select option {
-    background: #1E293B;
-    color: var(--crm-text-primary);
-    padding: 0.75rem 1rem;
-    font-size: 0.95rem;
-}
-
-.crm-input option:hover,
-.crm-select option:hover,
-.crm-input option:focus,
-.crm-select option:focus {
-    background: linear-gradient(135deg, rgba(255, 107, 179, 0.2), rgba(139, 92, 246, 0.2));
-    color: var(--crm-primary);
-}
-
-.crm-input option:checked,
-.crm-select option:checked {
-    background: linear-gradient(135deg, rgba(255, 107, 179, 0.3), rgba(139, 92, 246, 0.3));
-    color: var(--crm-primary);
-    font-weight: 600;
+/* Chrome/Safari/Edge - Webkit específico */
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+    select.crm-input option,
+    .crm-select option,
+    .crm-input option {
+        background-color: #1E293B;
+        color: #F1F5F9;
+    }
+    
+    select.crm-input option:checked,
+    .crm-select option:checked,
+    .crm-input option:checked {
+        background: linear-gradient(135deg, #7C3AED, #9333EA);
+        color: #FFFFFF;
+    }
 }
 
 /* ============================================
