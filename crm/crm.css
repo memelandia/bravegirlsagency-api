@@ -591,13 +591,14 @@
 .crm-textarea {
     width: 100%;
     padding: 0.875rem 1rem;
-    background: rgba(30, 41, 59, 0.4);
-    border: 1px solid var(--crm-border);
+    background: rgba(15, 23, 42, 0.8) !important;
+    border: 1px solid rgba(148, 163, 184, 0.2);
     border-radius: 0.75rem;
-    color: var(--crm-text-primary);
+    color: #FFFFFF !important;
     font-size: 0.95rem;
     transition: var(--crm-transition);
     backdrop-filter: blur(10px);
+    font-weight: 500;
 }
 
 .crm-input::selection,
@@ -611,13 +612,15 @@
 .crm-textarea:focus {
     outline: none;
     border-color: var(--crm-primary);
-    background: rgba(30, 41, 59, 0.6);
-    box-shadow: 0 0 0 3px rgba(255, 107, 179, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: rgba(15, 23, 42, 0.95) !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 0 0 3px rgba(255, 107, 179, 0.25), 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .crm-input::placeholder,
 .crm-textarea::placeholder {
-    color: var(--crm-text-muted);
+    color: rgba(148, 163, 184, 0.5);
+    font-weight: 400;
 }
 
 .crm-textarea {
