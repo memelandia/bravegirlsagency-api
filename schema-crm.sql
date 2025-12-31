@@ -90,7 +90,7 @@ CREATE INDEX idx_crm_supervisors_nombre ON crm_supervisors(nombre);
 CREATE TABLE IF NOT EXISTS crm_staff (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(255) NOT NULL,
-    rol VARCHAR(50) NOT NULL CHECK (rol IN ('VA_EDITOR', 'AM_UPLOAD', 'CD')),
+    rol VARCHAR(50) NOT NULL CHECK (rol IN ('EDITOR_REELS', 'PROGRAMADOR_PPV', 'AM_UPLOAD', 'CD', 'VA_EDITOR')),
     estado VARCHAR(50) DEFAULT 'activo' CHECK (estado IN ('activo', 'prueba', 'pausado')),
     modelos_asignados JSONB DEFAULT '[]',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
