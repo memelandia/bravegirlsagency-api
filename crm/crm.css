@@ -950,6 +950,8 @@ select option:active {
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     font-weight: 500;
     cursor: pointer;
+    overflow: hidden;
+    word-wrap: break-word;
 }
 
 .react-flow__node:hover {
@@ -1083,21 +1085,21 @@ select option:active {
    ============================================ */
 
 .react-flow__edge-path {
-    stroke: #8B5CF6;
-    stroke-width: 3;
-    filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.25));
+    stroke: #8B5CF6 !important;
+    stroke-width: 3px !important;
+    filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.3));
     transition: all 0.2s ease;
 }
 
 .react-flow__edge:hover .react-flow__edge-path {
-    stroke: #7C3AED;
-    stroke-width: 4;
-    filter: drop-shadow(0 3px 6px rgba(139, 92, 246, 0.35));
+    stroke: #7C3AED !important;
+    stroke-width: 4px !important;
+    filter: drop-shadow(0 3px 6px rgba(139, 92, 246, 0.4));
 }
 
 .react-flow__edge.animated .react-flow__edge-path {
-    stroke-dasharray: 10;
-    stroke: linear-gradient(90deg, #8B5CF6, #FF6BB3);
+    stroke-dasharray: 10 !important;
+    stroke: #FF6BB3 !important;
     animation: dash 25s linear infinite;
 }
 
@@ -1108,9 +1110,22 @@ select option:active {
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-    stroke: #FF6BB3;
-    stroke-width: 4;
-    filter: drop-shadow(0 4px 8px rgba(255, 107, 179, 0.4));
+    stroke: #FF6BB3 !important;
+    stroke-width: 4px !important;
+    filter: drop-shadow(0 4px 8px rgba(255, 107, 179, 0.5));
+}
+
+/* Flechas (arrowheads) */
+.react-flow__arrowhead {
+    fill: #8B5CF6 !important;
+}
+
+.react-flow__edge.animated .react-flow__arrowhead {
+    fill: #FF6BB3 !important;
+}
+
+.react-flow__edge.selected .react-flow__arrowhead {
+    fill: #FF6BB3 !important;
 }
 
 .react-flow__edge-text {
