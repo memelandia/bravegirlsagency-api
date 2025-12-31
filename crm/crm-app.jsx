@@ -573,7 +573,7 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
                             <div style={{background: 'rgba(59, 130, 246, 0.15)', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '1.5rem'}}>👤</div>
                             <div>
                                 <div style={{fontSize: '1.75rem', fontWeight: '700', lineHeight: '1'}}>{activeChatters}</div>
-                                <div style={{fontSize: '0.75rem', opacity: 0.7', marginTop: '0.25rem'}}>Chatters Activos</div>
+                                <div style={{fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem'}}>Chatters Activos</div>
                             </div>
                         </div>
                     </div>
