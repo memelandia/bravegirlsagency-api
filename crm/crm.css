@@ -753,6 +753,7 @@ select option:active {
     select.crm-input,
     .crm-select {
         -webkit-appearance: none;
+        appearance: none;
         color-scheme: dark !important;
     }
     

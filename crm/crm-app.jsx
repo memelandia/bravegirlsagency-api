@@ -6,6 +6,60 @@ const { ReactFlow, Controls, Background, useNodesState, useEdgesState, addEdge, 
 const API_BASE = window.CONFIG?.onlyMonsterApiUrl || 'https://bravegirlsagency-api.vercel.app/api';
 
 // ============================================
+// TOAST NOTIFICATION SYSTEM
+// ============================================
+const Toast = (() => {
+    let toastId = 0;
+    
+    const show = (message, type = 'info') => {
+        const id = ++toastId;
+        const toast = document.createElement('div');
+        toast.className = `crm-toast crm-toast-${type}`;
+        toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            top: ${80 + (id % 3) * 70}px;
+            right: 20px;
+            padding: 16px 24px;
+            background: ${type === 'success' ? 'rgba(16, 185, 129, 0.95)' : type === 'error' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(59, 130, 246, 0.95)'};
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 10000;
+            font-weight: 600;
+            animation: slideInRight 0.3s ease;
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    };
+    
+    return { show };
+})();
+
+// Agregar animaciones CSS para Toast
+if (!document.getElementById('toast-animations')) {
+    const style = document.createElement('style');
+    style.id = 'toast-animations';
+    style.textContent = `
+        @keyframes slideInRight {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// ============================================
 // API SERVICE
 // ============================================
 const CRMService = {
@@ -333,6 +387,7 @@ function CRMApp() {
                                     chatters={chatters}
                                     assignments={assignments}
                                     supervisors={supervisors}
+                                    onRefresh={loadAllData}
                                 />
                             )}
                             {currentView === 'modelo-redes' && (
@@ -449,7 +504,7 @@ function LoadingState() {
 // ============================================
 // ESTRUCTURA VIEW (Interactive Map)
 // ============================================
-function EstructuraView({ models, chatters, assignments, supervisors }) {
+function EstructuraView({ models, chatters, assignments, supervisors, onRefresh }) {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -463,7 +518,7 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
         const [targetType, targetId] = params.target.split('-');
         
         if (sourceType !== 'chatter' || targetType !== 'model') {
-            alert('⚠️ Solo puedes conectar Chatters a Modelos');
+            Toast.show('⚠️ Solo puedes conectar Chatters a Modelos', 'error');
             return;
         }
         
@@ -479,14 +534,13 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
     const handleConfirmConnection = async (assignmentData) => {
         try {
             await CRMService.createAssignment(assignmentData);
-            // Agregar edge visual
             setEdges((eds) => addEdge(pendingConnection.params, eds));
             setShowAssignModal(false);
             setPendingConnection(null);
-            // Recargar datos
-            window.location.reload();
+            Toast.show('✅ Asignación creada exitosamente', 'success');
+            if (onRefresh) onRefresh();
         } catch (error) {
-            alert('Error al crear asignación: ' + error.message);
+            Toast.show('Error al crear asignación: ' + error.message, 'error');
         }
     };
     
@@ -501,9 +555,8 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
         
         try {
             await CRMService.updateNodePosition(nodeType, id, node.position.x, node.position.y);
-            console.log(`✅ Posición guardada: ${nodeType} ${id} -> (${node.position.x}, ${node.position.y})`);
         } catch (error) {
-            console.error('Error al guardar posición:', error);
+            // Silently fail position save
         }
     }, []);
     
@@ -514,7 +567,7 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
         try {
             await CRMService.resetAllPositions();
             generateFlowData(true); // Forzar layout automático
-            alert('✅ Diagrama reorganizado automáticamente');
+            Toast.show('✅ Diagrama reorganizado automáticamente', 'success');
         } catch (error) {
             console.error('Error al reorganizar:', error);
             // Intentar reorganizar localmente aunque falle el reset
@@ -1449,7 +1502,7 @@ function ModelModal({ model, onClose, onSave }) {
             onSave();
             onClose();
         } catch (error) {
-            alert('Error al guardar: ' + error.message);
+            Toast.show('Error al guardar: ' + error.message, 'error');
         }
     };
     
@@ -1874,7 +1927,7 @@ function AssignmentModal({ assignment, chatters, models, onClose, onSave }) {
         e.preventDefault();
         
         if (formData.model_ids.length === 0) {
-            alert('⚠️ Debes seleccionar al menos un modelo');
+            Toast.show('⚠️ Debes seleccionar al menos un modelo', 'error');
             return;
         }
         
@@ -1907,8 +1960,7 @@ function AssignmentModal({ assignment, chatters, models, onClose, onSave }) {
             onSave();
             onClose();
         } catch (error) {
-            console.error('Error al guardar:', error);
-            alert('Error al guardar la asignación');
+            Toast.show('Error al guardar la asignación', 'error');
         }
     };
     
@@ -2328,14 +2380,12 @@ function StaffModal({ staff, models, onClose, onSave }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            console.log('Guardando staff:', formData);
             let response;
             if (staff) {
                 response = await CRMService.updateStaff(staff.id, formData);
             } else {
                 response = await CRMService.createStaff(formData);
             }
-            console.log('Respuesta del servidor:', response);
             
             if (response.success) {
                 onSave();
@@ -2344,8 +2394,7 @@ function StaffModal({ staff, models, onClose, onSave }) {
                 throw new Error(response.error || 'Error desconocido');
             }
         } catch (error) {
-            console.error('Error al guardar staff:', error);
-            alert('Error al guardar: ' + (error.message || 'Por favor intenta de nuevo'));
+            Toast.show('Error al guardar: ' + (error.message || 'Por favor intenta de nuevo'), 'error');
         }
     };
     
