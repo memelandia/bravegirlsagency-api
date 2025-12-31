@@ -1934,13 +1934,18 @@ function StaffModal({ staff, models, onClose, onSave }) {
     
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (staff) {
-            await CRMService.updateStaff(staff.id, formData);
-        } else {
-            await CRMService.createStaff(formData);
+        try {
+            if (staff) {
+                await CRMService.updateStaff(staff.id, formData);
+            } else {
+                await CRMService.createStaff(formData);
+            }
+            onSave();
+            onClose();
+        } catch (error) {
+            console.error('Error al guardar staff:', error);
+            alert('Error al guardar. Por favor intenta de nuevo.');
         }
-        onSave();
-        onClose();
     };
     
     return (
@@ -1974,9 +1979,9 @@ function StaffModal({ staff, models, onClose, onSave }) {
                             </select>
                         </div>
                         <div className="crm-form-group">
-                            <label className="crm-label">Modelos Asignados ({(formData.modelos_asignados || []).length}/{models.length})</label>
+                            <label className="crm-label">Modelos Asignados ({(formData.modelos_asignados || []).length}/{(models || []).length})</label>
                             <div style={{display: 'grid', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto', padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem'}}>
-                                {models.map(model => (
+                                {(models || []).map(model => (
                                     <label key={model.id} style={{display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', padding: '0.5rem', borderRadius: '0.25rem', background: (formData.modelos_asignados || []).includes(model.id) ? 'rgba(139, 92, 246, 0.2)' : 'transparent'}}>
                                         <input 
                                             type="checkbox"
