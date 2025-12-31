@@ -240,7 +240,7 @@ module.exports = async (req, res) => {
             if (req.method === 'POST') {
                 const { nombre, rol, estado, modelos_asignados } = req.body;
                 if (!nombre || !rol) return res.status(400).json({ error: 'Nombre y rol son requeridos' });
-                const validRoles = ['VA_EDITOR', 'AM_UPLOAD', 'CD'];
+                const validRoles = ['EDITOR_REELS', 'PROGRAMADOR_PPV', 'AM_UPLOAD', 'CD', 'VA_EDITOR'];
                 if (!validRoles.includes(rol)) return res.status(400).json({ error: 'Rol inválido' });
                 const result = await pool.query(
                     'INSERT INTO crm_staff (nombre, rol, estado, modelos_asignados, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING *',
@@ -260,7 +260,7 @@ module.exports = async (req, res) => {
             if (req.method === 'PUT') {
                 const { nombre, rol, estado, modelos_asignados } = req.body;
                 if (rol) {
-                    const validRoles = ['VA_EDITOR', 'AM_UPLOAD', 'CD'];
+                    const validRoles = ['EDITOR_REELS', 'PROGRAMADOR_PPV', 'AM_UPLOAD', 'CD', 'VA_EDITOR'];
                     if (!validRoles.includes(rol)) return res.status(400).json({ error: 'Rol inválido' });
                 }
                 const result = await pool.query(
