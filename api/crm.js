@@ -362,6 +362,111 @@ module.exports = async (req, res) => {
             }
         }
         
+        // ============================================
+        // TASKS (Sistema de Tareas)
+        // ============================================
+        if (path === 'tasks') {
+            if (req.method === 'GET') {
+                const result = await pool.query('SELECT * FROM crm_tasks ORDER BY created_at DESC');
+                return res.status(200).json({ success: true, data: result.rows });
+            }
+            if (req.method === 'POST') {
+                const { title, description, type, priority, status, assigned_to_staff_id, related_model_id, due_date } = req.body;
+                if (!title || !type) return res.status(400).json({ error: 'Title y type son requeridos' });
+                const result = await pool.query(
+                    'INSERT INTO crm_tasks (title, description, type, priority, status, assigned_to_staff_id, related_model_id, due_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+                    [title, description, type, priority || 'medium', status || 'pending', assigned_to_staff_id, related_model_id, due_date]
+                );
+                return res.status(201).json({ success: true, data: result.rows[0] });
+            }
+        }
+        
+        if (path && path.startsWith('tasks/')) {
+            const id = path.split('/')[1];
+            if (req.method === 'GET') {
+                const result = await pool.query('SELECT * FROM crm_tasks WHERE id = $1', [id]);
+                if (result.rows.length === 0) return res.status(404).json({ error: 'Tarea no encontrada' });
+                return res.status(200).json({ success: true, data: result.rows[0] });
+            }
+            if (req.method === 'PUT') {
+                const { title, description, type, priority, status, assigned_to_staff_id, related_model_id, due_date, completed_at } = req.body;
+                
+                const updates = [];
+                const values = [];
+                let paramCount = 1;
+                
+                if (title !== undefined) { updates.push(`title = $${paramCount++}`); values.push(title); }
+                if (description !== undefined) { updates.push(`description = $${paramCount++}`); values.push(description); }
+                if (type !== undefined) { updates.push(`type = $${paramCount++}`); values.push(type); }
+                if (priority !== undefined) { updates.push(`priority = $${paramCount++}`); values.push(priority); }
+                if (status !== undefined) { updates.push(`status = $${paramCount++}`); values.push(status); }
+                if (assigned_to_staff_id !== undefined) { updates.push(`assigned_to_staff_id = $${paramCount++}`); values.push(assigned_to_staff_id); }
+                if (related_model_id !== undefined) { updates.push(`related_model_id = $${paramCount++}`); values.push(related_model_id); }
+                if (due_date !== undefined) { updates.push(`due_date = $${paramCount++}`); values.push(due_date); }
+                if (completed_at !== undefined) { updates.push(`completed_at = $${paramCount++}`); values.push(completed_at); }
+                
+                updates.push(`updated_at = NOW()`);
+                values.push(id);
+                
+                const query = `UPDATE crm_tasks SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+                const result = await pool.query(query, values);
+                
+                if (result.rows.length === 0) return res.status(404).json({ error: 'Tarea no encontrada' });
+                return res.status(200).json({ success: true, data: result.rows[0] });
+            }
+            if (req.method === 'DELETE') {
+                const result = await pool.query('DELETE FROM crm_tasks WHERE id = $1 RETURNING *', [id]);
+                if (result.rows.length === 0) return res.status(404).json({ error: 'Tarea no encontrada' });
+                return res.status(200).json({ success: true, message: 'Tarea eliminada' });
+            }
+        }
+        
+        // ============================================
+        // AUDIT LOG (Historial y Auditoría)
+        // ============================================
+        if (path === 'audit-log') {
+            if (req.method === 'GET') {
+                const { entity_type, entity_id, limit } = req.query;
+                let query = 'SELECT * FROM crm_audit_log';
+                const conditions = [];
+                const values = [];
+                
+                if (entity_type) {
+                    conditions.push(`entity_type = $${values.length + 1}`);
+                    values.push(entity_type);
+                }
+                if (entity_id) {
+                    conditions.push(`entity_id = $${values.length + 1}`);
+                    values.push(entity_id);
+                }
+                
+                if (conditions.length > 0) {
+                    query += ' WHERE ' + conditions.join(' AND ');
+                }
+                
+                query += ' ORDER BY timestamp DESC';
+                
+                if (limit) {
+                    query += ` LIMIT $${values.length + 1}`;
+                    values.push(limit);
+                }
+                
+                const result = await pool.query(query, values);
+                return res.status(200).json({ success: true, data: result.rows });
+            }
+            if (req.method === 'POST') {
+                const { user_name, action, entity_type, entity_id, entity_name, old_values, new_values, changes_summary } = req.body;
+                if (!user_name || !action || !entity_type || !entity_id) {
+                    return res.status(400).json({ error: 'user_name, action, entity_type y entity_id son requeridos' });
+                }
+                const result = await pool.query(
+                    'INSERT INTO crm_audit_log (user_name, action, entity_type, entity_id, entity_name, old_values, new_values, changes_summary, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING *',
+                    [user_name, action, entity_type, entity_id, entity_name, JSON.stringify(old_values || {}), JSON.stringify(new_values || {}), changes_summary]
+                );
+                return res.status(201).json({ success: true, data: result.rows[0] });
+            }
+        }
+        
         return res.status(404).json({ error: 'Ruta no encontrada' });
         
     } catch (error) {

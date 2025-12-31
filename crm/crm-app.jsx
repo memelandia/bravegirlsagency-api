@@ -147,6 +147,31 @@ const CRMService = {
     }).then(r => r.json()),
     deleteStaff: (id) => fetch(`${API_BASE}/crm?path=staff/${id}`, { method: 'DELETE' }).then(r => r.json()),
     
+    // Tasks
+    getTasks: () => fetch(`${API_BASE}/crm?path=tasks`).then(r => r.json()),
+    createTask: (data) => fetch(`${API_BASE}/crm?path=tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }).then(r => r.json()),
+    updateTask: (id, data) => fetch(`${API_BASE}/crm?path=tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }).then(r => r.json()),
+    deleteTask: (id) => fetch(`${API_BASE}/crm?path=tasks/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    
+    // Audit Log
+    getAuditLog: (filters = {}) => {
+        const params = new URLSearchParams({ ...filters, path: 'audit-log' });
+        return fetch(`${API_BASE}/crm?${params}`).then(r => r.json());
+    },
+    createAuditLog: (data) => fetch(`${API_BASE}/crm?path=audit-log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }).then(r => r.json()),
+    
     // Flow Positions (para guardar posiciones de nodos)
     updateNodePosition: async (nodeType, nodeId, x, y) => {
         const data = { flow_position_x: x, flow_position_y: y };
@@ -349,13 +374,15 @@ function CRMApp() {
     const loadAllData = async () => {
         setLoading(true);
         try {
-            const [modelsData, chattersData, assignmentsData, socialData, supervisorsData, staffData] = await Promise.all([
+            const [modelsData, chattersData, assignmentsData, socialData, supervisorsData, staffData, tasksData, auditData] = await Promise.all([
                 CRMService.getModels().catch(() => ({ data: [] })),
                 CRMService.getChatters().catch(() => ({ data: [] })),
                 CRMService.getAssignments().catch(() => ({ data: [] })),
                 CRMService.getSocialAccounts().catch(() => ({ data: [] })),
                 CRMService.getSupervisors().catch(() => ({ data: [] })),
                 CRMService.getStaff().catch(() => ({ data: [] })),
+                CRMService.getTasks().catch(() => ({ data: [] })),
+                CRMService.getAuditLog({ limit: 100 }).catch(() => ({ data: [] })),
             ]);
             
             setModels(modelsData.data || []);
@@ -364,6 +391,8 @@ function CRMApp() {
             setSocialAccounts(socialData.data || []);
             setSupervisors(supervisorsData.data || []);
             setStaff(staffData.data || []);
+            setTasks(tasksData.data || []);
+            setAuditLog(auditData.data || []);
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {
@@ -373,8 +402,13 @@ function CRMApp() {
     
     return (
         <div className="crm-container">
-            <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
-            <main className="crm-main">
+            <Sidebar 
+                currentView={currentView} 
+                setCurrentView={setCurrentView} 
+                collapsed={sidebarCollapsed}
+                setCollapsed={setSidebarCollapsed}
+            />
+            <main className={`crm-main ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
                 <Topbar currentView={currentView} onRefresh={loadAllData} />
                 <div className="crm-content">
                     {loading ? (
@@ -392,6 +426,12 @@ function CRMApp() {
                             )}
                             {currentView === 'modelo-redes' && (
                                 <ModeloRedesView models={models} socialAccounts={socialAccounts} />
+                            )}
+                            {currentView === 'tareas' && (
+                                <TareasView tasks={tasks} staff={staff} models={models} onRefresh={loadAllData} />
+                            )}
+                            {currentView === 'historial' && (
+                                <HistorialView auditLog={auditLog} models={models} chatters={chatters} staff={staff} />
                             )}
                             {currentView === 'marketing' && (
                                 <MarketingView staff={staff} />
@@ -418,23 +458,36 @@ function CRMApp() {
 // ============================================
 // SIDEBAR COMPONENT
 // ============================================
-function Sidebar({ currentView, setCurrentView }) {
+function Sidebar({ currentView, setCurrentView, collapsed, setCollapsed }) {
     const user = window.CRM_USER;
     
     const menuItems = [
         { id: 'estructura', icon: '🗺️', label: 'Estructura' },
+        { id: 'tareas', icon: '✅', label: 'Tareas' },
+        { id: 'historial', icon: '📜', label: 'Historial' },
         { id: 'modelo-redes', icon: '📱', label: 'Modelo → Redes' },
         { id: 'marketing', icon: '📊', label: 'Marketing' },
         { id: 'configuracion', icon: '⚙️', label: 'Configuración' },
     ];
     
     return (
-        <div className="crm-sidebar">
+        <div className={`crm-sidebar ${collapsed ? 'collapsed' : ''}`}>
             <div className="crm-sidebar-header">
-                <a href="/">
-                    <img src="/assets/logo-bravegirls.png" alt="BraveGirls" className="crm-sidebar-logo" onError={(e) => e.target.style.display = 'none'} />
-                </a>
-                <div className="crm-sidebar-title">CRM Visual</div>
+                {!collapsed && (
+                    <>
+                        <a href="/">
+                            <img src="/assets/logo-bravegirls.png" alt="BraveGirls" className="crm-sidebar-logo" onError={(e) => e.target.style.display = 'none'} />
+                        </a>
+                        <div className="crm-sidebar-title">CRM Visual</div>
+                    </>
+                )}
+                <button 
+                    className="crm-sidebar-toggle" 
+                    onClick={() => setCollapsed(!collapsed)}
+                    title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+                >
+                    {collapsed ? '▶' : '◀'}
+                </button>
             </div>
             
             <nav className="crm-sidebar-nav">
@@ -443,16 +496,18 @@ function Sidebar({ currentView, setCurrentView }) {
                         key={item.id}
                         className={`crm-nav-item ${currentView === item.id ? 'active' : ''}`}
                         onClick={() => setCurrentView(item.id)}
+                        title={collapsed ? item.label : ''}
                     >
                         <span className="crm-nav-icon">{item.icon}</span>
-                        <span>{item.label}</span>
+                        {!collapsed && <span>{item.label}</span>}
                     </div>
                 ))}
             </nav>
             
-            <div className="crm-sidebar-footer">
-                <div className="crm-user-info">
-                    <div className="crm-user-avatar">{user.name.charAt(0)}</div>
+            {!collapsed && (
+                <div className="crm-sidebar-footer">
+                    <div className="crm-user-info">
+                        <div className="crm-user-avatar">{user.name.charAt(0)}</div>
                     <div className="crm-user-details">
                         <div className="crm-user-name">{user.name}</div>
                         <div className="crm-user-role">{user.type}</div>
