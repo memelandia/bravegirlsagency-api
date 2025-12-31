@@ -98,27 +98,53 @@ const CRMService = {
 // UTILITY FUNCTIONS
 // ============================================
 const getCountryFlag = (country) => {
-    const flags = {
-        'Venezuela': '🇻🇪',
-        'Colombia': '🇨🇴',
-        'Argentina': '🇦🇷',
-        'México': '🇲🇽',
-        'Mexico': '🇲🇽',
-        'Perú': '🇵🇪',
-        'Peru': '🇵🇪',
-        'Chile': '🇨🇱',
-        'Ecuador': '🇪🇨',
-        'Bolivia': '🇧🇴',
-        'Uruguay': '🇺🇾',
-        'Paraguay': '🇵🇾',
-        'Brasil': '🇧🇷',
-        'Brazil': '🇧🇷',
-        'España': '🇪🇸',
-        'Spain': '🇪🇸',
-        'USA': '🇺🇸',
-        'Estados Unidos': '🇺🇸',
+    const countryCodeMap = {
+        'Venezuela': 've',
+        'Colombia': 'co',
+        'Argentina': 'ar',
+        'México': 'mx',
+        'Mexico': 'mx',
+        'Perú': 'pe',
+        'Peru': 'pe',
+        'Chile': 'cl',
+        'Ecuador': 'ec',
+        'Bolivia': 'bo',
+        'Uruguay': 'uy',
+        'Paraguay': 'py',
+        'Brasil': 'br',
+        'Brazil': 'br',
+        'España': 'es',
+        'Spain': 'es',
+        'USA': 'us',
+        'Estados Unidos': 'us',
     };
-    return flags[country] || '🌎';
+    
+    const code = countryCodeMap[country];
+    if (!code) {
+        return <span style={{
+            display: 'inline-block',
+            width: '20px',
+            height: '15px',
+            background: 'rgba(100, 116, 139, 0.3)',
+            borderRadius: '2px',
+            marginRight: '4px',
+            verticalAlign: 'middle'
+        }}>🌎</span>;
+    }
+    
+    return <img 
+        src={`https://flagcdn.com/w20/${code}.png`}
+        srcSet={`https://flagcdn.com/w40/${code}.png 2x`}
+        width="20"
+        alt={country}
+        style={{
+            display: 'inline-block',
+            verticalAlign: 'middle',
+            marginRight: '4px',
+            borderRadius: '2px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+        }}
+    />;
 };
 
 const getRevenueColor = (revenue) => {
@@ -1612,7 +1638,8 @@ function AssignmentsTable({ assignments, chatters, models, onRefresh }) {
     
     const getChatterName = (chatterId) => {
         const chatter = chatters.find(c => c.id === chatterId);
-        return chatter ? `${getCountryFlag(chatter.pais)} ${chatter.nombre}` : 'N/A';
+        if (!chatter) return 'N/A';
+        return <>{getCountryFlag(chatter.pais)} {chatter.nombre}</>;
     };
     
     const getModelHandle = (modelId) => {
@@ -1762,7 +1789,7 @@ function AssignmentModal({ assignment, chatters, models, onClose, onSave }) {
                             >
                                 {chatters.map(chatter => (
                                     <option key={chatter.id} value={chatter.id}>
-                                        {getCountryFlag(chatter.pais)} {chatter.nombre} ({chatter.nivel})
+                                        {chatter.pais ? `${chatter.pais.substring(0,2).toUpperCase()} - ` : ''}{chatter.nombre} ({chatter.nivel})
                                     </option>
                                 ))}
                             </select>
