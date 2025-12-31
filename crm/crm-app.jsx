@@ -745,7 +745,8 @@ function ModeloRedesView({ models, socialAccounts }) {
 // ============================================
 function MarketingView({ staff }) {
     const staffByRole = {
-        'VA_EDITOR': staff.filter(s => s.rol === 'VA_EDITOR'),
+        'EDITOR_REELS': staff.filter(s => s.rol === 'EDITOR_REELS'),
+        'PROGRAMADOR_PPV': staff.filter(s => s.rol === 'PROGRAMADOR_PPV'),
         'AM_UPLOAD': staff.filter(s => s.rol === 'AM_UPLOAD'),
         'CD': staff.filter(s => s.rol === 'CD'),
     };
@@ -755,10 +756,30 @@ function MarketingView({ staff }) {
             <div className="crm-grid crm-grid-2">
                 <div className="crm-card">
                     <div className="crm-card-header">
-                        <h3 className="crm-card-title">🎬 VA/Editores</h3>
-                        <span className="crm-badge crm-badge-info">{staffByRole.VA_EDITOR.length}</span>
+                        <h3 className="crm-card-title">🎬 Editor Reels</h3>
+                        <span className="crm-badge crm-badge-info">{staffByRole.EDITOR_REELS.length}</span>
                     </div>
-                    {staffByRole.VA_EDITOR.map(s => (
+                    {staffByRole.EDITOR_REELS.map(s => (
+                        <div key={s.id} style={{padding: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem'}}>
+                                <strong>{s.nombre}</strong>
+                                <span className={`crm-badge crm-badge-${s.estado === 'activo' ? 'success' : 'warning'}`} style={{fontSize: '0.75rem'}}>
+                                    {s.estado}
+                                </span>
+                            </div>
+                            <div style={{fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)'}}>
+                                {s.modelos_asignados?.length || 0} modelos asignados
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                
+                <div className="crm-card">
+                    <div className="crm-card-header">
+                        <h3 className="crm-card-title">🎞️ Programador PPV</h3>
+                        <span className="crm-badge crm-badge-info">{staffByRole.PROGRAMADOR_PPV.length}</span>
+                    </div>
+                    {staffByRole.PROGRAMADOR_PPV.map(s => (
                         <div key={s.id} style={{padding: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem'}}>
                                 <strong>{s.nombre}</strong>
@@ -1012,7 +1033,7 @@ function ChattersTable({ chatters, onRefresh }) {
     return (
         <div>
             <div className="crm-flex-between crm-mb-4">
-                <h2 className="crm-card-title">Chatters ({chatters.length})</h2>
+                <h2 className="crm-card-title">💬 Chatters ({chatters.length})</h2>
                 <button className="crm-btn crm-btn-primary crm-btn-sm" onClick={() => { setEditingChatter(null); setShowModal(true); }}>
                     ➕ Nuevo Chatter
                 </button>
@@ -1454,7 +1475,14 @@ function SocialAccountsTable({ socialAccounts, models, onRefresh }) {
                             <tr key={account.id}>
                                 <td>{getModelHandle(account.model_id)}</td>
                                 <td>
-                                    <span className="crm-badge crm-badge-info">{account.plataforma}</span>
+                                    <span className="crm-badge crm-badge-info">
+                                        {account.plataforma === 'OnlyFans' && '🔞'}
+                                        {account.plataforma === 'Fansly' && '💜'}
+                                        {account.plataforma === 'Instagram' && '📸'}
+                                        {account.plataforma === 'TikTok' && '🎵'}
+                                        {account.plataforma === 'Telegram' && '✈️'}
+                                        {' '}{account.plataforma}
+                                    </span>
                                 </td>
                                 <td><strong>{account.handle}</strong></td>
                                 <td>
@@ -1522,9 +1550,11 @@ function SocialAccountModal({ account, models, onClose, onSave }) {
                         <div className="crm-form-group">
                             <label className="crm-label">Plataforma *</label>
                             <select className="crm-input" value={formData.plataforma} onChange={(e) => setFormData({...formData, plataforma: e.target.value})} required>
-                                <option value="Instagram">Instagram</option>
-                                <option value="TikTok">TikTok</option>
-                                <option value="Telegram">Telegram</option>
+                                <option value="OnlyFans">🔞 OnlyFans</option>
+                                <option value="Fansly">💜 Fansly</option>
+                                <option value="Instagram">📸 Instagram</option>
+                                <option value="TikTok">🎵 TikTok</option>
+                                <option value="Telegram">✈️ Telegram</option>
                             </select>
                         </div>
                         <div className="crm-form-group">
@@ -1570,7 +1600,7 @@ function SupervisorsTable({ supervisors, onRefresh }) {
     return (
         <div>
             <div className="crm-flex-between crm-mb-4">
-                <h2 className="crm-card-title">Supervisores ({supervisors.length})</h2>
+                <h2 className="crm-card-title">🔍 Supervisores ({supervisors.length})</h2>
                 <button className="crm-btn crm-btn-primary crm-btn-sm" onClick={() => { setEditingSupervisor(null); setShowModal(true); }}>
                     ➕ Nuevo Supervisor
                 </button>
@@ -1659,9 +1689,10 @@ function StaffTable({ staff, models, onRefresh }) {
     
     const getRolLabel = (rol) => {
         const labels = {
-            'CD': 'Director Creativo',
-            'VA_EDITOR': 'Editor / Programación PPV',
-            'AM_UPLOAD': 'Account Manager'
+            'CD': '🎨 Director Creativo',
+            'EDITOR_REELS': '🎬 Editor Reels',
+            'PROGRAMADOR_PPV': '🎞️ Programador PPV',
+            'AM_UPLOAD': '📤 Account Manager'
         };
         return labels[rol] || rol;
     };
@@ -1752,9 +1783,10 @@ function StaffModal({ staff, models, onClose, onSave }) {
                         <div className="crm-form-group">
                             <label className="crm-label">Rol</label>
                             <select className="crm-input" value={formData.rol} onChange={(e) => setFormData({...formData, rol: e.target.value})}>
-                                <option value="CD">Director Creativo</option>
-                                <option value="VA_EDITOR">Editor / Programación PPV</option>
-                                <option value="AM_UPLOAD">Account Manager</option>
+                                <option value="CD">🎨 Director Creativo</option>
+                                <option value="EDITOR_REELS">🎬 Editor Reels</option>
+                                <option value="PROGRAMADOR_PPV">🎞️ Programador PPV</option>
+                                <option value="AM_UPLOAD">📤 Account Manager</option>
                             </select>
                         </div>
                         <div className="crm-form-group">
