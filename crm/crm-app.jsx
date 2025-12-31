@@ -1746,7 +1746,12 @@ function StaffTable({ staff, models, onRefresh }) {
 }
 
 function StaffModal({ staff, models, onClose, onSave }) {
-    const [formData, setFormData] = useState(staff || { nombre: '', rol: 'EDITOR_REELS', estado: 'activo', modelos_asignados: [] });
+    // Convertir rol antiguo VA_EDITOR a EDITOR_REELS automáticamente
+    const initialData = staff 
+        ? { ...staff, rol: staff.rol === 'VA_EDITOR' ? 'EDITOR_REELS' : staff.rol }
+        : { nombre: '', rol: 'EDITOR_REELS', estado: 'activo', modelos_asignados: [] };
+    
+    const [formData, setFormData] = useState(initialData);
     
     const toggleModel = (modelId) => {
         const current = formData.modelos_asignados || [];
