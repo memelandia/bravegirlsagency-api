@@ -666,8 +666,8 @@ select option,
 select.crm-input option,
 .crm-modal option,
 .crm-form-group option {
-    background-color: #0F172A !important;
-    background: #0F172A !important;
+    background-color: #1E293B !important;
+    background: #1E293B !important;
     color: #F1F5F9 !important;
     padding: 14px 16px !important;
     font-size: 1rem !important;
@@ -812,7 +812,9 @@ select option:active {
     max-width: 600px;
     width: 100%;
     max-height: 90vh;
-    overflow-y: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -888,15 +890,19 @@ select option:active {
 
 .crm-modal-body {
     padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
 }
 
 .crm-modal-footer {
     padding: 1.5rem;
     border-top: 1px solid var(--crm-border);
-    display: flex;
+    display: flex !important;
     gap: 0.75rem;
     justify-content: flex-end;
     background: rgba(255, 255, 255, 0.02);
+    flex-shrink: 0;
 }
 
 /* ============================================
@@ -958,6 +964,12 @@ select option:active {
     cursor: pointer;
     overflow: hidden;
     word-wrap: break-word;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 180px;
 }
 
 .react-flow__node:hover {
