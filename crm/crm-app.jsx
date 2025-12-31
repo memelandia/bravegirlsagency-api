@@ -1747,8 +1747,13 @@ function StaffTable({ staff, models, onRefresh }) {
 
 function StaffModal({ staff, models, onClose, onSave }) {
     // Convertir rol antiguo VA_EDITOR a EDITOR_REELS automáticamente
+    // Y asegurar que modelos_asignados sea siempre un array
     const initialData = staff 
-        ? { ...staff, rol: staff.rol === 'VA_EDITOR' ? 'EDITOR_REELS' : staff.rol }
+        ? { 
+            ...staff, 
+            rol: staff.rol === 'VA_EDITOR' ? 'EDITOR_REELS' : staff.rol,
+            modelos_asignados: Array.isArray(staff.modelos_asignados) ? staff.modelos_asignados : []
+          }
         : { nombre: '', rol: 'EDITOR_REELS', estado: 'activo', modelos_asignados: [] };
     
     const [formData, setFormData] = useState(initialData);
