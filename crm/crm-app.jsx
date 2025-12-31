@@ -92,11 +92,127 @@ const CRMService = {
         body: JSON.stringify(data)
     }).then(r => r.json()),
     deleteStaff: (id) => fetch(`${API_BASE}/crm?path=staff/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    
+    // Flow Positions (para guardar posiciones de nodos)
+    updateNodePosition: async (nodeType, nodeId, x, y) => {
+        const data = { flow_position_x: x, flow_position_y: y };
+        if (nodeType === 'chatter') {
+            return CRMService.updateChatter(nodeId, data);
+        } else if (nodeType === 'model') {
+            return CRMService.updateModel(nodeId, data);
+        } else if (nodeType === 'supervisor') {
+            return CRMService.updateSupervisor(nodeId, data);
+        }
+    },
+    
+    // Resetear todas las posiciones a null (para forzar layout automático)
+    resetAllPositions: async () => {
+        return fetch(`${API_BASE}/crm?path=flow-positions&action=reset`, {
+            method: 'POST'
+        }).then(r => r.json());
+    },
 };
 
 // ============================================
 // UTILITY FUNCTIONS
 // ============================================
+
+// Layout automático inteligente con agrupación jerárquica
+const calculateAutoLayout = (supervisors, chatters, models, assignments) => {
+    const positions = {
+        supervisors: {},
+        chatters: {},
+        models: {}
+    };
+    
+    const SPACING = {
+        horizontal: 280,
+        vertical: 200,
+        levelGap: 150,
+        chatterGroupGap: 60
+    };
+    
+    let yOffset = 50;
+    const centerX = 600;
+    
+    // NIVEL 1: Supervisores (centrados arriba)
+    supervisors.forEach((sup, idx) => {
+        const x = centerX - ((supervisors.length - 1) * SPACING.horizontal / 2) + (idx * SPACING.horizontal);
+        positions.supervisors[sup.id] = { x, y: yOffset };
+    });
+    
+    yOffset += SPACING.levelGap + SPACING.vertical;
+    
+    // NIVEL 2: Chatters agrupados por nivel (senior, mid, junior)
+    const chattersByLevel = {
+        senior: chatters.filter(c => c.nivel === 'senior' && c.estado === 'activo'),
+        mid: chatters.filter(c => c.nivel === 'mid' && c.estado === 'activo'),
+        junior: chatters.filter(c => c.nivel === 'junior' && c.estado === 'activo')
+    };
+    
+    let xOffset = 100;
+    const maxInGroup = Math.max(...Object.values(chattersByLevel).map(g => g.length), 1);
+    
+    Object.entries(chattersByLevel).forEach(([level, group]) => {
+        group.forEach((chatter, idx) => {
+            positions.chatters[chatter.id] = {
+                x: xOffset,
+                y: yOffset + (idx * SPACING.vertical)
+            };
+        });
+        xOffset += SPACING.horizontal + SPACING.chatterGroupGap;
+    });
+    
+    yOffset += (maxInGroup * SPACING.vertical) + SPACING.levelGap;
+    
+    // NIVEL 3: Modelos organizados por prioridad y asignaciones
+    // Primero agrupar por chatter asignado
+    const modelsByChatter = {};
+    const unassignedModels = [];
+    
+    models.forEach(model => {
+        const assignment = assignments.find(a => a.model_id === model.id && a.estado === 'activa');
+        if (assignment) {
+            if (!modelsByChatter[assignment.chatter_id]) {
+                modelsByChatter[assignment.chatter_id] = [];
+            }
+            modelsByChatter[assignment.chatter_id].push(model);
+        } else {
+            unassignedModels.push(model);
+        }
+    });
+    
+    // Posicionar modelos debajo de sus chatters
+    let globalModelIndex = 0;
+    Object.entries(chattersByLevel).forEach(([level, group]) => {
+        group.forEach((chatter) => {
+            const chatterModels = modelsByChatter[chatter.id] || [];
+            const chatterPos = positions.chatters[chatter.id];
+            
+            chatterModels.forEach((model, idx) => {
+                positions.models[model.id] = {
+                    x: chatterPos.x + ((idx % 2) * 240) - 100,
+                    y: yOffset + (Math.floor(idx / 2) * 180)
+                };
+                globalModelIndex++;
+            });
+        });
+    });
+    
+    // Modelos sin asignar al final
+    const modelsPerRow = 5;
+    unassignedModels.forEach((model, idx) => {
+        const row = Math.floor(idx / modelsPerRow);
+        const col = idx % modelsPerRow;
+        positions.models[model.id] = {
+            x: 50 + (col * 240),
+            y: yOffset + 200 + (row * 180)
+        };
+    });
+    
+    return positions;
+};
+
 const getCountryFlag = (country) => {
     const countryCodeMap = {
         'Venezuela': 've',
@@ -378,15 +494,44 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
         generateFlowData();
     }, [models, chatters, assignments, supervisors, searchTerm]);
     
-    const generateFlowData = () => {
+    // Handler para guardar posiciones cuando se mueve un nodo
+    const onNodeDragStop = useCallback(async (event, node) => {
+        const [nodeType, nodeId] = node.id.split('-');
+        const id = parseInt(nodeId);
+        
+        try {
+            await CRMService.updateNodePosition(nodeType, id, node.position.x, node.position.y);
+            console.log(`✅ Posición guardada: ${nodeType} ${id} -> (${node.position.x}, ${node.position.y})`);
+        } catch (error) {
+            console.error('Error al guardar posición:', error);
+        }
+    }, []);
+    
+    // Función para resetear todas las posiciones y reorganizar automáticamente
+    const handleAutoOrganize = async () => {
+        if (!confirm('¿Reorganizar automáticamente todo el diagrama? Se perderán las posiciones personalizadas.')) return;
+        
+        try {
+            await CRMService.resetAllPositions();
+            generateFlowData(true); // Forzar layout automático
+            alert('✅ Diagrama reorganizado automáticamente');
+        } catch (error) {
+            console.error('Error al reorganizar:', error);
+            // Intentar reorganizar localmente aunque falle el reset
+            generateFlowData(true);
+        }
+    };
+    
+    const generateFlowData = (forceAutoLayout = false) => {
         const newNodes = [];
         const newEdges = [];
-        let yOffset = 50;
+        
+        // Calcular layout automático inteligente
+        const autoPositions = calculateAutoLayout(supervisors, chatters, models, assignments);
         
         // ========================================
         // NIVEL 1: SUPERVISORS (Top Management)
         // ========================================
-        const centerX = 600;
         supervisors.forEach((sup, idx) => {
             const supervisedChatters = assignments.filter(a => {
                 const chatter = chatters.find(c => c.id === a.chatter_id);
@@ -453,7 +598,9 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
                         </div>
                     )
                 },
-                position: { x: centerX - 110 + (idx * 280), y: yOffset },
+                position: forceAutoLayout || !sup.flow_position_x ? 
+                    autoPositions.supervisors[sup.id] : 
+                    { x: parseFloat(sup.flow_position_x), y: parseFloat(sup.flow_position_y) },
                 className: 'react-flow__node-supervisor',
             });
         });
@@ -555,7 +702,9 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
                             </div>
                         )
                     },
-                    position: { x: xOffset, y: yOffset + (idx * 180) },
+                    position: forceAutoLayout || !chatter.flow_position_x ? 
+                        autoPositions.chatters[chatter.id] : 
+                        { x: parseFloat(chatter.flow_position_x), y: parseFloat(chatter.flow_position_y) },
                     className: `react-flow__node-chatter react-flow__node-chatter-${level}`,
                 });
             });
@@ -656,7 +805,9 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
                         </div>
                     )
                 },
-                position: { x: 50 + (col * 240), y: yOffset + (row * 180) },
+                position: forceAutoLayout || !model.flow_position_x ? 
+                    autoPositions.models[model.id] : 
+                    { x: parseFloat(model.flow_position_x), y: parseFloat(model.flow_position_y) },
                 className: 'react-flow__node-model',
             });
         });
@@ -788,6 +939,7 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
                     onNodeClick={onNodeClick}
+                    onNodeDragStop={onNodeDragStop}
                     fitView
                 >
                     <Controls />

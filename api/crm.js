@@ -45,12 +45,26 @@ module.exports = async (req, res) => {
                 if (result.rows.length === 0) return res.status(404).json({ error: 'Modelo no encontrado' });
                 return res.status(200).json({ success: true, data: result.rows[0] });
             }
-            if (req.method === 'PUT') {
-                const { handle, estimado_facturacion_mensual, prioridad } = req.body;
-                const result = await pool.query(
-                    'UPDATE crm_models SET handle = $1, estimado_facturacion_mensual = $2, prioridad = $3, updated_at = NOW() WHERE id = $4 RETURNING *',
-                    [handle, estimado_facturacion_mensual, prioridad, id]
-                );
+            if (req.method == 'PUT') {
+                const { handle, estimado_facturacion_mensual, prioridad, flow_position_x, flow_position_y } = req.body;
+                
+                // Construir query dinámicamente
+                const updates = [];
+                const values = [];
+                let paramCount = 1;
+                
+                if (handle !== undefined) { updates.push(`handle = $${paramCount++}`); values.push(handle); }
+                if (estimado_facturacion_mensual !== undefined) { updates.push(`estimado_facturacion_mensual = $${paramCount++}`); values.push(estimado_facturacion_mensual); }
+                if (prioridad !== undefined) { updates.push(`prioridad = $${paramCount++}`); values.push(prioridad); }
+                if (flow_position_x !== undefined) { updates.push(`flow_position_x = $${paramCount++}`); values.push(flow_position_x); }
+                if (flow_position_y !== undefined) { updates.push(`flow_position_y = $${paramCount++}`); values.push(flow_position_y); }
+                
+                updates.push(`updated_at = NOW()`);
+                values.push(id);
+                
+                const query = `UPDATE crm_models SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+                const result = await pool.query(query, values);
+                
                 if (result.rows.length === 0) return res.status(404).json({ error: 'Modelo no encontrado' });
                 return res.status(200).json({ success: true, data: result.rows[0] });
             }
@@ -88,11 +102,27 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: true, data: result.rows[0] });
             }
             if (req.method === 'PUT') {
-                const { nombre, estado, nivel, pais, disponibilidad } = req.body;
-                const result = await pool.query(
-                    'UPDATE crm_chatters SET nombre = $1, estado = $2, nivel = $3, pais = $4, disponibilidad = $5, updated_at = NOW() WHERE id = $6 RETURNING *',
-                    [nombre, estado, nivel, pais, JSON.stringify(disponibilidad), id]
-                );
+                const { nombre, estado, nivel, pais, disponibilidad, flow_position_x, flow_position_y } = req.body;
+                
+                // Construir query dinámicamente
+                const updates = [];
+                const values = [];
+                let paramCount = 1;
+                
+                if (nombre !== undefined) { updates.push(`nombre = $${paramCount++}`); values.push(nombre); }
+                if (estado !== undefined) { updates.push(`estado = $${paramCount++}`); values.push(estado); }
+                if (nivel !== undefined) { updates.push(`nivel = $${paramCount++}`); values.push(nivel); }
+                if (pais !== undefined) { updates.push(`pais = $${paramCount++}`); values.push(pais); }
+                if (disponibilidad !== undefined) { updates.push(`disponibilidad = $${paramCount++}`); values.push(JSON.stringify(disponibilidad)); }
+                if (flow_position_x !== undefined) { updates.push(`flow_position_x = $${paramCount++}`); values.push(flow_position_x); }
+                if (flow_position_y !== undefined) { updates.push(`flow_position_y = $${paramCount++}`); values.push(flow_position_y); }
+                
+                updates.push(`updated_at = NOW()`);
+                values.push(id);
+                
+                const query = `UPDATE crm_chatters SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+                const result = await pool.query(query, values);
+                
                 if (result.rows.length === 0) return res.status(404).json({ error: 'Chatter no encontrado' });
                 return res.status(200).json({ success: true, data: result.rows[0] });
             }
@@ -214,11 +244,24 @@ module.exports = async (req, res) => {
                 return res.status(200).json({ success: true, data: result.rows[0] });
             }
             if (req.method === 'PUT') {
-                const { nombre, scope } = req.body;
-                const result = await pool.query(
-                    'UPDATE crm_supervisors SET nombre = $1, scope = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
-                    [nombre, JSON.stringify(scope), id]
-                );
+                const { nombre, scope, flow_position_x, flow_position_y } = req.body;
+                
+                // Construir query dinámicamente
+                const updates = [];
+                const values = [];
+                let paramCount = 1;
+                
+                if (nombre !== undefined) { updates.push(`nombre = $${paramCount++}`); values.push(nombre); }
+                if (scope !== undefined) { updates.push(`scope = $${paramCount++}`); values.push(JSON.stringify(scope)); }
+                if (flow_position_x !== undefined) { updates.push(`flow_position_x = $${paramCount++}`); values.push(flow_position_x); }
+                if (flow_position_y !== undefined) { updates.push(`flow_position_y = $${paramCount++}`); values.push(flow_position_y); }
+                
+                updates.push(`updated_at = NOW()`);
+                values.push(id);
+                
+                const query = `UPDATE crm_supervisors SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+                const result = await pool.query(query, values);
+                
                 if (result.rows.length === 0) return res.status(404).json({ error: 'Supervisor no encontrado' });
                 return res.status(200).json({ success: true, data: result.rows[0] });
             }
@@ -302,6 +345,20 @@ module.exports = async (req, res) => {
                 const result = await pool.query('DELETE FROM crm_staff WHERE id = $1 RETURNING *', [id]);
                 if (result.rows.length === 0) return res.status(404).json({ error: 'Staff no encontrado' });
                 return res.status(200).json({ success: true, message: 'Staff eliminado' });
+            }
+        }
+        
+        // ============================================
+        // FLOW POSITIONS (Resetear posiciones)
+        // ============================================
+        if (path === 'flow-positions') {
+            const { action } = req.query;
+            if (action === 'reset' && req.method === 'POST') {
+                // Resetear todas las posiciones a NULL para forzar layout automático
+                await pool.query('UPDATE crm_models SET flow_position_x = NULL, flow_position_y = NULL');
+                await pool.query('UPDATE crm_chatters SET flow_position_x = NULL, flow_position_y = NULL');
+                await pool.query('UPDATE crm_supervisors SET flow_position_x = NULL, flow_position_y = NULL');
+                return res.status(200).json({ success: true, message: 'Todas las posiciones reseteadas' });
             }
         }
         
