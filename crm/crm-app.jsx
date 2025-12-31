@@ -109,6 +109,10 @@ function CRMApp() {
     
     // Load all data
     useEffect(() => {
+        // Ocultar loading de autenticación y mostrar app
+        if (window.CRM_HIDE_LOADING) {
+            window.CRM_HIDE_LOADING();
+        }
         loadAllData();
     }, []);
     
@@ -399,7 +403,7 @@ function EstructuraView({ models, chatters, assignments, supervisors }) {
                     fitView
                 >
                     <Controls />
-                    <Background color="#333" gap={16} />
+                    <Background color="#e5e5e5" gap={16} />
                 </ReactFlow>
             </div>
             
@@ -705,15 +709,15 @@ function ModelModal({ model, onClose, onSave }) {
                         <div className="crm-form-group">
                             <label className="crm-label">Prioridad (1-5)</label>
                             <select 
-                                className="crm-select" 
+                                className="crm-input" 
                                 value={formData.prioridad}
                                 onChange={e => setFormData({...formData, prioridad: parseInt(e.target.value)})}
                             >
-                                <option value={1}>1</option>
+                                <option value={1}>1 - Baja</option>
                                 <option value={2}>2</option>
-                                <option value={3}>3</option>
+                                <option value={3}>3 - Media</option>
                                 <option value={4}>4</option>
-                                <option value={5}>5</option>
+                                <option value={5}>5 - Alta</option>
                             </select>
                         </div>
                     </div>
@@ -729,46 +733,501 @@ function ModelModal({ model, onClose, onSave }) {
 
 // Chatters Table (Similar structure)
 function ChattersTable({ chatters, onRefresh }) {
+    const [showModal, setShowModal] = useState(false);
+    const [editingChatter, setEditingChatter] = useState(null);
+    
+    const handleEdit = (chatter) => {
+        setEditingChatter(chatter);
+        setShowModal(true);
+    };
+    
+    const handleDelete = async (id) => {
+        if (confirm('¿Eliminar este chatter?')) {
+            await CRMService.deleteChatter(id);
+            onRefresh();
+        }
+    };
+    
     return (
-        <div className="crm-empty-state">
-            <div className="crm-empty-icon">👤</div>
-            <div className="crm-empty-text">Tabla de Chatters - Similar a Modelos</div>
-            <p style={{color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem'}}>
-                Implementar CRUD completo con campos: nombre, estado, nivel, país, disponibilidad
-            </p>
+        <div>
+            <div className="crm-flex-between crm-mb-4">
+                <h2 className="crm-card-title">Chatters ({chatters.length})</h2>
+                <button className="crm-btn crm-btn-primary crm-btn-sm" onClick={() => { setEditingChatter(null); setShowModal(true); }}>
+                    ➕ Nuevo Chatter
+                </button>
+            </div>
+            
+            <div className="crm-table-container">
+                <table className="crm-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Estado</th>
+                            <th>Nivel</th>
+                            <th>País</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {chatters.map(chatter => (
+                            <tr key={chatter.id}>
+                                <td><strong>{chatter.nombre}</strong></td>
+                                <td>
+                                    <span className={`crm-badge ${chatter.estado === 'activo' ? 'crm-badge-success' : chatter.estado === 'prueba' ? 'crm-badge-warning' : 'crm-badge-error'}`}>
+                                        {chatter.estado}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span className={`crm-badge ${chatter.nivel === 'senior' ? 'crm-badge-info' : chatter.nivel === 'mid' ? 'crm-badge-warning' : 'crm-badge-secondary'}`}>
+                                        {chatter.nivel}
+                                    </span>
+                                </td>
+                                <td>{chatter.pais || '-'}</td>
+                                <td>
+                                    <div className="crm-table-actions">
+                                        <button className="crm-btn crm-btn-secondary crm-btn-sm" onClick={() => handleEdit(chatter)}>✏️</button>
+                                        <button className="crm-btn crm-btn-danger crm-btn-sm" onClick={() => handleDelete(chatter.id)}>🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            
+            {showModal && <ChatterModal chatter={editingChatter} onClose={() => setShowModal(false)} onSave={onRefresh} />}
+        </div>
+    );
+}
+
+// Chatter Modal
+function ChatterModal({ chatter, onClose, onSave }) {
+    const [formData, setFormData] = useState(chatter || { nombre: '', estado: 'activo', nivel: 'junior', pais: '', disponibilidad: {} });
+    
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (chatter) {
+            await CRMService.updateChatter(chatter.id, formData);
+        } else {
+            await CRMService.createChatter(formData);
+        }
+        onSave();
+        onClose();
+    };
+    
+    return (
+        <div className="crm-modal-overlay" onClick={onClose}>
+            <div className="crm-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="crm-modal-header">
+                    <h3 className="crm-modal-title">{chatter ? 'Editar Chatter' : 'Nuevo Chatter'}</h3>
+                    <button className="crm-modal-close" onClick={onClose}>✕</button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="crm-modal-body">
+                        <div className="crm-form-group">
+                            <label className="crm-label">Nombre *</label>
+                            <input 
+                                type="text" 
+                                className="crm-input"
+                                value={formData.nombre} 
+                                onChange={(e) => setFormData({...formData, nombre: e.target.value})} 
+                                required 
+                            />
+                        </div>
+                        <div className="crm-form-group">
+                            <label className="crm-label">Estado</label>
+                            <select 
+                                className="crm-input"
+                                value={formData.estado} 
+                                onChange={(e) => setFormData({...formData, estado: e.target.value})}
+                            >
+                                <option value="activo">Activo</option>
+                                <option value="prueba">Prueba</option>
+                                <option value="pausa">Pausa</option>
+                            </select>
+                        </div>
+                        <div className="crm-form-group">
+                            <label className="crm-label">Nivel</label>
+                            <select 
+                                className="crm-input"
+                                value={formData.nivel} 
+                                onChange={(e) => setFormData({...formData, nivel: e.target.value})}
+                            >
+                                <option value="junior">Junior</option>
+                                <option value="mid">Mid</option>
+                                <option value="senior">Senior</option>
+                            </select>
+                        </div>
+                        <div className="crm-form-group">
+                            <label className="crm-label">País</label>
+                            <input 
+                                type="text" 
+                                className="crm-input"
+                                value={formData.pais} 
+                                onChange={(e) => setFormData({...formData, pais: e.target.value})} 
+                            />
+                        </div>
+                    </div>
+                    <div className="crm-modal-footer">
+                        <button type="button" className="crm-btn crm-btn-secondary" onClick={onClose}>Cancelar</button>
+                        <button type="submit" className="crm-btn crm-btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }
 
 // Social Accounts Table
 function SocialAccountsTable({ socialAccounts, models, onRefresh }) {
+    const [showModal, setShowModal] = useState(false);
+    const [editingAccount, setEditingAccount] = useState(null);
+    
+    const handleDelete = async (id) => {
+        if (confirm('¿Eliminar esta red social?')) {
+            await CRMService.deleteSocialAccount(id);
+            onRefresh();
+        }
+    };
+    
+    const getModelHandle = (modelId) => {
+        const model = models.find(m => m.id === modelId);
+        return model ? `@${model.handle}` : 'N/A';
+    };
+    
     return (
-        <div className="crm-empty-state">
-            <div className="crm-empty-icon">📱</div>
-            <div className="crm-empty-text">Tabla de Redes Sociales - Similar a Modelos</div>
-            <p style={{color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem'}}>
-                Implementar CRUD con: model_id, plataforma, handle, idioma, nicho, verticales, estado, link_principal
-            </p>
+        <div>
+            <div className="crm-flex-between crm-mb-4">
+                <h2 className="crm-card-title">Redes Sociales ({socialAccounts.length})</h2>
+                <button className="crm-btn crm-btn-primary crm-btn-sm" onClick={() => { setEditingAccount(null); setShowModal(true); }}>
+                    ➕ Nueva Red Social
+                </button>
+            </div>
+            
+            <div className="crm-table-container">
+                <table className="crm-table">
+                    <thead>
+                        <tr>
+                            <th>Modelo</th>
+                            <th>Plataforma</th>
+                            <th>Handle</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {socialAccounts.map(account => (
+                            <tr key={account.id}>
+                                <td>{getModelHandle(account.model_id)}</td>
+                                <td>
+                                    <span className="crm-badge crm-badge-info">{account.plataforma}</span>
+                                </td>
+                                <td><strong>{account.handle}</strong></td>
+                                <td>
+                                    <span className={`crm-badge ${account.estado === 'activa' ? 'crm-badge-success' : 'crm-badge-warning'}`}>
+                                        {account.estado}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div className="crm-table-actions">
+                                        <button className="crm-btn crm-btn-secondary crm-btn-sm" onClick={() => { setEditingAccount(account); setShowModal(true); }}>✏️</button>
+                                        <button className="crm-btn crm-btn-danger crm-btn-sm" onClick={() => handleDelete(account.id)}>🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            
+            {showModal && <SocialAccountModal account={editingAccount} models={models} onClose={() => setShowModal(false)} onSave={onRefresh} />}
+        </div>
+    );
+}
+
+function SocialAccountModal({ account, models, onClose, onSave }) {
+    const [formData, setFormData] = useState(account || { 
+        model_id: models[0]?.id || '', 
+        plataforma: 'Instagram', 
+        handle: '', 
+        idioma: '', 
+        nicho: '', 
+        verticales: [], 
+        estado: 'activa', 
+        link_principal: '' 
+    });
+    
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (account) {
+            await CRMService.updateSocialAccount(account.id, formData);
+        } else {
+            await CRMService.createSocialAccount(formData);
+        }
+        onSave();
+        onClose();
+    };
+    
+    return (
+        <div className="crm-modal-overlay" onClick={onClose}>
+            <div className="crm-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="crm-modal-header">
+                    <h3 className="crm-modal-title">{account ? 'Editar Red Social' : 'Nueva Red Social'}</h3>
+                    <button className="crm-modal-close" onClick={onClose}>✕</button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="crm-modal-body">
+                        <div className="crm-form-group">
+                            <label className="crm-label">Modelo *</label>
+                            <select className="crm-input" value={formData.model_id} onChange={(e) => setFormData({...formData, model_id: parseInt(e.target.value)})} required>
+                                {models.map(model => (
+                                    <option key={model.id} value={model.id}>@{model.handle}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="crm-form-group">
+                            <label className="crm-label">Plataforma *</label>
+                            <select className="crm-input" value={formData.plataforma} onChange={(e) => setFormData({...formData, plataforma: e.target.value})} required>
+                                <option value="Instagram">Instagram</option>
+                                <option value="TikTok">TikTok</option>
+                                <option value="Telegram">Telegram</option>
+                            </select>
+                        </div>
+                        <div className="crm-form-group">
+                            <label className="crm-label">Handle *</label>
+                            <input className="crm-input" type="text" value={formData.handle} onChange={(e) => setFormData({...formData, handle: e.target.value})} required placeholder="@username" />
+                        </div>
+                        <div className="crm-form-group">
+                            <label className="crm-label">Estado</label>
+                            <select className="crm-input" value={formData.estado} onChange={(e) => setFormData({...formData, estado: e.target.value})}>
+                                <option value="activa">Activa</option>
+                                <option value="warming">Warming</option>
+                                <option value="shadowban">Shadowban</option>
+                                <option value="pausada">Pausada</option>
+                            </select>
+                        </div>
+                        <div className="crm-form-group">
+                            <label className="crm-label">Link Principal</label>
+                            <input className="crm-input" type="url" value={formData.link_principal} onChange={(e) => setFormData({...formData, link_principal: e.target.value})} placeholder="https://..." />
+                        </div>
+                    </div>
+                    <div className="crm-modal-footer">
+                        <button type="button" className="crm-btn crm-btn-secondary" onClick={onClose}>Cancelar</button>
+                        <button type="submit" className="crm-btn crm-btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }
 
 // Supervisors Table
 function SupervisorsTable({ supervisors, onRefresh }) {
+    const [showModal, setShowModal] = useState(false);
+    const [editingSupervisor, setEditingSupervisor] = useState(null);
+    
+    const handleDelete = async (id) => {
+        if (confirm('¿Eliminar este supervisor?')) {
+            await CRMService.deleteSupervisor(id);
+            onRefresh();
+        }
+    };
+    
     return (
-        <div className="crm-empty-state">
-            <div className="crm-empty-icon">👔</div>
-            <div className="crm-empty-text">Tabla de Supervisores</div>
+        <div>
+            <div className="crm-flex-between crm-mb-4">
+                <h2 className="crm-card-title">Supervisores ({supervisors.length})</h2>
+                <button className="crm-btn crm-btn-primary crm-btn-sm" onClick={() => { setEditingSupervisor(null); setShowModal(true); }}>
+                    ➕ Nuevo Supervisor
+                </button>
+            </div>
+            
+            <div className="crm-table-container">
+                <table className="crm-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Scope</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {supervisors.map(supervisor => (
+                            <tr key={supervisor.id}>
+                                <td><strong>{supervisor.nombre}</strong></td>
+                                <td>{supervisor.scope?.type || 'todos'}</td>
+                                <td>
+                                    <div className="crm-table-actions">
+                                        <button className="crm-btn crm-btn-secondary crm-btn-sm" onClick={() => { setEditingSupervisor(supervisor); setShowModal(true); }}>✏️</button>
+                                        <button className="crm-btn crm-btn-danger crm-btn-sm" onClick={() => handleDelete(supervisor.id)}>🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            
+            {showModal && <SupervisorModal supervisor={editingSupervisor} onClose={() => setShowModal(false)} onSave={onRefresh} />}
+        </div>
+    );
+}
+
+function SupervisorModal({ supervisor, onClose, onSave }) {
+    const [formData, setFormData] = useState(supervisor || { nombre: '', scope: {type: 'todos'} });
+    
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (supervisor) {
+            await CRMService.updateSupervisor(supervisor.id, formData);
+        } else {
+            await CRMService.createSupervisor(formData);
+        }
+        onSave();
+        onClose();
+    };
+    
+    return (
+        <div className="crm-modal-overlay" onClick={onClose}>
+            <div className="crm-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="crm-modal-header">
+                    <h3 className="crm-modal-title">{supervisor ? 'Editar Supervisor' : 'Nuevo Supervisor'}</h3>
+                    <button className="crm-modal-close" onClick={onClose}>✕</button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="crm-modal-body">
+                        <div className="crm-form-group">
+                            <label className="crm-label">Nombre *</label>
+                            <input className="crm-input" type="text" value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} required />
+                        </div>
+                    </div>
+                    <div className="crm-modal-footer">
+                        <button type="button" className="crm-btn crm-btn-secondary" onClick={onClose}>Cancelar</button>
+                        <button type="submit" className="crm-btn crm-btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }
 
 // Staff Table
 function StaffTable({ staff, onRefresh }) {
+    const [showModal, setShowModal] = useState(false);
+    const [editingStaff, setEditingStaff] = useState(null);
+    
+    const handleDelete = async (id) => {
+        if (confirm('¿Eliminar este miembro del staff?')) {
+            await CRMService.deleteStaff(id);
+            onRefresh();
+        }
+    };
+    
+    const getRolLabel = (rol) => {
+        const labels = {
+            'CD': 'Director Creativo',
+            'VA_EDITOR': 'Editor / Programación PPV',
+            'AM_UPLOAD': 'Account Manager'
+        };
+        return labels[rol] || rol;
+    };
+    
     return (
-        <div className="crm-empty-state">
-            <div className="crm-empty-icon">👥</div>
-            <div className="crm-empty-text">Tabla de Staff Marketing</div>
+        <div>
+            <div className="crm-flex-between crm-mb-4">
+                <h2 className="crm-card-title">Staff Marketing ({staff.length})</h2>
+                <button className="crm-btn crm-btn-primary crm-btn-sm" onClick={() => { setEditingStaff(null); setShowModal(true); }}>
+                    ➕ Nuevo Staff
+                </button>
+            </div>
+            
+            <div className="crm-table-container">
+                <table className="crm-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {staff.map(member => (
+                            <tr key={member.id}>
+                                <td><strong>{member.nombre}</strong></td>
+                                <td>{getRolLabel(member.rol)}</td>
+                                <td>
+                                    <span className={`crm-badge ${member.estado === 'activo' ? 'crm-badge-success' : 'crm-badge-warning'}`}>
+                                        {member.estado}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div className="crm-table-actions">
+                                        <button className="crm-btn crm-btn-secondary crm-btn-sm" onClick={() => { setEditingStaff(member); setShowModal(true); }}>✏️</button>
+                                        <button className="crm-btn crm-btn-danger crm-btn-sm" onClick={() => handleDelete(member.id)}>🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            
+            {showModal && <StaffModal staff={editingStaff} onClose={() => setShowModal(false)} onSave={onRefresh} />}
+        </div>
+    );
+}
+
+function StaffModal({ staff, onClose, onSave }) {
+    const [formData, setFormData] = useState(staff || { nombre: '', rol: 'AM_UPLOAD', estado: 'activo', modelos_asignados: [] });
+    
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (staff) {
+            await CRMService.updateStaff(staff.id, formData);
+        } else {
+            await CRMService.createStaff(formData);
+        }
+        onSave();
+        onClose();
+    };
+    
+    return (
+        <div className="crm-modal-overlay" onClick={onClose}>
+            <div className="crm-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="crm-modal-header">
+                    <h3 className="crm-modal-title">{staff ? 'Editar Staff' : 'Nuevo Staff'}</h3>
+                    <button className="crm-modal-close" onClick={onClose}>✕</button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="crm-modal-body">
+                        <div className="crm-form-group">
+                            <label className="crm-label">Nombre *</label>
+                            <input className="crm-input" type="text" value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} required />
+                        </div>
+                        <div className="crm-form-group">
+                            <label className="crm-label">Rol</label>
+                            <select className="crm-input" value={formData.rol} onChange={(e) => setFormData({...formData, rol: e.target.value})}>
+                                <option value="CD">Director Creativo</option>
+                                <option value="VA_EDITOR">Editor / Programación PPV</option>
+                                <option value="AM_UPLOAD">Account Manager</option>
+                            </select>
+                        </div>
+                        <div className="crm-form-group">
+                            <label className="crm-label">Estado</label>
+                            <select className="crm-input" value={formData.estado} onChange={(e) => setFormData({...formData, estado: e.target.value})}>
+                                <option value="activo">Activo</option>
+                                <option value="prueba">Prueba</option>
+                                <option value="pausado">Pausado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="crm-modal-footer">
+                        <button type="button" className="crm-btn crm-btn-secondary" onClick={onClose}>Cancelar</button>
+                        <button type="submit" className="crm-btn crm-btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }

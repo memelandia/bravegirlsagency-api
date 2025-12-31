@@ -13,7 +13,7 @@
 .crm-container {
     display: flex;
     min-height: 100vh;
-    background: #0A0A0A;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
 }
 
 /* ============================================
@@ -477,45 +477,60 @@
    ============================================ */
 .crm-flow-container {
     height: calc(100vh - var(--crm-topbar-height) - 8rem);
-    background: rgba(10, 10, 10, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 1rem;
     overflow: hidden;
+}
+
+/* Force white background for React Flow */
+.react-flow__pane {
+    background: #ffffff !important;
+}
+
+.react-flow__renderer {
+    background: #ffffff !important;
+}
+
+.react-flow__viewport {
+    background: #ffffff !important;
 }
 
 .react-flow__node {
     border-radius: 0.75rem;
     padding: 1rem;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    background: rgba(20, 20, 20, 0.95);
-    backdrop-filter: blur(10px);
-    color: white;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    background: #ffffff;
+    backdrop-filter: none;
+    color: #1a1a2e;
     font-family: 'Inter', sans-serif;
     min-width: 180px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .react-flow__node-supervisor {
-    border-color: rgba(139, 92, 246, 0.5);
-    background: rgba(139, 92, 246, 0.1);
+    border-color: #8B5CF6;
+    background: linear-gradient(135deg, #f3f0ff 0%, #e9d8fd 100%);
 }
 
 .react-flow__node-chatter {
-    border-color: rgba(59, 130, 246, 0.5);
-    background: rgba(59, 130, 246, 0.1);
+    border-color: #3B82F6;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
 }
 
 .react-flow__node-model {
-    border-color: rgba(255, 107, 179, 0.5);
-    background: rgba(255, 107, 179, 0.1);
+    border-color: #FF6BB3;
+    background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
 }
 
 .react-flow__edge-path {
-    stroke: rgba(255, 107, 179, 0.3);
+    stroke: #8B5CF6;
     stroke-width: 2;
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-    stroke: rgba(255, 107, 179, 0.8);
+    stroke: #FF6BB3;
+    stroke-width: 3;
 }
 
 /* ============================================
@@ -553,6 +568,235 @@
     background: rgba(59, 130, 246, 0.1);
     color: #93C5FD;
     border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.crm-badge-secondary {
+    background: rgba(156, 163, 175, 0.1);
+    color: #D1D5DB;
+    border: 1px solid rgba(156, 163, 175, 0.2);
+}
+
+.crm-badge-error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #FCA5A5;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* ============================================
+   FORMS & INPUTS
+   ============================================ */
+.crm-form-group {
+    margin-bottom: 1.25rem;
+}
+
+.crm-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.5rem;
+}
+
+.crm-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    color: white;
+    font-size: 0.95rem;
+    transition: var(--crm-transition);
+}
+
+.crm-input:focus {
+    outline: none;
+    border-color: #FF6BB3;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(255, 107, 179, 0.1);
+}
+
+.crm-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+select.crm-input,
+.crm-select {
+    cursor: pointer;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    color: white;
+    font-size: 0.95rem;
+    transition: var(--crm-transition);
+}
+
+select.crm-input:focus,
+.crm-select:focus {
+    outline: none;
+    border-color: #FF6BB3;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(255, 107, 179, 0.1);
+}
+
+textarea.crm-input {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* ============================================
+   TABLES
+   ============================================ */
+.crm-table-container {
+    overflow-x: auto;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.crm-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.crm-table thead {
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.crm-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.crm-table td {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.crm-table tbody tr {
+    transition: var(--crm-transition);
+}
+
+.crm-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.crm-table-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* ============================================
+   MODALS
+   ============================================ */
+.crm-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.crm-modal {
+    background: rgba(20, 20, 20, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.crm-modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.crm-modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+}
+
+.crm-modal-close {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: var(--crm-transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.crm-modal-close:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #FCA5A5;
+}
+
+.crm-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.crm-modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+/* ============================================
+   BUTTON SIZES
+   ============================================ */
+.crm-btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+
+.crm-btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1rem;
 }
 
 /* ============================================
