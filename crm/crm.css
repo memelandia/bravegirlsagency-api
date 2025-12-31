@@ -633,12 +633,47 @@ select.crm-input,
     background-repeat: no-repeat;
     background-position: right 1rem center;
     padding-right: 3rem;
+    /* Forzar tema oscuro en el dropdown */
+    color-scheme: dark;
+}
+
+/* Firefox - Estilos específicos para options */
+@-moz-document url-prefix() {
+    .crm-input option,
+    .crm-select option {
+        background: #1E293B;
+        color: #F1F5F9;
+    }
 }
 
 .crm-select option {
     background: var(--crm-bg-dark);
     color: var(--crm-text-primary);
-    padding: 0.5rem;
+    padding: 0.75rem 1rem;
+}
+
+/* Estilos para dropdown del select */
+.crm-input option,
+.crm-select option {
+    background: #1E293B;
+    color: var(--crm-text-primary);
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+}
+
+.crm-input option:hover,
+.crm-select option:hover,
+.crm-input option:focus,
+.crm-select option:focus {
+    background: linear-gradient(135deg, rgba(255, 107, 179, 0.2), rgba(139, 92, 246, 0.2));
+    color: var(--crm-primary);
+}
+
+.crm-input option:checked,
+.crm-select option:checked {
+    background: linear-gradient(135deg, rgba(255, 107, 179, 0.3), rgba(139, 92, 246, 0.3));
+    color: var(--crm-primary);
+    font-weight: 600;
 }
 
 /* ============================================
