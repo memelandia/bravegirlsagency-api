@@ -1315,33 +1315,363 @@ function ModeloRedesView({ models, socialAccounts }) {
 // TAREAS VIEW - Gestión de Tareas Kanban
 // ============================================
 function TareasView({ tasks, staff, models, onRefresh }) {
+    const [showModal, setShowModal] = useState(false);
+    const [editingTask, setEditingTask] = useState(null);
+    const [filterType, setFilterType] = useState('all');
+    
+    const tasksByStatus = {
+        pending: tasks.filter(t => t.status === 'pending'),
+        in_progress: tasks.filter(t => t.status === 'in_progress'),
+        review: tasks.filter(t => t.status === 'review'),
+        completed: tasks.filter(t => t.status === 'completed')
+    };
+    
+    const statusConfig = {
+        pending: { label: 'Pendiente', icon: '📋', color: '#64748B' },
+        in_progress: { label: 'En Progreso', icon: '⚡', color: '#3B82F6' },
+        review: { label: 'En Revisión', icon: '👀', color: '#F59E0B' },
+        completed: { label: 'Completado', icon: '✅', color: '#10B981' }
+    };
+    
+    const priorityConfig = {
+        low: { label: 'Baja', color: '#64748B' },
+        medium: { label: 'Media', color: '#F59E0B' },
+        high: { label: 'Alta', color: '#EF4444' },
+        urgent: { label: 'Urgente', color: '#DC2626' }
+    };
+    
+    const typeConfig = {
+        edit_reel: { label: 'Editar Reel', icon: '🎬' },
+        schedule_ppv: { label: 'Programar PPV', icon: '📅' },
+        upload_content: { label: 'Subir Contenido', icon: '📤' },
+        creative_review: { label: 'Revisión Creativa', icon: '🎨' },
+        other: { label: 'Otro', icon: '📝' }
+    };
+    
+    const handleCreateTask = () => {
+        setEditingTask(null);
+        setShowModal(true);
+    };
+    
+    const handleEditTask = (task) => {
+        setEditingTask(task);
+        setShowModal(true);
+    };
+    
+    const filteredTasks = filterType === 'all' ? tasks : tasks.filter(t => t.type === filterType);
+    
     return (
         <div className="crm-view">
             <div className="crm-view-header">
                 <div>
                     <h2 className="crm-view-title">✅ Gestión de Tareas</h2>
-                    <p className="crm-view-subtitle">Sistema Kanban de tareas del equipo</p>
+                    <p className="crm-view-subtitle">Sistema Kanban - {filteredTasks.length} tareas totales</p>
                 </div>
-                <button className="crm-btn crm-btn-primary" onClick={onRefresh}>
-                    ➕ Nueva Tarea
-                </button>
+                <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center'}}>
+                    <select 
+                        className="crm-input" 
+                        style={{width: '180px', height: '38px'}}
+                        value={filterType}
+                        onChange={(e) => setFilterType(e.target.value)}
+                    >
+                        <option value="all">📋 Todas las tareas</option>
+                        <option value="edit_reel">🎬 Editar Reel</option>
+                        <option value="schedule_ppv">📅 Programar PPV</option>
+                        <option value="upload_content">📤 Subir Contenido</option>
+                        <option value="creative_review">🎨 Revisión Creativa</option>
+                        <option value="other">📝 Otro</option>
+                    </select>
+                    <button className="crm-btn crm-btn-primary" onClick={handleCreateTask}>
+                        ➕ Nueva Tarea
+                    </button>
+                </div>
             </div>
             
             <div className="crm-content-inner">
-                <div style={{ padding: '2rem', textAlign: 'center' }}>
-                    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🚧</div>
-                    <h3 style={{ color: 'var(--crm-text-primary)', marginBottom: '0.5rem' }}>
-                        En Desarrollo
-                    </h3>
-                    <p style={{ color: 'var(--crm-text-secondary)' }}>
-                        El sistema de gestión de tareas Kanban estará disponible próximamente.
-                    </p>
-                    <div style={{ marginTop: '1.5rem', color: 'var(--crm-text-muted)', fontSize: '0.875rem' }}>
-                        <p>📋 Tareas cargadas: {tasks?.length || 0}</p>
-                        <p>👥 Staff disponible: {staff?.length || 0}</p>
-                        <p>💎 Modelos: {models?.length || 0}</p>
-                    </div>
+                <div className="kanban-board">
+                    {Object.entries(statusConfig).map(([status, config]) => {
+                        const statusTasks = tasksByStatus[status].filter(t => 
+                            filterType === 'all' || t.type === filterType
+                        );
+                        
+                        return (
+                            <div key={status} className="kanban-column">
+                                <div className="kanban-column-header" style={{borderTopColor: config.color}}>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                                        <span style={{fontSize: '1.25rem'}}>{config.icon}</span>
+                                        <span style={{fontWeight: '600'}}>{config.label}</span>
+                                    </div>
+                                    <span className="crm-badge" style={{background: `${config.color}20`, color: config.color}}>
+                                        {statusTasks.length}
+                                    </span>
+                                </div>
+                                
+                                <div className="kanban-column-content">
+                                    {statusTasks.length === 0 ? (
+                                        <div className="kanban-empty">
+                                            <div style={{opacity: 0.4, fontSize: '2rem', marginBottom: '0.5rem'}}>
+                                                {config.icon}
+                                            </div>
+                                            <div style={{opacity: 0.5, fontSize: '0.85rem'}}>
+                                                Sin tareas
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        statusTasks.map(task => (
+                                            <TaskCard 
+                                                key={task.id} 
+                                                task={task} 
+                                                staff={staff}
+                                                models={models}
+                                                typeConfig={typeConfig}
+                                                priorityConfig={priorityConfig}
+                                                onEdit={handleEditTask}
+                                            />
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
+            </div>
+            
+            {showModal && (
+                <TaskModal 
+                    task={editingTask}
+                    staff={staff}
+                    models={models}
+                    onClose={() => setShowModal(false)}
+                    onRefresh={onRefresh}
+                />
+            )}
+        </div>
+    );
+}
+
+// Task Card Component
+function TaskCard({ task, staff, models, typeConfig, priorityConfig, onEdit }) {
+    const assignedStaff = staff.find(s => s.id === task.assigned_to);
+    const relatedModel = models.find(m => m.id === task.model_id);
+    const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed';
+    
+    return (
+        <div className="kanban-card" onClick={() => onEdit(task)}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem'}}>
+                <span className="crm-badge" style={{fontSize: '0.75rem', padding: '0.25rem 0.5rem'}}>
+                    {typeConfig[task.type]?.icon} {typeConfig[task.type]?.label}
+                </span>
+                <span 
+                    className="crm-badge" 
+                    style={{
+                        fontSize: '0.7rem', 
+                        padding: '0.2rem 0.4rem',
+                        background: `${priorityConfig[task.priority]?.color}20`,
+                        color: priorityConfig[task.priority]?.color
+                    }}
+                >
+                    {priorityConfig[task.priority]?.label}
+                </span>
+            </div>
+            
+            <h4 style={{fontSize: '0.95rem', fontWeight: '600', marginBottom: '0.5rem', lineHeight: '1.3'}}>
+                {task.title}
+            </h4>
+            
+            {task.description && (
+                <p style={{fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.75rem', lineHeight: '1.4'}}>
+                    {task.description.substring(0, 80)}{task.description.length > 80 ? '...' : ''}
+                </p>
+            )}
+            
+            <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.8rem'}}>
+                {assignedStaff && (
+                    <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: 0.8}}>
+                        <span>👤</span>
+                        <span>{assignedStaff.nombre}</span>
+                    </div>
+                )}
+                
+                {relatedModel && (
+                    <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: 0.8}}>
+                        <span>💎</span>
+                        <span>{relatedModel.nombre}</span>
+                    </div>
+                )}
+                
+                {task.due_date && (
+                    <div style={{
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.4rem',
+                        color: isOverdue ? '#EF4444' : 'inherit',
+                        opacity: isOverdue ? 1 : 0.8
+                    }}>
+                        <span>{isOverdue ? '⚠️' : '📅'}</span>
+                        <span>{new Date(task.due_date).toLocaleDateString('es-ES')}</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// Task Modal Component (simplified - full implementation would be larger)
+function TaskModal({ task, staff, models, onClose, onRefresh }) {
+    const [formData, setFormData] = useState(task || {
+        title: '',
+        description: '',
+        type: 'other',
+        status: 'pending',
+        priority: 'medium',
+        assigned_to: null,
+        model_id: null,
+        due_date: ''
+    });
+    
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            if (task) {
+                await CRMService.updateTask(task.id, formData);
+                Toast.show('✅ Tarea actualizada', 'success');
+            } else {
+                await CRMService.createTask(formData);
+                Toast.show('✅ Tarea creada', 'success');
+            }
+            onRefresh();
+            onClose();
+        } catch (error) {
+            Toast.show('❌ Error: ' + error.message, 'error');
+        }
+    };
+    
+    return (
+        <div className="crm-modal-overlay" onClick={onClose}>
+            <div className="crm-modal" onClick={(e) => e.stopPropagation()} style={{maxWidth: '600px'}}>
+                <div className="crm-modal-header">
+                    <h3>{task ? '✏️ Editar Tarea' : '➕ Nueva Tarea'}</h3>
+                    <button className="crm-modal-close" onClick={onClose}>✕</button>
+                </div>
+                
+                <form onSubmit={handleSubmit} className="crm-modal-body">
+                    <div className="crm-form-group">
+                        <label className="crm-form-label">Título *</label>
+                        <input 
+                            type="text"
+                            className="crm-input"
+                            value={formData.title}
+                            onChange={(e) => setFormData({...formData, title: e.target.value})}
+                            required
+                        />
+                    </div>
+                    
+                    <div className="crm-form-group">
+                        <label className="crm-form-label">Descripción</label>
+                        <textarea 
+                            className="crm-input"
+                            rows="3"
+                            value={formData.description}
+                            onChange={(e) => setFormData({...formData, description: e.target.value})}
+                        />
+                    </div>
+                    
+                    <div className="crm-grid crm-grid-2">
+                        <div className="crm-form-group">
+                            <label className="crm-form-label">Tipo</label>
+                            <select 
+                                className="crm-input"
+                                value={formData.type}
+                                onChange={(e) => setFormData({...formData, type: e.target.value})}
+                            >
+                                <option value="edit_reel">🎬 Editar Reel</option>
+                                <option value="schedule_ppv">📅 Programar PPV</option>
+                                <option value="upload_content">📤 Subir Contenido</option>
+                                <option value="creative_review">🎨 Revisión Creativa</option>
+                                <option value="other">📝 Otro</option>
+                            </select>
+                        </div>
+                        
+                        <div className="crm-form-group">
+                            <label className="crm-form-label">Prioridad</label>
+                            <select 
+                                className="crm-input"
+                                value={formData.priority}
+                                onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                            >
+                                <option value="low">Baja</option>
+                                <option value="medium">Media</option>
+                                <option value="high">Alta</option>
+                                <option value="urgent">Urgente</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div className="crm-grid crm-grid-2">
+                        <div className="crm-form-group">
+                            <label className="crm-form-label">Asignar a</label>
+                            <select 
+                                className="crm-input"
+                                value={formData.assigned_to || ''}
+                                onChange={(e) => setFormData({...formData, assigned_to: e.target.value ? parseInt(e.target.value) : null})}
+                            >
+                                <option value="">Sin asignar</option>
+                                {staff.map(s => (
+                                    <option key={s.id} value={s.id}>{s.nombre} ({s.rol})</option>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        <div className="crm-form-group">
+                            <label className="crm-form-label">Modelo relacionado</label>
+                            <select 
+                                className="crm-input"
+                                value={formData.model_id || ''}
+                                onChange={(e) => setFormData({...formData, model_id: e.target.value ? parseInt(e.target.value) : null})}
+                            >
+                                <option value="">Ninguno</option>
+                                {models.map(m => (
+                                    <option key={m.id} value={m.id}>{m.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div className="crm-grid crm-grid-2">
+                        <div className="crm-form-group">
+                            <label className="crm-form-label">Estado</label>
+                            <select 
+                                className="crm-input"
+                                value={formData.status}
+                                onChange={(e) => setFormData({...formData, status: e.target.value})}
+                            >
+                                <option value="pending">📋 Pendiente</option>
+                                <option value="in_progress">⚡ En Progreso</option>
+                                <option value="review">👀 En Revisión</option>
+                                <option value="completed">✅ Completado</option>
+                            </select>
+                        </div>
+                        
+                        <div className="crm-form-group">
+                            <label className="crm-form-label">Fecha límite</label>
+                            <input 
+                                type="date"
+                                className="crm-input"
+                                value={formData.due_date || ''}
+                                onChange={(e) => setFormData({...formData, due_date: e.target.value})}
+                            />
+                        </div>
+                    </div>
+                    
+                    <div className="crm-modal-footer">
+                        <button type="button" className="crm-btn crm-btn-secondary" onClick={onClose}>
+                            Cancelar
+                        </button>
+                        <button type="submit" className="crm-btn crm-btn-primary">
+                            {task ? 'Guardar Cambios' : 'Crear Tarea'}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     );
@@ -1351,32 +1681,239 @@ function TareasView({ tasks, staff, models, onRefresh }) {
 // HISTORIAL VIEW - Auditoría y Changelog
 // ============================================
 function HistorialView({ auditLog, models, chatters, staff }) {
+    const [filterEntity, setFilterEntity] = useState('all');
+    const [filterAction, setFilterAction] = useState('all');
+    const [searchTerm, setSearchTerm] = useState('');
+    
+    const actionConfig = {
+        create: { label: 'Creado', icon: '➕', color: '#10B981' },
+        update: { label: 'Actualizado', icon: '✏️', color: '#3B82F6' },
+        delete: { label: 'Eliminado', icon: '🗑️', color: '#EF4444' },
+        assign: { label: 'Asignado', icon: '🔗', color: '#8B5CF6' },
+        unassign: { label: 'Desasignado', icon: '🔓', color: '#F59E0B' }
+    };
+    
+    const entityConfig = {
+        model: { label: 'Modelo', icon: '💎', color: '#FF6BB3' },
+        chatter: { label: 'Chatter', icon: '👤', color: '#3B82F6' },
+        assignment: { label: 'Asignación', icon: '🔗', color: '#8B5CF6' },
+        staff: { label: 'Staff', icon: '👥', color: '#F59E0B' },
+        task: { label: 'Tarea', icon: '✅', color: '#10B981' }
+    };
+    
+    const filteredLog = auditLog.filter(log => {
+        const matchesEntity = filterEntity === 'all' || log.entity_type === filterEntity;
+        const matchesAction = filterAction === 'all' || log.action === filterAction;
+        const matchesSearch = searchTerm === '' || 
+            log.entity_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (log.user_name && log.user_name.toLowerCase().includes(searchTerm.toLowerCase()));
+        return matchesEntity && matchesAction && matchesSearch;
+    });
+    
+    const groupedByDate = filteredLog.reduce((groups, log) => {
+        const date = new Date(log.created_at).toLocaleDateString('es-ES', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        if (!groups[date]) groups[date] = [];
+        groups[date].push(log);
+        return groups;
+    }, {});
+    
+    const handleExport = () => {
+        const csv = [
+            ['Fecha', 'Usuario', 'Acción', 'Entidad', 'Detalles'].join(','),
+            ...filteredLog.map(log => [
+                new Date(log.created_at).toLocaleString('es-ES'),
+                log.user_name || 'Sistema',
+                log.action,
+                log.entity_type,
+                JSON.stringify(log.new_values || {})
+            ].join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `historial-crm-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        Toast.show('📥 Historial exportado', 'success');
+    };
+    
     return (
         <div className="crm-view">
             <div className="crm-view-header">
                 <div>
                     <h2 className="crm-view-title">📜 Historial y Auditoría</h2>
-                    <p className="crm-view-subtitle">Registro de cambios y actividad del sistema</p>
+                    <p className="crm-view-subtitle">{filteredLog.length} registros encontrados</p>
                 </div>
-                <button className="crm-btn crm-btn-secondary">
-                    📥 Exportar
+                <button className="crm-btn crm-btn-secondary" onClick={handleExport}>
+                    📥 Exportar CSV
                 </button>
             </div>
             
+            {/* Filtros */}
             <div className="crm-content-inner">
-                <div style={{ padding: '2rem', textAlign: 'center' }}>
-                    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🚧</div>
-                    <h3 style={{ color: 'var(--crm-text-primary)', marginBottom: '0.5rem' }}>
-                        En Desarrollo
-                    </h3>
-                    <p style={{ color: 'var(--crm-text-secondary)' }}>
-                        El sistema de auditoría y historial estará disponible próximamente.
-                    </p>
-                    <div style={{ marginTop: '1.5rem', color: 'var(--crm-text-muted)', fontSize: '0.875rem' }}>
-                        <p>📝 Registros de auditoría: {auditLog?.length || 0}</p>
-                        <p>Seguimiento automático de cambios en modelos, chatters y asignaciones</p>
-                    </div>
+                <div style={{display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap'}}>
+                    <input 
+                        type="text"
+                        placeholder="🔍 Buscar en historial..."
+                        className="crm-input"
+                        style={{flex: '1 1 300px', minWidth: '200px'}}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    
+                    <select 
+                        className="crm-input"
+                        style={{width: '180px'}}
+                        value={filterEntity}
+                        onChange={(e) => setFilterEntity(e.target.value)}
+                    >
+                        <option value="all">📋 Todas las entidades</option>
+                        <option value="model">💎 Modelos</option>
+                        <option value="chatter">👤 Chatters</option>
+                        <option value="assignment">🔗 Asignaciones</option>
+                        <option value="staff">👥 Staff</option>
+                        <option value="task">✅ Tareas</option>
+                    </select>
+                    
+                    <select 
+                        className="crm-input"
+                        style={{width: '180px'}}
+                        value={filterAction}
+                        onChange={(e) => setFilterAction(e.target.value)}
+                    >
+                        <option value="all">⚡ Todas las acciones</option>
+                        <option value="create">➕ Creación</option>
+                        <option value="update">✏️ Actualización</option>
+                        <option value="delete">🗑️ Eliminación</option>
+                        <option value="assign">🔗 Asignación</option>
+                        <option value="unassign">🔓 Desasignación</option>
+                    </select>
                 </div>
+                
+                {/* Timeline */}
+                {filteredLog.length === 0 ? (
+                    <div style={{textAlign: 'center', padding: '3rem'}}>
+                        <div style={{fontSize: '3rem', marginBottom: '1rem', opacity: 0.3}}>📜</div>
+                        <h3 style={{marginBottom: '0.5rem'}}>No hay registros</h3>
+                        <p style={{opacity: 0.6}}>
+                            {searchTerm || filterEntity !== 'all' || filterAction !== 'all' 
+                                ? 'Intenta ajustar los filtros' 
+                                : 'Aún no hay actividad registrada'}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="audit-timeline">
+                        {Object.entries(groupedByDate).map(([date, logs]) => (
+                            <div key={date} className="audit-date-group">
+                                <div className="audit-date-header">
+                                    <span className="audit-date-label">{date}</span>
+                                    <span className="crm-badge" style={{fontSize: '0.75rem'}}>
+                                        {logs.length} evento{logs.length !== 1 ? 's' : ''}
+                                    </span>
+                                </div>
+                                
+                                {logs.map(log => (
+                                    <AuditLogItem 
+                                        key={log.id}
+                                        log={log}
+                                        actionConfig={actionConfig}
+                                        entityConfig={entityConfig}
+                                        models={models}
+                                        chatters={chatters}
+                                        staff={staff}
+                                    />
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// Audit Log Item Component
+function AuditLogItem({ log, actionConfig, entityConfig, models, chatters, staff }) {
+    const [showDetails, setShowDetails] = useState(false);
+    const action = actionConfig[log.action] || { label: log.action, icon: '📝', color: '#64748B' };
+    const entity = entityConfig[log.entity_type] || { label: log.entity_type, icon: '📄', color: '#64748B' };
+    
+    // Get entity name
+    let entityName = `ID ${log.entity_id}`;
+    if (log.entity_type === 'model') {
+        const model = models.find(m => m.id === log.entity_id);
+        if (model) entityName = model.nombre;
+    } else if (log.entity_type === 'chatter') {
+        const chatter = chatters.find(c => c.id === log.entity_id);
+        if (chatter) entityName = chatter.nombre;
+    } else if (log.entity_type === 'staff') {
+        const staffMember = staff.find(s => s.id === log.entity_id);
+        if (staffMember) entityName = staffMember.nombre;
+    }
+    
+    const time = new Date(log.created_at).toLocaleTimeString('es-ES', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+    });
+    
+    return (
+        <div className="audit-log-item">
+            <div className="audit-log-icon" style={{background: `${action.color}20`, color: action.color}}>
+                {action.icon}
+            </div>
+            
+            <div className="audit-log-content">
+                <div className="audit-log-header">
+                    <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap'}}>
+                        <span className="crm-badge" style={{background: `${entity.color}20`, color: entity.color, fontSize: '0.75rem'}}>
+                            {entity.icon} {entity.label}
+                        </span>
+                        <span style={{fontWeight: '600'}}>{entityName}</span>
+                        <span style={{opacity: 0.6}}>•</span>
+                        <span className="crm-badge" style={{background: `${action.color}20`, color: action.color, fontSize: '0.75rem'}}>
+                            {action.label}
+                        </span>
+                    </div>
+                    <span className="audit-log-time">{time}</span>
+                </div>
+                
+                <div className="audit-log-user">
+                    <span style={{opacity: 0.7}}>👤</span>
+                    <span>{log.user_name || 'Sistema automático'}</span>
+                </div>
+                
+                {(log.old_values || log.new_values) && (
+                    <button 
+                        className="audit-log-toggle"
+                        onClick={() => setShowDetails(!showDetails)}
+                    >
+                        {showDetails ? '▼ Ocultar detalles' : '▶ Ver cambios'}
+                    </button>
+                )}
+                
+                {showDetails && (
+                    <div className="audit-log-details">
+                        {log.old_values && Object.keys(log.old_values).length > 0 && (
+                            <div className="audit-log-values">
+                                <div className="audit-log-values-label" style={{color: '#EF4444'}}>Antes:</div>
+                                <pre>{JSON.stringify(log.old_values, null, 2)}</pre>
+                            </div>
+                        )}
+                        {log.new_values && Object.keys(log.new_values).length > 0 && (
+                            <div className="audit-log-values">
+                                <div className="audit-log-values-label" style={{color: '#10B981'}}>Después:</div>
+                                <pre>{JSON.stringify(log.new_values, null, 2)}</pre>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
