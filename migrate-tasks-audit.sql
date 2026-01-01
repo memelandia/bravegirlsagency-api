@@ -5,88 +5,75 @@
 -- ============================================
 -- TABLA: crm_tasks (Gestión de Tareas)
 -- ============================================
-CREATE TABLE IF NOT EXISTS crm_tasks (
-    id SERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
+DROP TABLE IF EXISTS crm_task_comments CASCADE;
+DROP TABLE IF EXISTS crm_tasks CASCADE;
+
+CREATE TABLE crm_tasks (
+    id BIGSERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
     description TEXT,
-    type VARCHAR(50) NOT NULL CHECK (type IN ('edit_reel', 'schedule_ppv', 'upload_content', 'creative_review', 'other')),
-    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'review', 'completed')),
-    priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
-    
-    -- Asignaciones (SIN foreign keys para evitar errores)
-    assigned_to INTEGER,  -- ID del staff
-    model_id INTEGER,     -- ID del modelo relacionado
-    
-    -- Fechas
-    due_date TIMESTAMP,
-    completed_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    -- Metadata
-    metadata JSONB DEFAULT '{}'
+    type TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    priority TEXT DEFAULT 'medium',
+    assigned_to INTEGER,
+    model_id INTEGER,
+    due_date TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    metadata JSONB DEFAULT '{}'::jsonb,
+    CONSTRAINT chk_type CHECK (type IN ('edit_reel', 'schedule_ppv', 'upload_content', 'creative_review', 'other')),
+    CONSTRAINT chk_status CHECK (status IN ('pending', 'in_progress', 'review', 'completed')),
+    CONSTRAINT chk_priority CHECK (priority IN ('low', 'medium', 'high', 'urgent'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_crm_tasks_status ON crm_tasks(status);
-CREATE INDEX IF NOT EXISTS idx_crm_tasks_assigned ON crm_tasks(assigned_to);
-CREATE INDEX IF NOT EXISTS idx_crm_tasks_model ON crm_tasks(model_id);
-CREATE INDEX IF NOT EXISTS idx_crm_tasks_priority ON crm_tasks(priority);
-CREATE INDEX IF NOT EXISTS idx_crm_tasks_due_date ON crm_tasks(due_date);
-
-COMMENT ON TABLE crm_tasks IS 'Sistema de gestión de tareas para el equipo';
-COMMENT ON COLUMN crm_tasks.type IS 'Tipo de tarea: edit_reel, schedule_ppv, upload_content, creative_review, other';
-COMMENT ON COLUMN crm_tasks.status IS 'Estado: pending, in_progress, review, completed';
+CREATE INDEX idx_tasks_status ON crm_tasks(status);
+CREATE INDEX idx_tasks_assigned ON crm_tasks(assigned_to);
+CREATE INDEX idx_tasks_model ON crm_tasks(model_id);
+CREATE INDEX idx_tasks_priority ON crm_tasks(priority);
+CREATE INDEX idx_tasks_due_date ON crm_tasks(due_date);
 
 -- ============================================
 -- TABLA: crm_audit_log (Historial y Auditoría)
 -- ============================================
-CREATE TABLE IF NOT EXISTS crm_audit_log (
-    id SERIAL PRIMARY KEY,
-    
-    -- Usuario que realizó la acción
-    user_name VARCHAR(255) NOT NULL,
-    user_id VARCHAR(100),
-    
-    -- Acción realizada
-    action VARCHAR(50) NOT NULL CHECK (action IN ('create', 'update', 'delete', 'assign', 'unassign')),
-    entity_type VARCHAR(50) NOT NULL CHECK (entity_type IN ('model', 'chatter', 'assignment', 'staff', 'supervisor', 'social_account', 'task')),
+DROP TABLE IF EXISTS crm_audit_log CASCADE;
+
+CREATE TABLE crm_audit_log (
+    id BIGSERIAL PRIMARY KEY,
+    user_name TEXT NOT NULL,
+    user_id TEXT,
+    action TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
     entity_id INTEGER NOT NULL,
-    entity_name VARCHAR(255),
-    
-    -- Cambios realizados
+    entity_name TEXT,
     old_values JSONB,
     new_values JSONB,
     changes_summary TEXT,
-    
-    -- Metadata
-    ip_address VARCHAR(45),
+    ip_address TEXT,
     user_agent TEXT,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    timestamp TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT chk_action CHECK (action IN ('create', 'update', 'delete', 'assign', 'unassign')),
+    CONSTRAINT chk_entity_type CHECK (entity_type IN ('model', 'chatter', 'assignment', 'staff', 'supervisor', 'social_account', 'task'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_crm_audit_user ON crm_audit_log(user_name);
-CREATE INDEX IF NOT EXISTS idx_crm_audit_entity ON crm_audit_log(entity_type, entity_id);
-CREATE INDEX IF NOT EXISTS idx_crm_audit_timestamp ON crm_audit_log(timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_crm_audit_action ON crm_audit_log(action);
-
-COMMENT ON TABLE crm_audit_log IS 'Registro completo de auditoría para compliance y transparencia';
-COMMENT ON COLUMN crm_audit_log.action IS 'Tipo de acción: create, update, delete, assign, unassign';
-COMMENT ON COLUMN crm_audit_log.entity_type IS 'Tipo de entidad modificada';
-COMMENT ON COLUMN crm_audit_log.changes_summary IS 'Resumen legible de los cambios';
+CREATE INDEX idx_audit_user ON crm_audit_log(user_name);
+CREATE INDEX idx_audit_entity ON crm_audit_log(entity_type, entity_id);
+CREATE INDEX idx_audit_timestamp ON crm_audit_log(timestamp DESC);
+CREATE INDEX idx_audit_action ON crm_audit_log(action);
 
 -- ============================================
 -- TABLA: crm_task_comments (Comentarios en Tareas)
 -- ============================================
-CREATE TABLE IF NOT EXISTS crm_task_comments (
-    id SERIAL PRIMARY KEY,
-    task_id INTEGER NOT NULL,  -- SIN foreign key para evitar errores
-    user_name VARCHAR(255) NOT NULL,
+CREATE TABLE crm_task_comments (
+    id BIGSERIAL PRIMARY KEY,
+    task_id INTEGER NOT NULL,
+    user_name TEXT NOT NULL,
     comment TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_crm_task_comments_task ON crm_task_comments(task_id);
-CREATE INDEX IF NOT EXISTS idx_crm_task_comments_created ON crm_task_comments(created_at DESC);
+CREATE INDEX idx_comments_task ON crm_task_comments(task_id);
+CREATE INDEX idx_comments_created ON crm_task_comments(created_at DESC);
 
 -- ============================================
 -- FUNCIÓN: Auto-crear log de auditoría (OPCIONAL)
@@ -177,26 +164,18 @@ $$ LANGUAGE plpgsql;
 -- ============================================
 -- DATOS DE EJEMPLO (Opcional - para testing)
 -- ============================================
--- Descomenta si quieres datos de prueba
-
-/*
--- Ejemplo de tareas
 INSERT INTO crm_tasks (title, description, type, priority, status) VALUES
 ('Editar Reel de @Sofia', 'Reel de 30 segundos promocionando nuevo contenido', 'edit_reel', 'high', 'pending'),
 ('Programar PPV para @Maria', 'Programar 5 PPVs para esta semana', 'schedule_ppv', 'medium', 'in_progress'),
 ('Subir contenido de @Ana', 'Upload de fotos del último set', 'upload_content', 'high', 'pending');
 
--- Ejemplo de log de auditoría manual
 INSERT INTO crm_audit_log (user_name, action, entity_type, entity_id, entity_name, changes_summary) VALUES
-('Francisco', 'update', 'model', 1, '@Sofia', 'Cambió prioridad de 3 a 5'),
-('Ana', 'create', 'assignment', 1, 'Maria → @Sofia', 'Nueva asignación creada');
-*/
+('Francisco', 'create', 'task', 1, 'Editar Reel', 'Tarea creada'),
+('Sistema', 'update', 'model', 1, '@Sofia', 'Cambió prioridad');
 
 -- ============================================
 -- VERIFICACIÓN
 -- ============================================
--- Ejecuta estas queries para verificar que todo se creó correctamente:
-
--- SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'crm_task%' OR table_name = 'crm_audit_log';
--- SELECT * FROM crm_tasks LIMIT 5;
--- SELECT * FROM crm_audit_log LIMIT 5;
+SELECT 'Tablas creadas exitosamente' as status;
+SELECT COUNT(*) as total_tasks FROM crm_tasks;
+SELECT COUNT(*) as total_audit_logs FROM crm_audit_log;
