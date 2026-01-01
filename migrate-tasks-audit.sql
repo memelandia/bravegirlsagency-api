@@ -1,5 +1,6 @@
 -- Migration: Sistema de Tareas y Auditoría
 -- Ejecutar en Neon/Supabase
+-- Versión robusta sin dependencias estrictas
 
 -- ============================================
 -- TABLA: crm_tasks (Gestión de Tareas)
@@ -12,9 +13,9 @@ CREATE TABLE IF NOT EXISTS crm_tasks (
     status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'review', 'completed')),
     priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
     
-    -- Asignaciones
-    assigned_to_staff_id INTEGER REFERENCES crm_staff(id) ON DELETE SET NULL,
-    related_model_id INTEGER REFERENCES crm_models(id) ON DELETE SET NULL,
+    -- Asignaciones (SIN foreign keys para evitar errores)
+    assigned_to INTEGER,  -- ID del staff
+    model_id INTEGER,     -- ID del modelo relacionado
     
     -- Fechas
     due_date TIMESTAMP,
@@ -26,11 +27,11 @@ CREATE TABLE IF NOT EXISTS crm_tasks (
     metadata JSONB DEFAULT '{}'
 );
 
-CREATE INDEX idx_crm_tasks_status ON crm_tasks(status);
-CREATE INDEX idx_crm_tasks_assigned ON crm_tasks(assigned_to_staff_id);
-CREATE INDEX idx_crm_tasks_model ON crm_tasks(related_model_id);
-CREATE INDEX idx_crm_tasks_priority ON crm_tasks(priority);
-CREATE INDEX idx_crm_tasks_due_date ON crm_tasks(due_date);
+CREATE INDEX IF NOT EXISTS idx_crm_tasks_status ON crm_tasks(status);
+CREATE INDEX IF NOT EXISTS idx_crm_tasks_assigned ON crm_tasks(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_crm_tasks_model ON crm_tasks(model_id);
+CREATE INDEX IF NOT EXISTS idx_crm_tasks_priority ON crm_tasks(priority);
+CREATE INDEX IF NOT EXISTS idx_crm_tasks_due_date ON crm_tasks(due_date);
 
 COMMENT ON TABLE crm_tasks IS 'Sistema de gestión de tareas para el equipo';
 COMMENT ON COLUMN crm_tasks.type IS 'Tipo de tarea: edit_reel, schedule_ppv, upload_content, creative_review, other';
@@ -63,10 +64,10 @@ CREATE TABLE IF NOT EXISTS crm_audit_log (
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_crm_audit_user ON crm_audit_log(user_name);
-CREATE INDEX idx_crm_audit_entity ON crm_audit_log(entity_type, entity_id);
-CREATE INDEX idx_crm_audit_timestamp ON crm_audit_log(timestamp DESC);
-CREATE INDEX idx_crm_audit_action ON crm_audit_log(action);
+CREATE INDEX IF NOT EXISTS idx_crm_audit_user ON crm_audit_log(user_name);
+CREATE INDEX IF NOT EXISTS idx_crm_audit_entity ON crm_audit_log(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_crm_audit_timestamp ON crm_audit_log(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_crm_audit_action ON crm_audit_log(action);
 
 COMMENT ON TABLE crm_audit_log IS 'Registro completo de auditoría para compliance y transparencia';
 COMMENT ON COLUMN crm_audit_log.action IS 'Tipo de acción: create, update, delete, assign, unassign';
@@ -78,18 +79,22 @@ COMMENT ON COLUMN crm_audit_log.changes_summary IS 'Resumen legible de los cambi
 -- ============================================
 CREATE TABLE IF NOT EXISTS crm_task_comments (
     id SERIAL PRIMARY KEY,
-    task_id INTEGER NOT NULL REFERENCES crm_tasks(id) ON DELETE CASCADE,
+    task_id INTEGER NOT NULL,  -- SIN foreign key para evitar errores
     user_name VARCHAR(255) NOT NULL,
     comment TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_crm_task_comments_task ON crm_task_comments(task_id);
-CREATE INDEX idx_crm_task_comments_created ON crm_task_comments(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_crm_task_comments_task ON crm_task_comments(task_id);
+CREATE INDEX IF NOT EXISTS idx_crm_task_comments_created ON crm_task_comments(created_at DESC);
 
 -- ============================================
--- FUNCIÓN: Auto-crear log de auditoría
+-- FUNCIÓN: Auto-crear log de auditoría (OPCIONAL)
 -- ============================================
+-- Esta función es opcional. Puedes crear logs manualmente desde la aplicación.
+-- Solo descomenta si quieres auditoría automática por triggers.
+
+/*
 CREATE OR REPLACE FUNCTION log_audit_change()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -149,6 +154,7 @@ BEGIN
     END IF;
 END;
 $$ LANGUAGE plpgsql;
+*/
 
 -- ============================================
 -- TRIGGERS: Activar auditoría automática
@@ -171,8 +177,10 @@ $$ LANGUAGE plpgsql;
 -- ============================================
 -- DATOS DE EJEMPLO (Opcional - para testing)
 -- ============================================
+-- Descomenta si quieres datos de prueba
 
--- Ejemplo de tarea
+/*
+-- Ejemplo de tareas
 INSERT INTO crm_tasks (title, description, type, priority, status) VALUES
 ('Editar Reel de @Sofia', 'Reel de 30 segundos promocionando nuevo contenido', 'edit_reel', 'high', 'pending'),
 ('Programar PPV para @Maria', 'Programar 5 PPVs para esta semana', 'schedule_ppv', 'medium', 'in_progress'),
@@ -182,3 +190,13 @@ INSERT INTO crm_tasks (title, description, type, priority, status) VALUES
 INSERT INTO crm_audit_log (user_name, action, entity_type, entity_id, entity_name, changes_summary) VALUES
 ('Francisco', 'update', 'model', 1, '@Sofia', 'Cambió prioridad de 3 a 5'),
 ('Ana', 'create', 'assignment', 1, 'Maria → @Sofia', 'Nueva asignación creada');
+*/
+
+-- ============================================
+-- VERIFICACIÓN
+-- ============================================
+-- Ejecuta estas queries para verificar que todo se creó correctamente:
+
+-- SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'crm_task%' OR table_name = 'crm_audit_log';
+-- SELECT * FROM crm_tasks LIMIT 5;
+-- SELECT * FROM crm_audit_log LIMIT 5;
