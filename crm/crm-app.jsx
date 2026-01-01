@@ -361,6 +361,9 @@ function CRMApp() {
     const [supervisors, setSupervisors] = useState([]);
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [tasks, setTasks] = useState([]);
+    const [auditLog, setAuditLog] = useState([]);
     
     // Load all data
     useEffect(() => {
@@ -508,15 +511,16 @@ function Sidebar({ currentView, setCurrentView, collapsed, setCollapsed }) {
                 <div className="crm-sidebar-footer">
                     <div className="crm-user-info">
                         <div className="crm-user-avatar">{user.name.charAt(0)}</div>
-                    <div className="crm-user-details">
-                        <div className="crm-user-name">{user.name}</div>
-                        <div className="crm-user-role">{user.type}</div>
+                        <div className="crm-user-details">
+                            <div className="crm-user-name">{user.name}</div>
+                            <div className="crm-user-role">{user.type}</div>
+                        </div>
                     </div>
+                    <button className="crm-logout-btn" onClick={window.CRM_LOGOUT}>
+                        🚪 Cerrar Sesión
+                    </button>
                 </div>
-                <button className="crm-logout-btn" onClick={window.CRM_LOGOUT}>
-                    🚪 Cerrar Sesión
-                </button>
-            </div>
+            )}
         </div>
     );
 }
@@ -959,73 +963,56 @@ function EstructuraView({ models, chatters, assignments, supervisors, onRefresh 
     
     return (
         <div>
-            {/* Header con estadísticas */}
-            <div style={{marginBottom: '1.5rem'}}>
-                <div className="crm-flex-between" style={{marginBottom: '1rem'}}>
-                    <div>
-                        <h2 style={{fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.25rem'}}>Estructura Organizacional</h2>
-                        <p style={{opacity: 0.7, fontSize: '0.9rem'}}>Mapa interactivo de toda la operación</p>
+            {/* Header compacto con métricas en línea */}
+            <div style={{marginBottom: '1rem'}}>
+                <div className="crm-flex-between" style={{marginBottom: '0.75rem', gap: '1rem', flexWrap: 'wrap'}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '1.5rem'}}>
+                        <div>
+                            <h2 style={{fontSize: '1.25rem', fontWeight: '700', marginBottom: '0.125rem'}}>Estructura Organizacional</h2>
+                            <p style={{opacity: 0.6, fontSize: '0.8rem'}}>Mapa interactivo</p>
+                        </div>
+                        
+                        {/* Métricas compactas en línea */}
+                        <div style={{display: 'flex', gap: '1rem', alignItems: 'center', paddingLeft: '1.5rem', borderLeft: '1px solid rgba(148,163,184,0.1)'}}>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+                                <span style={{fontSize: '1.25rem'}}>👔</span>
+                                <span style={{fontSize: '1.1rem', fontWeight: '700'}}>{supervisors.length}</span>
+                            </div>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+                                <span style={{fontSize: '1.25rem'}}>👤</span>
+                                <span style={{fontSize: '1.1rem', fontWeight: '700'}}>{activeChatters}</span>
+                            </div>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+                                <span style={{fontSize: '1.25rem'}}>💎</span>
+                                <span style={{fontSize: '1.1rem', fontWeight: '700'}}>{models.length}</span>
+                            </div>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+                                <span style={{fontSize: '1.25rem'}}>💰</span>
+                                <span style={{fontSize: '1.1rem', fontWeight: '700', color: '#10B981'}}>${(totalRevenue/1000).toFixed(0)}k</span>
+                            </div>
+                        </div>
                     </div>
+                    
                     <input 
                         type="text" 
                         placeholder="🔍 Buscar persona o modelo..."
                         className="crm-input"
-                        style={{maxWidth: '280px'}}
+                        style={{maxWidth: '280px', height: '38px'}}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
                 
-                {/* Métricas clave */}
-                <div className="crm-grid crm-grid-4" style={{gap: '1rem'}}>
-                    <div className="crm-card" style={{padding: '1rem'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-                            <div style={{background: 'rgba(139, 92, 246, 0.15)', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '1.5rem'}}>👔</div>
-                            <div>
-                                <div style={{fontSize: '1.75rem', fontWeight: '700', lineHeight: '1'}}>{supervisors.length}</div>
-                                <div style={{fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem'}}>Supervisores</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="crm-card" style={{padding: '1rem'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-                            <div style={{background: 'rgba(59, 130, 246, 0.15)', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '1.5rem'}}>👤</div>
-                            <div>
-                                <div style={{fontSize: '1.75rem', fontWeight: '700', lineHeight: '1'}}>{activeChatters}</div>
-                                <div style={{fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem'}}>Chatters Activos</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="crm-card" style={{padding: '1rem'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-                            <div style={{background: 'rgba(255, 107, 179, 0.15)', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '1.5rem'}}>💎</div>
-                            <div>
-                                <div style={{fontSize: '1.75rem', fontWeight: '700', lineHeight: '1'}}>{models.length}</div>
-                                <div style={{fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem'}}>Modelos Totales</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="crm-card" style={{padding: '1rem'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-                            <div style={{background: 'rgba(16, 185, 129, 0.15)', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '1.5rem'}}>💰</div>
-                            <div>
-                                <div style={{fontSize: '1.75rem', fontWeight: '700', lineHeight: '1', color: '#10B981'}}>${(totalRevenue/1000).toFixed(0)}k</div>
-                                <div style={{fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem'}}>Revenue Mensual</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                {/* Leyenda */}
-                <div style={{marginTop: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center'}}>
-                    <span style={{fontSize: '0.85rem', opacity: 0.7}}>Leyenda:</span>
-                    <span className="crm-badge" style={{background: 'rgba(139,92,246,0.15)', color: '#8B5CF6'}}>👔 Supervisores</span>
-                    <span className="crm-badge" style={{background: 'rgba(59,130,246,0.15)', color: '#3B82F6'}}>👑 Senior</span>
-                    <span className="crm-badge" style={{background: 'rgba(245,158,11,0.15)', color: '#F59E0B'}}>⭐ Mid</span>
-                    <span className="crm-badge" style={{background: 'rgba(100,116,139,0.15)', color: '#64748B'}}>🌱 Junior</span>
-                    <span className="crm-badge" style={{background: 'rgba(255,107,179,0.15)', color: '#FF6BB3'}}>💎 Modelos</span>
-                    <div style={{marginLeft: 'auto', fontSize: '0.85rem', opacity: 0.7}}>
-                        Promedio: <strong>{avgModelsPerChatter}</strong> modelos por chatter
+                {/* Leyenda compacta */}
+                <div style={{display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8rem'}}>
+                    <span style={{opacity: 0.6}}>Leyenda:</span>
+                    <span className="crm-badge" style={{background: 'rgba(139,92,246,0.15)', color: '#8B5CF6', fontSize: '0.75rem', padding: '0.25rem 0.5rem'}}>👔 Supervisores</span>
+                    <span className="crm-badge" style={{background: 'rgba(59,130,246,0.15)', color: '#3B82F6', fontSize: '0.75rem', padding: '0.25rem 0.5rem'}}>👑 Senior</span>
+                    <span className="crm-badge" style={{background: 'rgba(245,158,11,0.15)', color: '#F59E0B', fontSize: '0.75rem', padding: '0.25rem 0.5rem'}}>⭐ Mid</span>
+                    <span className="crm-badge" style={{background: 'rgba(100,116,139,0.15)', color: '#64748B', fontSize: '0.75rem', padding: '0.25rem 0.5rem'}}>🌱 Junior</span>
+                    <span className="crm-badge" style={{background: 'rgba(255,107,179,0.15)', color: '#FF6BB3', fontSize: '0.75rem', padding: '0.25rem 0.5rem'}}>💎 Modelos</span>
+                    <div style={{marginLeft: 'auto', opacity: 0.6}}>
+                        Promedio: <strong>{avgModelsPerChatter}</strong> modelos/chatter
                     </div>
                 </div>
             </div>
@@ -1319,6 +1306,77 @@ function ModeloRedesView({ models, socialAccounts }) {
                         </div>
                     );
                 })}
+            </div>
+        </div>
+    );
+}
+
+// ============================================
+// TAREAS VIEW - Gestión de Tareas Kanban
+// ============================================
+function TareasView({ tasks, staff, models, onRefresh }) {
+    return (
+        <div className="crm-view">
+            <div className="crm-view-header">
+                <div>
+                    <h2 className="crm-view-title">✅ Gestión de Tareas</h2>
+                    <p className="crm-view-subtitle">Sistema Kanban de tareas del equipo</p>
+                </div>
+                <button className="crm-btn crm-btn-primary" onClick={onRefresh}>
+                    ➕ Nueva Tarea
+                </button>
+            </div>
+            
+            <div className="crm-content-inner">
+                <div style={{ padding: '2rem', textAlign: 'center' }}>
+                    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🚧</div>
+                    <h3 style={{ color: 'var(--crm-text-primary)', marginBottom: '0.5rem' }}>
+                        En Desarrollo
+                    </h3>
+                    <p style={{ color: 'var(--crm-text-secondary)' }}>
+                        El sistema de gestión de tareas Kanban estará disponible próximamente.
+                    </p>
+                    <div style={{ marginTop: '1.5rem', color: 'var(--crm-text-muted)', fontSize: '0.875rem' }}>
+                        <p>📋 Tareas cargadas: {tasks?.length || 0}</p>
+                        <p>👥 Staff disponible: {staff?.length || 0}</p>
+                        <p>💎 Modelos: {models?.length || 0}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ============================================
+// HISTORIAL VIEW - Auditoría y Changelog
+// ============================================
+function HistorialView({ auditLog, models, chatters, staff }) {
+    return (
+        <div className="crm-view">
+            <div className="crm-view-header">
+                <div>
+                    <h2 className="crm-view-title">📜 Historial y Auditoría</h2>
+                    <p className="crm-view-subtitle">Registro de cambios y actividad del sistema</p>
+                </div>
+                <button className="crm-btn crm-btn-secondary">
+                    📥 Exportar
+                </button>
+            </div>
+            
+            <div className="crm-content-inner">
+                <div style={{ padding: '2rem', textAlign: 'center' }}>
+                    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🚧</div>
+                    <h3 style={{ color: 'var(--crm-text-primary)', marginBottom: '0.5rem' }}>
+                        En Desarrollo
+                    </h3>
+                    <p style={{ color: 'var(--crm-text-secondary)' }}>
+                        El sistema de auditoría y historial estará disponible próximamente.
+                    </p>
+                    <div style={{ marginTop: '1.5rem', color: 'var(--crm-text-muted)', fontSize: '0.875rem' }}>
+                        <p>📝 Registros de auditoría: {auditLog?.length || 0}</p>
+                        <p>Seguimiento automático de cambios en modelos, chatters y asignaciones</p>
+                    </div>
+                </div>
             </div>
         </div>
     );

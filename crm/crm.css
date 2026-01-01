@@ -86,6 +86,78 @@
     height: 100vh;
     z-index: 40;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1);
+    transition: var(--crm-transition);
+}
+
+/* Sidebar colapsado */
+.crm-sidebar.collapsed {
+    width: 80px;
+}
+
+.crm-sidebar.collapsed .crm-sidebar-title,
+.crm-sidebar.collapsed .crm-sidebar-logo,
+.crm-sidebar.collapsed .crm-menu-text,
+.crm-sidebar.collapsed .crm-user-details {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.crm-sidebar.collapsed .crm-menu-item {
+    justify-content: center;
+    padding: 0.75rem;
+}
+
+.crm-sidebar.collapsed .crm-menu-icon {
+    margin-right: 0;
+    font-size: 1.25rem;
+}
+
+.crm-sidebar.collapsed .crm-user-info {
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem;
+}
+
+.crm-sidebar.collapsed .crm-user-avatar {
+    margin-right: 0;
+    margin-bottom: 0.25rem;
+}
+
+/* Botón toggle del sidebar */
+.crm-sidebar-toggle {
+    position: fixed;
+    top: 1.25rem;
+    left: calc(var(--crm-sidebar-width) - 12px);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255, 107, 179, 0.9);
+    border: 2px solid var(--crm-bg-dark);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.7rem;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.crm-sidebar.collapsed .crm-sidebar-toggle {
+    left: 68px;
+}
+
+.crm-sidebar-toggle:hover {
+    background: var(--crm-primary-dark);
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(255, 107, 179, 0.4);
+}
+
+.crm-sidebar-toggle:hover {
+    background: var(--crm-primary-dark);
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(255, 107, 179, 0.4);
 }
 
 .crm-sidebar-header {
@@ -271,6 +343,12 @@
     flex-direction: column;
     position: relative;
     z-index: 1;
+    transition: var(--crm-transition);
+}
+
+/* Main con sidebar colapsado */
+.crm-main.sidebar-collapsed {
+    margin-left: 80px;
 }
 
 .crm-topbar {
