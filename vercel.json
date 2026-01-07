@@ -1,5 +1,14 @@
 {
   "version": 2,
+  "rewrites": [
+    { "source": "/api/lms/admin/users", "destination": "/api/lms/admin" },
+    { "source": "/api/lms/admin/modules", "destination": "/api/lms/admin" },
+    { "source": "/api/lms/admin/lessons", "destination": "/api/lms/admin" },
+    { "source": "/api/lms/admin/questions", "destination": "/api/lms/admin" },
+    { "source": "/api/lms/admin/progress", "destination": "/api/lms/admin" },
+    { "source": "/api/lms/admin/stages", "destination": "/api/lms/admin" },
+    { "source": "/api/lms/admin/quizzes", "destination": "/api/lms/admin" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
