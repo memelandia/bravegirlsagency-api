@@ -679,12 +679,22 @@ async function handleQuizSubmit(req, res, user, deps) {
       // Calcular calificación
       let correctCount = 0;
       const totalQuestions = questionsResult.rows.length;
+      const detailedResults = [];
 
       questionsResult.rows.forEach(question => {
         const userAnswer = parseInt(answers[question.id]);
-        if (userAnswer === question.correct_option_index) {
+        const isCorrect = userAnswer === question.correct_option_index;
+        
+        if (isCorrect) {
           correctCount++;
         }
+
+        detailedResults.push({
+          questionId: question.id,
+          userAnswer,
+          correctAnswer: question.correct_option_index,
+          isCorrect
+        });
       });
 
       const score = Math.round((correctCount / totalQuestions) * 100);
@@ -701,8 +711,10 @@ async function handleQuizSubmit(req, res, user, deps) {
         attemptId: attemptResult.rows[0].id,
         score,
         passed,
+        correctAnswers: correctCount,
         correctCount,
         totalQuestions,
+        detailedResults,
         passingScore: quiz.passing_score,
         attemptsUsed: parseInt(quiz.user_attempts) + 1,
         maxAttempts: quiz.max_attempts
