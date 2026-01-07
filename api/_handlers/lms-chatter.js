@@ -865,7 +865,7 @@ async function handleQuizSubmit(req, res, user, deps) {
 
       // Registrar intento
       const attemptResult = await client.query(`
-        INSERT INTO lms_quiz_attempts (quiz_id, user_id, score, passed, answers_json)
+        INSERT INTO lms_quiz_attempts (quiz_id, user_id, score, passed, answers)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING id, created_at
       `, [quiz.id, user.id, score, passed, JSON.stringify(answers)]);
