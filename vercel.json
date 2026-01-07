@@ -10,7 +10,12 @@
     { "source": "/api/lms/admin/questions", "destination": "/api/lms/admin" },
     { "source": "/api/lms/admin/progress", "destination": "/api/lms/admin" },
     { "source": "/api/lms/admin/stages", "destination": "/api/lms/admin" },
-    { "source": "/api/lms/admin/quizzes", "destination": "/api/lms/admin" }
+    { "source": "/api/lms/admin/quizzes", "destination": "/api/lms/admin" },
+    { "source": "/api/lms/campus", "destination": "/api/lms/chatter" },
+    { "source": "/api/lms/module/:id", "destination": "/api/lms/chatter" },
+    { "source": "/api/lms/lesson/complete", "destination": "/api/lms/chatter" },
+    { "source": "/api/lms/quiz/:moduleId", "destination": "/api/lms/chatter" },
+    { "source": "/api/lms/quiz/:moduleId/submit", "destination": "/api/lms/chatter" }
   ],
   "headers": [
     {
