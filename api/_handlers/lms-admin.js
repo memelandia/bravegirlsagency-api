@@ -688,41 +688,78 @@ async function handleProgress(req, res, user, deps) {
 
   const { userId, moduleId, status } = req.query;
 
-  // Query principal usando la vista
+  // Reemplazamos el uso de la VISTA lms_user_module_progress por la query directa
+  // Esto es para evitar el error de MAX(boolean) que existe en la definición actual de la vista en BD
+  // y para asegurar consistencia con BOOL_OR.
   let sql = `
     SELECT 
-      user_id, user_name, user_email,
-      module_id, module_title, module_order,
-      stage_id, stage_name,
-      total_lessons, completed_lessons, lessons_completion_percentage,
-      quiz_passed, best_quiz_score, quiz_attempts_count, last_quiz_attempt
-    FROM lms_user_module_progress
-    WHERE 1=1
+      u.id as user_id,
+      u.name as user_name,
+      u.email as user_email,
+      m.id as module_id,
+      m.title as module_title,
+      m.stage_id,
+      s.name as stage_name,
+      m.order_index as module_order,
+      COUNT(DISTINCT l.id) as total_lessons,
+      COUNT(DISTINCT pl.lesson_id) as completed_lessons,
+      CASE 
+        WHEN COUNT(DISTINCT l.id) > 0 
+        THEN ROUND((COUNT(DISTINCT pl.lesson_id)::DECIMAL / COUNT(DISTINCT l.id)) * 100, 2)
+        ELSE 0
+      END as lessons_completion_percentage,
+      BOOL_OR(qa.passed) as quiz_passed,
+      MAX(qa.score) as best_quiz_score,
+      COUNT(qa.id) as quiz_attempts_count,
+      MAX(qa.created_at) as last_quiz_attempt
+    FROM lms_users u
+    CROSS JOIN lms_modules m
+    LEFT JOIN lms_stages s ON m.stage_id = s.id
+    LEFT JOIN lms_lessons l ON l.module_id = m.id
+    LEFT JOIN lms_progress_lessons pl ON pl.lesson_id = l.id AND pl.user_id = u.id
+    LEFT JOIN lms_quizzes q ON q.module_id = m.id
+    LEFT JOIN lms_quiz_attempts qa ON qa.quiz_id = q.id AND qa.user_id = u.id
+    WHERE u.role = 'chatter' AND u.active = true AND m.published = true
   `;
+  
   const params = [];
 
+  // Los filtros se aplican sobre el resultado agrupado, por lo que usamos HAVING o una subquery wrapping.
+  // Sin embargo, para mantenerlo simple y dado que los filtros previos eran WHERE sobre la vista,
+  // aquí debemos tener cuidado. La vista ya hacía el GROUP BY.
+  // Vamos a construir la query con los filtros aplicados en el WHERE antes del GROUP BY si es posible,
+  // o usar HAVING para condiciones agregadas.
+  
+  // Filtros de ID directos (en WHERE)
   if (userId) {
     params.push(userId);
-    sql += ` AND user_id = $${params.length}`;
+    sql += ` AND u.id = $${params.length}`;
   }
 
   if (moduleId) {
     params.push(moduleId);
-    sql += ` AND module_id = $${params.length}`;
+    sql += ` AND m.id = $${params.length}`;
   }
 
-  // Filtros de estado
-  if (status === 'not_started') {
-    sql += ` AND completed_lessons = 0`;
-  } else if (status === 'stuck') {
-    sql += ` AND completed_lessons > 0 AND completed_lessons < total_lessons`;
-  } else if (status === 'completed') {
-    sql += ` AND quiz_passed = true`;
-  } else if (status === 'pending_quiz') {
-    sql += ` AND completed_lessons = total_lessons AND (quiz_passed IS NULL OR quiz_passed = false)`;
+  // GROUP BY necesario
+  sql += `
+    GROUP BY u.id, u.name, u.email, m.id, m.title, m.stage_id, s.name, m.order_index
+  `;
+
+  // Filtros de estado (requieren HAVING porque usan agregaciones o resultados calculados)
+  if (status) {
+    if (status === 'not_started') {
+      sql += ` HAVING COUNT(DISTINCT pl.lesson_id) = 0`;
+    } else if (status === 'stuck') {
+      sql += ` HAVING COUNT(DISTINCT pl.lesson_id) > 0 AND COUNT(DISTINCT pl.lesson_id) < COUNT(DISTINCT l.id)`;
+    } else if (status === 'completed') {
+      sql += ` HAVING BOOL_OR(qa.passed) = true`;
+    } else if (status === 'pending_quiz') {
+      sql += ` HAVING COUNT(DISTINCT pl.lesson_id) = COUNT(DISTINCT l.id) AND (BOOL_OR(qa.passed) IS NULL OR BOOL_OR(qa.passed) = false)`;
+    }
   }
 
-  sql += ' ORDER BY user_name, module_order';
+  sql += ' ORDER BY u.name, m.order_index';
 
   const result = await query(sql, params);
 

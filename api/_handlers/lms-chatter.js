@@ -462,14 +462,62 @@ async function handleLessonComplete(req, res, user, deps) {
   }
 
   const lesson = lessonResult.rows[0];
+  const moduleId = lesson.module_id;
 
-  // (Simulacion de lms_can_access_module)
-  // Verificamos si el modulo es accesible. 
-  // Para completar lección asumimos que si pudo cargar el módulo (handleModule), tiene permiso.
-  // Aquí solo verificamos que el módulo esté publicado.
-  const moduleCheck = await query('SELECT published FROM lms_modules WHERE id = $1', [lesson.module_id]);
-  if (moduleCheck.rows.length === 0 || (!moduleCheck.rows[0].published && user.role === 'chatter')) {
-     return res.status(403).json({ error: 'Módulo no accesible' });
+  // Verificar acceso secuencial (Server-Side Logic Replacement)
+  if (user.role === 'chatter') {
+    // 1. Obtener orden del módulo actual
+    const currentModuleResult = await query(
+      'SELECT order_index, stage_id, published FROM lms_modules WHERE id = $1',
+      [moduleId]
+    );
+
+    if (currentModuleResult.rows.length === 0 || !currentModuleResult.rows[0].published) {
+      return res.status(403).json({ error: 'Módulo no accesible' });
+    }
+
+    const { order_index: currentOrder, stage_id: stageId } = currentModuleResult.rows[0];
+
+    // 2. Si no es el primero, verificar el anterior para evitar saltos
+    if (currentOrder > 0) {
+      const prevModuleResult = await query(
+        'SELECT id FROM lms_modules WHERE stage_id = $1 AND order_index = $2',
+        [stageId, currentOrder - 1]
+      );
+
+      if (prevModuleResult.rows.length > 0) {
+        const prevModuleId = prevModuleResult.rows[0].id;
+
+        // Verificar lecciones completas del anterior
+        const prevLessonsProgress = await query(`
+          SELECT 
+            (SELECT COUNT(*) FROM lms_lessons WHERE module_id = $1) as total,
+            (SELECT COUNT(*) FROM lms_lessons l 
+             JOIN lms_progress_lessons pl ON pl.lesson_id = l.id 
+             WHERE l.module_id = $1 AND pl.user_id = $2) as completed
+        `, [prevModuleId, user.id]);
+
+        const { total, completed } = prevLessonsProgress.rows[0];
+        
+        if (parseInt(total) !== parseInt(completed)) {
+           return res.status(403).json({ error: 'Debes completar el módulo anterior primero.' });
+        }
+        
+        // Verificar quiz del anterior
+        const prevQuizResult = await query('SELECT id FROM lms_quizzes WHERE module_id = $1', [prevModuleId]);
+        if (prevQuizResult.rows.length > 0) {
+          const prevQuizId = prevQuizResult.rows[0].id;
+          const quizAttemptResult = await query(
+            'SELECT 1 FROM lms_quiz_attempts WHERE quiz_id = $1 AND user_id = $2 AND passed = true LIMIT 1',
+            [prevQuizId, user.id]
+          );
+          
+          if (quizAttemptResult.rows.length === 0) {
+            return res.status(403).json({ error: 'Debes aprobar el quiz del módulo anterior.' });
+          }
+        }
+      }
+    }
   }
 
   // Marcar lección como completada (INSERT ... ON CONFLICT DO NOTHING)
@@ -524,12 +572,60 @@ async function handleQuiz(req, res, user, deps) {
     return res.status(400).json({ error: 'ID de módulo inválido' });
   }
 
-  // Verificar acceso simple (ya que la función DB no existe)
+  // Verificar acceso secuencial (Server-Side Logic Replacement)
   if (user.role === 'chatter') {
-     const check = await query('SELECT published FROM lms_modules WHERE id = $1', [moduleId]);
-     if (check.rows.length === 0 || !check.rows[0].published) {
-        return res.status(403).json({ error: 'No tienes acceso a este módulo aún.' });
-     }
+    // 1. Obtener orden del módulo actual
+    const currentModuleResult = await query(
+      'SELECT order_index, stage_id, published FROM lms_modules WHERE id = $1',
+      [moduleId]
+    );
+
+    if (currentModuleResult.rows.length === 0 || !currentModuleResult.rows[0].published) {
+      return res.status(403).json({ error: 'Módulo no accesible' });
+    }
+
+    const { order_index: currentOrder, stage_id: stageId } = currentModuleResult.rows[0];
+
+    // 2. Si no es el primero, verificar el anterior para evitar saltos
+    if (currentOrder > 0) {
+      const prevModuleResult = await query(
+        'SELECT id FROM lms_modules WHERE stage_id = $1 AND order_index = $2',
+        [stageId, currentOrder - 1]
+      );
+
+      if (prevModuleResult.rows.length > 0) {
+        const prevModuleId = prevModuleResult.rows[0].id;
+
+        // Verificar lecciones completas del anterior
+        const prevLessonsProgress = await query(`
+          SELECT 
+            (SELECT COUNT(*) FROM lms_lessons WHERE module_id = $1) as total,
+            (SELECT COUNT(*) FROM lms_lessons l 
+             JOIN lms_progress_lessons pl ON pl.lesson_id = l.id 
+             WHERE l.module_id = $1 AND pl.user_id = $2) as completed
+        `, [prevModuleId, user.id]);
+
+        const { total, completed } = prevLessonsProgress.rows[0];
+        
+        if (parseInt(total) !== parseInt(completed)) {
+           return res.status(403).json({ error: 'Debes completar el módulo anterior primero.' });
+        }
+        
+        // Verificar quiz del anterior
+        const prevQuizResult = await query('SELECT id FROM lms_quizzes WHERE module_id = $1', [prevModuleId]);
+        if (prevQuizResult.rows.length > 0) {
+          const prevQuizId = prevQuizResult.rows[0].id;
+          const quizAttemptResult = await query(
+            'SELECT 1 FROM lms_quiz_attempts WHERE quiz_id = $1 AND user_id = $2 AND passed = true LIMIT 1',
+            [prevQuizId, user.id]
+          );
+          
+          if (quizAttemptResult.rows.length === 0) {
+            return res.status(403).json({ error: 'Debes aprobar el quiz del módulo anterior.' });
+          }
+        }
+      }
+    }
   }
 
   // Verificar que todas las lecciones estén completadas

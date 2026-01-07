@@ -173,7 +173,7 @@ SELECT
     THEN ROUND((COUNT(DISTINCT pl.lesson_id)::DECIMAL / COUNT(DISTINCT l.id)) * 100, 2)
     ELSE 0
   END as lessons_completion_percentage,
-  MAX(qa.passed) as quiz_passed,
+  BOOL_OR(qa.passed) as quiz_passed,
   MAX(qa.score) as best_quiz_score,
   COUNT(qa.id) as quiz_attempts_count,
   MAX(qa.created_at) as last_quiz_attempt

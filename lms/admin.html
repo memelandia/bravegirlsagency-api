@@ -187,6 +187,12 @@
     async function loadUsers() {
       try {
         const response = await fetch(`${API_BASE}/admin/users`, { credentials: 'include' });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || 'Error al cargar usuarios');
+        }
+        
         const data = await response.json();
         
         const table = document.getElementById('usersTable');
@@ -222,13 +228,19 @@
           </table>
         `;
       } catch (error) {
-        showAlert('Error al cargar usuarios');
+        showAlert(error.message);
       }
     }
 
     async function loadModules() {
       try {
         const response = await fetch(`${API_BASE}/admin/modules`, { credentials: 'include' });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || 'Error al cargar módulos');
+        }
+
         const data = await response.json();
         
         const table = document.getElementById('modulesTable');
@@ -257,7 +269,7 @@
           </table>
         `;
       } catch (error) {
-        showAlert('Error al cargar módulos');
+        showAlert(error.message);
       }
     }
 
@@ -265,6 +277,12 @@
       try {
         const url = moduleId ? `${API_BASE}/admin/lessons?moduleId=${moduleId}` : `${API_BASE}/admin/lessons`;
         const response = await fetch(url, { credentials: 'include' });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || 'Error al cargar lecciones');
+        }
+
         const data = await response.json();
         
         const table = document.getElementById('lessonsTable');
@@ -291,7 +309,7 @@
           </table>
         `;
       } catch (error) {
-        showAlert('Error al cargar lecciones');
+        showAlert(error.message);
       }
     }
 
