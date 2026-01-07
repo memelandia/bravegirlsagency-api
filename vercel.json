@@ -1,6 +1,9 @@
 {
   "version": 2,
   "rewrites": [
+    { "source": "/api/lms/auth/login", "destination": "/api/lms/auth" },
+    { "source": "/api/lms/auth/logout", "destination": "/api/lms/auth" },
+    { "source": "/api/lms/auth/me", "destination": "/api/lms/auth" },
     { "source": "/api/lms/admin/users", "destination": "/api/lms/admin" },
     { "source": "/api/lms/admin/modules", "destination": "/api/lms/admin" },
     { "source": "/api/lms/admin/lessons", "destination": "/api/lms/admin" },
