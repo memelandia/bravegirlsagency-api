@@ -134,8 +134,6 @@ async function handleCampus(req, res, user, deps) {
       const progress = progressMap[row.module_id] || { totalLessons: 0, completedLessons: 0 };
       const quiz = quizMap[row.module_id] || { passed: false, attempts: 0, hasQuestions: false };
 
-      const status = getModuleStatus(progress, quiz);
-
       // Determinar si está desbloqueado
       const moduleOrder = row.module_order;
       let unlocked = false;
@@ -152,6 +150,11 @@ async function handleCampus(req, res, user, deps) {
         }
       }
 
+      const isLocked = !unlocked;
+      const allLessonsCompleted = progress.totalLessons > 0 && parseInt(progress.completedLessons) === parseInt(progress.totalLessons);
+
+      const status = getModuleStatus(isLocked, allLessonsCompleted, quiz.passed, quiz.hasQuestions);
+
       stagesMap[row.stage_id].modules.push({
         id: row.module_id,
         title: row.module_title,
@@ -159,6 +162,7 @@ async function handleCampus(req, res, user, deps) {
         order: row.module_order,
         status,
         unlocked,
+        isLocked, // Frontend usa esto
         progress: {
           totalLessons: progress.totalLessons,
           completedLessons: progress.completedLessons,
@@ -275,26 +279,63 @@ async function handleModule(req, res, user, deps) {
       q.id,
       q.passing_score,
       q.max_attempts,
+      q.cooldown_minutes,
       COUNT(DISTINCT qst.id) as questions_count,
       MAX(qa.passed) as user_passed,
       MAX(qa.score) as user_best_score,
-      COUNT(DISTINCT qa.id) as user_attempts
+      COUNT(DISTINCT qa.id) as user_attempts,
+      MAX(qa.created_at) as last_attempt
     FROM lms_quizzes q
     LEFT JOIN lms_questions qst ON qst.quiz_id = q.id
     LEFT JOIN lms_quiz_attempts qa ON qa.quiz_id = q.id AND qa.user_id = $1
     WHERE q.module_id = $2
-    GROUP BY q.id, q.passing_score, q.max_attempts
+    GROUP BY q.id, q.passing_score, q.max_attempts, q.cooldown_minutes
   `, [user.id, moduleId]);
 
-  const quiz = quizResult.rows.length > 0 ? {
-    id: quizResult.rows[0].id,
-    passingScore: quizResult.rows[0].passing_score,
-    maxAttempts: quizResult.rows[0].max_attempts,
-    questionsCount: parseInt(quizResult.rows[0].questions_count),
-    userPassed: quizResult.rows[0].user_passed || false,
-    userBestScore: quizResult.rows[0].user_best_score || 0,
-    userAttempts: parseInt(quizResult.rows[0].user_attempts) || 0
-  } : null;
+  let quizData = null;
+  let canTakeQuiz = false;
+  let allLessonsCompleted = lessons.every(l => l.completed);
+
+  if (quizResult.rows.length > 0) {
+    const row = quizResult.rows[0];
+    const userPassed = row.user_passed || false;
+    const userAttempts = parseInt(row.user_attempts) || 0;
+    const maxAttempts = parseInt(row.max_attempts);
+    const cooldownMinutes = parseInt(row.cooldown_minutes);
+    
+    // Calcular cooldown
+    let cooldownRemaining = 0;
+    if (row.last_attempt && cooldownMinutes > 0) {
+      const lastAttemptTime = new Date(row.last_attempt).getTime();
+      const cooldownMs = cooldownMinutes * 60 * 1000;
+      const elapsedMs = Date.now() - lastAttemptTime;
+      if (elapsedMs < cooldownMs) {
+        cooldownRemaining = Math.ceil((cooldownMs - elapsedMs) / 60000);
+      }
+    }
+
+    // Lógica para habilitar quiz
+    canTakeQuiz = 
+      allLessonsCompleted && 
+      !userPassed && 
+      (userAttempts < maxAttempts) && 
+      (cooldownRemaining === 0) &&
+      (parseInt(row.questions_count) > 0);
+
+    quizData = {
+      id: row.id,
+      passingScore: row.passing_score,
+      maxAttempts: maxAttempts,
+      totalQuestions: parseInt(row.questions_count), // Frontend espera totalQuestions
+      userPassed: userPassed,
+      bestScore: row.user_best_score || 0,
+      userAttempts: userAttempts,
+      attemptsRemaining: Math.max(0, maxAttempts - userAttempts),
+      cooldownMinutes,
+      cooldownRemaining,
+      hasQuestions: parseInt(row.questions_count) > 0
+    };
+  }
 
   return res.status(200).json({
     module: {
@@ -309,7 +350,9 @@ async function handleModule(req, res, user, deps) {
       }
     },
     lessons,
-    quiz
+    quiz: quizData,
+    allLessonsCompleted,
+    canTakeQuiz
   });
 }
 
@@ -402,10 +445,10 @@ async function handleQuiz(req, res, user, deps) {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  // Extraer moduleId de la URL
-  const parts = req.url.split('/');
-  const quizIndex = parts.indexOf('quiz');
-  const moduleId = parts[quizIndex + 1]?.split('?')[0];
+  // Extraer moduleId de la URL usando lmsPath (más seguro)
+  // path: quiz/uuid
+  const parts = req.lmsPath.split('/');
+  const moduleId = parts[1];
 
   if (!isValidUUID(moduleId)) {
     return res.status(400).json({ error: 'ID de módulo inválido' });
@@ -509,7 +552,8 @@ async function handleQuiz(req, res, user, deps) {
       passingScore: quiz.passing_score,
       maxAttempts: quiz.max_attempts,
       userAttempts: parseInt(quiz.user_attempts),
-      remainingAttempts: quiz.max_attempts - parseInt(quiz.user_attempts)
+      remainingAttempts: quiz.max_attempts - parseInt(quiz.user_attempts),
+      attemptsRemaining: quiz.max_attempts - parseInt(quiz.user_attempts) // Para consistencia
     },
     questions
   });
@@ -525,10 +569,10 @@ async function handleQuizSubmit(req, res, user, deps) {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  // Extraer moduleId de la URL
-  const parts = req.url.split('/');
-  const quizIndex = parts.indexOf('quiz');
-  const moduleId = parts[quizIndex + 1]?.split('?')[0];
+  // Extraer moduleId de la URL usando lmsPath
+  // path: quiz/[id]/submit
+  const parts = req.lmsPath.split('/');
+  const moduleId = parts[1];
 
   if (!isValidUUID(moduleId)) {
     return res.status(400).json({ error: 'ID de módulo inválido' });
