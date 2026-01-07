@@ -263,7 +263,7 @@
 
     async function loadLessons(moduleId = '') {
       try {
-        const url = moduleId ? `/api/lms/admin/lessons?moduleId=${moduleId}` : '/api/lms/admin/lessons';
+        const url = moduleId ? `${API_BASE}/admin/lessons?moduleId=${moduleId}` : `${API_BASE}/admin/lessons`;
         const response = await fetch(url, { credentials: 'include' });
         const data = await response.json();
         
@@ -328,7 +328,7 @@
       }
       
       try {
-        const response = await fetch(`/api/lms/admin/questions?moduleId=${moduleId}`, { credentials: 'include' });
+        const response = await fetch(`${API_BASE}/admin/questions?moduleId=${moduleId}`, { credentials: 'include' });
         const data = await response.json();
         
         const table = document.getElementById('questionsTable');
