@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
     // Cargar dependencias
     const { query, transaction } = require('./_lib/db');
     const { verifyPassword, createSession, updateLastLogin, validateSession, hashPassword, generateTempPassword, getUserById, getUserByEmail } = require('./_lib/auth');
-    const { parseCookies, setCookie, deleteCookie, isValidEmail, isValidUUID, validateRequired, normalizeLoomUrl, getModuleStatus } = require('./_lib/utils');
+    const { parseCookies, setCookie, deleteCookie, isValidEmail, isValidUUID, validateRequired, normalizeLoomUrl, getModuleStatus, successResponse, errorResponse } = require('./_lib/utils');
     const { parseBody } = require('./_lib/bodyParser');
     
     // Parsear cookies
@@ -61,13 +61,13 @@ module.exports = async (req, res) => {
     // Rutear según la path
     if (path.startsWith('auth/')) {
       const authHandler = require('./_handlers/lms-auth');
-      return authHandler(req, res, { query, verifyPassword, createSession, updateLastLogin, validateSession, getUserByEmail, parseCookies, setCookie, deleteCookie, isValidEmail, validateRequired, parseBody });
+      return authHandler(req, res, { query, verifyPassword, createSession, updateLastLogin, validateSession, getUserByEmail, parseCookies, setCookie, deleteCookie, isValidEmail, validateRequired, parseBody, successResponse, errorResponse });
     } else if (path.startsWith('admin/')) {
       const adminHandler = require('./_handlers/lms-admin');
-      return adminHandler(req, res, { query, transaction, hashPassword, generateTempPassword, getUserById, validateSession, parseCookies, isValidEmail, isValidUUID, validateRequired, normalizeLoomUrl });
+      return adminHandler(req, res, { query, transaction, hashPassword, generateTempPassword, getUserById, validateSession, parseCookies, isValidEmail, isValidUUID, validateRequired, normalizeLoomUrl, successResponse, errorResponse });
     } else if (path.startsWith('campus') || path.startsWith('module/') || path.startsWith('lesson/') || path.startsWith('quiz/')) {
       const chatterHandler = require('./_handlers/lms-chatter');
-      return chatterHandler(req, res, { query, transaction, validateSession, parseCookies, isValidUUID, getModuleStatus, validateRequired });
+      return chatterHandler(req, res, { query, transaction, validateSession, parseCookies, isValidUUID, getModuleStatus, validateRequired, successResponse, errorResponse });
     } else {
       return res.status(404).json({ error: 'Ruta LMS no encontrada', path, url: req.url });
     }

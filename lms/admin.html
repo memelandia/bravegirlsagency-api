@@ -439,36 +439,98 @@
     }
 
     function showCreateUserModal() {
-      const name = prompt('Nombre del usuario:');
-      if (!name) return;
+      // Usar un formulario en un diálogo modal sería mejor, pero para mantener la simplicidad
+      // usaremos prompts secuenciales o un formulario personalizado si es necesario.
+      // Aquí mejoraremos la UI para permitir contraseña opcional.
       
-      const email = prompt('Email del usuario:');
-      if (!email) return;
+      const modalHtml = `
+        <div id="userModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+          <div class="card" style="width: 400px; max-width: 90%;">
+            <h2 class="mb-20">Crear Nuevo Usuario</h2>
+            <form id="createUserForm">
+              <div class="form-group">
+                <label>Nombre Completo</label>
+                <input type="text" id="newUserName" class="form-input" required>
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="newUserEmail" class="form-input" required>
+              </div>
+              <div class="form-group">
+                <label>Rol</label>
+                <select id="newUserRole" class="form-select" required>
+                  <option value="chatter">Chatter</option>
+                  <option value="supervisor">Supervisor</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Contraseña (Opcional)</label>
+                <input type="text" id="newUserPassword" class="form-input" placeholder="Dejar en blanco para autogenerar">
+                <small style="color: var(--text-light)">Si se deja vacío, el sistema generará una contraseña aleatoria.</small>
+              </div>
+              <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn btn-outline" onclick="closeUserModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear Usuario</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
       
-      const role = prompt('Rol (chatter, supervisor, admin):');
-      if (!['chatter', 'supervisor', 'admin'].includes(role)) {
-        showAlert('Rol inválido');
-        return;
-      }
+      const modalContainer = document.createElement('div');
+      modalContainer.innerHTML = modalHtml;
+      document.body.appendChild(modalContainer);
       
-      createUser(name, email, role);
+      document.getElementById('createUserForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('newUserName').value;
+        const email = document.getElementById('newUserEmail').value;
+        const role = document.getElementById('newUserRole').value;
+        const password = document.getElementById('newUserPassword').value;
+        
+        createUser(name, email, role, password);
+        closeUserModal();
+      });
     }
 
-    async function createUser(name, email, role) {
+    function closeUserModal() {
+      const modal = document.getElementById('userModal');
+      if (modal) modal.parentElement.remove();
+    }
+
+    async function createUser(name, email, role, password) {
       try {
+        const body = { name, email, role };
+        if (password && password.trim() !== '') {
+          body.password = password.trim();
+        }
+
         const response = await fetch(`${API_BASE}/admin/users`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ name, email, role })
+          body: JSON.stringify(body)
         });
         
         const data = await response.json();
-        alert(`Usuario creado exitosamente.\n\nContraseña temporal: ${data.temporaryPassword}\n\nCopia esta contraseña y envíala al usuario de forma segura.`);
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Error al crear usuario');
+        }
+
+        let msg = `Usuario creado exitosamente.\n\n`;
+        if (data.temporaryPassword && data.temporaryPassword !== 'Usuario creado con contraseña manual') {
+          msg += `Contraseña temporal: ${data.temporaryPassword}\n\nCopia esta contraseña y envíala al usuario.`;
+        } else {
+          msg += `Contraseña asignada manualmente.`;
+        }
+        
+        alert(msg);
         showAlert('Usuario creado exitosamente', 'success');
         await loadUsers();
       } catch (error) {
-        showAlert('Error al crear usuario');
+        showAlert(error.message);
       }
     }
 
