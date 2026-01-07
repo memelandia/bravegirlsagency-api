@@ -88,9 +88,7 @@ async function handleCampus(req, res, user, deps) {
       MAX(qa.score) as best_score,
       COUNT(qa.id) as attempts,
       MAX(qa.created_at) as last_attempt,
-      EXISTS(
-        SELECT 1 FROM lms_questions WHERE quiz_id = q.id
-      ) as has_questions
+      (SELECT COUNT(*) FROM lms_questions WHERE quiz_id = q.id) > 0 as has_questions
     FROM lms_quizzes q
     LEFT JOIN lms_quiz_attempts qa ON qa.quiz_id = q.id AND qa.user_id = $1
     GROUP BY q.id, q.module_id

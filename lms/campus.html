@@ -71,7 +71,11 @@
     async function loadCampus() {
       try {
         const response = await fetch(`${API_BASE}/campus`, { credentials: 'include' });
-        if (!response.ok) throw new Error('Error al cargar el campus');
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || 'Error al cargar el campus');
+        }
         
         const data = await response.json();
         

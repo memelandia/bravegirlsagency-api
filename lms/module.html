@@ -59,9 +59,10 @@
     async function loadModule() {
       try {
         const response = await fetch(`${API_BASE}/module/${moduleId}`, { credentials: 'include' });
+        
         if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || 'Error al cargar el módulo');
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || 'Error al cargar el módulo');
         }
         
         moduleData = await response.json();
