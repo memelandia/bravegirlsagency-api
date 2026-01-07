@@ -84,7 +84,7 @@ async function handleCampus(req, res, user, deps) {
     SELECT 
       q.module_id,
       q.id as quiz_id,
-      MAX(qa.passed) as passed,
+      BOOL_OR(qa.passed) as passed,
       MAX(qa.score) as best_score,
       COUNT(qa.id) as attempts,
       MAX(qa.created_at) as last_attempt,
@@ -297,7 +297,7 @@ async function handleModule(req, res, user, deps) {
       q.max_attempts,
       q.cooldown_minutes,
       COUNT(DISTINCT qst.id) as questions_count,
-      MAX(qa.passed) as user_passed,
+      BOOL_OR(qa.passed) as user_passed,
       MAX(qa.score) as user_best_score,
       COUNT(DISTINCT qa.id) as user_attempts,
       MAX(qa.created_at) as last_attempt
