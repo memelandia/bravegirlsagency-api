@@ -211,6 +211,8 @@ async function handleUsers(req, res, user, deps) {
 // MODULES - CRUD de módulos (admin/supervisor)
 // ===================================================================
 async function handleModules(req, res, user, deps) {
+  const { query, isValidUUID, validateRequired } = deps;
+
   if (!['admin', 'supervisor'].includes(user.role)) {
     return res.status(403).json({ error: 'Acceso denegado' });
   }
@@ -339,6 +341,8 @@ async function handleModules(req, res, user, deps) {
 // LESSONS - CRUD de lecciones (admin/supervisor)
 // ===================================================================
 async function handleLessons(req, res, user, deps) {
+  const { query, isValidUUID, validateRequired, normalizeLoomUrl } = deps;
+
   if (!['admin', 'supervisor'].includes(user.role)) {
     return res.status(403).json({ error: 'Acceso denegado' });
   }
@@ -488,6 +492,8 @@ async function handleLessons(req, res, user, deps) {
 // QUESTIONS - CRUD de preguntas (admin/supervisor)
 // ===================================================================
 async function handleQuestions(req, res, user, deps) {
+  const { query, isValidUUID, validateRequired } = deps;
+
   if (!['admin', 'supervisor'].includes(user.role)) {
     return res.status(403).json({ error: 'Acceso denegado' });
   }
@@ -633,6 +639,8 @@ async function handleQuestions(req, res, user, deps) {
 // PROGRESS - Ver progreso de usuarios (admin/supervisor)
 // ===================================================================
 async function handleProgress(req, res, user, deps) {
+  const { query, isValidUUID } = deps;
+
   if (!['admin', 'supervisor'].includes(user.role)) {
     return res.status(403).json({ error: 'Acceso denegado' });
   }
@@ -748,6 +756,8 @@ async function handleProgress(req, res, user, deps) {
 // STAGES - CRUD de etapas (solo admin)
 // ===================================================================
 async function handleStages(req, res, user, deps) {
+  const { query, validateRequired } = deps;
+
   if (user.role !== 'admin') {
     return res.status(403).json({ error: 'Solo administradores pueden gestionar etapas' });
   }
@@ -854,6 +864,8 @@ async function handleStages(req, res, user, deps) {
 // QUIZZES - CRUD de quizzes (admin/supervisor)
 // ===================================================================
 async function handleQuizzes(req, res, user, deps) {
+  const { query, isValidUUID, validateRequired } = deps;
+
   if (!['admin', 'supervisor'].includes(user.role)) {
     return res.status(403).json({ error: 'Acceso denegado' });
   }
