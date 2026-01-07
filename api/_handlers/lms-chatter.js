@@ -143,8 +143,18 @@ async function handleCampus(req, res, user, deps) {
       } else {
         const prevModule = stagesResult.rows.find(m => m.module_order === moduleOrder - 1);
         if (prevModule) {
-          const prevQuiz = quizMap[prevModule.module_id] || {};
-          unlocked = prevQuiz.passed === true;
+          const prevQuiz = quizMap[prevModule.module_id] || { hasQuestions: false, passed: false };
+          const prevProgress = progressMap[prevModule.module_id] || { totalLessons: 0, completedLessons: 0 };
+          
+          const prevLessonsFinished = prevProgress.totalLessons > 0 && 
+                                      parseInt(prevProgress.completedLessons) === parseInt(prevProgress.totalLessons);
+
+          if (prevQuiz.hasQuestions) {
+            unlocked = prevQuiz.passed === true;
+          } else {
+            // Si no tiene quiz, basta con completar las lecciones
+            unlocked = prevLessonsFinished;
+          }
         }
       }
 
@@ -270,7 +280,7 @@ async function handleModule(req, res, user, deps) {
         if (!prevLessonsCompleted) {
           canAccess = false;
         } else {
-          // Verificar quiz del anterior (si existe)
+          // Verificar quiz del anterior (si existe y tiene preguntas)
           const prevQuizResult = await query(
             'SELECT id FROM lms_quizzes WHERE module_id = $1',
             [prevModuleId]
@@ -278,13 +288,19 @@ async function handleModule(req, res, user, deps) {
 
           if (prevQuizResult.rows.length > 0) {
             const prevQuizId = prevQuizResult.rows[0].id;
-            const quizAttemptResult = await query(
-              'SELECT 1 FROM lms_quiz_attempts WHERE quiz_id = $1 AND user_id = $2 AND passed = true LIMIT 1',
-              [prevQuizId, user.id]
-            );
             
-            if (quizAttemptResult.rows.length === 0) {
-              canAccess = false;
+            // Solo requerir aprobar si tiene preguntas
+            const hasQuestionsResult = await query('SELECT 1 FROM lms_questions WHERE quiz_id = $1 LIMIT 1', [prevQuizId]);
+            
+            if (hasQuestionsResult.rows.length > 0) {
+                const quizAttemptResult = await query(
+                  'SELECT 1 FROM lms_quiz_attempts WHERE quiz_id = $1 AND user_id = $2 AND passed = true LIMIT 1',
+                  [prevQuizId, user.id]
+                );
+                
+                if (quizAttemptResult.rows.length === 0) {
+                  canAccess = false;
+                }
             }
           }
         }

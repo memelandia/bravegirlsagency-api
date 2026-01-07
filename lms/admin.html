@@ -90,9 +90,12 @@
           <div class="card">
             <div class="flex-between mb-20">
               <h2>Gestión de Preguntas</h2>
-              <select id="modulesFilterQuestions" class="form-select" style="width: 250px;">
-                <option value="">Selecciona un módulo</option>
-              </select>
+              <div style="display: flex; gap: 10px;">
+                <select id="modulesFilterQuestions" class="form-select" style="width: 250px;">
+                  <option value="">Selecciona un módulo</option>
+                </select>
+                <button id="btnAddQuestion" class="btn btn-primary" disabled onclick="showCreateQuestionModal()">+ Agregar Pregunta</button>
+              </div>
             </div>
             <div id="questionsTable">
               <p style="color: var(--text-light);">Selecciona un módulo para ver sus preguntas</p>
@@ -340,10 +343,14 @@
     }
 
     async function loadQuestions(moduleId) {
+      const btnAdd = document.getElementById('btnAddQuestion');
       if (!moduleId) {
         document.getElementById('questionsTable').innerHTML = '<p style="color: var(--text-light);">Selecciona un módulo para ver sus preguntas</p>';
+        if (btnAdd) btnAdd.disabled = true;
         return;
       }
+      
+      if (btnAdd) btnAdd.disabled = false;
       
       try {
         const response = await fetch(`${API_BASE}/admin/questions?moduleId=${moduleId}`, { credentials: 'include' });
@@ -352,7 +359,7 @@
         const table = document.getElementById('questionsTable');
         
         if (data.questions.length === 0) {
-          table.innerHTML = '<div class="alert alert-info">Este módulo no tiene preguntas aún. Usa el panel de administración para agregarlas.</div>';
+          table.innerHTML = '<div class="alert alert-info">Este módulo no tiene preguntas aún. Haz clic en "Agregar Pregunta" para crear una.</div>';
           return;
         }
         
@@ -364,6 +371,7 @@
                 <th>Pregunta</th>
                 <th>Opciones</th>
                 <th>Respuesta Correcta</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -373,6 +381,9 @@
                   <td>${question.prompt}</td>
                   <td><small>${question.options.length} opciones</small></td>
                   <td><strong>${question.options[question.correct_option_index]}</strong></td>
+                  <td>
+                    <button class="btn btn-sm btn-danger" onclick="deleteQuestion('${question.id}', '${moduleId}')">Eliminar</button>
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
@@ -380,6 +391,173 @@
         `;
       } catch (error) {
         showAlert('Error al cargar preguntas');
+      }
+    }
+
+    async function deleteQuestion(questionId, moduleId) {
+      if (!confirm('¿Estás seguro de eliminar esta pregunta?')) return;
+      
+      try {
+        const response = await fetch(`${API_BASE}/admin/questions?id=${questionId}`, { 
+          method: 'DELETE',
+          credentials: 'include' 
+        });
+        
+        if (!response.ok) throw new Error('Error al eliminar');
+        
+        showAlert('Pregunta eliminada', 'success');
+        loadQuestions(moduleId);
+      } catch (error) {
+        showAlert('Error al eliminar pregunta');
+      }
+    }
+    
+    // Global variable to keep track of options
+    let currentOptions = [];
+
+    function showCreateQuestionModal() {
+      const moduleId = document.getElementById('modulesFilterQuestions').value;
+      if (!moduleId) {
+        alert('Selecciona un módulo primero');
+        return;
+      }
+
+      currentOptions = ['', '']; // Start with 2 empty options
+
+      const modalHtml = `
+        <div id="questionModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+          <div class="card" style="width: 600px; max-width: 90%; max-height: 90vh; overflow-y: auto;">
+            <h2 class="mb-20">Agregar Pregunta</h2>
+            <form id="createQuestionForm">
+              <input type="hidden" id="qModuleId" value="${moduleId}">
+              <div class="form-group">
+                <label>Pregunta</label>
+                <textarea id="qPrompt" class="form-input" rows="3" required placeholder="Escribe la pregunta aquí..."></textarea>
+              </div>
+              <div class="form-group">
+                <label>Tipo de Pregunta</label>
+                <select id="qType" class="form-select" onchange="updateQuestionType()">
+                  <option value="multiple">Opción Múltiple</option>
+                  <option value="boolean">Verdadero / Falso</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Opciones (Selecciona la correcta)</label>
+                <div id="optionsContainer">
+                  <!-- Generated by JS -->
+                </div>
+                <button type="button" id="btnAddOption" class="btn btn-sm btn-outline mt-10" onclick="addOption()">+ Agregar Opción</button>
+              </div>
+
+              <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn btn-outline" onclick="closeQuestionModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar Pregunta</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      
+      const modalContainer = document.createElement('div');
+      modalContainer.innerHTML = modalHtml;
+      document.body.appendChild(modalContainer);
+      
+      updateOptionsUI();
+      
+      document.getElementById('createQuestionForm').addEventListener('submit', handleCreateQuestion);
+    }
+
+    function closeQuestionModal() {
+      const modal = document.getElementById('questionModal');
+      if (modal) modal.parentElement.remove();
+    }
+
+    function updateQuestionType() {
+      const type = document.getElementById('qType').value;
+      const btnAddOption = document.getElementById('btnAddOption');
+      
+      if (type === 'boolean') {
+        currentOptions = ['Verdadero', 'Falso'];
+        btnAddOption.style.display = 'none';
+      } else {
+        currentOptions = ['', ''];
+        btnAddOption.style.display = 'inline-block';
+      }
+      updateOptionsUI();
+    }
+
+    function addOption() {
+      currentOptions.push('');
+      updateOptionsUI();
+    }
+
+    function removeOption(index) {
+      if (currentOptions.length <= 2) {
+        alert('Debe haber al menos 2 opciones');
+        return;
+      }
+      currentOptions.splice(index, 1);
+      updateOptionsUI();
+    }
+
+    function updateOptionsUI() {
+      const container = document.getElementById('optionsContainer');
+      const type = document.getElementById('qType').value;
+      
+      container.innerHTML = currentOptions.map((opt, index) => `
+        <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+          <input type="radio" name="correctOption" value="${index}" required ${index === 0 ? 'checked' : ''}>
+          <input type="text" class="form-input" value="${opt}" 
+            onchange="currentOptions[${index}] = this.value"
+            placeholder="Opción ${index + 1}" 
+            ${type === 'boolean' ? 'readonly' : 'required'}>
+          ${type !== 'boolean' ? `
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeOption(${index})" tabindex="-1">X</button>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    async function handleCreateQuestion(e) {
+      e.preventDefault();
+      
+      const moduleId = document.getElementById('qModuleId').value;
+      const prompt = document.getElementById('qPrompt').value;
+      const correctOptionIndex = parseInt(document.querySelector('input[name="correctOption"]:checked').value);
+      
+      // Filter empty options just in case
+      const finalOptions = currentOptions.filter(o => o.trim() !== '');
+      
+      if (finalOptions.length < 2) {
+        alert('Debes escribir al menos 2 opciones');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/admin/questions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            moduleId, // The backend will find/create the quiz based on this
+            prompt,
+            options: finalOptions,
+            correctOptionIndex,
+            orderIndex: 0 // Default to 0/append for now
+          })
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || error.message || 'Error al guardar');
+        }
+        
+        closeQuestionModal();
+        showAlert('Pregunta agregada', 'success');
+        loadQuestions(moduleId);
+      } catch (error) {
+        alert(error.message);
       }
     }
 
