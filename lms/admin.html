@@ -35,6 +35,7 @@
       <div class="sidebar">
         <ul class="sidebar-menu">
           <li data-tab="users" class="active">👥 Usuarios</li>
+          <li data-tab="stages">📑 Etapas</li>
           <li data-tab="modules">📚 Módulos</li>
           <li data-tab="lessons">📝 Lecciones</li>
           <li data-tab="questions">❓ Preguntas</li>
@@ -44,6 +45,7 @@
 
       <div class="main-content">
         <div id="alert" class="hidden"></div>
+
 
         <!-- USERS TAB -->
         <div id="users-tab" class="tab-content active">
@@ -58,10 +60,26 @@
           </div>
         </div>
 
+        <!-- STAGES TAB -->
+        <div id="stages-tab" class="tab-content">
+          <div class="card">
+            <div class="flex-between mb-20">
+              <h2>Gestión de Etapas</h2>
+              <button class="btn btn-primary" onclick="showStageModal()">+ Nueva Etapa</button>
+            </div>
+            <div id="stagesTable">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+
         <!-- MODULES TAB -->
         <div id="modules-tab" class="tab-content">
           <div class="card">
-            <h2 class="mb-20">Gestión de Módulos</h2>
+            <div class="flex-between mb-20">
+              <h2>Gestión de Módulos</h2>
+              <button class="btn btn-primary" onclick="showModuleModal()">+ Nuevo Módulo</button>
+            </div>
             <div id="modulesTable">
               <div class="spinner"></div>
             </div>
@@ -73,10 +91,11 @@
           <div class="card">
             <div class="flex-between mb-20">
               <h2>Gestión de Lecciones</h2>
-              <div>
+              <div style="display: flex; gap: 10px;">
                 <select id="modulesFilter" class="form-select" style="width: 250px;">
                   <option value="">Todos los módulos</option>
                 </select>
+                <button class="btn btn-primary" onclick="showLessonModal()">+ Nueva Lección</button>
               </div>
             </div>
             <div id="lessonsTable">
@@ -171,6 +190,9 @@
         case 'users':
           await loadUsers();
           break;
+        case 'stages':
+          await loadStages();
+          break;
         case 'modules':
           await loadModules();
           break;
@@ -184,6 +206,381 @@
         case 'progress':
           await loadProgress();
           break;
+      }
+    }
+
+    // ==========================================
+    // STAGES LOGIC
+    // ==========================================
+    async function loadStages() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/stages`, { credentials: 'include' });
+        const data = await response.json();
+        
+        const table = document.getElementById('stagesTable');
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Orden</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Módulos</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.stages.map(stage => `
+                <tr>
+                  <td>${stage.order_index}</td>
+                  <td><strong>${stage.name}</strong></td>
+                  <td><small>${stage.description || '-'}</small></td>
+                  <td>${stage.modules_count || 0}</td>
+                  <td>
+                    <button class="btn btn-sm btn-outline" onclick='showStageModal(${JSON.stringify(stage)})'>Editar</button>
+                    ${stage.modules_count == 0 ? `<button class="btn btn-sm btn-danger" onclick="deleteStage('${stage.id}')">Eliminar</button>` : ''}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        showAlert('Error al cargar etapas');
+      }
+    }
+
+    function showStageModal(stage = null) {
+      const isEdit = !!stage;
+      const modalHtml = `
+        <div id="stageModal" class="modal-overlay">
+          <div class="card modal-content">
+            <h2 class="mb-20">${isEdit ? 'Editar Etapa' : 'Nueva Etapa'}</h2>
+            <form id="stageForm">
+              ${isEdit ? `<input type="hidden" id="stId" value="${stage.id}">` : ''}
+              <div class="form-group">
+                <label>Nombre</label>
+                <input type="text" id="stName" class="form-input" required value="${isEdit ? stage.name : ''}">
+              </div>
+              <div class="form-group">
+                <label>Descripción</label>
+                <textarea id="stDesc" class="form-input" rows="3">${isEdit ? (stage.description || '') : ''}</textarea>
+              </div>
+              <div class="form-group">
+                <label>Orden (Número)</label>
+                <input type="number" id="stOrder" class="form-input" required value="${isEdit ? stage.order_index : 0}">
+              </div>
+              <div class="flex-end mt-20">
+                <button type="button" class="btn btn-outline mr-10" onclick="closeModal('stageModal')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      appendModal(modalHtml);
+      
+      document.getElementById('stageForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = {
+          name: document.getElementById('stName').value,
+          description: document.getElementById('stDesc').value,
+          orderIndex: parseInt(document.getElementById('stOrder').value)
+        };
+        
+        if (isEdit) body.id = document.getElementById('stId').value;
+
+        await apiRequest('/admin/stages', isEdit ? 'PUT' : 'POST', body);
+        closeModal('stageModal');
+        loadStages();
+      });
+    }
+
+    async function deleteStage(id) {
+      if(!confirm('¿Eliminar esta etapa?')) return;
+      await apiRequest(`/admin/stages?id=${id}`, 'DELETE');
+      loadStages();
+    }
+
+    // ==========================================
+    // MODULES LOGIC
+    // ==========================================
+    async function loadModules() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/modules`, { credentials: 'include' });
+        const data = await response.json();
+        
+        const table = document.getElementById('modulesTable');
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Orden</th>
+                <th>Etapa</th>
+                <th>Título</th>
+                <th>Estado</th>
+                <th>Contenido</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.modules.map(module => `
+                <tr>
+                  <td>${module.order_index}</td>
+                  <td><span class="badge badge-secondary">${module.stage_name}</span></td>
+                  <td><strong>${module.title}</strong><br><small style="color: var(--text-light);">${module.description || ''}</small></td>
+                  <td><span class="badge badge-${module.published ? 'success' : 'warning'}">${module.published ? 'Publicado' : 'Borrador'}</span></td>
+                  <td><small>${module.lessons_count || 0} lecciones${module.has_quiz ? ', 1 quiz' : ''}</small></td>
+                  <td>
+                    <button class="btn btn-sm btn-outline" onclick='showModuleModal(${JSON.stringify(module).replace(/'/g, "&#39;")})'>Editar</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteModule('${module.id}')">Eliminar</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        showAlert('Error al cargar módulos');
+      }
+    }
+
+    async function showModuleModal(module = null) {
+      // Need stages for the select
+      const stagesRes = await fetch(`${API_BASE}/admin/stages`, { credentials: 'include' });
+      const stagesData = await stagesRes.json();
+      
+      const isEdit = !!module;
+      const modalHtml = `
+        <div id="moduleModal" class="modal-overlay">
+          <div class="card modal-content">
+            <h2 class="mb-20">${isEdit ? 'Editar Módulo' : 'Nuevo Módulo'}</h2>
+            <form id="moduleForm">
+              ${isEdit ? `<input type="hidden" id="mdId" value="${module.id}">` : ''}
+              <div class="form-group">
+                <label>Etapa</label>
+                <select id="mdStage" class="form-select" required>
+                  ${stagesData.stages.map(s => `<option value="${s.id}" ${isEdit && module.stage_id === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Título</label>
+                <input type="text" id="mdTitle" class="form-input" required value="${isEdit ? module.title : ''}">
+              </div>
+              <div class="form-group">
+                <label>Descripción</label>
+                <textarea id="mdDesc" class="form-input" rows="2">${isEdit ? (module.description || '') : ''}</textarea>
+              </div>
+              <div class="form-group">
+                <label>Orden</label>
+                <input type="number" id="mdOrder" class="form-input" required value="${isEdit ? module.order_index : 0}">
+              </div>
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" id="mdPub" ${isEdit && module.published ? 'checked' : ''}> Publicado
+                </label>
+              </div>
+              <div class="flex-end mt-20">
+                <button type="button" class="btn btn-outline mr-10" onclick="closeModal('moduleModal')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      appendModal(modalHtml);
+      
+      document.getElementById('moduleForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = {
+          stageId: document.getElementById('mdStage').value,
+          title: document.getElementById('mdTitle').value,
+          description: document.getElementById('mdDesc').value,
+          orderIndex: parseInt(document.getElementById('mdOrder').value),
+          published: document.getElementById('mdPub').checked
+        };
+        
+        if (isEdit) body.id = document.getElementById('mdId').value;
+
+        await apiRequest('/admin/modules', isEdit ? 'PUT' : 'POST', body);
+        closeModal('moduleModal');
+        loadModules();
+      });
+    }
+
+    async function deleteModule(id) {
+       if(!confirm('¿Eliminar este módulo? Si tiene lecciones con progreso de alumnos no se podrá borrar.')) return;
+       try {
+         await apiRequest(`/admin/modules?id=${id}`, 'DELETE');
+         loadModules();
+       } catch(e) { /* Warning handled in apiRequest helper wrapper if I add it, otherwise here */ }
+    }
+
+    // ==========================================
+    // LESSONS LOGIC
+    // ==========================================
+    async function loadLessons(moduleId = '') {
+      try {
+        const url = moduleId ? `${API_BASE}/admin/lessons?moduleId=${moduleId}` : `${API_BASE}/admin/lessons`;
+        const response = await fetch(url, { credentials: 'include' });
+        const data = await response.json();
+        
+        const table = document.getElementById('lessonsTable');
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Orden</th>
+                <th>Módulo</th>
+                <th>Título</th>
+                <th>Tipo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.lessons.map(lesson => `
+                <tr>
+                  <td>${lesson.order_index}</td>
+                  <td><small>${lesson.module_title}</small></td>
+                  <td>${lesson.title}</td>
+                  <td><span class="badge badge-${lesson.type === 'video' ? 'info' : 'secondary'}">${lesson.type === 'video' ? '🎥 Video' : '📄 Texto'}</span></td>
+                  <td>
+                    <button class="btn btn-sm btn-outline" onclick='showLessonModal(${JSON.stringify(lesson).replace(/'/g, "&#39;")})'>Editar</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteLesson('${lesson.id}')">Eliminar</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        showAlert('Error al cargar lecciones');
+      }
+    }
+
+    async function showLessonModal(lesson = null) {
+      // Need modules for select
+      const modRes = await fetch(`${API_BASE}/admin/modules`, { credentials: 'include' });
+      const modData = await modRes.json();
+      
+      const isEdit = !!lesson;
+      const modalHtml = `
+        <div id="lessonModal" class="modal-overlay">
+          <div class="card modal-content">
+            <h2 class="mb-20">${isEdit ? 'Editar Lección' : 'Nueva Lección'}</h2>
+            <form id="lessonForm">
+              ${isEdit ? `<input type="hidden" id="lsId" value="${lesson.id}">` : ''}
+              <div class="form-group">
+                <label>Módulo</label>
+                <select id="lsMod" class="form-select" required>
+                  ${modData.modules.map(m => `<option value="${m.id}" ${isEdit && lesson.module_id === m.id ? 'selected' : ''}>${m.title}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Título</label>
+                <input type="text" id="lsTitle" class="form-input" required value="${isEdit ? lesson.title : ''}">
+              </div>
+              <div class="form-group">
+                <label>Orden</label>
+                <input type="number" id="lsOrder" class="form-input" required value="${isEdit ? lesson.order_index : 0}">
+              </div>
+              <div class="form-group">
+                <label>Tipo</label>
+                <select id="lsType" class="form-select" onchange="toggleLessonContent()" required>
+                  <option value="video" ${isEdit && lesson.type === 'video' ? 'selected' : ''}>Video (Loom)</option>
+                  <option value="text" ${isEdit && lesson.type === 'text' ? 'selected' : ''}>Texto</option>
+                </select>
+              </div>
+              
+              <div id="videoFields" class="${isEdit && lesson.type === 'text' ? 'hidden' : ''}">
+                <div class="form-group">
+                  <label>URL de Loom (Share o Embed)</label>
+                  <input type="text" id="lsLoom" class="form-input" placeholder="https://www.loom.com/share/..." value="${isEdit && lesson.loom_url ? lesson.loom_url : ''}">
+                </div>
+              </div>
+              
+              <div id="textFields" class="${!isEdit || lesson.type === 'video' ? 'hidden' : ''}">
+                <div class="form-group">
+                  <label>Contenido de Texto</label>
+                  <textarea id="lsText" class="form-input" rows="6">${isEdit && lesson.text_content ? lesson.text_content : ''}</textarea>
+                </div>
+              </div>
+
+              <div class="flex-end mt-20">
+                <button type="button" class="btn btn-outline mr-10" onclick="closeModal('lessonModal')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      appendModal(modalHtml);
+      
+      document.getElementById('lessonForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const type = document.getElementById('lsType').value;
+        const body = {
+          moduleId: document.getElementById('lsMod').value,
+          title: document.getElementById('lsTitle').value,
+          orderIndex: parseInt(document.getElementById('lsOrder').value),
+          type: type,
+          loomUrl: type === 'video' ? document.getElementById('lsLoom').value : null,
+          textContent: type === 'text' ? document.getElementById('lsText').value : null
+        };
+        
+        if (isEdit) body.id = document.getElementById('lsId').value;
+
+        await apiRequest('/admin/lessons', isEdit ? 'PUT' : 'POST', body);
+        closeModal('lessonModal');
+        loadLessons(); // reload all or filter?
+      });
+    }
+
+    async function deleteLesson(id) {
+       if(!confirm('¿Eliminar esta lección?')) return;
+       await apiRequest(`/admin/lessons?id=${id}`, 'DELETE');
+       loadLessons();
+    }
+    
+    // Helper to toggle fields
+    window.toggleLessonContent = function() {
+      const type = document.getElementById('lsType').value;
+      if (type === 'video') {
+         document.getElementById('videoFields').classList.remove('hidden');
+         document.getElementById('textFields').classList.add('hidden');
+      } else {
+         document.getElementById('videoFields').classList.add('hidden');
+         document.getElementById('textFields').classList.remove('hidden');
+      }
+    };
+
+    // Generic helpers
+    function appendModal(html) {
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      document.body.appendChild(div);
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if(el) el.parentElement.remove();
+    }
+    
+    async function apiRequest(endpoint, method, body = null) {
+      try {
+        const opts = { method, credentials: 'include' };
+        if (body) {
+          opts.headers = { 'Content-Type': 'application/json' };
+          opts.body = JSON.stringify(body);
+        }
+        const res = await fetch(API_BASE + endpoint, opts);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error en la petición');
+        if (method !== 'GET') showAlert('Operación exitosa', 'success');
+        return data;
+      } catch (e) {
+        showAlert(e.message);
+        throw e;
       }
     }
 
