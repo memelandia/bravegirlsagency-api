@@ -77,7 +77,7 @@ async function handleLogin(req, res, deps) {
   }
 
   // Crear sesión
-  const sessionToken = await createSession(user.id);
+  const sessionToken = createSession(user.id);
 
   // Actualizar last_login
   await updateLastLogin(user.id);
