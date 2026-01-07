@@ -4,12 +4,8 @@
 // Rutas: /login, /logout, /me
 // ===================================================================
 
-const { query } = require('../../lib/lms/db');
-const { verifyPassword, createSession, updateLastLogin, validateSession } = require('../../lib/lms/auth');
-const { parseCookies, setCookie, deleteCookie, errorResponse, successResponse, validateRequired, isValidEmail } = require('../../lib/lms/utils');
-
 module.exports = async (req, res) => {
-  // CORS headers - permitir ambos dominios
+  // CORS headers - SIEMPRE enviar primero, incluso si hay error
   const allowedOrigins = [
     'https://www.bravegirlsagency.com', 
     'https://bravegirlsagency.com',
@@ -18,11 +14,9 @@ module.exports = async (req, res) => {
   ];
   const origin = req.headers.origin;
   
-  // Siempre enviar headers CORS
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
-    // Fallback para desarrollo o dominios no listados
     res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
   }
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -32,38 +26,57 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
+
+  try {
+    // Cargar dependencias DENTRO del try-catch
+    const { query } = require('../../lib/lms/db');
+    const { verifyPassword, createSession, updateLastLogin, validateSession } = require('../../lib/lms/auth');
+    const { parseCookies, setCookie, deleteCookie, errorResponse, successResponse, validateRequired, isValidEmail } = require('../../lib/lms/utils');
+    const { parseBody } = require('../../lib/lms/bodyParser');
   
   // Parsear cookies
   req.cookies = parseCookies(req);
+  
+  // Parsear body si es POST
+  if (req.method === 'POST') {
+    req.body = await parseBody(req);
+  }
 
-  try {
     // Extraer el recurso de la URL: /api/lms/auth/login -> login
     const urlParts = req.url.split('?')[0].split('/');
     const action = urlParts[urlParts.length - 1];
 
+    console.log('[LMS Auth] Action:', action, 'Method:', req.method);
+
     // Router interno por acción
     switch(action) {
       case 'login':
-        return await handleLogin(req, res);
+        return await handleLogin(req, res, { query, verifyPassword, createSession, updateLastLogin, setCookie, errorResponse, successResponse, validateRequired, isValidEmail });
       case 'logout':
-        return await handleLogout(req, res);
+        return await handleLogout(req, res, { deleteCookie, errorResponse, successResponse });
       case 'me':
-        return await handleMe(req, res);
+        return await handleMe(req, res, { parseCookies, validateSession, errorResponse, successResponse });
       default:
-        return errorResponse(res, 404, 'Acción no encontrada');
+        return res.status(404).json({ error: 'Acción no encontrada' });
     }
   } catch (error) {
-    console.error('Error en /api/lms/auth:', error);
-    return errorResponse(res, 500, 'Error interno del servidor', { error: error.message });
+    console.error('[LMS Auth] Error crítico:', error);
+    return res.status(500).json({ 
+      error: 'Error interno del servidor', 
+      message: error.message,
+      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+    });
   }
 };
 
 // ===================================================================
 // LOGIN
 // ===================================================================
-async function handleLogin(req, res) {
+async function handleLogin(req, res, deps) {
+  const { query, verifyPassword, createSession, updateLastLogin, setCookie, errorResponse, successResponse, validateRequired, isValidEmail } = deps;
+  
   if (req.method !== 'POST') {
-    return errorResponse(res, 405, 'Método no permitido');
+    return res.status(405).json({ error: 'Método no permitido' });
   }
 
   const { email, password } = req.body;
@@ -71,12 +84,12 @@ async function handleLogin(req, res) {
   // Validar campos requeridos
   const validation = validateRequired(req.body, ['email', 'password']);
   if (!validation.valid) {
-    return errorResponse(res, 400, 'Campos requeridos faltantes', { missing: validation.missing });
+    return res.status(400).json({ error: 'Campos requeridos faltantes', missing: validation.missing });
   }
 
   // Validar formato de email
   if (!isValidEmail(email)) {
-    return errorResponse(res, 400, 'Email inválido');
+    return res.status(400).json({ error: 'Email inválido' });
   }
 
   // Buscar usuario por email
@@ -89,17 +102,17 @@ async function handleLogin(req, res) {
 
   // Usuario no encontrado o inactivo
   if (!user) {
-    return errorResponse(res, 401, 'Credenciales inválidas');
+    return res.status(401).json({ error: 'Credenciales inválidas' });
   }
 
   if (!user.active) {
-    return errorResponse(res, 403, 'Usuario inactivo. Contacta al administrador.');
+    return res.status(403).json({ error: 'Usuario inactivo. Contacta al administrador.' });
   }
 
   // Verificar contraseña
   const passwordValid = await verifyPassword(password, user.password_hash);
   if (!passwordValid) {
-    return errorResponse(res, 401, 'Credenciales inválidas');
+    return res.status(401).json({ error: 'Credenciales inválidas' });
   }
 
   // Crear sesión
@@ -116,7 +129,7 @@ async function handleLogin(req, res) {
     maxAge: 86400 // 24 horas
   });
 
-  return successResponse(res, {
+  return res.status(200).json({
     user: {
       id: user.id,
       name: user.name,
@@ -130,23 +143,25 @@ async function handleLogin(req, res) {
 // ===================================================================
 // LOGOUT
 // ===================================================================
-async function handleLogout(req, res) {
+async function handleLogout(req, res, deps) {
+  const { deleteCookie } = deps;
+  
   if (req.method !== 'POST') {
-    return errorResponse(res, 405, 'Método no permitido');
+    return res.status(405).json({ error: 'Método no permitido' });
   }
 
   // Eliminar cookie de sesión
   deleteCookie(res, 'lms_session');
 
-  return successResponse(res, { message: 'Logout exitoso' });
+  return res.status(200).json({ message: 'Logout exitoso' });
 }
 
 // ===================================================================
-// ME (usuario actual)
-// ===================================================================
-async function handleMe(req, res) {
+// ME (usuario actual), deps) {
+  const { parseCookies, validateSession } = deps;
+  
   if (req.method !== 'GET') {
-    return errorResponse(res, 405, 'Método no permitido');
+    return res.status(405).json({ error: 'Método no permitido' });
   }
 
   // Parsear cookies
@@ -156,14 +171,20 @@ async function handleMe(req, res) {
   const user = await validateSession(req);
 
   if (!user) {
-    return errorResponse(res, 401, 'No autorizado');
+    return res.status(401).json({ error: 'No autorizado' });
   }
 
   // Retornar usuario (sin datos sensibles)
-  return successResponse(res, {
+  return res.status(200).json({
     user: {
       id: user.id,
       name: user.name,
+      email: user.email,
+      role: user.role,
+      last_login: user.last_login
+    }
+  });
+}
       email: user.email,
       role: user.role,
       lastLogin: user.last_login
