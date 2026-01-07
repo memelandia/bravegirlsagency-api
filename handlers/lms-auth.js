@@ -1,71 +1,32 @@
 // ===================================================================
-// /api/lms/auth
-// Endpoint consolidado para autenticación
-// Rutas: /login, /logout, /me
+// LMS Auth Handler
+// Maneja: /auth/login, /auth/logout, /auth/me
 // ===================================================================
 
-module.exports = async (req, res) => {
-  // CORS headers - SIEMPRE enviar primero, incluso si hay error
-  const allowedOrigins = [
-    'https://www.bravegirlsagency.com', 
-    'https://bravegirlsagency.com',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
-  ];
-  const origin = req.headers.origin;
-  
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
-  }
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+module.exports = async (req, res, deps) => {
+  const { query, verifyPassword, createSession, updateLastLogin, validateSession, parseCookies, setCookie, deleteCookie, isValidEmail, validateRequired, parseBody } = deps;
 
   try {
-    // Cargar dependencias DENTRO del try-catch
-    const { query } = require('../../lib/lms/db');
-    const { verifyPassword, createSession, updateLastLogin, validateSession } = require('../../lib/lms/auth');
-    const { parseCookies, setCookie, deleteCookie, errorResponse, successResponse, validateRequired, isValidEmail } = require('../../lib/lms/utils');
-    const { parseBody } = require('../../lib/lms/bodyParser');
-  
-  // Parsear cookies
-  req.cookies = parseCookies(req);
-  
-  // Parsear body si es POST
-  if (req.method === 'POST') {
-    req.body = await parseBody(req);
-  }
-
-    // Extraer el recurso de la URL: /api/lms/auth/login -> login
+    // Extraer la acción de la URL: auth/login -> login
     const urlParts = req.url.split('?')[0].split('/');
-    const action = urlParts[urlParts.length - 1];
+    const action = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
 
-    console.log('[LMS Auth] Action:', action, 'Method:', req.method);
+    console.log('[Auth Handler] Action:', action, 'URL:', req.url);
 
     // Router interno por acción
     switch(action) {
       case 'login':
-        return await handleLogin(req, res, { query, verifyPassword, createSession, updateLastLogin, setCookie, errorResponse, successResponse, validateRequired, isValidEmail });
+        return await handleLogin(req, res, deps);
       case 'logout':
-        return await handleLogout(req, res, { deleteCookie, errorResponse, successResponse });
+        return await handleLogout(req, res, deps);
       case 'me':
-        return await handleMe(req, res, { parseCookies, validateSession, errorResponse, successResponse });
+        return await handleMe(req, res, deps);
       default:
-        return res.status(404).json({ error: 'Acción no encontrada' });
+        return res.status(404).json({ error: 'Acción de auth no encontrada', action });
     }
   } catch (error) {
-    console.error('[LMS Auth] Error crítico:', error);
-    return res.status(500).json({ 
-      error: 'Error interno del servidor', 
-      message: error.message,
-      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
-    });
+    console.error('[Auth Handler] Error:', error);
+    return res.status(500).json({ error: 'Error en autenticación', message: error.message });
   }
 };
 
