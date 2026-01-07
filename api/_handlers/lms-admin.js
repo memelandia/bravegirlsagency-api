@@ -1,84 +1,59 @@
 // ===================================================================
-// /api/lms/admin
-// Endpoint consolidado para todas las operaciones de admin
-// Rutas: /users, /modules, /lessons, /questions, /progress, /stages, /quizzes
+// LMS Admin Handler
+// Maneja: /admin/* (users, modules, lessons, questions, progress, stages, quizzes)
 // ===================================================================
 
-const { query } = require('../../lib/lms/db');
-const { parseCookies, errorResponse, successResponse, validateRequired, isValidEmail, isValidUUID, normalizeLoomUrl } = require('../../lib/lms/utils');
-const { validateSession, hashPassword, generateTempPassword } = require('../../lib/lms/auth');
-
-module.exports = async (req, res) => {
-  // CORS headers - permitir ambos dominios
-  const allowedOrigins = [
-    'https://www.bravegirlsagency.com', 
-    'https://bravegirlsagency.com',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
-  ];
-  const origin = req.headers.origin;
-  
-  // Siempre enviar headers CORS
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
-  }
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
-  // Parsear cookies
-  req.cookies = parseCookies(req);
+module.exports = async (req, res, deps) => {
+  const { query, transaction, hashPassword, generateTempPassword, getUserById, validateSession, parseCookies, isValidEmail, isValidUUID, validateRequired, normalizeLoomUrl } = deps;
 
   try {
     // Validar sesión
-    req.cookies = parseCookies(req);
     const user = await validateSession(req);
 
     if (!user) {
-      return errorResponse(res, 401, 'No autorizado');
+      return res.status(401).json({ error: 'No autorizado' });
     }
 
-    // Extraer el recurso de la URL: /api/lms/admin/users -> users
-    const urlParts = req.url.split('?')[0].split('/');
-    const resource = urlParts[urlParts.length - 1];
+    // Usar el path limpio que viene de api/lms.js
+    // Ejemplo: "admin/users" -> "users"
+    const path = req.lmsPath || '';
+    const resource = path.replace('admin/', '').split('/')[0];
+
+    console.log('[Admin Handler] Path:', path, 'Resource:', resource, 'Method:', req.method);
 
     // Router interno por recurso
     switch(resource) {
       case 'users':
-        return await handleUsers(req, res, user);
+        return await handleUsers(req, res, user, deps);
       case 'modules':
-        return await handleModules(req, res, user);
+        return await handleModules(req, res, user, deps);
       case 'lessons':
-        return await handleLessons(req, res, user);
+        return await handleLessons(req, res, user, deps);
       case 'questions':
-        return await handleQuestions(req, res, user);
+        return await handleQuestions(req, res, user, deps);
       case 'progress':
-        return await handleProgress(req, res, user);
+        return await handleProgress(req, res, user, deps);
       case 'stages':
-        return await handleStages(req, res, user);
+        return await handleStages(req, res, user, deps);
       case 'quizzes':
-        return await handleQuizzes(req, res, user);
+        return await handleQuizzes(req, res, user, deps);
       default:
-        return errorResponse(res, 404, 'Recurso no encontrado');
+        return res.status(404).json({ error: 'Recurso no encontrado', resource, path });
     }
   } catch (error) {
-    console.error('Error en /api/lms/admin:', error);
-    return errorResponse(res, 500, 'Error interno del servidor', { error: error.message });
+    console.error('[Admin Handler] Error:', error);
+    return res.status(500).json({ error: 'Error interno del servidor', message: error.message, stack: error.stack });
   }
 };
 
 // ===================================================================
 // USERS - CRUD de usuarios (solo admin)
 // ===================================================================
-async function handleUsers(req, res, user) {
+async function handleUsers(req, res, user, deps) {
+  const { query, hashPassword, generateTempPassword, isValidEmail, isValidUUID, validateRequired } = deps;
+
   if (user.role !== 'admin') {
-    return errorResponse(res, 403, 'Solo administradores pueden gestionar usuarios');
+    return res.status(403).json({ error: 'Solo administradores pueden gestionar usuarios' });
   }
 
   // GET: Listar usuarios
@@ -102,7 +77,7 @@ async function handleUsers(req, res, user) {
     
     const result = await query(sql, params);
     
-    return successResponse(res, { users: result.rows });
+    return res.status(200).json({ users: result.rows });
   }
 
   // POST: Crear usuario
@@ -115,17 +90,17 @@ async function handleUsers(req, res, user) {
     }
     
     if (!isValidEmail(email)) {
-      return errorResponse(res, 400, 'Email inválido');
+      return res.status(400).json({ error: 'Email inválido' });
     }
     
     if (!['chatter', 'supervisor', 'admin'].includes(role)) {
-      return errorResponse(res, 400, 'Rol inválido. Debe ser: chatter, supervisor o admin');
+      return res.status(400).json({ error: 'Rol inválido. Debe ser: chatter, supervisor o admin' });
     }
     
     // Verificar si el email ya existe
     const existingUser = await query('SELECT id FROM lms_users WHERE email = $1', [email.toLowerCase()]);
     if (existingUser.rows.length > 0) {
-      return errorResponse(res, 400, 'El email ya está registrado');
+      return res.status(400).json({ error: 'El email ya está registrado' });
     }
     
     // Generar contraseña temporal si no se proporciona
@@ -150,7 +125,7 @@ async function handleUsers(req, res, user) {
     const { id, name, email, role, active, resetPassword } = req.body;
     
     if (!id || !isValidUUID(id)) {
-      return errorResponse(res, 400, 'ID inválido');
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
     const updates = [];
@@ -164,7 +139,7 @@ async function handleUsers(req, res, user) {
     
     if (email !== undefined) {
       if (!isValidEmail(email)) {
-        return errorResponse(res, 400, 'Email inválido');
+        return res.status(400).json({ error: 'Email inválido' });
       }
       updates.push(`email = $${paramIndex++}`);
       params.push(email.toLowerCase());
@@ -172,7 +147,7 @@ async function handleUsers(req, res, user) {
     
     if (role !== undefined) {
       if (!['chatter', 'supervisor', 'admin'].includes(role)) {
-        return errorResponse(res, 400, 'Rol inválido');
+        return res.status(400).json({ error: 'Rol inválido' });
       }
       updates.push(`role = $${paramIndex++}`);
       params.push(role);
@@ -192,7 +167,7 @@ async function handleUsers(req, res, user) {
     }
     
     if (updates.length === 0) {
-      return errorResponse(res, 400, 'No hay campos para actualizar');
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
     }
     
     const result = await query(`
@@ -201,7 +176,7 @@ async function handleUsers(req, res, user) {
     `, params);
     
     if (result.rows.length === 0) {
-      return errorResponse(res, 404, 'Usuario no encontrado');
+      return res.status(404).json({ error: 'Usuario no encontrado' });
     }
     
     return successResponse(res, {
@@ -216,28 +191,28 @@ async function handleUsers(req, res, user) {
     const { id } = req.query;
     
     if (!id || !isValidUUID(id)) {
-      return errorResponse(res, 400, 'ID inválido');
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
     // No permitir eliminar el propio usuario
     if (id === user.id) {
-      return errorResponse(res, 400, 'No puedes eliminarte a ti mismo');
+      return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' });
     }
     
     await query('DELETE FROM lms_users WHERE id = $1', [id]);
     
-    return successResponse(res, { message: 'Usuario eliminado exitosamente' });
+    return res.status(200).json({ message: 'Usuario eliminado exitosamente' });
   }
 
-  return errorResponse(res, 405, 'Método no permitido');
+  return res.status(405).json({ error: 'Método no permitido' });
 }
 
 // ===================================================================
 // MODULES - CRUD de módulos (admin/supervisor)
 // ===================================================================
-async function handleModules(req, res, user) {
+async function handleModules(req, res, user, deps) {
   if (!['admin', 'supervisor'].includes(user.role)) {
-    return errorResponse(res, 403, 'Acceso denegado');
+    return res.status(403).json({ error: 'Acceso denegado' });
   }
 
   // GET: Listar módulos
@@ -264,13 +239,13 @@ async function handleModules(req, res, user) {
     sql += ' ORDER BY m.order_index';
     
     const result = await query(sql, params);
-    return successResponse(res, { modules: result.rows });
+    return res.status(200).json({ modules: result.rows });
   }
 
   // POST: Crear módulo (solo admin)
   if (req.method === 'POST') {
     if (user.role !== 'admin') {
-      return errorResponse(res, 403, 'Solo administradores pueden crear módulos');
+      return res.status(403).json({ error: 'Solo administradores pueden crear módulos' });
     }
 
     const { stageId, title, description, orderIndex, published } = req.body;
@@ -286,19 +261,19 @@ async function handleModules(req, res, user) {
       RETURNING *
     `, [stageId, title, description || null, orderIndex, published !== false]);
     
-    return successResponse(res, { module: result.rows[0] }, 201);
+    return res.status(201).json({ module: result.rows[0] });
   }
 
   // PUT: Actualizar módulo (solo admin)
   if (req.method === 'PUT') {
     if (user.role !== 'admin') {
-      return errorResponse(res, 403, 'Solo administradores pueden actualizar módulos');
+      return res.status(403).json({ error: 'Solo administradores pueden actualizar módulos' });
     }
 
     const { id, title, description, orderIndex, published } = req.body;
     
     if (!id || !isValidUUID(id)) {
-      return errorResponse(res, 400, 'ID inválido');
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
     const updates = [];
@@ -326,7 +301,7 @@ async function handleModules(req, res, user) {
     }
     
     if (updates.length === 0) {
-      return errorResponse(res, 400, 'No hay campos para actualizar');
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
     }
     
     const result = await query(`
@@ -334,38 +309,38 @@ async function handleModules(req, res, user) {
     `, params);
     
     if (result.rows.length === 0) {
-      return errorResponse(res, 404, 'Módulo no encontrado');
+      return res.status(404).json({ error: 'Módulo no encontrado' });
     }
     
-    return successResponse(res, { module: result.rows[0] });
+    return res.status(200).json({ module: result.rows[0] });
   }
 
   // DELETE: Eliminar módulo (solo admin)
   if (req.method === 'DELETE') {
     if (user.role !== 'admin') {
-      return errorResponse(res, 403, 'Solo administradores pueden eliminar módulos');
+      return res.status(403).json({ error: 'Solo administradores pueden eliminar módulos' });
     }
 
     const { id } = req.query;
     
     if (!id || !isValidUUID(id)) {
-      return errorResponse(res, 400, 'ID inválido');
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
     await query('DELETE FROM lms_modules WHERE id = $1', [id]);
     
-    return successResponse(res, { message: 'Módulo eliminado exitosamente' });
+    return res.status(200).json({ message: 'Módulo eliminado exitosamente' });
   }
 
-  return errorResponse(res, 405, 'Método no permitido');
+  return res.status(405).json({ error: 'Método no permitido' });
 }
 
 // ===================================================================
 // LESSONS - CRUD de lecciones (admin/supervisor)
 // ===================================================================
-async function handleLessons(req, res, user) {
+async function handleLessons(req, res, user, deps) {
   if (!['admin', 'supervisor'].includes(user.role)) {
-    return errorResponse(res, 403, 'Acceso denegado');
+    return res.status(403).json({ error: 'Acceso denegado' });
   }
 
   // GET: Listar lecciones
@@ -391,13 +366,13 @@ async function handleLessons(req, res, user) {
     sql += ' ORDER BY l.order_index';
     
     const result = await query(sql, params);
-    return successResponse(res, { lessons: result.rows });
+    return res.status(200).json({ lessons: result.rows });
   }
 
   // POST: Crear lección (solo admin)
   if (req.method === 'POST') {
     if (user.role !== 'admin') {
-      return errorResponse(res, 403, 'Solo administradores pueden crear lecciones');
+      return res.status(403).json({ error: 'Solo administradores pueden crear lecciones' });
     }
 
     const { moduleId, title, type, orderIndex, loomUrl, textContent } = req.body;
@@ -408,15 +383,15 @@ async function handleLessons(req, res, user) {
     }
     
     if (!['video', 'text'].includes(type)) {
-      return errorResponse(res, 400, 'Tipo debe ser "video" o "text"');
+      return res.status(400).json({ error: 'Tipo debe ser "video" o "text"' });
     }
     
     if (type === 'video' && !loomUrl) {
-      return errorResponse(res, 400, 'loomUrl es requerido para lecciones de video');
+      return res.status(400).json({ error: 'loomUrl es requerido para lecciones de video' });
     }
     
     if (type === 'text' && !textContent) {
-      return errorResponse(res, 400, 'textContent es requerido para lecciones de texto');
+      return res.status(400).json({ error: 'textContent es requerido para lecciones de texto' });
     }
     
     const finalLoomUrl = type === 'video' ? normalizeLoomUrl(loomUrl) : null;
@@ -427,19 +402,19 @@ async function handleLessons(req, res, user) {
       RETURNING *
     `, [moduleId, title, type, orderIndex, finalLoomUrl, type === 'text' ? textContent : null]);
     
-    return successResponse(res, { lesson: result.rows[0] }, 201);
+    return res.status(201).json({ lesson: result.rows[0] });
   }
 
   // PUT: Actualizar lección (solo admin)
   if (req.method === 'PUT') {
     if (user.role !== 'admin') {
-      return errorResponse(res, 403, 'Solo administradores pueden actualizar lecciones');
+      return res.status(403).json({ error: 'Solo administradores pueden actualizar lecciones' });
     }
 
     const { id, title, type, orderIndex, loomUrl, textContent } = req.body;
     
     if (!id || !isValidUUID(id)) {
-      return errorResponse(res, 400, 'ID inválido');
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
     const updates = [];
@@ -453,7 +428,7 @@ async function handleLessons(req, res, user) {
     
     if (type !== undefined) {
       if (!['video', 'text'].includes(type)) {
-        return errorResponse(res, 400, 'Tipo debe ser "video" o "text"');
+        return res.status(400).json({ error: 'Tipo debe ser "video" o "text"' });
       }
       updates.push(`type = $${paramIndex++}`);
       params.push(type);
@@ -475,7 +450,7 @@ async function handleLessons(req, res, user) {
     }
     
     if (updates.length === 0) {
-      return errorResponse(res, 400, 'No hay campos para actualizar');
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
     }
     
     const result = await query(`
@@ -483,38 +458,38 @@ async function handleLessons(req, res, user) {
     `, params);
     
     if (result.rows.length === 0) {
-      return errorResponse(res, 404, 'Lección no encontrada');
+      return res.status(404).json({ error: 'Lección no encontrada' });
     }
     
-    return successResponse(res, { lesson: result.rows[0] });
+    return res.status(200).json({ lesson: result.rows[0] });
   }
 
   // DELETE: Eliminar lección (solo admin)
   if (req.method === 'DELETE') {
     if (user.role !== 'admin') {
-      return errorResponse(res, 403, 'Solo administradores pueden eliminar lecciones');
+      return res.status(403).json({ error: 'Solo administradores pueden eliminar lecciones' });
     }
 
     const { id } = req.query;
     
     if (!id || !isValidUUID(id)) {
-      return errorResponse(res, 400, 'ID inválido');
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
     await query('DELETE FROM lms_lessons WHERE id = $1', [id]);
     
-    return successResponse(res, { message: 'Lección eliminada exitosamente' });
+    return res.status(200).json({ message: 'Lección eliminada exitosamente' });
   }
 
-  return errorResponse(res, 405, 'Método no permitido');
+  return res.status(405).json({ error: 'Método no permitido' });
 }
 
 // ===================================================================
 // QUESTIONS - CRUD de preguntas (admin/supervisor)
 // ===================================================================
-async function handleQuestions(req, res, user) {
+async function handleQuestions(req, res, user, deps) {
   if (!['admin', 'supervisor'].includes(user.role)) {
-    return errorResponse(res, 403, 'Acceso denegado');
+    return res.status(403).json({ error: 'Acceso denegado' });
   }
 
   // GET: Listar preguntas
@@ -547,13 +522,13 @@ async function handleQuestions(req, res, user) {
     sql += ' ORDER BY q.order_index';
     
     const result = await query(sql, params);
-    return successResponse(res, { questions: result.rows });
+    return res.status(200).json({ questions: result.rows });
   }
 
   // POST: Crear pregunta (solo admin)
   if (req.method === 'POST') {
     if (user.role !== 'admin') {
-      return errorResponse(res, 403, 'Solo administradores pueden crear preguntas');
+      return res.status(403).json({ error: 'Solo administradores pueden crear preguntas' });
     }
 
     const { quizId, prompt, options, correctOptionIndex, orderIndex } = req.body;
@@ -564,11 +539,11 @@ async function handleQuestions(req, res, user) {
     }
     
     if (!Array.isArray(options) || options.length < 2) {
-      return errorResponse(res, 400, 'Debe haber al menos 2 opciones');
+      return res.status(400).json({ error: 'Debe haber al menos 2 opciones' });
     }
     
     if (correctOptionIndex < 0 || correctOptionIndex >= options.length) {
-      return errorResponse(res, 400, 'correctOptionIndex fuera de rango');
+      return res.status(400).json({ error: 'correctOptionIndex fuera de rango' });
     }
     
     const result = await query(`
@@ -577,19 +552,19 @@ async function handleQuestions(req, res, user) {
       RETURNING *
     `, [quizId, prompt, JSON.stringify(options), correctOptionIndex, orderIndex]);
     
-    return successResponse(res, { question: result.rows[0] }, 201);
+    return res.status(201).json({ question: result.rows[0] });
   }
 
   // PUT: Actualizar pregunta (solo admin)
   if (req.method === 'PUT') {
     if (user.role !== 'admin') {
-      return errorResponse(res, 403, 'Solo administradores pueden actualizar preguntas');
+      return res.status(403).json({ error: 'Solo administradores pueden actualizar preguntas' });
     }
 
     const { id, prompt, options, correctOptionIndex, orderIndex } = req.body;
     
     if (!id || !isValidUUID(id)) {
-      return errorResponse(res, 400, 'ID inválido');
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
     const updates = [];
@@ -603,7 +578,7 @@ async function handleQuestions(req, res, user) {
     
     if (options !== undefined) {
       if (!Array.isArray(options) || options.length < 2) {
-        return errorResponse(res, 400, 'Debe haber al menos 2 opciones');
+        return res.status(400).json({ error: 'Debe haber al menos 2 opciones' });
       }
       updates.push(`options = $${paramIndex++}`);
       params.push(JSON.stringify(options));
@@ -620,7 +595,7 @@ async function handleQuestions(req, res, user) {
     }
     
     if (updates.length === 0) {
-      return errorResponse(res, 400, 'No hay campos para actualizar');
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
     }
     
     const result = await query(`
@@ -628,42 +603,42 @@ async function handleQuestions(req, res, user) {
     `, params);
     
     if (result.rows.length === 0) {
-      return errorResponse(res, 404, 'Pregunta no encontrada');
+      return res.status(404).json({ error: 'Pregunta no encontrada' });
     }
     
-    return successResponse(res, { question: result.rows[0] });
+    return res.status(200).json({ question: result.rows[0] });
   }
 
   // DELETE: Eliminar pregunta (solo admin)
   if (req.method === 'DELETE') {
     if (user.role !== 'admin') {
-      return errorResponse(res, 403, 'Solo administradores pueden eliminar preguntas');
+      return res.status(403).json({ error: 'Solo administradores pueden eliminar preguntas' });
     }
 
     const { id } = req.query;
     
     if (!id || !isValidUUID(id)) {
-      return errorResponse(res, 400, 'ID inválido');
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
     await query('DELETE FROM lms_questions WHERE id = $1', [id]);
     
-    return successResponse(res, { message: 'Pregunta eliminada exitosamente' });
+    return res.status(200).json({ message: 'Pregunta eliminada exitosamente' });
   }
 
-  return errorResponse(res, 405, 'Método no permitido');
+  return res.status(405).json({ error: 'Método no permitido' });
 }
 
 // ===================================================================
 // PROGRESS - Ver progreso de usuarios (admin/supervisor)
 // ===================================================================
-async function handleProgress(req, res, user) {
+async function handleProgress(req, res, user, deps) {
   if (!['admin', 'supervisor'].includes(user.role)) {
-    return errorResponse(res, 403, 'Acceso denegado');
+    return res.status(403).json({ error: 'Acceso denegado' });
   }
 
   if (req.method !== 'GET') {
-    return errorResponse(res, 405, 'Método no permitido');
+    return res.status(405).json({ error: 'Método no permitido' });
   }
 
   const { userId, moduleId, status } = req.query;
@@ -772,9 +747,9 @@ async function handleProgress(req, res, user) {
 // ===================================================================
 // STAGES - CRUD de etapas (solo admin)
 // ===================================================================
-async function handleStages(req, res, user) {
+async function handleStages(req, res, user, deps) {
   if (user.role !== 'admin') {
-    return errorResponse(res, 403, 'Solo administradores pueden gestionar etapas');
+    return res.status(403).json({ error: 'Solo administradores pueden gestionar etapas' });
   }
 
   // GET: Listar etapas
@@ -790,7 +765,7 @@ async function handleStages(req, res, user) {
       ORDER BY s.order_index
     `);
     
-    return successResponse(res, { stages: result.rows });
+    return res.status(200).json({ stages: result.rows });
   }
 
   // POST: Crear etapa
@@ -808,7 +783,7 @@ async function handleStages(req, res, user) {
       RETURNING *
     `, [name, description || null, orderIndex]);
     
-    return successResponse(res, { stage: result.rows[0] }, 201);
+    return res.status(201).json({ stage: result.rows[0] });
   }
 
   // PUT: Actualizar etapa
@@ -816,7 +791,7 @@ async function handleStages(req, res, user) {
     const { id, name, description, orderIndex } = req.body;
     
     if (!id || !isValidUUID(id)) {
-      return errorResponse(res, 400, 'ID inválido');
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
     const updates = [];
@@ -839,7 +814,7 @@ async function handleStages(req, res, user) {
     }
     
     if (updates.length === 0) {
-      return errorResponse(res, 400, 'No hay campos para actualizar');
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
     }
     
     const result = await query(`
@@ -847,10 +822,10 @@ async function handleStages(req, res, user) {
     `, params);
     
     if (result.rows.length === 0) {
-      return errorResponse(res, 404, 'Etapa no encontrada');
+      return res.status(404).json({ error: 'Etapa no encontrada' });
     }
     
-    return successResponse(res, { stage: result.rows[0] });
+    return res.status(200).json({ stage: result.rows[0] });
   }
 
   // DELETE: Eliminar etapa
@@ -858,29 +833,29 @@ async function handleStages(req, res, user) {
     const { id } = req.query;
     
     if (!id || !isValidUUID(id)) {
-      return errorResponse(res, 400, 'ID inválido');
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
     // Verificar que no tenga módulos asociados
     const hasModules = await query('SELECT id FROM lms_modules WHERE stage_id = $1 LIMIT 1', [id]);
     if (hasModules.rows.length > 0) {
-      return errorResponse(res, 400, 'No se puede eliminar una etapa con módulos asociados');
+      return res.status(400).json({ error: 'No se puede eliminar una etapa con módulos asociados' });
     }
     
     await query('DELETE FROM lms_stages WHERE id = $1', [id]);
     
-    return successResponse(res, { message: 'Etapa eliminada exitosamente' });
+    return res.status(200).json({ message: 'Etapa eliminada exitosamente' });
   }
 
-  return errorResponse(res, 405, 'Método no permitido');
+  return res.status(405).json({ error: 'Método no permitido' });
 }
 
 // ===================================================================
 // QUIZZES - CRUD de quizzes (admin/supervisor)
 // ===================================================================
-async function handleQuizzes(req, res, user) {
+async function handleQuizzes(req, res, user, deps) {
   if (!['admin', 'supervisor'].includes(user.role)) {
-    return errorResponse(res, 403, 'Acceso denegado');
+    return res.status(403).json({ error: 'Acceso denegado' });
   }
 
   // GET: Listar quizzes
@@ -910,13 +885,13 @@ async function handleQuizzes(req, res, user) {
     sql += ' GROUP BY q.id, q.module_id, q.passing_score, q.max_attempts, q.cooldown_minutes, q.created_at, q.updated_at, m.title, s.name ORDER BY m.order_index';
     
     const result = await query(sql, params);
-    return successResponse(res, { quizzes: result.rows });
+    return res.status(200).json({ quizzes: result.rows });
   }
 
   // POST: Crear quiz (solo admin)
   if (req.method === 'POST') {
     if (user.role !== 'admin') {
-      return errorResponse(res, 403, 'Solo administradores pueden crear quizzes');
+      return res.status(403).json({ error: 'Solo administradores pueden crear quizzes' });
     }
 
     const { moduleId, passingScore, maxAttempts, cooldownMinutes } = req.body;
@@ -933,7 +908,7 @@ async function handleQuizzes(req, res, user) {
     );
     
     if (existingQuiz.rows.length > 0) {
-      return errorResponse(res, 400, 'Este módulo ya tiene un quiz configurado');
+      return res.status(400).json({ error: 'Este módulo ya tiene un quiz configurado' });
     }
     
     const result = await query(`
@@ -947,19 +922,19 @@ async function handleQuizzes(req, res, user) {
       cooldownMinutes || 60
     ]);
     
-    return successResponse(res, { quiz: result.rows[0] }, 201);
+    return res.status(201).json({ quiz: result.rows[0] });
   }
 
   // PUT: Actualizar quiz (solo admin)
   if (req.method === 'PUT') {
     if (user.role !== 'admin') {
-      return errorResponse(res, 403, 'Solo administradores pueden actualizar quizzes');
+      return res.status(403).json({ error: 'Solo administradores pueden actualizar quizzes' });
     }
 
     const { id, passingScore, maxAttempts, cooldownMinutes } = req.body;
     
     if (!id || !isValidUUID(id)) {
-      return errorResponse(res, 400, 'ID inválido');
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
     const updates = [];
@@ -982,7 +957,7 @@ async function handleQuizzes(req, res, user) {
     }
     
     if (updates.length === 0) {
-      return errorResponse(res, 400, 'No hay campos para actualizar');
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
     }
     
     const result = await query(`
@@ -990,28 +965,31 @@ async function handleQuizzes(req, res, user) {
     `, params);
     
     if (result.rows.length === 0) {
-      return errorResponse(res, 404, 'Quiz no encontrado');
+      return res.status(404).json({ error: 'Quiz no encontrado' });
     }
     
-    return successResponse(res, { quiz: result.rows[0] });
+    return res.status(200).json({ quiz: result.rows[0] });
   }
 
   // DELETE: Eliminar quiz (solo admin)
   if (req.method === 'DELETE') {
     if (user.role !== 'admin') {
-      return errorResponse(res, 403, 'Solo administradores pueden eliminar quizzes');
+      return res.status(403).json({ error: 'Solo administradores pueden eliminar quizzes' });
     }
 
     const { id } = req.query;
     
     if (!id || !isValidUUID(id)) {
-      return errorResponse(res, 400, 'ID inválido');
+      return res.status(400).json({ error: 'ID inválido' });
     }
     
     await query('DELETE FROM lms_quizzes WHERE id = $1', [id]);
     
-    return successResponse(res, { message: 'Quiz eliminado exitosamente' });
+    return res.status(200).json({ message: 'Quiz eliminado exitosamente' });
   }
 
-  return errorResponse(res, 405, 'Método no permitido');
+  return res.status(405).json({ error: 'Método no permitido' });
 }
+
+
+
