@@ -86,7 +86,7 @@ async function handleLogin(req, res, deps) {
     httpOnly: true,
     secure: true,
     sameSite: 'none',
-    maxAge: 86400
+    maxAge: 86400 * 1000 // 24 horas (en milisegundos)
   });
 
   return res.status(200).json({
@@ -104,13 +104,20 @@ async function handleLogin(req, res, deps) {
 // LOGOUT
 // ===================================================================
 async function handleLogout(req, res, deps) {
-  const { deleteCookie } = deps;
+  const { setCookie } = deps;
   
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  deleteCookie(res, 'lms_session');
+  // Eliminar cookie explícitamente con los mismos atributos de seguridad
+  setCookie(res, 'lms_session', '', {
+    maxAge: 0,
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    path: '/'
+  });
 
   return res.status(200).json({ message: 'Logout exitoso' });
 }
