@@ -1,84 +1,54 @@
 // ===================================================================
-// /api/lms/chatter
-// Endpoint consolidado para operaciones de chatters
-// Rutas: 
-//   GET /campus - lista de módulos y progreso
-//   GET /module/:id - detalles de módulo
-//   POST /lesson/complete - marcar lección completada
-//   GET /quiz/:moduleId - obtener preguntas de quiz
-//   POST /quiz/:moduleId/submit - enviar respuestas de quiz
+// LMS Chatter Handler
+// Maneja: /campus, /module/:id, /lesson/complete, /quiz/:moduleId, /quiz/:moduleId/submit
 // ===================================================================
 
-const { query, transaction } = require('../../lib/lms/db');
-const { parseCookies, errorResponse, successResponse, validateRequired, isValidUUID, getModuleStatus } = require('../../lib/lms/utils');
-const { validateSession } = require('../../lib/lms/auth');
-
-module.exports = async (req, res) => {
-  // CORS headers - permitir ambos dominios
-  const allowedOrigins = [
-    'https://www.bravegirlsagency.com', 
-    'https://bravegirlsagency.com',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
-  ];
-  const origin = req.headers.origin;
-  
-  // Siempre enviar headers CORS
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
-  }
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
-  // Parsear cookies
-  req.cookies = parseCookies(req);
+module.exports = async (req, res, deps) => {
+  const { query, transaction, validateSession, parseCookies, isValidUUID, getModuleStatus, validateRequired } = deps;
 
   try {
-    // Parsear cookies y validar sesión
-    req.cookies = parseCookies(req);
+    // Validar sesión
     const user = await validateSession(req);
 
     if (!user) {
-      return errorResponse(res, 401, 'No autorizado');
+      return res.status(401).json({ error: 'No autorizado' });
     }
 
-    // Analizar la URL para determinar la ruta
-    const url = req.url.split('?')[0];
-    const parts = url.split('/').filter(Boolean);
+    // Usar el path limpio que viene de api/lms.js
+    const path = req.lmsPath || '';
     
-    // Determinar la acción basándose en el path
-    if (url.includes('/campus')) {
-      return await handleCampus(req, res, user);
-    } else if (url.includes('/module/')) {
-      return await handleModule(req, res, user);
-    } else if (url.includes('/lesson/complete')) {
-      return await handleLessonComplete(req, res, user);
-    } else if (url.includes('/quiz/') && url.includes('/submit')) {
-      return await handleQuizSubmit(req, res, user);
-    } else if (url.includes('/quiz/')) {
-      return await handleQuiz(req, res, user);
+    console.log('[Chatter Handler] Path:', path, 'Method:', req.method, 'Query:', req.query);
+
+    // Router interno
+    if (path === 'campus') {
+      return await handleCampus(req, res, user, deps);
+    } else if (path.startsWith('module/')) {
+      return await handleModule(req, res, user, deps);
+    } else if (path === 'lesson/complete') {
+      return await handleLessonComplete(req, res, user, deps);
+    } else if (path.startsWith('quiz/')) {
+      if (path.includes('/submit')) {
+        return await handleQuizSubmit(req, res, user, deps);
+      } else {
+        return await handleQuiz(req, res, user, deps);
+      }
     } else {
-      return errorResponse(res, 404, 'Ruta no encontrada');
+      return res.status(404).json({ error: 'Ruta no encontrada', path });
     }
   } catch (error) {
-    console.error('Error en /api/lms/chatter:', error);
-    return errorResponse(res, 500, 'Error interno del servidor', { error: error.message });
+    console.error('[Chatter Handler] Error:', error);
+    return res.status(500).json({ error: 'Error interno del servidor', message: error.message, stack: error.stack });
   }
 };
 
 // ===================================================================
 // GET /campus - Lista de módulos y progreso
 // ===================================================================
-async function handleCampus(req, res, user) {
+async function handleCampus(req, res, user, deps) {
+  const { query, getModuleStatus } = deps;
+
   if (req.method !== 'GET') {
-    return errorResponse(res, 405, 'Método no permitido');
+    return res.status(405).json({ error: 'Método no permitido' });
   }
 
   // Obtener todas las etapas con sus módulos
@@ -208,7 +178,7 @@ async function handleCampus(req, res, user) {
 
   const stages = Object.values(stagesMap);
 
-  return successResponse(res, { 
+  return res.status(200).json({ 
     stages,
     user: {
       id: user.id,
@@ -222,18 +192,19 @@ async function handleCampus(req, res, user) {
 // ===================================================================
 // GET /module/:id - Detalles de módulo
 // ===================================================================
-async function handleModule(req, res, user) {
+async function handleModule(req, res, user, deps) {
+  const { query, isValidUUID } = deps;
+
   if (req.method !== 'GET') {
-    return errorResponse(res, 405, 'Método no permitido');
+    return res.status(405).json({ error: 'Método no permitido' });
   }
 
   // Extraer moduleId de la URL
-  const parts = req.url.split('/');
-  const moduleIndex = parts.indexOf('module');
-  const moduleId = parts[moduleIndex + 1]?.split('?')[0];
+  const parts = req.lmsPath.split('/');
+  const moduleId = parts[1];
 
   if (!isValidUUID(moduleId)) {
-    return errorResponse(res, 400, 'ID de módulo inválido');
+    return res.status(400).json({ error: 'ID de módulo inválido' });
   }
 
   // Verificar que el usuario puede acceder al módulo (server-side gating)
@@ -245,7 +216,7 @@ async function handleModule(req, res, user) {
   const canAccess = canAccessResult.rows[0]?.can_access;
 
   if (!canAccess && user.role === 'chatter') {
-    return errorResponse(res, 403, 'No tienes acceso a este módulo aún. Completa los módulos anteriores.');
+    return res.status(403).json({ error: 'No tienes acceso a este módulo aún. Completa los módulos anteriores.' });
   }
 
   // Obtener información del módulo
@@ -264,7 +235,7 @@ async function handleModule(req, res, user) {
   `, [moduleId]);
 
   if (moduleResult.rows.length === 0) {
-    return errorResponse(res, 404, 'Módulo no encontrado');
+    return res.status(404).json({ error: 'Módulo no encontrado' });
   }
 
   const module = moduleResult.rows[0];
@@ -325,7 +296,7 @@ async function handleModule(req, res, user) {
     userAttempts: parseInt(quizResult.rows[0].user_attempts) || 0
   } : null;
 
-  return successResponse(res, {
+  return res.status(200).json({
     module: {
       id: module.id,
       title: module.title,
@@ -345,9 +316,11 @@ async function handleModule(req, res, user) {
 // ===================================================================
 // POST /lesson/complete - Marcar lección completada
 // ===================================================================
-async function handleLessonComplete(req, res, user) {
+async function handleLessonComplete(req, res, user, deps) {
+  const { query, transaction, isValidUUID, validateRequired } = deps;
+
   if (req.method !== 'POST') {
-    return errorResponse(res, 405, 'Método no permitido');
+    return res.status(405).json({ error: 'Método no permitido' });
   }
 
   const { lessonId } = req.body;
@@ -359,7 +332,7 @@ async function handleLessonComplete(req, res, user) {
   }
 
   if (!isValidUUID(lessonId)) {
-    return errorResponse(res, 400, 'ID de lección inválido');
+    return res.status(400).json({ error: 'ID de lección inválido' });
   }
 
   // Verificar que la lección existe
@@ -369,7 +342,7 @@ async function handleLessonComplete(req, res, user) {
   );
 
   if (lessonResult.rows.length === 0) {
-    return errorResponse(res, 404, 'Lección no encontrada');
+    return res.status(404).json({ error: 'Lección no encontrada' });
   }
 
   const lesson = lessonResult.rows[0];
@@ -383,7 +356,7 @@ async function handleLessonComplete(req, res, user) {
   const canAccess = canAccessResult.rows[0]?.can_access;
 
   if (!canAccess && user.role === 'chatter') {
-    return errorResponse(res, 403, 'No tienes acceso a este módulo aún.');
+    return res.status(403).json({ error: 'No tienes acceso a este módulo aún.' });
   }
 
   // Marcar lección como completada (INSERT ... ON CONFLICT DO NOTHING)
@@ -406,7 +379,7 @@ async function handleLessonComplete(req, res, user) {
   const progress = progressResult.rows[0];
   const allLessonsCompleted = parseInt(progress.total_lessons) === parseInt(progress.completed_lessons);
 
-  return successResponse(res, {
+  return res.status(200).json({
     message: 'Lección marcada como completada',
     lessonId,
     moduleId: lesson.module_id,
@@ -422,9 +395,11 @@ async function handleLessonComplete(req, res, user) {
 // ===================================================================
 // GET /quiz/:moduleId - Obtener preguntas de quiz
 // ===================================================================
-async function handleQuiz(req, res, user) {
+async function handleQuiz(req, res, user, deps) {
+  const { query, isValidUUID } = deps;
+
   if (req.method !== 'GET') {
-    return errorResponse(res, 405, 'Método no permitido');
+    return res.status(405).json({ error: 'Método no permitido' });
   }
 
   // Extraer moduleId de la URL
@@ -433,7 +408,7 @@ async function handleQuiz(req, res, user) {
   const moduleId = parts[quizIndex + 1]?.split('?')[0];
 
   if (!isValidUUID(moduleId)) {
-    return errorResponse(res, 400, 'ID de módulo inválido');
+    return res.status(400).json({ error: 'ID de módulo inválido' });
   }
 
   // Verificar que el usuario puede acceder al módulo
@@ -445,7 +420,7 @@ async function handleQuiz(req, res, user) {
   const canAccess = canAccessResult.rows[0]?.can_access;
 
   if (!canAccess && user.role === 'chatter') {
-    return errorResponse(res, 403, 'No tienes acceso a este módulo aún.');
+    return res.status(403).json({ error: 'No tienes acceso a este módulo aún.' });
   }
 
   // Verificar que todas las lecciones estén completadas
@@ -462,7 +437,7 @@ async function handleQuiz(req, res, user) {
   const allLessonsCompleted = parseInt(lessonsProgress.total_lessons) === parseInt(lessonsProgress.completed_lessons);
 
   if (!allLessonsCompleted && user.role === 'chatter') {
-    return errorResponse(res, 403, 'Debes completar todas las lecciones antes de tomar el quiz.');
+    return res.status(403).json({ error: 'Debes completar todas las lecciones antes de tomar el quiz.' });
   }
 
   // Obtener quiz del módulo
@@ -482,7 +457,7 @@ async function handleQuiz(req, res, user) {
   `, [user.id, moduleId]);
 
   if (quizResult.rows.length === 0) {
-    return errorResponse(res, 404, 'Quiz no encontrado para este módulo');
+    return res.status(404).json({ error: 'Quiz no encontrado para este módulo' });
   }
 
   const quiz = quizResult.rows[0];
@@ -517,7 +492,7 @@ async function handleQuiz(req, res, user) {
   `, [quiz.id]);
 
   if (questionsResult.rows.length === 0) {
-    return errorResponse(res, 404, 'Este quiz no tiene preguntas configuradas.');
+    return res.status(404).json({ error: 'Este quiz no tiene preguntas configuradas.' });
   }
 
   const questions = questionsResult.rows.map(q => ({
@@ -527,7 +502,7 @@ async function handleQuiz(req, res, user) {
     order: q.order_index
   }));
 
-  return successResponse(res, {
+  return res.status(200).json({
     quiz: {
       id: quiz.id,
       moduleId: quiz.module_id,
@@ -543,9 +518,11 @@ async function handleQuiz(req, res, user) {
 // ===================================================================
 // POST /quiz/:moduleId/submit - Enviar respuestas de quiz
 // ===================================================================
-async function handleQuizSubmit(req, res, user) {
+async function handleQuizSubmit(req, res, user, deps) {
+  const { query, transaction, isValidUUID, validateRequired } = deps;
+
   if (req.method !== 'POST') {
-    return errorResponse(res, 405, 'Método no permitido');
+    return res.status(405).json({ error: 'Método no permitido' });
   }
 
   // Extraer moduleId de la URL
@@ -554,7 +531,7 @@ async function handleQuizSubmit(req, res, user) {
   const moduleId = parts[quizIndex + 1]?.split('?')[0];
 
   if (!isValidUUID(moduleId)) {
-    return errorResponse(res, 400, 'ID de módulo inválido');
+    return res.status(400).json({ error: 'ID de módulo inválido' });
   }
 
   const { answers } = req.body;
@@ -566,7 +543,7 @@ async function handleQuizSubmit(req, res, user) {
   }
 
   if (typeof answers !== 'object' || Object.keys(answers).length === 0) {
-    return errorResponse(res, 400, 'Las respuestas deben ser un objeto con questionId: selectedOptionIndex');
+    return res.status(400).json({ error: 'Las respuestas deben ser un objeto con questionId: selectedOptionIndex' });
   }
 
   // Usar transacción para garantizar consistencia
@@ -672,21 +649,22 @@ async function handleQuizSubmit(req, res, user) {
       };
     });
 
-    return successResponse(res, result);
+    return res.status(200).json(result);
 
   } catch (error) {
     if (error.message === 'NO_ACCESS') {
-      return errorResponse(res, 403, 'No tienes acceso a este módulo aún.');
+      return res.status(403).json({ error: 'No tienes acceso a este módulo aún.' });
     } else if (error.message === 'LESSONS_NOT_COMPLETED') {
-      return errorResponse(res, 403, 'Debes completar todas las lecciones antes de tomar el quiz.');
+      return res.status(403).json({ error: 'Debes completar todas las lecciones antes de tomar el quiz.' });
     } else if (error.message === 'QUIZ_NOT_FOUND') {
-      return errorResponse(res, 404, 'Quiz no encontrado para este módulo');
+      return res.status(404).json({ error: 'Quiz no encontrado para este módulo' });
     } else if (error.message === 'MAX_ATTEMPTS_REACHED') {
-      return errorResponse(res, 403, 'Has alcanzado el límite de intentos.');
+      return res.status(403).json({ error: 'Has alcanzado el límite de intentos.' });
     } else if (error.message === 'NO_QUESTIONS') {
-      return errorResponse(res, 404, 'Este quiz no tiene preguntas configuradas.');
+      return res.status(404).json({ error: 'Este quiz no tiene preguntas configuradas.' });
     } else {
       throw error;
     }
   }
 }
+
