@@ -116,7 +116,7 @@ async function handleUsers(req, res, user, deps) {
     
     return successResponse(res, {
       user: result.rows[0],
-      temporaryPassword: password ? undefined : finalPassword,
+      temporaryPassword: password ? 'Usuario creado con contraseña manual' : finalPassword,
       message: 'Usuario creado exitosamente'
     }, 201);
   }
@@ -330,6 +330,19 @@ async function handleModules(req, res, user, deps) {
       return res.status(400).json({ error: 'ID inválido' });
     }
     
+    // Verificar si hay progreso de usuarios asociado a lecciones de este módulo
+    // Esto previene borrar módulos que ya han sido cursados, protegiendo el historial
+    const hasProgress = await query(`
+      SELECT 1 FROM lms_progress_lessons pl
+      JOIN lms_lessons l ON l.id = pl.lesson_id
+      WHERE l.module_id = $1
+      LIMIT 1
+    `, [id]);
+
+    if (hasProgress.rows.length > 0) {
+      return res.status(400).json({ error: 'No se puede eliminar este módulo porque hay usuarios con progreso registrado en él. Desactívalo (unpublish) en su lugar.' });
+    }
+
     await query('DELETE FROM lms_modules WHERE id = $1', [id]);
     
     return res.status(200).json({ message: 'Módulo eliminado exitosamente' });
@@ -538,11 +551,34 @@ async function handleQuestions(req, res, user, deps) {
       return res.status(403).json({ error: 'Solo administradores pueden crear preguntas' });
     }
 
-    const { quizId, prompt, options, correctOptionIndex, orderIndex } = req.body;
+    let { quizId, moduleId, prompt, options, correctOptionIndex, orderIndex } = req.body;
     
-    const validation = validateRequired(req.body, ['quizId', 'prompt', 'options', 'correctOptionIndex', 'orderIndex']);
-    if (!validation.valid) {
-      return res.status(400).json({ error: 'Campos requeridos faltantes', missing: validation.missing });
+    // Si envían moduleId en vez de quizId, buscar o crear el quiz automáticamente
+    if (!quizId && moduleId) {
+      if (!isValidUUID(moduleId)) {
+        return res.status(400).json({ error: 'ID de módulo inválido' });
+      }
+
+      // Buscar quiz existente
+      let quizResult = await query('SELECT id FROM lms_quizzes WHERE module_id = $1', [moduleId]);
+      
+      if (quizResult.rows.length > 0) {
+        quizId = quizResult.rows[0].id;
+      } else {
+        // AUTO-CREAR QUIZ con valores por defecto si no existe
+        // Esto permite agregar preguntas directamente sin configurar el quiz antes
+        quizResult = await query(`
+          INSERT INTO lms_quizzes (module_id, passing_score, max_attempts, cooldown_minutes)
+          VALUES ($1, 80, 3, 60)
+          RETURNING id
+        `, [moduleId]);
+        quizId = quizResult.rows[0].id;
+      }
+    }
+    
+    // Validar requeridos (quizId ya debería estar seteado)
+    if (!quizId || !prompt || !options || correctOptionIndex === undefined || orderIndex === undefined) {
+      return res.status(400).json({ error: 'Campos requeridos faltantes (quizId/moduleId, prompt, options...)' });
     }
     
     if (!Array.isArray(options) || options.length < 2) {
