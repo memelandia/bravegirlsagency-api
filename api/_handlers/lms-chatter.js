@@ -182,8 +182,24 @@ async function handleCampus(req, res, user, deps) {
 
   const stages = Object.values(stagesMap);
 
+  // Calcular progreso general del curso
+  let totalModules = 0;
+  let completedModules = 0;
+
+  stages.forEach(stage => {
+    stage.modules.forEach(module => {
+      totalModules++;
+      if (module.status === 'completed') {
+        completedModules++;
+      }
+    });
+  });
+
+  const overallProgress = totalModules > 0 ? Math.floor((completedModules / totalModules) * 100) : 0;
+
   return res.status(200).json({ 
     stages,
+    overallProgress,
     user: {
       id: user.id,
       name: user.name,
