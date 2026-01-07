@@ -17,9 +17,10 @@ module.exports = async (req, res, deps) => {
     // Usar el path limpio que viene de api/lms.js
     // Ejemplo: "admin/users" -> "users"
     const path = req.lmsPath || '';
-    const resource = path.replace('admin/', '').split('/')[0];
+    const pathClean = path.replace('admin/', '').replace(/^\/+|\/+$/g, ''); // Remover slashes al inicio/fin
+    const resource = pathClean.split('/')[0];
 
-    console.log('[Admin Handler] Path:', path, 'Resource:', resource, 'Method:', req.method);
+    console.log('[Admin Handler] Path:', path, 'PathClean:', pathClean, 'Resource:', resource, 'Method:', req.method, 'Query:', req.query);
 
     // Router interno por recurso
     switch(resource) {
