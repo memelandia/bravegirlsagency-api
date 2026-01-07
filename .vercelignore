@@ -4,7 +4,7 @@
 assets/
 dashboard-*.js
 script.js
-auth.js
+/auth.js
 robots.txt
 sitemap.xml
 

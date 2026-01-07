@@ -3,6 +3,11 @@
   "rewrites": [
     { "source": "/api/lms/:path*", "destination": "/api/lms?path=:path*" }
   ],
+  "functions": {
+    "api/lms.js": {
+      "includeFiles": "lib/**,handlers/**"
+    }
+  },
   "headers": [
     {
       "source": "/api/supervision/(.*)",
