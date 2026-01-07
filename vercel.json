@@ -1,22 +1,22 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/api/accounts/:accountId/transactions", "destination": "/api/accounts" },
-    { "source": "/api/lms/auth/login", "destination": "/api/lms/auth" },
-    { "source": "/api/lms/auth/logout", "destination": "/api/lms/auth" },
-    { "source": "/api/lms/auth/me", "destination": "/api/lms/auth" },
-    { "source": "/api/lms/admin/users", "destination": "/api/lms/admin" },
-    { "source": "/api/lms/admin/modules", "destination": "/api/lms/admin" },
-    { "source": "/api/lms/admin/lessons", "destination": "/api/lms/admin" },
-    { "source": "/api/lms/admin/questions", "destination": "/api/lms/admin" },
-    { "source": "/api/lms/admin/progress", "destination": "/api/lms/admin" },
-    { "source": "/api/lms/admin/stages", "destination": "/api/lms/admin" },
-    { "source": "/api/lms/admin/quizzes", "destination": "/api/lms/admin" },
-    { "source": "/api/lms/campus", "destination": "/api/lms/chatter" },
-    { "source": "/api/lms/module/:id", "destination": "/api/lms/chatter" },
-    { "source": "/api/lms/lesson/complete", "destination": "/api/lms/chatter" },
-    { "source": "/api/lms/quiz/:moduleId", "destination": "/api/lms/chatter" },
-    { "source": "/api/lms/quiz/:moduleId/submit", "destination": "/api/lms/chatter" }
+    { "source": "/api/accounts/:accountId/transactions", "destination": "/api/accounts.js" },
+    { "source": "/api/lms/auth/login", "destination": "/api/lms/auth.js" },
+    { "source": "/api/lms/auth/logout", "destination": "/api/lms/auth.js" },
+    { "source": "/api/lms/auth/me", "destination": "/api/lms/auth.js" },
+    { "source": "/api/lms/admin/users", "destination": "/api/lms/admin.js" },
+    { "source": "/api/lms/admin/modules", "destination": "/api/lms/admin.js" },
+    { "source": "/api/lms/admin/lessons", "destination": "/api/lms/admin.js" },
+    { "source": "/api/lms/admin/questions", "destination": "/api/lms/admin.js" },
+    { "source": "/api/lms/admin/progress", "destination": "/api/lms/admin.js" },
+    { "source": "/api/lms/admin/stages", "destination": "/api/lms/admin.js" },
+    { "source": "/api/lms/admin/quizzes", "destination": "/api/lms/admin.js" },
+    { "source": "/api/lms/campus", "destination": "/api/lms/chatter.js" },
+    { "source": "/api/lms/module/:id", "destination": "/api/lms/chatter.js" },
+    { "source": "/api/lms/lesson/complete", "destination": "/api/lms/chatter.js" },
+    { "source": "/api/lms/quiz/:moduleId", "destination": "/api/lms/chatter.js" },
+    { "source": "/api/lms/quiz/:moduleId/submit", "destination": "/api/lms/chatter.js" }
   ],
   "headers": [
     {
