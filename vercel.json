@@ -1,6 +1,7 @@
 {
   "version": 2,
   "rewrites": [
+    { "source": "/api/accounts/:accountId/transactions", "destination": "/api/accounts" },
     { "source": "/api/lms/auth/login", "destination": "/api/lms/auth" },
     { "source": "/api/lms/auth/logout", "destination": "/api/lms/auth" },
     { "source": "/api/lms/auth/me", "destination": "/api/lms/auth" },
