@@ -52,13 +52,13 @@ module.exports = async (req, res) => {
 
     // Rutear según la path
     if (path.startsWith('auth/')) {
-      const authHandler = require('./handlers/lms-auth');
+      const authHandler = require('../handlers/lms-auth');
       return authHandler(req, res, { query, verifyPassword, createSession, updateLastLogin, validateSession, parseCookies, setCookie, deleteCookie, isValidEmail, validateRequired, parseBody });
     } else if (path.startsWith('admin/')) {
-      const adminHandler = require('./handlers/lms-admin');
+      const adminHandler = require('../handlers/lms-admin');
       return adminHandler(req, res, { query, transaction, hashPassword, generateTempPassword, getUserById, validateSession, parseCookies, isValidEmail, isValidUUID, validateRequired, normalizeLoomUrl });
     } else if (path.startsWith('campus') || path.startsWith('module/') || path.startsWith('lesson/') || path.startsWith('quiz/')) {
-      const chatterHandler = require('./handlers/lms-chatter');
+      const chatterHandler = require('../handlers/lms-chatter');
       return chatterHandler(req, res, { query, transaction, validateSession, parseCookies, isValidUUID, getModuleStatus, validateRequired });
     } else {
       return res.status(404).json({ error: 'Ruta LMS no encontrada', path, url: req.url });
