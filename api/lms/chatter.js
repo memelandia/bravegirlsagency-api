@@ -14,9 +14,13 @@ const { parseCookies, errorResponse, successResponse, validateRequired, isValidU
 const { validateSession } = require('./lib/auth');
 
 module.exports = async (req, res) => {
-  // CORS headers
+  // CORS headers - permitir ambos dominios
+  const allowedOrigins = ['https://www.bravegirlsagency.com', 'https://bravegirlsagency.com'];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
