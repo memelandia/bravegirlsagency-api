@@ -43,16 +43,12 @@ module.exports = async (req, res) => {
       req.body = await parseBody(req);
     }
 
-    // Extraer ruta: /auth/login, /admin/users, etc.
-    // req.url puede ser "?path=auth/login" o simplemente "/" si viene de rewrite
-    let path = req.url.split('?')[0].replace(/^\//, ''); // Remove leading slash
+    // Extraer ruta desde query params (viene del rewrite)
+    // El rewrite convierte /api/lms/auth/login → /api/lms?path=auth/login
+    const urlParts = new URL(req.url, `http://${req.headers.host}`);
+    let path = urlParts.searchParams.get('path') || '';
     
     console.log('[LMS] Full URL:', req.url, 'Path extracted:', path, 'Method:', req.method);
-
-    // Si la path está vacía, buscar en query params
-    if (!path && req.query && req.query.path) {
-      path = req.query.path;
-    }
 
     // Rutear según la path
     if (path.startsWith('auth/')) {
