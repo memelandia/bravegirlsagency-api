@@ -4,9 +4,9 @@
 // Rutas: /users, /modules, /lessons, /questions, /progress, /stages, /quizzes
 // ===================================================================
 
-const { query } = require('./lib/db');
-const { parseCookies, errorResponse, successResponse, validateRequired, isValidEmail, isValidUUID, normalizeLoomUrl } = require('./lib/utils');
-const { validateSession, hashPassword, generateTempPassword } = require('./lib/auth');
+const { query } = require('../../lib/lms/db');
+const { parseCookies, errorResponse, successResponse, validateRequired, isValidEmail, isValidUUID, normalizeLoomUrl } = require('../../lib/lms/utils');
+const { validateSession, hashPassword, generateTempPassword } = require('../../lib/lms/auth');
 
 module.exports = async (req, res) => {
   // CORS headers - permitir ambos dominios

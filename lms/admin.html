@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - BraveGirls LMS</title>
+  <link rel="stylesheet" href="/lms/lms-styles.css">
+  <style>
+    .admin-container { display: flex; gap: 20px; }
+    .sidebar { width: 250px; background: white; padding: 20px; border-radius: 8px; height: fit-content; position: sticky; top: 20px; }
+    .sidebar-menu { list-style: none; }
+    .sidebar-menu li { padding: 10px; margin: 5px 0; cursor: pointer; border-radius: 6px; transition: all 0.2s; }
+    .sidebar-menu li:hover { background: var(--bg-secondary); }
+    .sidebar-menu li.active { background: var(--primary); color: white; font-weight: 600; }
+    .main-content { flex: 1; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+  </style>
+</head>
+<body>
+  <header class="lms-header">
+    <div class="container-fluid">
+      <div class="lms-logo">🎓 BraveGirls LMS - Admin</div>
+      <nav class="lms-nav">
+        <div class="user-info">
+          <span id="userName"></span>
+          <button class="btn btn-sm btn-outline" id="logoutBtn">Salir</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container-fluid">
+    <div class="admin-container">
+      <div class="sidebar">
+        <ul class="sidebar-menu">
+          <li data-tab="users" class="active">👥 Usuarios</li>
+          <li data-tab="modules">📚 Módulos</li>
+          <li data-tab="lessons">📝 Lecciones</li>
+          <li data-tab="questions">❓ Preguntas</li>
+          <li data-tab="progress">📊 Progreso</li>
+        </ul>
+      </div>
+
+      <div class="main-content">
+        <div id="alert" class="hidden"></div>
+
+        <!-- USERS TAB -->
+        <div id="users-tab" class="tab-content active">
+          <div class="card">
+            <div class="flex-between mb-20">
+              <h2>Gestión de Usuarios</h2>
+              <button class="btn btn-primary" onclick="showCreateUserModal()">+ Crear Usuario</button>
+            </div>
+            <div id="usersTable">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODULES TAB -->
+        <div id="modules-tab" class="tab-content">
+          <div class="card">
+            <h2 class="mb-20">Gestión de Módulos</h2>
+            <div id="modulesTable">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LESSONS TAB -->
+        <div id="lessons-tab" class="tab-content">
+          <div class="card">
+            <div class="flex-between mb-20">
+              <h2>Gestión de Lecciones</h2>
+              <div>
+                <select id="modulesFilter" class="form-select" style="width: 250px;">
+                  <option value="">Todos los módulos</option>
+                </select>
+              </div>
+            </div>
+            <div id="lessonsTable">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- QUESTIONS TAB -->
+        <div id="questions-tab" class="tab-content">
+          <div class="card">
+            <div class="flex-between mb-20">
+              <h2>Gestión de Preguntas</h2>
+              <select id="modulesFilterQuestions" class="form-select" style="width: 250px;">
+                <option value="">Selecciona un módulo</option>
+              </select>
+            </div>
+            <div id="questionsTable">
+              <p style="color: var(--text-light);">Selecciona un módulo para ver sus preguntas</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROGRESS TAB -->
+        <div id="progress-tab" class="tab-content">
+          <div class="card">
+            <h2 class="mb-20">Progreso de Usuarios</h2>
+            <div id="progressTable">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // URL base del API en Vercel
+    const API_BASE = 'https://bravegirlsagency-api.vercel.app/api/lms';
+    
+    let currentUser = null;
+    let currentTab = 'users';
+
+    function showAlert(message, type = 'error') {
+      const alertDiv = document.getElementById('alert');
+      alertDiv.className = `alert alert-${type}`;
+      alertDiv.textContent = message;
+      alertDiv.classList.remove('hidden');
+      setTimeout(() => alertDiv.classList.add('hidden'), 5000);
+    }
+
+    async function checkAuth() {
+      try {
+        const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Not authenticated');
+        const data = await response.json();
+        currentUser = data.user;
+        document.getElementById('userName').textContent = currentUser.name + ' (' + currentUser.role + ')';
+        
+        if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+          window.location.href = '/lms/campus.html';
+        }
+      } catch (error) {
+        window.location.href = '/lms/login.html';
+      }
+    }
+
+    // Tab switching
+    document.querySelectorAll('.sidebar-menu li').forEach(item => {
+      item.addEventListener('click', () => {
+        const tab = item.dataset.tab;
+        switchTab(tab);
+      });
+    });
+
+    function switchTab(tab) {
+      document.querySelectorAll('.sidebar-menu li').forEach(li => li.classList.remove('active'));
+      document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+      
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      document.getElementById(`${tab}-tab`).classList.add('active');
+      
+      currentTab = tab;
+      loadTabData(tab);
+    }
+
+    async function loadTabData(tab) {
+      switch(tab) {
+        case 'users':
+          await loadUsers();
+          break;
+        case 'modules':
+          await loadModules();
+          break;
+        case 'lessons':
+          await loadLessons();
+          await loadModulesForFilter();
+          break;
+        case 'questions':
+          await loadModulesForFilter('questions');
+          break;
+        case 'progress':
+          await loadProgress();
+          break;
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/users`, { credentials: 'include' });
+        const data = await response.json();
+        
+        const table = document.getElementById('usersTable');
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Último Login</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.users.map(user => `
+                <tr>
+                  <td>${user.name}</td>
+                  <td>${user.email}</td>
+                  <td><span class="badge badge-info">${user.role}</span></td>
+                  <td><span class="badge badge-${user.active ? 'success' : 'danger'}">${user.active ? 'Activo' : 'Inactivo'}</span></td>
+                  <td>${user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Nunca'}</td>
+                  <td>
+                    <button class="btn btn-sm btn-outline" onclick="resetPassword('${user.id}')">Reset Password</button>
+                    <button class="btn btn-sm btn-${user.active ? 'danger' : 'success'}" onclick="toggleUserStatus('${user.id}', ${!user.active})">
+                      ${user.active ? 'Desactivar' : 'Activar'}
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        showAlert('Error al cargar usuarios');
+      }
+    }
+
+    async function loadModules() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/modules`, { credentials: 'include' });
+        const data = await response.json();
+        
+        const table = document.getElementById('modulesTable');
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Orden</th>
+                <th>Título</th>
+                <th>Etapa</th>
+                <th>Lecciones</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.modules.map(module => `
+                <tr>
+                  <td>${module.order_index}</td>
+                  <td><strong>${module.title}</strong><br><small style="color: var(--text-light);">${module.description || ''}</small></td>
+                  <td>${module.stage_name}</td>
+                  <td>${module.lessons_count}</td>
+                  <td><span class="badge badge-${module.published ? 'success' : 'warning'}">${module.published ? 'Publicado' : 'Borrador'}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        showAlert('Error al cargar módulos');
+      }
+    }
+
+    async function loadLessons(moduleId = '') {
+      try {
+        const url = moduleId ? `/api/lms/admin/lessons?moduleId=${moduleId}` : '/api/lms/admin/lessons';
+        const response = await fetch(url, { credentials: 'include' });
+        const data = await response.json();
+        
+        const table = document.getElementById('lessonsTable');
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Orden</th>
+                <th>Título</th>
+                <th>Módulo</th>
+                <th>Tipo</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.lessons.map(lesson => `
+                <tr>
+                  <td>${lesson.order_index}</td>
+                  <td>${lesson.title}</td>
+                  <td><small>${lesson.module_title}</small></td>
+                  <td><span class="badge badge-${lesson.type === 'video' ? 'info' : 'secondary'}">${lesson.type === 'video' ? '🎥 Video' : '📄 Texto'}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        showAlert('Error al cargar lecciones');
+      }
+    }
+
+    async function loadModulesForFilter(target = 'lessons') {
+      try {
+        const response = await fetch(`${API_BASE}/admin/modules`, { credentials: 'include' });
+        const data = await response.json();
+        
+        const selectId = target === 'questions' ? 'modulesFilterQuestions' : 'modulesFilter';
+        const select = document.getElementById(selectId);
+        
+        select.innerHTML = `<option value="">${target === 'questions' ? 'Selecciona un módulo' : 'Todos los módulos'}</option>`;
+        data.modules.forEach(module => {
+          const option = document.createElement('option');
+          option.value = module.id;
+          option.textContent = `${module.title} (${module.stage_name})`;
+          select.appendChild(option);
+        });
+        
+        if (target === 'questions') {
+          select.addEventListener('change', (e) => loadQuestions(e.target.value));
+        } else {
+          select.addEventListener('change', (e) => loadLessons(e.target.value));
+        }
+      } catch (error) {
+        console.error('Error loading modules for filter');
+      }
+    }
+
+    async function loadQuestions(moduleId) {
+      if (!moduleId) {
+        document.getElementById('questionsTable').innerHTML = '<p style="color: var(--text-light);">Selecciona un módulo para ver sus preguntas</p>';
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/lms/admin/questions?moduleId=${moduleId}`, { credentials: 'include' });
+        const data = await response.json();
+        
+        const table = document.getElementById('questionsTable');
+        
+        if (data.questions.length === 0) {
+          table.innerHTML = '<div class="alert alert-info">Este módulo no tiene preguntas aún. Usa el panel de administración para agregarlas.</div>';
+          return;
+        }
+        
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 50px;">#</th>
+                <th>Pregunta</th>
+                <th>Opciones</th>
+                <th>Respuesta Correcta</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.questions.map((question, index) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${question.prompt}</td>
+                  <td><small>${question.options.length} opciones</small></td>
+                  <td><strong>${question.options[question.correct_option_index]}</strong></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        showAlert('Error al cargar preguntas');
+      }
+    }
+
+    async function loadProgress() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/progress`, { credentials: 'include' });
+        const data = await response.json();
+        
+        const table = document.getElementById('progressTable');
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Progreso General</th>
+                <th>Módulos Completados</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.users.map(user => `
+                <tr>
+                  <td>${user.userName}</td>
+                  <td>${user.userEmail}</td>
+                  <td>
+                    <div class="progress" style="margin: 0;">
+                      <div class="progress-bar" style="width: ${user.overallProgress}%;"></div>
+                    </div>
+                    <small>${user.overallProgress}%</small>
+                  </td>
+                  <td>${user.completedModules} / ${user.totalModules}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        showAlert('Error al cargar progreso');
+      }
+    }
+
+    async function resetPassword(userId) {
+      if (!confirm('¿Generar nueva contraseña temporal para este usuario?')) return;
+      
+      try {
+        const response = await fetch(`${API_BASE}/admin/users`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ id: userId, resetPassword: true })
+        });
+        
+        const data = await response.json();
+        alert(`Nueva contraseña temporal: ${data.newPassword}\n\nCopia esta contraseña y envíala al usuario de forma segura.`);
+        showAlert('Contraseña reseteada exitosamente', 'success');
+      } catch (error) {
+        showAlert('Error al resetear contraseña');
+      }
+    }
+
+    async function toggleUserStatus(userId, activate) {
+      try {
+        const response = await fetch(`${API_BASE}/admin/users`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ id: userId, active: activate })
+        });
+        
+        showAlert(`Usuario ${activate ? 'activado' : 'desactivado'} exitosamente`, 'success');
+        await loadUsers();
+      } catch (error) {
+        showAlert('Error al cambiar estado del usuario');
+      }
+    }
+
+    function showCreateUserModal() {
+      const name = prompt('Nombre del usuario:');
+      if (!name) return;
+      
+      const email = prompt('Email del usuario:');
+      if (!email) return;
+      
+      const role = prompt('Rol (chatter, supervisor, admin):');
+      if (!['chatter', 'supervisor', 'admin'].includes(role)) {
+        showAlert('Rol inválido');
+        return;
+      }
+      
+      createUser(name, email, role);
+    }
+
+    async function createUser(name, email, role) {
+      try {
+        const response = await fetch(`${API_BASE}/admin/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name, email, role })
+        });
+        
+        const data = await response.json();
+        alert(`Usuario creado exitosamente.\n\nContraseña temporal: ${data.temporaryPassword}\n\nCopia esta contraseña y envíala al usuario de forma segura.`);
+        showAlert('Usuario creado exitosamente', 'success');
+        await loadUsers();
+      } catch (error) {
+        showAlert('Error al crear usuario');
+      }
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
+      window.location.href = '/lms/login.html';
+    });
+
+    (async () => {
+      await checkAuth();
+      await loadUsers();
+    })();
+  </script>
+</body>
+</html>

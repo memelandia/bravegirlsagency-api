@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campus - BraveGirls LMS</title>
+  <link rel="stylesheet" href="/lms/lms-styles.css">
+</head>
+<body>
+  <header class="lms-header">
+    <div class="container">
+      <div class="lms-logo">🎓 BraveGirls LMS</div>
+      <nav class="lms-nav">
+        <div class="user-info">
+          <span id="userName">Loading...</span>
+          <button class="btn btn-sm btn-outline" id="logoutBtn">Salir</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="alert" class="hidden"></div>
+
+    <div class="card">
+      <h1 style="margin-bottom: 10px;">Mi Progreso</h1>
+      <div class="progress-label">
+        <span id="overallProgressText">0%</span> completado
+      </div>
+      <div class="progress">
+        <div class="progress-bar" id="overallProgressBar" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <div id="stagesContainer">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <script>
+    // URL base del API en Vercel
+    const API_BASE = 'https://bravegirlsagency-api.vercel.app/api/lms';
+
+    let currentUser = null;
+
+    function showAlert(message, type = 'error') {
+      const alertDiv = document.getElementById('alert');
+      alertDiv.className = `alert alert-${type}`;
+      alertDiv.textContent = message;
+      alertDiv.classList.remove('hidden');
+      setTimeout(() => alertDiv.classList.add('hidden'), 5000);
+    }
+
+    async function checkAuth() {
+      try {
+        const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Not authenticated');
+        
+        const data = await response.json();
+        currentUser = data.user;
+        document.getElementById('userName').textContent = currentUser.name;
+        
+        if (currentUser.role === 'admin' || currentUser.role === 'supervisor') {
+          window.location.href = '/lms/admin.html';
+        }
+      } catch (error) {
+        window.location.href = '/lms/login.html';
+      }
+    }
+
+    async function loadCampus() {
+      try {
+        const response = await fetch(`${API_BASE}/campus`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Error al cargar el campus');
+        
+        const data = await response.json();
+        
+        // Update progress
+        document.getElementById('overallProgressText').textContent = data.overallProgress + '%';
+        document.getElementById('overallProgressBar').style.width = data.overallProgress + '%';
+        
+        // Render stages
+        renderStages(data.stages);
+        
+      } catch (error) {
+        showAlert(error.message);
+      }
+    }
+
+    function renderStages(stages) {
+      const container = document.getElementById('stagesContainer');
+      container.innerHTML = '';
+      
+      stages.forEach(stage => {
+        const stageCard = document.createElement('div');
+        stageCard.className = 'card';
+        
+        const stageHeader = document.createElement('div');
+        stageHeader.className = 'card-header';
+        stageHeader.textContent = stage.name;
+        stageCard.appendChild(stageHeader);
+        
+        if (stage.description) {
+          const desc = document.createElement('p');
+          desc.style.color = 'var(--text-light)';
+          desc.style.marginBottom = '15px';
+          desc.textContent = stage.description;
+          stageCard.appendChild(desc);
+        }
+        
+        stage.modules.forEach(module => {
+          const moduleCard = document.createElement('div');
+          moduleCard.className = 'module-card';
+          if (module.isLocked) moduleCard.classList.add('locked');
+          if (module.status === 'completed') moduleCard.classList.add('completed');
+          
+          const moduleHeader = document.createElement('div');
+          moduleHeader.className = 'module-header';
+          
+          const title = document.createElement('div');
+          title.className = 'module-title';
+          title.textContent = module.title;
+          moduleHeader.appendChild(title);
+          
+          const badge = document.createElement('span');
+          badge.className = 'badge';
+          switch (module.status) {
+            case 'completed':
+              badge.classList.add('badge-success');
+              badge.textContent = '✓ Completado';
+              break;
+            case 'ready_for_quiz':
+              badge.classList.add('badge-warning');
+              badge.textContent = '⚡ Listo para evaluación';
+              break;
+            case 'in_progress':
+              badge.classList.add('badge-info');
+              badge.textContent = '📚 En progreso';
+              break;
+            case 'locked':
+              badge.classList.add('badge-secondary');
+              badge.textContent = '🔒 Bloqueado';
+              break;
+            default:
+              badge.classList.add('badge-secondary');
+              badge.textContent = 'No iniciado';
+          }
+          moduleHeader.appendChild(badge);
+          moduleCard.appendChild(moduleHeader);
+          
+          if (module.description) {
+            const desc = document.createElement('div');
+            desc.className = 'module-description';
+            desc.textContent = module.description;
+            moduleCard.appendChild(desc);
+          }
+          
+          const progressLabel = document.createElement('div');
+          progressLabel.className = 'progress-label';
+          progressLabel.textContent = `${module.progress.completedLessons} de ${module.progress.totalLessons} lecciones completadas`;
+          moduleCard.appendChild(progressLabel);
+          
+          const progressBar = document.createElement('div');
+          progressBar.className = 'progress';
+          const progressFill = document.createElement('div');
+          progressFill.className = 'progress-bar';
+          progressFill.style.width = module.progress.percentage + '%';
+          progressBar.appendChild(progressFill);
+          moduleCard.appendChild(progressBar);
+          
+          if (module.quiz && module.quiz.attempts > 0) {
+            const quizInfo = document.createElement('div');
+            quizInfo.style.marginTop = '10px';
+            quizInfo.style.fontSize = '13px';
+            quizInfo.style.color = 'var(--text-light)';
+            quizInfo.textContent = `Mejor score: ${module.quiz.bestScore}% | Intentos: ${module.quiz.attempts}`;
+            moduleCard.appendChild(quizInfo);
+          }
+          
+          if (!module.isLocked) {
+            moduleCard.style.cursor = 'pointer';
+            moduleCard.addEventListener('click', () => {
+              window.location.href = `/lms/module.html?id=${module.id}`;
+            });
+          }
+          
+          stageCard.appendChild(moduleCard);
+        });
+        
+        container.appendChild(stageCard);
+      });
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      try {
+        await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
+        window.location.href = '/lms/login.html';
+      } catch (error) {
+        showAlert('Error al cerrar sesión');
+      }
+    });
+
+    // Initialize
+    (async () => {
+      await checkAuth();
+      await loadCampus();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Módulo - BraveGirls LMS</title>
+  <link rel="stylesheet" href="/lms/lms-styles.css">
+</head>
+<body>
+  <header class="lms-header">
+    <div class="container">
+      <div class="lms-logo">🎓 BraveGirls LMS</div>
+      <nav class="lms-nav">
+        <a href="/lms/campus.html">← Volver al Campus</a>
+        <div class="user-info">
+          <span id="userName"></span>
+          <button class="btn btn-sm btn-outline" id="logoutBtn">Salir</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="alert" class="hidden"></div>
+    <div id="moduleContent">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <script>
+    // URL base del API en Vercel
+    const API_BASE = 'https://bravegirlsagency-api.vercel.app/api/lms';
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const moduleId = urlParams.get('id');
+    let currentUser = null;
+    let moduleData = null;
+
+    function showAlert(message, type = 'error') {
+      const alertDiv = document.getElementById('alert');
+      alertDiv.className = `alert alert-${type}`;
+      alertDiv.textContent = message;
+      alertDiv.classList.remove('hidden');
+      setTimeout(() => alertDiv.classList.add('hidden'), 5000);
+    }
+
+    async function checkAuth() {
+      try {
+        const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Not authenticated');
+        const data = await response.json();
+        currentUser = data.user;
+        document.getElementById('userName').textContent = currentUser.name;
+      } catch (error) {
+        window.location.href = '/lms/login.html';
+      }
+    }
+
+    async function loadModule() {
+      try {
+        const response = await fetch(`${API_BASE}/module/${moduleId}`, { credentials: 'include' });
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Error al cargar el módulo');
+        }
+        
+        moduleData = await response.json();
+        renderModule();
+        
+      } catch (error) {
+        showAlert(error.message);
+        setTimeout(() => window.location.href = '/lms/campus.html', 2000);
+      }
+    }
+
+    function renderModule() {
+      const container = document.getElementById('moduleContent');
+      container.innerHTML = '';
+      
+      // Header
+      const header = document.createElement('div');
+      header.className = 'card';
+      header.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+          <div>
+            <div style="font-size: 12px; color: var(--text-light); margin-bottom: 5px;">
+              ${moduleData.module.stage.name}
+            </div>
+            <h1 style="margin-bottom: 10px;">${moduleData.module.title}</h1>
+            <p style="color: var(--text-light);">${moduleData.module.description || ''}</p>
+          </div>
+        </div>
+      `;
+      container.appendChild(header);
+      
+      // Lessons
+      const lessonsCard = document.createElement('div');
+      lessonsCard.className = 'card';
+      lessonsCard.innerHTML = '<h2 style="margin-bottom: 20px;">📚 Lecciones</h2>';
+      
+      const lessonsList = document.createElement('ul');
+      lessonsList.className = 'lesson-list';
+      
+      moduleData.lessons.forEach(lesson => {
+        const lessonItem = document.createElement('li');
+        lessonItem.className = 'lesson-item' + (lesson.completed ? ' completed' : '');
+        
+        lessonItem.innerHTML = `
+          <div class="lesson-info">
+            <span class="lesson-icon">${lesson.type === 'video' ? '🎥' : '📄'}</span>
+            <div>
+              <div class="lesson-title">${lesson.title}</div>
+              <div class="lesson-type">${lesson.type === 'video' ? 'Video' : 'Texto'}</div>
+            </div>
+          </div>
+          <div>
+            ${lesson.completed ? '<span class="badge badge-success">✓ Completado</span>' : '<span class="badge badge-info">Pendiente</span>'}
+          </div>
+        `;
+        
+        lessonItem.addEventListener('click', () => openLesson(lesson));
+        lessonsList.appendChild(lessonItem);
+      });
+      
+      lessonsCard.appendChild(lessonsList);
+      container.appendChild(lessonsCard);
+      
+      // Quiz info
+      if (moduleData.quiz && moduleData.quiz.hasQuestions) {
+        const quizCard = document.createElement('div');
+        quizCard.className = 'card';
+        quizCard.innerHTML = `
+          <h2 style="margin-bottom: 15px;">✅ Evaluación Final</h2>
+          <p style="margin-bottom: 15px;">
+            ${moduleData.quiz.totalQuestions} preguntas | 
+            Puntaje mínimo: ${moduleData.quiz.passingScore}% | 
+            Intentos restantes: ${moduleData.quiz.attemptsRemaining}
+          </p>
+          ${moduleData.canTakeQuiz 
+            ? `<button class="btn btn-primary" onclick="goToQuiz()">Tomar Evaluación</button>`
+            : moduleData.quiz.passed 
+              ? `<div class="alert alert-success">✓ Evaluación aprobada con ${moduleData.quiz.bestScore}%</div>`
+              : !moduleData.allLessonsCompleted
+                ? `<div class="alert alert-warning">Completa todas las lecciones para desbloquear la evaluación</div>`
+                : moduleData.quiz.cooldownRemaining > 0
+                  ? `<div class="alert alert-info">Debes esperar ${moduleData.quiz.cooldownRemaining} minutos para intentar de nuevo</div>`
+                  : `<div class="alert alert-error">Has alcanzado el máximo de intentos</div>`
+          }
+        `;
+        container.appendChild(quizCard);
+      }
+    }
+
+    function openLesson(lesson) {
+      const container = document.getElementById('moduleContent');
+      container.innerHTML = '';
+      
+      const lessonCard = document.createElement('div');
+      lessonCard.className = 'card';
+      
+      lessonCard.innerHTML = `
+        <button class="btn btn-sm btn-outline mb-20" onclick="loadModule()">← Volver a lecciones</button>
+        <h1 style="margin-bottom: 20px;">${lesson.title}</h1>
+      `;
+      
+      if (lesson.type === 'video') {
+        const videoContainer = document.createElement('div');
+        videoContainer.className = 'video-container';
+        videoContainer.innerHTML = `<iframe src="${lesson.content.loomUrl}" allowfullscreen></iframe>`;
+        lessonCard.appendChild(videoContainer);
+      } else {
+        const textContainer = document.createElement('div');
+        textContainer.className = 'text-content';
+        textContainer.innerHTML = lesson.content.textContent.replace(/\n/g, '<br>');
+        lessonCard.appendChild(textContainer);
+      }
+      
+      const completeBtn = document.createElement('button');
+      completeBtn.className = 'btn btn-success mt-20';
+      completeBtn.textContent = lesson.completed ? '✓ Marcado como completado' : 'Marcar como completado';
+      completeBtn.disabled = lesson.completed;
+      
+      if (!lesson.completed) {
+        completeBtn.addEventListener('click', () => completeLesson(lesson.id));
+      }
+      
+      lessonCard.appendChild(completeBtn);
+      container.appendChild(lessonCard);
+    }
+
+    async function completeLesson(lessonId) {
+      try {
+        const response = await fetch(`${API_BASE}/lesson/complete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ lessonId })
+        });
+        
+        if (!response.ok) throw new Error('Error al completar lección');
+        
+        showAlert('¡Lección completada!', 'success');
+        await loadModule();
+        
+      } catch (error) {
+        showAlert(error.message);
+      }
+    }
+
+    function goToQuiz() {
+      window.location.href = `/lms/quiz.html?moduleId=${moduleId}`;
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
+      window.location.href = '/lms/login.html';
+    });
+
+    (async () => {
+      if (!moduleId) {
+        window.location.href = '/lms/campus.html';
+        return;
+      }
+      await checkAuth();
+      await loadModule();
+    })();
+  </script>
+</body>
+</html>

@@ -27,7 +27,8 @@ window.CONFIG = {
             'chatter2': { name: 'Diego Salcedo', gid: '712917426' },
             'chatter3': { name: 'Alfonso Silva', gid: '1408176673' },
             'chatter4': { name: 'Nicolas Viganotti', gid: '1989454215' },
-            'chatter5': { name: 'Kari Narvaez', gid: '1023806221' }
+            'chatter5': { name: 'Kari Narvaez', gid: '1023806221' },
+            'chatter6': { name: 'Emely', gid: '1931030491' }
         }
     },
     
@@ -81,6 +82,15 @@ window.CONFIG = {
                 type: 'model',
                 onlyFansUsername: '@xvickyluna',
                 onlyMonsterId: '436482929' // Platform Account ID correcto
+            },
+            {
+                id: 'model6',
+                username: 'vanessa',
+                password: 'vanessa2025',
+                name: 'Vanessa 🌸',
+                type: 'model',
+                onlyFansUsername: '@vanessa',
+                onlyMonsterId: 'PENDING' // Actualizar con ID real de OnlyMonster
             }
         ],
         
@@ -132,6 +142,15 @@ window.CONFIG = {
                 type: 'chatter',
                 onlyMonsterId: '124700',
                 assignedModels: ['model1', 'model3', 'model5'] // Carmen, Bellarey, Vicky
+            },
+            {
+                id: 'chatter6',
+                username: 'emely',
+                password: 'emely2025',
+                name: 'Emely',
+                type: 'chatter',
+                onlyMonsterId: '139826',
+                assignedModels: ['model5'] // Vicky Luna por defecto
             }
         ]
     },

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluación - BraveGirls LMS</title>
+  <link rel="stylesheet" href="/lms/lms-styles.css">
+</head>
+<body>
+  <header class="lms-header">
+    <div class="container">
+      <div class="lms-logo">🎓 BraveGirls LMS</div>
+      <nav class="lms-nav">
+        <a href="#" onclick="goBack()">← Volver</a>
+        <div class="user-info">
+          <span id="userName"></span>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="alert" class="hidden"></div>
+    <div id="quizContent">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <script>
+    // URL base del API en Vercel
+    const API_BASE = 'https://bravegirlsagency-api.vercel.app/api/lms';
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const moduleId = urlParams.get('moduleId');
+    let currentUser = null;
+    let quizData = null;
+    let answers = {};
+
+    function showAlert(message, type = 'error') {
+      const alertDiv = document.getElementById('alert');
+      alertDiv.className = `alert alert-${type}`;
+      alertDiv.textContent = message;
+      alertDiv.classList.remove('hidden');
+      window.scrollTo(0, 0);
+    }
+
+    async function checkAuth() {
+      try {
+        const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Not authenticated');
+        const data = await response.json();
+        currentUser = data.user;
+        document.getElementById('userName').textContent = currentUser.name;
+      } catch (error) {
+        window.location.href = '/lms/login.html';
+      }
+    }
+
+    async function loadQuiz() {
+      try {
+        const response = await fetch(`${API_BASE}/quiz/${moduleId}`, { credentials: 'include' });
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Error al cargar el quiz');
+        }
+        
+        quizData = await response.json();
+        renderQuiz();
+        
+      } catch (error) {
+        showAlert(error.message);
+        setTimeout(() => window.location.href = `/lms/module.html?id=${moduleId}`, 2000);
+      }
+    }
+
+    function renderQuiz() {
+      const container = document.getElementById('quizContent');
+      container.innerHTML = '';
+      
+      const header = document.createElement('div');
+      header.className = 'card';
+      header.innerHTML = `
+        <h1 style="margin-bottom: 10px;">✅ Evaluación Final</h1>
+        <p style="color: var(--text-light);">
+          ${quizData.questions.length} preguntas | 
+          Puntaje mínimo para aprobar: ${quizData.quiz.passingScore}% | 
+          Intentos restantes: ${quizData.quiz.attemptsRemaining}
+        </p>
+      `;
+      container.appendChild(header);
+      
+      const form = document.createElement('form');
+      form.id = 'quizForm';
+      
+      quizData.questions.forEach((question, index) => {
+        const questionCard = document.createElement('div');
+        questionCard.className = 'quiz-question';
+        
+        const prompt = document.createElement('div');
+        prompt.className = 'question-prompt';
+        prompt.textContent = `${index + 1}. ${question.prompt}`;
+        questionCard.appendChild(prompt);
+        
+        const optionsList = document.createElement('ul');
+        optionsList.className = 'question-options';
+        
+        question.options.forEach((option, optionIndex) => {
+          const optionItem = document.createElement('li');
+          optionItem.className = 'option-item';
+          
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = `question_${question.id}`;
+          radio.value = optionIndex;
+          radio.id = `q${question.id}_opt${optionIndex}`;
+          
+          radio.addEventListener('change', () => {
+            answers[question.id] = optionIndex;
+            // Visual feedback
+            optionsList.querySelectorAll('.option-item').forEach(item => {
+              item.classList.remove('selected');
+            });
+            optionItem.classList.add('selected');
+          });
+          
+          const label = document.createElement('label');
+          label.htmlFor = radio.id;
+          label.style.cursor = 'pointer';
+          label.style.display = 'flex';
+          label.style.alignItems = 'center';
+          label.textContent = option;
+          
+          optionItem.appendChild(radio);
+          optionItem.appendChild(label);
+          optionsList.appendChild(optionItem);
+          
+          optionItem.addEventListener('click', (e) => {
+            if (e.target !== radio) {
+              radio.checked = true;
+              radio.dispatchEvent(new Event('change'));
+            }
+          });
+        });
+        
+        questionCard.appendChild(optionsList);
+        form.appendChild(questionCard);
+      });
+      
+      const submitBtn = document.createElement('button');
+      submitBtn.type = 'submit';
+      submitBtn.className = 'btn btn-primary';
+      submitBtn.style.width = '100%';
+      submitBtn.style.padding = '15px';
+      submitBtn.style.fontSize = '16px';
+      submitBtn.textContent = 'Enviar Respuestas';
+      form.appendChild(submitBtn);
+      
+      form.addEventListener('submit', handleSubmit);
+      container.appendChild(form);
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      
+      // Validate all questions answered
+      if (Object.keys(answers).length < quizData.questions.length) {
+        showAlert('Debes responder todas las preguntas antes de enviar', 'warning');
+        return;
+      }
+      
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Enviando...';
+      
+      try {
+        const response = await fetch(`${API_BASE}/quiz/${moduleId}/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ answers })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Error al enviar respuestas');
+        }
+        
+        showResults(data);
+        
+      } catch (error) {
+        showAlert(error.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Enviar Respuestas';
+      }
+    }
+
+    function showResults(results) {
+      const container = document.getElementById('quizContent');
+      container.innerHTML = '';
+      
+      const resultCard = document.createElement('div');
+      resultCard.className = 'card';
+      
+      const isPassed = results.passed;
+      
+      resultCard.innerHTML = `
+        <div style="text-align: center;">
+          <div style="font-size: 64px; margin-bottom: 20px;">
+            ${isPassed ? '🎉' : '😔'}
+          </div>
+          <h1 style="margin-bottom: 10px; color: ${isPassed ? 'var(--success)' : 'var(--error)'};">
+            ${isPassed ? '¡Aprobado!' : 'No Aprobado'}
+          </h1>
+          <div style="font-size: 48px; font-weight: 700; margin: 20px 0;">
+            ${results.score}%
+          </div>
+          <p style="font-size: 18px; color: var(--text-light); margin-bottom: 30px;">
+            ${results.correctAnswers} de ${results.totalQuestions} respuestas correctas<br>
+            Puntaje mínimo requerido: ${results.passingScore}%
+          </p>
+          
+          ${!isPassed && results.attemptsUsed < results.maxAttempts 
+            ? `
+              <div class="alert alert-info" style="text-align: left; margin-bottom: 20px;">
+                <strong>Intentos restantes:</strong> ${results.maxAttempts - results.attemptsUsed}<br>
+                Revisa el material y vuelve a intentarlo.
+              </div>
+              <button class="btn btn-primary" onclick="location.reload()">Intentar de Nuevo</button>
+            `
+            : !isPassed 
+              ? `<div class="alert alert-error" style="text-align: left;">Has alcanzado el máximo de intentos. Contacta a tu supervisor.</div>`
+              : ''
+          }
+          
+          <button class="btn btn-outline mt-20" onclick="goBack()">
+            ${isPassed ? 'Continuar al Siguiente Módulo' : 'Volver al Módulo'}
+          </button>
+        </div>
+      `;
+      
+      // Show detailed results if failed
+      if (!isPassed && results.detailedResults) {
+        const detailsCard = document.createElement('div');
+        detailsCard.className = 'card';
+        detailsCard.innerHTML = '<h2 style="margin-bottom: 20px;">Respuestas Detalladas</h2>';
+        
+        results.detailedResults.forEach((result, index) => {
+          const question = quizData.questions.find(q => q.id === result.questionId);
+          
+          const detailDiv = document.createElement('div');
+          detailDiv.style.padding = '15px';
+          detailDiv.style.marginBottom = '15px';
+          detailDiv.style.border = `2px solid ${result.isCorrect ? 'var(--success)' : 'var(--error)'}`;
+          detailDiv.style.borderRadius = '8px';
+          detailDiv.style.background = result.isCorrect ? '#f0fdf4' : '#fef2f2';
+          
+          detailDiv.innerHTML = `
+            <div style="font-weight: 700; margin-bottom: 10px;">
+              ${result.isCorrect ? '✓' : '✗'} Pregunta ${index + 1}
+            </div>
+            <div style="margin-bottom: 10px;">${question.prompt}</div>
+            <div style="font-size: 14px;">
+              <strong>Tu respuesta:</strong> ${question.options[result.userAnswer] || 'No respondida'}<br>
+              ${!result.isCorrect ? `<strong style="color: var(--success);">Respuesta correcta:</strong> ${question.options[result.correctAnswer]}` : ''}
+            </div>
+          `;
+          
+          detailsCard.appendChild(detailDiv);
+        });
+        
+        container.appendChild(detailsCard);
+      }
+      
+      container.insertBefore(resultCard, container.firstChild);
+    }
+
+    function goBack() {
+      window.location.href = `/lms/module.html?id=${moduleId}`;
+    }
+
+    (async () => {
+      if (!moduleId) {
+        window.location.href = '/lms/campus.html';
+        return;
+      }
+      await checkAuth();
+      await loadQuiz();
+    })();
+  </script>
+</body>
+</html>

@@ -4,9 +4,9 @@
 // Rutas: /login, /logout, /me
 // ===================================================================
 
-const { query } = require('./lib/db');
-const { verifyPassword, createSession, updateLastLogin, validateSession } = require('./lib/auth');
-const { parseCookies, setCookie, deleteCookie, errorResponse, successResponse, validateRequired, isValidEmail } = require('./lib/utils');
+const { query } = require('../../lib/lms/db');
+const { verifyPassword, createSession, updateLastLogin, validateSession } = require('../../lib/lms/auth');
+const { parseCookies, setCookie, deleteCookie, errorResponse, successResponse, validateRequired, isValidEmail } = require('../../lib/lms/utils');
 
 module.exports = async (req, res) => {
   // CORS headers - permitir ambos dominios

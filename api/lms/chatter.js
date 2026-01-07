@@ -9,9 +9,9 @@
 //   POST /quiz/:moduleId/submit - enviar respuestas de quiz
 // ===================================================================
 
-const { query, transaction } = require('./lib/db');
-const { parseCookies, errorResponse, successResponse, validateRequired, isValidUUID, getModuleStatus } = require('./lib/utils');
-const { validateSession } = require('./lib/auth');
+const { query, transaction } = require('../../lib/lms/db');
+const { parseCookies, errorResponse, successResponse, validateRequired, isValidUUID, getModuleStatus } = require('../../lib/lms/utils');
+const { validateSession } = require('../../lib/lms/auth');
 
 module.exports = async (req, res) => {
   // CORS headers - permitir ambos dominios

@@ -1,0 +1,22 @@
+{
+  "name": "bravegirlsagency-lms",
+  "version": "1.0.0",
+  "description": "Learning Management System interno para BraveGirls Agency",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build required'",
+    "deploy": "vercel --prod"
+  },
+  "keywords": ["lms", "learning", "education", "bravegirlsagency"],
+  "author": "BraveGirls Agency",
+  "license": "PRIVATE",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
