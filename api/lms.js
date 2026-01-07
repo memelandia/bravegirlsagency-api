@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
   try {
     // Cargar dependencias
     const { query, transaction } = require('./_lib/db');
-    const { verifyPassword, createSession, updateLastLogin, validateSession, hashPassword, generateTempPassword, getUserById } = require('./_lib/auth');
+    const { verifyPassword, createSession, updateLastLogin, validateSession, hashPassword, generateTempPassword, getUserById, getUserByEmail } = require('./_lib/auth');
     const { parseCookies, setCookie, deleteCookie, isValidEmail, isValidUUID, validateRequired, normalizeLoomUrl, getModuleStatus } = require('./_lib/utils');
     const { parseBody } = require('./_lib/bodyParser');
     
@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
     // Rutear según la path
     if (path.startsWith('auth/')) {
       const authHandler = require('./_handlers/lms-auth');
-      return authHandler(req, res, { query, verifyPassword, createSession, updateLastLogin, validateSession, parseCookies, setCookie, deleteCookie, isValidEmail, validateRequired, parseBody });
+      return authHandler(req, res, { query, verifyPassword, createSession, updateLastLogin, validateSession, getUserByEmail, parseCookies, setCookie, deleteCookie, isValidEmail, validateRequired, parseBody });
     } else if (path.startsWith('admin/')) {
       const adminHandler = require('./_handlers/lms-admin');
       return adminHandler(req, res, { query, transaction, hashPassword, generateTempPassword, getUserById, validateSession, parseCookies, isValidEmail, isValidUUID, validateRequired, normalizeLoomUrl });

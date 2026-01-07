@@ -34,7 +34,7 @@ module.exports = async (req, res, deps) => {
 // LOGIN
 // ===================================================================
 async function handleLogin(req, res, deps) {
-  const { query, verifyPassword, createSession, updateLastLogin, setCookie, errorResponse, successResponse, validateRequired, isValidEmail } = deps;
+  const { query, verifyPassword, createSession, updateLastLogin, getUserByEmail, setCookie, validateRequired, isValidEmail } = deps;
   
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
