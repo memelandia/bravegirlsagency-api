@@ -793,7 +793,35 @@ async function handleProgress(req, res, user, deps) {
       });
     });
 
-    const users = Object.values(userMap);
+    const users = Object.values(userMap); 
+
+    // Calculate aggregated stats for each user (so frontend doesn't get undefined)
+    users.forEach(u => {
+        let totalMods = u.modules.length;
+        let completedMods = 0;
+        let totalProg = 0;
+
+        u.modules.forEach(m => {
+            // Un modulo cuenta como completado si tiene quiz aprobado O todas las lecciones vistas (si no tiene quiz)
+            // Para simplificar aqui, usamos la logica de lecciones completadas O quiz aprobado
+            // Pero como no tenemos info facil de si TIENE quiz o no aqui (solo quizPassed), 
+            // asumiremos completado = 100% lecciones + (quizPassed si existe quiz)
+            // Mas simple: Basarnos en status logica del frontend.
+            
+            // Si tiene quizPassed = true, esta completado.
+            // Si el % de lecciones es 100 y quizPassed es null (no intento) o true, podria estar completado.
+            
+            // Vamos a definir completado como:
+            const isCompleted = (m.quizPassed === true) || (parseFloat(m.completionPercentage) >= 100 && (m.quizPassed === null || m.quizPassed === true));
+            if (isCompleted) completedMods++;
+            
+            totalProg += parseFloat(m.completionPercentage) || 0;
+        });
+
+        u.totalModules = totalMods;
+        u.completedModules = completedMods;
+        u.overallProgress = totalMods > 0 ? Math.round(totalProg / totalMods) : 0;
+    });
 
     // Agregar estadísticas generales
     const stats = {
