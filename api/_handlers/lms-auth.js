@@ -4,14 +4,15 @@
 // ===================================================================
 
 module.exports = async (req, res, deps) => {
-  const { query, verifyPassword, createSession, updateLastLogin, validateSession, parseCookies, setCookie, deleteCookie, isValidEmail, validateRequired, parseBody } = deps;
+  const { query, verifyPassword, createSession, updateLastLogin, validateSession, getUserByEmail, parseCookies, setCookie, deleteCookie, isValidEmail, validateRequired, parseBody } = deps;
 
   try {
-    // Extraer la acción de la URL: auth/login -> login
-    const urlParts = req.url.split('?')[0].split('/');
-    const action = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
+    // Usar el path limpio que viene de api/lms.js
+    // Ejemplo: "auth/login" -> "login"
+    const path = req.lmsPath || '';
+    const action = path.replace('auth/', '');
 
-    console.log('[Auth Handler] Action:', action, 'URL:', req.url);
+    console.log('[Auth Handler] Path:', path, 'Action:', action, 'Method:', req.method);
 
     // Router interno por acción
     switch(action) {
@@ -22,11 +23,11 @@ module.exports = async (req, res, deps) => {
       case 'me':
         return await handleMe(req, res, deps);
       default:
-        return res.status(404).json({ error: 'Acción de auth no encontrada', action });
+        return res.status(404).json({ error: 'Acción de auth no encontrada', action, path });
     }
   } catch (error) {
     console.error('[Auth Handler] Error:', error);
-    return res.status(500).json({ error: 'Error en autenticación', message: error.message });
+    return res.status(500).json({ error: 'Error en autenticación', message: error.message, stack: error.stack });
   }
 };
 

@@ -1,7 +1,6 @@
 // ===================================================================
 // /api/lms
 // Endpoint único consolidado para TODO el LMS
-// Usa req.url para rutear internamente
 // ===================================================================
 
 module.exports = async (req, res) => {
@@ -43,11 +42,13 @@ module.exports = async (req, res) => {
     }
 
     // Extraer ruta desde query params (viene del rewrite)
-    // El rewrite convierte /api/lms/auth/login → /api/lms?path=auth/login
     const urlParts = new URL(req.url, `http://${req.headers.host}`);
     let path = urlParts.searchParams.get('path') || '';
     
-    console.log('[LMS] Full URL:', req.url, 'Path extracted:', path, 'Method:', req.method);
+    console.log('[LMS] Full URL:', req.url, 'Path:', path, 'Method:', req.method);
+
+    // Pasar el path limpio a los handlers via req
+    req.lmsPath = path;
 
     // Rutear según la path
     if (path.startsWith('auth/')) {
