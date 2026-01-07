@@ -10,10 +10,19 @@ const { validateSession, hashPassword, generateTempPassword } = require('../../l
 
 module.exports = async (req, res) => {
   // CORS headers - permitir ambos dominios
-  const allowedOrigins = ['https://www.bravegirlsagency.com', 'https://bravegirlsagency.com'];
+  const allowedOrigins = [
+    'https://www.bravegirlsagency.com', 
+    'https://bravegirlsagency.com',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ];
   const origin = req.headers.origin;
+  
+  // Siempre enviar headers CORS
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
   }
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -22,6 +31,9 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
+  
+  // Parsear cookies
+  req.cookies = parseCookies(req);
 
   try {
     // Validar sesión
