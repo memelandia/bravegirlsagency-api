@@ -51,7 +51,7 @@ module.exports = async (req, res, deps) => {
 // USERS - CRUD de usuarios (solo admin)
 // ===================================================================
 async function handleUsers(req, res, user, deps) {
-  const { query, hashPassword, generateTempPassword, isValidEmail, isValidUUID, validateRequired } = deps;
+  const { query, hashPassword, generateTempPassword, isValidEmail, isValidUUID, validateRequired, successResponse, errorResponse } = deps;
 
   if (user.role !== 'admin') {
     return res.status(403).json({ error: 'Solo administradores pueden gestionar usuarios' });
@@ -676,7 +676,7 @@ async function handleQuestions(req, res, user, deps) {
 // PROGRESS - Ver progreso de usuarios (admin/supervisor)
 // ===================================================================
 async function handleProgress(req, res, user, deps) {
-  const { query, isValidUUID } = deps;
+  const { query, isValidUUID, successResponse, errorResponse } = deps;
 
   if (!['admin', 'supervisor'].includes(user.role)) {
     return res.status(403).json({ error: 'Acceso denegado' });
