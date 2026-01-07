@@ -86,7 +86,7 @@ async function handleUsers(req, res, user, deps) {
     
     const validation = validateRequired(req.body, ['name', 'email', 'role']);
     if (!validation.valid) {
-      return errorResponse(res, 400, 'Campos requeridos faltantes', { missing: validation.missing });
+      return res.status(400).json({ error: 'Campos requeridos faltantes', missing: validation.missing });
     }
     
     if (!isValidEmail(email)) {
@@ -254,7 +254,7 @@ async function handleModules(req, res, user, deps) {
     
     const validation = validateRequired(req.body, ['stageId', 'title', 'orderIndex']);
     if (!validation.valid) {
-      return errorResponse(res, 400, 'Campos requeridos faltantes', { missing: validation.missing });
+      return res.status(400).json({ error: 'Campos requeridos faltantes', missing: validation.missing });
     }
     
     const result = await query(`
@@ -383,7 +383,7 @@ async function handleLessons(req, res, user, deps) {
     
     const validation = validateRequired(req.body, ['moduleId', 'title', 'type', 'orderIndex']);
     if (!validation.valid) {
-      return errorResponse(res, 400, 'Campos requeridos faltantes', { missing: validation.missing });
+      return res.status(400).json({ error: 'Campos requeridos faltantes', missing: validation.missing });
     }
     
     if (!['video', 'text'].includes(type)) {
@@ -541,7 +541,7 @@ async function handleQuestions(req, res, user, deps) {
     
     const validation = validateRequired(req.body, ['quizId', 'prompt', 'options', 'correctOptionIndex', 'orderIndex']);
     if (!validation.valid) {
-      return errorResponse(res, 400, 'Campos requeridos faltantes', { missing: validation.missing });
+      return res.status(400).json({ error: 'Campos requeridos faltantes', missing: validation.missing });
     }
     
     if (!Array.isArray(options) || options.length < 2) {
@@ -784,7 +784,7 @@ async function handleStages(req, res, user, deps) {
     
     const validation = validateRequired(req.body, ['name', 'orderIndex']);
     if (!validation.valid) {
-      return errorResponse(res, 400, 'Campos requeridos faltantes', { missing: validation.missing });
+      return res.status(400).json({ error: 'Campos requeridos faltantes', missing: validation.missing });
     }
     
     const result = await query(`
@@ -910,7 +910,7 @@ async function handleQuizzes(req, res, user, deps) {
     
     const validation = validateRequired(req.body, ['moduleId']);
     if (!validation.valid) {
-      return errorResponse(res, 400, 'Campos requeridos faltantes', { missing: validation.missing });
+      return res.status(400).json({ error: 'Campos requeridos faltantes', missing: validation.missing });
     }
     
     // Verificar que no exista quiz para este módulo
@@ -1002,6 +1002,7 @@ async function handleQuizzes(req, res, user, deps) {
 
   return res.status(405).json({ error: 'Método no permitido' });
 }
+
 
 
 

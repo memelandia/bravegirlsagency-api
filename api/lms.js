@@ -45,7 +45,15 @@ module.exports = async (req, res) => {
     const urlParts = new URL(req.url, `http://${req.headers.host}`);
     let path = urlParts.searchParams.get('path') || '';
     
-    console.log('[LMS] Full URL:', req.url, 'Path:', path, 'Method:', req.method);
+    // Parsear query params manualmente (Vercel no tiene req.query)
+    req.query = {};
+    for (const [key, value] of urlParts.searchParams.entries()) {
+      if (key !== 'path') {
+        req.query[key] = value;
+      }
+    }
+    
+    console.log('[LMS] Full URL:', req.url, 'Path:', path, 'Query:', req.query, 'Method:', req.method);
 
     // Pasar el path limpio a los handlers via req
     req.lmsPath = path;
