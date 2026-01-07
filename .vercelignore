@@ -8,6 +8,10 @@ auth.js
 robots.txt
 sitemap.xml
 
+# Librerías internas (NO son funciones serverless)
+api/lms/lib/
+api/*/lib/
+
 # Archivos de desarrollo
 node_modules/
 .env
