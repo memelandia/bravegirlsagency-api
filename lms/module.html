@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Módulo - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.10">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.12">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="course-view">
@@ -132,7 +132,7 @@
         if (currentLessonIndex === -1) {
             if (firstIncomplete !== -1) {
                 openLesson(firstIncomplete);
-            } else if (!moduleData.quiz.passed && !moduleData.isLocked) {
+            } else if (moduleData.quiz && !moduleData.quiz.passed && !moduleData.isLocked) {
                 // If all lessons completed, go to quiz
                 openQuizView();
             } else {
@@ -187,13 +187,13 @@
       if (moduleData.quiz && moduleData.quiz.hasQuestions) {
         const li = document.createElement('li');
         const isActive = currentLessonIndex === 999;
-        const isLocked = !moduleData.allLessonsCompleted && !moduleData.quiz.passed;
+        const isLocked = !moduleData.allLessonsCompleted && !(moduleData.quiz && moduleData.quiz.passed);
         
-        li.className = `lesson-item ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''} ${moduleData.quiz.passed ? 'completed' : ''}`;
+        li.className = `lesson-item ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''} ${(moduleData.quiz && moduleData.quiz.passed) ? 'completed' : ''}`;
         
         li.innerHTML = `
            <div class="lesson-status-icon">
-             ${moduleData.quiz.passed ? '<i class="fas fa-check"></i>' : (isLocked ? '<i class="fas fa-lock"></i>' : (isActive ? '<i class="fas fa-play" style="font-size:8px"></i>' : ''))}
+             ${(moduleData.quiz && moduleData.quiz.passed) ? '<i class="fas fa-check"></i>' : (isLocked ? '<i class="fas fa-lock"></i>' : (isActive ? '<i class="fas fa-play" style="font-size:8px"></i>' : ''))}
            </div>
            <div class="lesson-meta">
              <div class="lesson-title-text">Evaluación Final</div>
@@ -319,15 +319,15 @@
                <div style="margin-top: 30px;">
                ${moduleData.canTakeQuiz 
                  ? `<button class="btn btn-primary" style="font-size:1.1rem; padding: 12px 30px;" onclick="startQuiz()">Comenzar Examen Ahora</button>`
-                 : quiz.passed 
+                 : (quiz && quiz.passed)
                    ? `<div class="alert alert-success" style="display:inline-block;">✅ ¡Aprobaste con ${quiz.bestScore}%!</div>`
-                   : quiz.cooldownRemaining > 0
+                   : (quiz && quiz.cooldownRemaining > 0)
                      ? `<div class="alert alert-info" style="display:inline-block;">⏰ Debes esperar ${quiz.cooldownRemaining} minutos para reintentar.</div>`
-                     : quiz.attemptsRemaining === 0
+                     : (quiz && quiz.attemptsRemaining === 0)
                        ? `<div class="alert alert-error" style="display:inline-block;">❌ Sin intentos disponibles. Has usado todos tus ${quiz.maxAttempts} intentos.</div>`
                        : !moduleData.allLessonsCompleted
                          ? `<div class="alert alert-warning" style="display:inline-block;">⚠️ Completa todas las lecciones antes de tomar el examen (${moduleData.lessons.filter(l => l.completed).length}/${moduleData.lessons.length} completadas).</div>`
-                         : quiz.totalQuestions === 0
+                         : (quiz && quiz.totalQuestions === 0)
                            ? `<div class="alert alert-error" style="display:inline-block;">
                                 <strong>⚠️ Error de Configuración</strong><br>
                                 Este módulo no tiene preguntas configuradas para el examen.<br>
@@ -337,7 +337,7 @@
                }
                
                <!-- Debug Panel (solo visible cuando hay problemas) -->
-               ${!moduleData.canTakeQuiz && !quiz.passed && currentUser.role === 'admin' ? `
+               ${!moduleData.canTakeQuiz && !(quiz && quiz.passed) && currentUser.role === 'admin' ? `
                  <details style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6; text-align: left;">
                    <summary style="cursor: pointer; font-weight: bold; color: #495057;">🔧 Panel de Depuración (Solo Admin)</summary>
                    <div style="margin-top: 10px; font-size: 0.9rem; font-family: monospace;">
@@ -349,32 +349,34 @@
                        (${moduleData.lessons.filter(l => l.completed).length}/${moduleData.lessons.length})
                      </div>
                      <div style="margin: 5px 0;">
-                       <strong>quiz.passed:</strong> <span style="color: ${quiz.passed ? 'green' : 'red'}">${quiz.passed}</span>
+                       <strong>quiz.passed:</strong> <span style="color: ${(quiz && quiz.passed) ? 'green' : 'red'}">${quiz ? quiz.passed : 'N/A'}</span>
                      </div>
                      <div style="margin: 5px 0;">
-                       <strong>quiz.userAttempts:</strong> ${quiz.userAttempts} / ${quiz.maxAttempts}
+                       <strong>quiz.userAttempts:</strong> ${quiz ? quiz.userAttempts : 'N/A'} / ${quiz ? quiz.maxAttempts : 'N/A'}
                      </div>
                      <div style="margin: 5px 0;">
-                       <strong>quiz.attemptsRemaining:</strong> <span style="color: ${quiz.attemptsRemaining > 0 ? 'green' : 'red'}">${quiz.attemptsRemaining}</span>
+                       <strong>quiz.attemptsRemaining:</strong> <span style="color: ${(quiz && quiz.attemptsRemaining > 0) ? 'green' : 'red'}">${quiz ? quiz.attemptsRemaining : 'N/A'}</span>
                      </div>
                      <div style="margin: 5px 0;">
-                       <strong>quiz.cooldownRemaining:</strong> <span style="color: ${quiz.cooldownRemaining === 0 ? 'green' : 'orange'}">${quiz.cooldownRemaining} minutos</span>
+                       <strong>quiz.cooldownRemaining:</strong> <span style="color: ${(quiz && quiz.cooldownRemaining === 0) ? 'green' : 'orange'}">${quiz ? quiz.cooldownRemaining : 'N/A'} minutos</span>
                      </div>
                      <div style="margin: 5px 0;">
-                       <strong>quiz.totalQuestions:</strong> <span style="color: ${quiz.totalQuestions > 0 ? 'green' : 'red'}">${quiz.totalQuestions}</span>
+                       <strong>quiz.totalQuestions:</strong> <span style="color: ${(quiz && quiz.totalQuestions > 0) ? 'green' : 'red'}">${quiz ? quiz.totalQuestions : 'N/A'}</span>
                      </div>
                      <hr style="margin: 10px 0;">
                      <div style="color: #856404; background: #fff3cd; padding: 10px; border-radius: 4px; margin-top: 10px;">
                        <strong>Diagnóstico:</strong><br>
-                       ${!moduleData.allLessonsCompleted 
-                         ? '❌ Faltan lecciones por completar' 
-                         : quiz.totalQuestions === 0 
-                           ? '❌ No hay preguntas configuradas en el quiz' 
-                           : quiz.attemptsRemaining === 0 
-                             ? '❌ No quedan intentos disponibles'
-                             : quiz.cooldownRemaining > 0
-                               ? '⏰ En período de espera (cooldown)'
-                               : '✅ Todas las condiciones cumplen - Error desconocido'
+                       ${!quiz 
+                         ? '⚠️ Este módulo no tiene un quiz configurado'
+                         : !moduleData.allLessonsCompleted 
+                           ? '❌ Faltan lecciones por completar' 
+                           : quiz.totalQuestions === 0 
+                             ? '❌ No hay preguntas configuradas en el quiz' 
+                             : quiz.attemptsRemaining === 0 
+                               ? '❌ No quedan intentos disponibles'
+                               : quiz.cooldownRemaining > 0
+                                 ? '⏰ En período de espera (cooldown)'
+                                 : '✅ Todas las condiciones cumplen - Error desconocido'
                        }
                      </div>
                    </div>
