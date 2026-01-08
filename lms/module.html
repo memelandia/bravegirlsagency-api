@@ -1,29 +1,73 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Módulo - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.10">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
+<body class="course-view">
   <header class="lms-header">
-    <div class="container">
-      <div class="lms-logo">🎓 BraveGirls LMS</div>
-      <nav class="lms-nav">
-        <a href="/lms/campus.html">← Volver al Campus</a>
-        <div class="user-info">
-          <span id="userName"></span>
-          <button class="btn btn-sm btn-outline" id="logoutBtn">Salir</button>
-        </div>
-      </nav>
+    <div class="container-fluid lms-nav" style="padding: 0 20px;">
+      <div class="flex" style="align-items: center; gap: 15px;">
+        <a href="/lms/campus.html" class="btn btn-sm btn-outline"><i class="fas fa-arrow-left"></i> Campus</a>
+        <div class="lms-logo">🎓 BraveGirls LMS</div>
+      </div>
+      <div class="user-info">
+        <span id="userName">Cargando...</span>
+        <button class="btn btn-sm btn-outline" id="logoutBtn">Salir</button>
+      </div>
     </div>
   </header>
 
-  <div class="container">
-    <div id="alert" class="hidden"></div>
-    <div id="moduleContent">
-      <div class="spinner"></div>
+  <div class="container-fluid" style="padding: 0;">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" style="padding: 15px 20px;">
+      <div class="breadcrumb-item">
+        <i class="fas fa-home"></i>
+        <a href="/lms/campus.html">Campus</a>
+      </div>
+      <span class="breadcrumb-separator">›</span>
+      <div class="breadcrumb-item">
+        <span class="breadcrumb-current" id="breadcrumbStage">Etapa</span>
+      </div>
+      <span class="breadcrumb-separator">›</span>
+      <div class="breadcrumb-item">
+        <span class="breadcrumb-current" id="breadcrumbModule">Módulo</span>
+      </div>
+    </nav>
+
+    <div id="alert" class="hidden" style="margin: 20px;"></div>
+    
+    <div id="loadingSpinner" class="spinner"></div>
+
+    <div id="moduleContainer" class="course-layout hidden">
+      <!-- Sidebar -->
+      <aside class="course-sidebar">
+        <div class="sidebar-header">
+          <div class="course-title-small" id="stageName">Etapa</div>
+          <div class="module-title-sidebar" id="moduleName">Nombre del Módulo</div>
+        </div>
+        <ul class="lesson-list" id="lessonList">
+          <!-- Lessons + Quiz inserted here -->
+        </ul>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="course-content">
+        <div class="lesson-content-card" id="lessonContent">
+           <!-- Lesson content or Quiz info goes here -->
+           <div class="empty-state">
+             <span class="empty-state-icon">📚</span>
+             <h3>Selecciona una lección para comenzar</h3>
+             <p>Usa el menú lateral para navegar por el contenido del módulo</p>
+           </div>
+        </div>
+      </main>
     </div>
   </div>
 
@@ -33,15 +77,19 @@
     
     const urlParams = new URLSearchParams(window.location.search);
     const moduleId = urlParams.get('id');
+    
     let currentUser = null;
     let moduleData = null;
+    let currentLessonIndex = -1; // -1: none, 0-N: lesson, 999: quiz
 
+    // Utility
     function showAlert(message, type = 'error') {
       const alertDiv = document.getElementById('alert');
       alertDiv.className = `alert alert-${type}`;
       alertDiv.textContent = message;
       alertDiv.classList.remove('hidden');
       setTimeout(() => alertDiv.classList.add('hidden'), 5000);
+      window.scrollTo(0, 0);
     }
 
     async function checkAuth() {
@@ -58,6 +106,9 @@
 
     async function loadModule() {
       try {
+        document.getElementById('loadingSpinner').classList.remove('hidden');
+        document.getElementById('moduleContainer').classList.add('hidden');
+
         const response = await fetch(`${API_BASE}/module/${moduleId}`, { credentials: 'include' });
         
         if (!response.ok) {
@@ -66,130 +117,279 @@
         }
         
         moduleData = await response.json();
-        renderModule();
+        
+        // Update Headers
+        document.getElementById('stageName').textContent = moduleData.module.stage.name;
+        document.getElementById('moduleName').textContent = moduleData.module.title;
+        document.getElementById('breadcrumbStage').textContent = moduleData.module.stage.name;
+        document.getElementById('breadcrumbModule').textContent = moduleData.module.title;
+        document.title = `${moduleData.module.title} - BraveGirls LMS`;
+
+        renderSidebar();
+        
+        // Identify first incomplete lesson or pick logic
+        const firstIncomplete = moduleData.lessons.findIndex(l => !l.completed);
+        if (currentLessonIndex === -1) {
+            if (firstIncomplete !== -1) {
+                openLesson(firstIncomplete);
+            } else if (!moduleData.quiz.passed && !moduleData.isLocked) {
+                // If all lessons completed, go to quiz
+                openQuizView();
+            } else {
+                // Default to first lesson if all done
+                openLesson(0);
+            }
+        } else {
+            // Refresh current view
+             if (currentLessonIndex === 999) openQuizView();
+             else openLesson(currentLessonIndex);
+        }
+
+        document.getElementById('loadingSpinner').classList.add('hidden');
+        document.getElementById('moduleContainer').classList.remove('hidden');
         
       } catch (error) {
         showAlert(error.message);
-        setTimeout(() => window.location.href = '/lms/campus.html', 2000);
+        setTimeout(() => window.location.href = '/lms/campus.html', 3000);
       }
     }
 
-    function renderModule() {
-      const container = document.getElementById('moduleContent');
-      container.innerHTML = '';
-      
-      // Header
-      const header = document.createElement('div');
-      header.className = 'card';
-      header.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: start;">
-          <div>
-            <div style="font-size: 12px; color: var(--text-light); margin-bottom: 5px;">
-              ${moduleData.module.stage.name}
+    function renderSidebar() {
+      const list = document.getElementById('lessonList');
+      list.innerHTML = '';
+
+      // Lessons
+      moduleData.lessons.forEach((lesson, index) => {
+        const li = document.createElement('li');
+        const isActive = index === currentLessonIndex;
+        li.className = `lesson-item ${isActive ? 'active' : ''} ${lesson.completed ? 'completed' : ''}`;
+        
+        // Icon logic
+        const icon = lesson.type === 'video' ? '<i class="fas fa-play"></i>' : '<i class="fas fa-file-alt"></i>';
+        
+        li.innerHTML = `
+          <div class="lesson-status-icon">
+            ${lesson.completed ? '<i class="fas fa-check"></i>' : (isActive ? '<i class="fas fa-play" style="font-size: 8px;"></i>' : '')}
+          </div>
+          <div class="lesson-meta">
+            <div class="lesson-title-text">${lesson.title}</div>
+            <div class="lesson-type-label">
+              ${icon} ${lesson.type === 'video' ? 'Video' : 'Lectura'}
             </div>
-            <h1 style="margin-bottom: 10px;">${moduleData.module.title}</h1>
-            <p style="color: var(--text-light);">${moduleData.module.description || ''}</p>
+          </div>
+        `;
+        
+        li.addEventListener('click', () => openLesson(index));
+        list.appendChild(li);
+      });
+
+      // Quiz Item
+      if (moduleData.quiz && moduleData.quiz.hasQuestions) {
+        const li = document.createElement('li');
+        const isActive = currentLessonIndex === 999;
+        const isLocked = !moduleData.allLessonsCompleted && !moduleData.quiz.passed;
+        
+        li.className = `lesson-item ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''} ${moduleData.quiz.passed ? 'completed' : ''}`;
+        
+        li.innerHTML = `
+           <div class="lesson-status-icon">
+             ${moduleData.quiz.passed ? '<i class="fas fa-check"></i>' : (isLocked ? '<i class="fas fa-lock"></i>' : (isActive ? '<i class="fas fa-play" style="font-size:8px"></i>' : ''))}
+           </div>
+           <div class="lesson-meta">
+             <div class="lesson-title-text">Evaluación Final</div>
+             <div class="lesson-type-label"><i class="fas fa-clipboard-check"></i> ${moduleData.quiz.totalQuestions} Preguntas</div>
+           </div>
+        `;
+        
+        if (!isLocked) {
+           li.addEventListener('click', () => openQuizView());
+        }
+        list.appendChild(li);
+      }
+    }
+
+    function openLesson(index) {
+      if (index < 0 || index >= moduleData.lessons.length) return;
+      currentLessonIndex = index;
+      renderSidebar();
+      
+      const lesson = moduleData.lessons[index];
+      const container = document.getElementById('lessonContent');
+      
+      // Determine next step
+      const isLastLesson = index === moduleData.lessons.length - 1;
+      const nextBtnText = isLastLesson ? 'Ir a la Evaluación →' : 'Siguiente Lección →';
+      
+      let contentHtml = `
+        <div class="content-wrapper">
+          <div class="lesson-card">
+            <div class="lesson-card-header">
+               <h1 class="lesson-main-title">${lesson.title}</h1>
+            </div>
+      `;
+
+      // Video content
+      if (lesson.type === 'video' && lesson.content.loomUrl) {
+           contentHtml += `
+             <div class="video-container">
+               <iframe src="${lesson.content.loomUrl}" allowfullscreen></iframe>
+             </div>
+           `;
+      }
+
+      // Text content
+      if (lesson.content.textContent) {
+        const formattedText = lesson.content.textContent.replace(/\n/g, '<br>');
+        contentHtml += `<div class="lesson-body text-content">${formattedText}</div>`;
+      } else {
+        // If content is only video but uses space
+        contentHtml += `<div class="lesson-body"></div>`;
+      }
+
+      // Footer / Action Bar
+      contentHtml += `
+            <div class="lesson-footer">
+               <button class="btn btn-outline" onclick="prevLesson()" ${index === 0 ? 'disabled' : ''}>
+                 <i class="fas fa-arrow-left"></i> Anterior
+               </button>
+               
+               <div style="display:flex; gap: 10px;">
+                  ${!lesson.completed ? `
+                     <button class="btn btn-success" onclick="completeLesson('${lesson.id}', ${index})">
+                       Marcar como completo <i class="fas fa-check"></i>
+                     </button>
+                  ` : `
+                     <button class="btn btn-outline" disabled>
+                       <i class="fas fa-check-double"></i> Completado
+                     </button>
+                  `}
+                  
+                  <button class="btn btn-primary" onclick="nextLesson()">
+                    ${nextBtnText}
+                  </button>
+               </div>
+            </div>
           </div>
         </div>
       `;
-      container.appendChild(header);
       
-      // Lessons
-      const lessonsCard = document.createElement('div');
-      lessonsCard.className = 'card';
-      lessonsCard.innerHTML = '<h2 style="margin-bottom: 20px;">📚 Lecciones</h2>';
+      container.innerHTML = contentHtml;
       
-      const lessonsList = document.createElement('ul');
-      lessonsList.className = 'lesson-list';
+      // Auto-scroll to top
+      document.querySelector('.course-content').scrollTo(0, 0);
+      window.scrollTo(0,0);
+    }
+
+
+    function openQuizView() {
+      currentLessonIndex = 999;
+      renderSidebar();
       
-      moduleData.lessons.forEach(lesson => {
-        const lessonItem = document.createElement('li');
-        lessonItem.className = 'lesson-item' + (lesson.completed ? ' completed' : '');
-        
-        lessonItem.innerHTML = `
-          <div class="lesson-info">
-            <span class="lesson-icon">${lesson.type === 'video' ? '🎥' : '📄'}</span>
-            <div>
-              <div class="lesson-title">${lesson.title}</div>
-              <div class="lesson-type">${lesson.type === 'video' ? 'Video' : 'Texto'}</div>
+      const container = document.getElementById('lessonContent');
+      const quiz = moduleData.quiz;
+      
+      container.innerHTML = `
+        <div class="content-wrapper">
+          <div class="lesson-card">
+            <div class="lesson-card-header">
+               <h1 class="lesson-main-title">Evaluación Final: ${moduleData.module.title}</h1>
+            </div>
+            
+            <div class="lesson-body" style="text-align: center;">
+               <div style="margin: 20px 0;">
+                 <i class="fas fa-clipboard-check" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px;"></i>
+                 <h2 style="margin-top:0;">Resumen de la Evaluación</h2>
+               </div>
+               
+               <div class="grid-cards" style="margin: 30px auto; max-width: 600px; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                  <div style="padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border);">
+                     <div style="font-weight:bold; font-size: 1.5rem; color: var(--primary);">${quiz.totalQuestions}</div>
+                     <div style="font-size: 0.9rem; color: var(--text-secondary);">Preguntas</div>
+                  </div>
+                  <div style="padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border);">
+                     <div style="font-weight:bold; font-size: 1.5rem; color: var(--primary);">${quiz.passingScore}%</div>
+                     <div style="font-size: 0.9rem; color: var(--text-secondary);">Para aprobar</div>
+                  </div>
+                  <div style="padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border);">
+                     <div style="font-weight:bold; font-size: 1.5rem; color: var(--primary);">${quiz.attemptsRemaining}</div>
+                     <div style="font-size: 0.9rem; color: var(--text-secondary);">Intentos restantes</div>
+                  </div>
+               </div>
+ 
+               <div style="margin-top: 30px;">
+               ${moduleData.canTakeQuiz 
+                 ? `<button class="btn btn-primary" style="font-size:1.1rem; padding: 12px 30px;" onclick="startQuiz()">Comenzar Examen Ahora</button>`
+                 : quiz.passed 
+                   ? `<div class="alert alert-success" style="display:inline-block;">✅ ¡Aprobaste con ${quiz.bestScore}%!</div>`
+                   : quiz.cooldownRemaining > 0
+                     ? `<div class="alert alert-info" style="display:inline-block;">⏰ Debes esperar ${quiz.cooldownRemaining} minutos para reintentar.</div>`
+                     : quiz.attemptsRemaining === 0
+                       ? `<div class="alert alert-error" style="display:inline-block;">❌ Sin intentos disponibles. Has usado todos tus ${quiz.maxAttempts} intentos.</div>`
+                       : !moduleData.allLessonsCompleted
+                         ? `<div class="alert alert-warning" style="display:inline-block;">⚠️ Completa todas las lecciones antes de tomar el examen (${moduleData.lessons.filter(l => l.completed).length}/${moduleData.lessons.length} completadas).</div>`
+                         : quiz.totalQuestions === 0
+                           ? `<div class="alert alert-error" style="display:inline-block;">
+                                <strong>⚠️ Error de Configuración</strong><br>
+                                Este módulo no tiene preguntas configuradas para el examen.<br>
+                                <small>El administrador debe agregar preguntas desde el panel de administración.</small>
+                              </div>`
+                           : `<div class="alert alert-info" style="display:inline-block;">📝 Evaluación disponible próximamente.</div>`
+               }
+               
+               <!-- Debug Panel (solo visible cuando hay problemas) -->
+               ${!moduleData.canTakeQuiz && !quiz.passed && currentUser.role === 'admin' ? `
+                 <details style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6; text-align: left;">
+                   <summary style="cursor: pointer; font-weight: bold; color: #495057;">🔧 Panel de Depuración (Solo Admin)</summary>
+                   <div style="margin-top: 10px; font-size: 0.9rem; font-family: monospace;">
+                     <div style="margin: 5px 0;">
+                       <strong>canTakeQuiz:</strong> <span style="color: ${moduleData.canTakeQuiz ? 'green' : 'red'}">${moduleData.canTakeQuiz}</span>
+                     </div>
+                     <div style="margin: 5px 0;">
+                       <strong>allLessonsCompleted:</strong> <span style="color: ${moduleData.allLessonsCompleted ? 'green' : 'red'}">${moduleData.allLessonsCompleted}</span>
+                       (${moduleData.lessons.filter(l => l.completed).length}/${moduleData.lessons.length})
+                     </div>
+                     <div style="margin: 5px 0;">
+                       <strong>quiz.passed:</strong> <span style="color: ${quiz.passed ? 'green' : 'red'}">${quiz.passed}</span>
+                     </div>
+                     <div style="margin: 5px 0;">
+                       <strong>quiz.userAttempts:</strong> ${quiz.userAttempts} / ${quiz.maxAttempts}
+                     </div>
+                     <div style="margin: 5px 0;">
+                       <strong>quiz.attemptsRemaining:</strong> <span style="color: ${quiz.attemptsRemaining > 0 ? 'green' : 'red'}">${quiz.attemptsRemaining}</span>
+                     </div>
+                     <div style="margin: 5px 0;">
+                       <strong>quiz.cooldownRemaining:</strong> <span style="color: ${quiz.cooldownRemaining === 0 ? 'green' : 'orange'}">${quiz.cooldownRemaining} minutos</span>
+                     </div>
+                     <div style="margin: 5px 0;">
+                       <strong>quiz.totalQuestions:</strong> <span style="color: ${quiz.totalQuestions > 0 ? 'green' : 'red'}">${quiz.totalQuestions}</span>
+                     </div>
+                     <hr style="margin: 10px 0;">
+                     <div style="color: #856404; background: #fff3cd; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                       <strong>Diagnóstico:</strong><br>
+                       ${!moduleData.allLessonsCompleted 
+                         ? '❌ Faltan lecciones por completar' 
+                         : quiz.totalQuestions === 0 
+                           ? '❌ No hay preguntas configuradas en el quiz' 
+                           : quiz.attemptsRemaining === 0 
+                             ? '❌ No quedan intentos disponibles'
+                             : quiz.cooldownRemaining > 0
+                               ? '⏰ En período de espera (cooldown)'
+                               : '✅ Todas las condiciones cumplen - Error desconocido'
+                       }
+                     </div>
+                   </div>
+                 </details>
+               ` : ''}
+               </div>
             </div>
           </div>
-          <div>
-            ${lesson.completed ? '<span class="badge badge-success">✓ Completado</span>' : '<span class="badge badge-info">Pendiente</span>'}
-          </div>
-        `;
-        
-        lessonItem.addEventListener('click', () => openLesson(lesson));
-        lessonsList.appendChild(lessonItem);
-      });
-      
-      lessonsCard.appendChild(lessonsList);
-      container.appendChild(lessonsCard);
-      
-      // Quiz info
-      if (moduleData.quiz && moduleData.quiz.hasQuestions) {
-        const quizCard = document.createElement('div');
-        quizCard.className = 'card';
-        quizCard.innerHTML = `
-          <h2 style="margin-bottom: 15px;">✅ Evaluación Final</h2>
-          <p style="margin-bottom: 15px;">
-            ${moduleData.quiz.totalQuestions} preguntas | 
-            Puntaje mínimo: ${moduleData.quiz.passingScore}% | 
-            Intentos restantes: ${moduleData.quiz.attemptsRemaining}
-          </p>
-          ${moduleData.canTakeQuiz 
-            ? `<button class="btn btn-primary" onclick="goToQuiz()">Tomar Evaluación</button>`
-            : moduleData.quiz.passed 
-              ? `<div class="alert alert-success">✓ Evaluación aprobada con ${moduleData.quiz.bestScore}%</div>`
-              : !moduleData.allLessonsCompleted
-                ? `<div class="alert alert-warning">Completa todas las lecciones para desbloquear la evaluación</div>`
-                : moduleData.quiz.cooldownRemaining > 0
-                  ? `<div class="alert alert-info">Debes esperar ${moduleData.quiz.cooldownRemaining} minutos para intentar de nuevo</div>`
-                  : `<div class="alert alert-error">Has alcanzado el máximo de intentos</div>`
-          }
-        `;
-        container.appendChild(quizCard);
-      }
-    }
-
-    function openLesson(lesson) {
-      const container = document.getElementById('moduleContent');
-      container.innerHTML = '';
-      
-      const lessonCard = document.createElement('div');
-      lessonCard.className = 'card';
-      
-      lessonCard.innerHTML = `
-        <button class="btn btn-sm btn-outline mb-20" onclick="loadModule()">← Volver a lecciones</button>
-        <h1 style="margin-bottom: 20px;">${lesson.title}</h1>
+        </div>
       `;
-      
-      if (lesson.type === 'video') {
-        const videoContainer = document.createElement('div');
-        videoContainer.className = 'video-container';
-        videoContainer.innerHTML = `<iframe src="${lesson.content.loomUrl}" allowfullscreen></iframe>`;
-        lessonCard.appendChild(videoContainer);
-      } else {
-        const textContainer = document.createElement('div');
-        textContainer.className = 'text-content';
-        textContainer.innerHTML = lesson.content.textContent.replace(/\n/g, '<br>');
-        lessonCard.appendChild(textContainer);
-      }
-      
-      const completeBtn = document.createElement('button');
-      completeBtn.className = 'btn btn-success mt-20';
-      completeBtn.textContent = lesson.completed ? '✓ Marcado como completado' : 'Marcar como completado';
-      completeBtn.disabled = lesson.completed;
-      
-      if (!lesson.completed) {
-        completeBtn.addEventListener('click', () => completeLesson(lesson.id));
-      }
-      
-      lessonCard.appendChild(completeBtn);
-      container.appendChild(lessonCard);
     }
 
-    async function completeLesson(lessonId) {
+    async function completeLesson(lessonId, index) {
+      if (moduleData.lessons[index].completed) return; // Already done
+
       try {
         const response = await fetch(`${API_BASE}/lesson/complete`, {
           method: 'POST',
@@ -200,16 +400,66 @@
         
         if (!response.ok) throw new Error('Error al completar lección');
         
+        // Update local state locally to feel instant
+        moduleData.lessons[index].completed = true;
+        
+        // Update progress counter
+        if (moduleData.progress) {
+          moduleData.progress.completedLessons = moduleData.lessons.filter(l => l.completed).length;
+          moduleData.progress.percentage = Math.round(
+            (moduleData.progress.completedLessons / moduleData.progress.totalLessons) * 100
+          );
+        }
+        
+        // Check if all completed now?
+        const allDone = moduleData.lessons.every(l => l.completed);
+        moduleData.allLessonsCompleted = allDone;
+        
         showAlert('¡Lección completada!', 'success');
-        await loadModule();
+        
+        // Updates Sidebar visually
+        renderSidebar();
+        // Updates Main View buttons
+        openLesson(index); 
+        
+        // Use a small delay then advance? Or let user click?
+        // Let's prompt user to click "Next" by updating the buttons.
         
       } catch (error) {
-        showAlert(error.message);
+         showAlert(error.message);
       }
     }
 
-    function goToQuiz() {
-      window.location.href = `/lms/quiz.html?moduleId=${moduleId}`;
+    function prevLesson() {
+      if (currentLessonIndex === 999) {
+          openLesson(moduleData.lessons.length - 1);
+          return;
+      }
+      if (currentLessonIndex > 0) {
+        openLesson(currentLessonIndex - 1);
+      }
+    }
+
+    function nextLesson() {
+      if (currentLessonIndex === 999) return; // Already at quiz
+      
+      const isLastLesson = currentLessonIndex === moduleData.lessons.length - 1;
+      
+      if (isLastLesson) {
+         if (moduleData.allLessonsCompleted || (moduleData.lessons[currentLessonIndex].completed)) {
+             openQuizView();
+         } else {
+             showAlert('Debes completar esta lección antes de continuar', 'warning');
+         }
+      } else {
+         if (currentLessonIndex + 1 < moduleData.lessons.length) {
+           openLesson(currentLessonIndex + 1);
+         }
+      }
+    }
+
+    function startQuiz() {
+       window.location.href = `/lms/quiz.html?moduleId=${moduleId}`;
     }
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
@@ -218,8 +468,9 @@
     });
 
     (async () => {
-      if (!moduleId) {
-        window.location.href = '/lms/campus.html';
+      if (!moduleId || moduleId === 'null' || moduleId === 'undefined') {
+        showAlert('ID de módulo inválido', 'error');
+        setTimeout(() => window.location.href = '/lms/campus.html', 2000);
         return;
       }
       await checkAuth();
@@ -228,3 +479,5 @@
   </script>
 </body>
 </html>
+
+

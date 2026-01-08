@@ -1,10 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.10">
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <style>
     .admin-container { display: flex; gap: 20px; }
     .sidebar { width: 250px; background: white; padding: 20px; border-radius: 8px; height: fit-content; position: sticky; top: 20px; }
@@ -51,8 +52,11 @@
         <div id="users-tab" class="tab-content active">
           <div class="card">
             <div class="flex-between mb-20">
-              <h2>Gestión de Usuarios</h2>
-              <button class="btn btn-primary" onclick="showCreateUserModal()">+ Crear Usuario</button>
+              <h2>👥 Gestión de Usuarios</h2>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="searchUsers" class="form-input" placeholder="🔍 Buscar usuarios..." style="width: 250px;">
+                <button class="btn btn-primary" onclick="showCreateUserModal()">+ Crear Usuario</button>
+              </div>
             </div>
             <div id="usersTable">
               <div class="spinner"></div>
@@ -64,7 +68,7 @@
         <div id="stages-tab" class="tab-content">
           <div class="card">
             <div class="flex-between mb-20">
-              <h2>Gestión de Etapas</h2>
+              <h2>📑 Gestión de Etapas</h2>
               <button class="btn btn-primary" onclick="showStageModal()">+ Nueva Etapa</button>
             </div>
             <div id="stagesTable">
@@ -77,8 +81,11 @@
         <div id="modules-tab" class="tab-content">
           <div class="card">
             <div class="flex-between mb-20">
-              <h2>Gestión de Módulos</h2>
-              <button class="btn btn-primary" onclick="showModuleModal()">+ Nuevo Módulo</button>
+              <h2>📚 Gestión de Módulos</h2>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="searchModules" class="form-input" placeholder="🔍 Buscar módulos..." style="width: 250px;">
+                <button class="btn btn-primary" onclick="showModuleModal()">+ Nuevo Módulo</button>
+              </div>
             </div>
             <div id="modulesTable">
               <div class="spinner"></div>
@@ -90,8 +97,9 @@
         <div id="lessons-tab" class="tab-content">
           <div class="card">
             <div class="flex-between mb-20">
-              <h2>Gestión de Lecciones</h2>
+              <h2>📝 Gestión de Lecciones</h2>
               <div style="display: flex; gap: 10px;">
+                <input type="text" id="searchLessons" class="form-input" placeholder="🔍 Buscar lecciones..." style="width: 200px;">
                 <select id="modulesFilter" class="form-select" style="width: 250px;">
                   <option value="">Todos los módulos</option>
                 </select>
@@ -108,12 +116,13 @@
         <div id="questions-tab" class="tab-content">
           <div class="card">
             <div class="flex-between mb-20">
-              <h2>Gestión de Preguntas</h2>
+              <h2>❓ Gestión de Preguntas</h2>
               <div style="display: flex; gap: 10px;">
                 <select id="modulesFilterQuestions" class="form-select" style="width: 250px;">
                   <option value="">Selecciona un módulo</option>
                 </select>
                 <button id="btnAddQuestion" class="btn btn-primary" disabled onclick="showCreateQuestionModal()">+ Agregar Pregunta</button>
+                <button id="btnPreviewQuiz" class="btn btn-outline" disabled onclick="previewQuiz()">👁️ Preview Quiz</button>
               </div>
             </div>
             <div id="questionsTable">
@@ -125,7 +134,32 @@
         <!-- PROGRESS TAB -->
         <div id="progress-tab" class="tab-content">
           <div class="card">
-            <h2 class="mb-20">Progreso de Usuarios</h2>
+            <h2 class="mb-20">📊 Estadísticas y Progreso</h2>
+            
+            <!-- Stats Dashboard -->
+            <div class="stats-grid" style="margin-bottom: 30px;">
+              <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-value" id="statTotalUsers">0</div>
+                <div class="stat-label">Usuarios Activos</div>
+              </div>
+              <div class="stat-card success">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value" id="statCompletedModules">0</div>
+                <div class="stat-label">Módulos Completados</div>
+              </div>
+              <div class="stat-card info">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-value" id="statAvgProgress">0%</div>
+                <div class="stat-label">Progreso Promedio</div>
+              </div>
+              <div class="stat-card warning">
+                <div class="stat-icon">📝</div>
+                <div class="stat-value" id="statQuizzesTaken">0</div>
+                <div class="stat-label">Exámenes Realizados</div>
+              </div>
+            </div>
+
             <div id="progressTable">
               <div class="spinner"></div>
             </div>
@@ -308,6 +342,12 @@
     async function loadModules() {
       try {
         const response = await fetch(`${API_BASE}/admin/modules`, { credentials: 'include' });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || 'Error al cargar módulos');
+        }
+        
         const data = await response.json();
         
         const table = document.getElementById('modulesTable');
@@ -341,7 +381,7 @@
           </table>
         `;
       } catch (error) {
-        showAlert('Error al cargar módulos');
+        showAlert(error.message || 'Error al cargar módulos');
       }
     }
 
@@ -423,6 +463,12 @@
       try {
         const url = moduleId ? `${API_BASE}/admin/lessons?moduleId=${moduleId}` : `${API_BASE}/admin/lessons`;
         const response = await fetch(url, { credentials: 'include' });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || 'Error al cargar lecciones');
+        }
+        
         const data = await response.json();
         
         const table = document.getElementById('lessonsTable');
@@ -454,7 +500,7 @@
           </table>
         `;
       } catch (error) {
-        showAlert('Error al cargar lecciones');
+        showAlert(error.message || 'Error al cargar lecciones');
       }
     }
 
@@ -487,7 +533,7 @@
               <div class="form-group">
                 <label>Tipo</label>
                 <select id="lsType" class="form-select" onchange="toggleLessonContent()" required>
-                  <option value="video" ${isEdit && lesson.type === 'video' ? 'selected' : ''}>Video (Loom)</option>
+                  <option value="video" ${isEdit && lesson.type === 'video' ? '🎥 Video' : '📄 Texto'}>Video (Loom)</option>
                   <option value="text" ${isEdit && lesson.type === 'text' ? 'selected' : ''}>Texto</option>
                 </select>
               </div>
@@ -499,7 +545,7 @@
                 </div>
               </div>
               
-              <div id="textFields" class="${!isEdit || lesson.type === 'video' ? 'hidden' : ''}">
+              <div id="textFields" class="${!isEdit || lesson.type === 'video' ? '🎥 Video' : '📄 Texto'}">
                 <div class="form-group">
                   <label>Contenido de Texto</label>
                   <textarea id="lsText" class="form-input" rows="6">${isEdit && lesson.text_content ? lesson.text_content : ''}</textarea>
@@ -632,86 +678,9 @@
       }
     }
 
-    async function loadModules() {
-      try {
-        const response = await fetch(`${API_BASE}/admin/modules`, { credentials: 'include' });
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || errorData.error || 'Error al cargar módulos');
-        }
 
-        const data = await response.json();
-        
-        const table = document.getElementById('modulesTable');
-        table.innerHTML = `
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Orden</th>
-                <th>Título</th>
-                <th>Etapa</th>
-                <th>Lecciones</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${data.modules.map(module => `
-                <tr>
-                  <td>${module.order_index}</td>
-                  <td><strong>${module.title}</strong><br><small style="color: var(--text-light);">${module.description || ''}</small></td>
-                  <td>${module.stage_name}</td>
-                  <td>${module.lessons_count}</td>
-                  <td><span class="badge badge-${module.published ? 'success' : 'warning'}">${module.published ? 'Publicado' : 'Borrador'}</span></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        `;
-      } catch (error) {
-        showAlert(error.message);
-      }
-    }
 
-    async function loadLessons(moduleId = '') {
-      try {
-        const url = moduleId ? `${API_BASE}/admin/lessons?moduleId=${moduleId}` : `${API_BASE}/admin/lessons`;
-        const response = await fetch(url, { credentials: 'include' });
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || errorData.error || 'Error al cargar lecciones');
-        }
 
-        const data = await response.json();
-        
-        const table = document.getElementById('lessonsTable');
-        table.innerHTML = `
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Orden</th>
-                <th>Título</th>
-                <th>Módulo</th>
-                <th>Tipo</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${data.lessons.map(lesson => `
-                <tr>
-                  <td>${lesson.order_index}</td>
-                  <td>${lesson.title}</td>
-                  <td><small>${lesson.module_title}</small></td>
-                  <td><span class="badge badge-${lesson.type === 'video' ? 'info' : 'secondary'}">${lesson.type === 'video' ? '🎥 Video' : '📄 Texto'}</span></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        `;
-      } catch (error) {
-        showAlert(error.message);
-      }
-    }
 
     async function loadModulesForFilter(target = 'lessons') {
       try {
@@ -963,6 +932,19 @@
         const response = await fetch(`${API_BASE}/admin/progress`, { credentials: 'include' });
         const data = await response.json();
         
+        // Calculate and update stats
+        const totalUsers = data.users?.length || 0;
+        const completedModules = data.users?.reduce((sum, u) => sum + (u.completedModules || 0), 0) || 0;
+        const avgProgress = totalUsers > 0 
+          ? Math.round(data.users?.reduce((sum, u) => sum + (u.overallProgress || 0), 0) / totalUsers) 
+          : 0;
+        const quizzesTaken = data.users?.reduce((sum, u) => sum + (u.quizzesTaken || 0), 0) || 0;
+
+        document.getElementById('statTotalUsers').textContent = totalUsers;
+        document.getElementById('statCompletedModules').textContent = completedModules;
+        document.getElementById('statAvgProgress').textContent = `${avgProgress}%`;
+        document.getElementById('statQuizzesTaken').textContent = quizzesTaken;
+
         const table = document.getElementById('progressTable');
         table.innerHTML = `
           <table class="table">
@@ -1127,6 +1109,129 @@
       }
     }
 
+    // Quiz Preview Modal
+    async function previewQuiz(moduleId) {
+      try {
+        const response = await fetch(`${API_BASE}/admin/questions?moduleId=${moduleId}`, { credentials: 'include' });
+        const data = await response.json();
+        const questions = data.questions || [];
+
+        if (questions.length === 0) {
+          alert('Este módulo no tiene preguntas todavía.');
+          return;
+        }
+
+        const modalHtml = `
+          <div class="modal-overlay" id="previewModal" onclick="if(event.target === this) closePreviewModal()">
+            <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">👁️ Preview del Quiz</h2>
+                <button class="btn btn-outline" onclick="closePreviewModal()" style="padding: 8px 16px;">✕</button>
+              </div>
+              
+              <div class="quiz-preview-container">
+                ${questions.map((q, idx) => `
+                  <div class="quiz-question-preview" style="margin-bottom: 30px; padding: 20px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                      <div style="background: var(--primary); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0;">
+                        ${idx + 1}
+                      </div>
+                      <div style="flex: 1;">
+                        <p style="margin: 0; font-size: 16px; font-weight: 500; color: var(--text);">${q.prompt}</p>
+                      </div>
+                    </div>
+                    
+                    <div class="quiz-options" style="display: flex; flex-direction: column; gap: 10px; margin-left: 44px;">
+                      ${q.options.map((opt, i) => `
+                        <div class="quiz-option ${i === q.correctOptionIndex ? 'correct-preview' : ''}" 
+                             style="padding: 12px 16px; background: ${i === q.correctOptionIndex ? 'var(--success-light, #d1fae5)' : 'white'}; 
+                                    border: 2px solid ${i === q.correctOptionIndex ? 'var(--success)' : 'var(--border)'}; 
+                                    border-radius: 8px; cursor: default; transition: all 0.3s ease;">
+                          <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 20px; height: 20px; border: 2px solid ${i === q.correctOptionIndex ? 'var(--success)' : 'var(--border)'}; 
+                                        border-radius: 50%; flex-shrink: 0; background: ${i === q.correctOptionIndex ? 'var(--success)' : 'white'};
+                                        display: flex; align-items: center; justify-content: center;">
+                              ${i === q.correctOptionIndex ? '<i class="fas fa-check" style="color: white; font-size: 10px;"></i>' : ''}
+                            </div>
+                            <span style="color: var(--text); font-weight: ${i === q.correctOptionIndex ? '600' : '400'};">${opt}</span>
+                            ${i === q.correctOptionIndex ? '<span style="margin-left: auto; color: var(--success); font-size: 12px; font-weight: 600;">✓ CORRECTA</span>' : ''}
+                          </div>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+
+              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border); text-align: center;">
+                <p style="color: var(--text-light); margin-bottom: 16px;">
+                  <i class="fas fa-info-circle"></i> Este quiz tiene <strong>${questions.length}</strong> pregunta${questions.length !== 1 ? 's' : ''}
+                </p>
+                <button class="btn btn-primary" onclick="closePreviewModal()">Cerrar Preview</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+      } catch (error) {
+        showAlert('Error al cargar preview del quiz');
+      }
+    }
+
+    function closePreviewModal() {
+      const modal = document.getElementById('previewModal');
+      if (modal) modal.remove();
+    }
+
+    // Search functionality setup
+    function setupSearch() {
+      // Setup search for Users table
+      const searchUsers = document.getElementById('searchUsers');
+      if (searchUsers) {
+        searchUsers.addEventListener('input', (e) => {
+          const query = e.target.value.toLowerCase();
+          const table = document.getElementById('usersTable');
+          const rows = table.querySelectorAll('tbody tr');
+          
+          rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+          });
+        });
+      }
+
+      // Setup search for Modules table
+      const searchModules = document.getElementById('searchModules');
+      if (searchModules) {
+        searchModules.addEventListener('input', (e) => {
+          const query = e.target.value.toLowerCase();
+          const table = document.getElementById('modulesTable');
+          const rows = table.querySelectorAll('tbody tr');
+          
+          rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+          });
+        });
+      }
+
+      // Setup search for Lessons table
+      const searchLessons = document.getElementById('searchLessons');
+      if (searchLessons) {
+        searchLessons.addEventListener('input', (e) => {
+          const query = e.target.value.toLowerCase();
+          const table = document.getElementById('lessonsTable');
+          const rows = table.querySelectorAll('tbody tr');
+          
+          rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+          });
+        });
+      }
+    }
+
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
       window.location.href = '/lms/login.html';
@@ -1135,7 +1240,11 @@
     (async () => {
       await checkAuth();
       await loadUsers();
+      // Setup search después de cargar datos iniciales
+      setTimeout(setupSearch, 100);
     })();
   </script>
 </body>
 </html>
+
+

@@ -390,7 +390,10 @@ async function handleModule(req, res, user, deps) {
     const userPassed = row.user_passed || false;
     const userAttempts = parseInt(row.user_attempts) || 0;
     const maxAttempts = parseInt(row.max_attempts);
-    const cooldownMinutes = parseInt(row.cooldown_minutes);
+    
+    // HARD OVERRIDE: Deshabilitar cooldown completamente (siempre 0 minutos)
+    let dbCooldown = parseInt(row.cooldown_minutes);
+    const cooldownMinutes = 0; // Sin cooldown - pueden reintentar inmediatamente
     
     // Calcular cooldown
     let cooldownRemaining = 0;
@@ -683,17 +686,17 @@ async function handleQuiz(req, res, user, deps) {
 
   const quiz = quizResult.rows[0];
 
-  // Verificar cooldown
-  if (quiz.last_attempt && quiz.cooldown_minutes > 0) {
-    const lastAttemptTime = new Date(quiz.last_attempt).getTime();
-    const cooldownMs = quiz.cooldown_minutes * 60 * 1000;
-    const elapsedMs = Date.now() - lastAttemptTime;
-    
-    if (elapsedMs < cooldownMs) {
-      const minutesRemaining = Math.ceil((cooldownMs - elapsedMs) / 60000);
-      return errorResponse(res, 429, `Debes esperar ${minutesRemaining} minutos antes de intentar de nuevo.`);
-    }
-  }
+  // COOLDOWN DESHABILITADO - Permitir reintentos inmediatos
+  // if (quiz.last_attempt && quiz.cooldown_minutes > 0) {
+  //   const lastAttemptTime = new Date(quiz.last_attempt).getTime();
+  //   const cooldownMs = quiz.cooldown_minutes * 60 * 1000;
+  //   const elapsedMs = Date.now() - lastAttemptTime;
+  //   
+  //   if (elapsedMs < cooldownMs) {
+  //     const minutesRemaining = Math.ceil((cooldownMs - elapsedMs) / 60000);
+  //     return errorResponse(res, 429, `Debes esperar ${minutesRemaining} minutos antes de intentar de nuevo.`);
+  //   }
+  // }
 
   // Verificar intentos máximos
   if (quiz.user_attempts >= quiz.max_attempts && user.role === 'chatter') {

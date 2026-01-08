@@ -1,10 +1,14 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Campus - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.10">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
   <header class="lms-header">
@@ -20,14 +24,44 @@
   </header>
 
   <div class="container">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+      <div class="breadcrumb-item">
+        <i class="fas fa-home"></i>
+        <span class="breadcrumb-current">Campus</span>
+      </div>
+    </nav>
+
     <div id="alert" class="hidden"></div>
 
-    <div class="card">
-      <h1 style="margin-bottom: 10px;">Mi Progreso</h1>
-      <div class="progress-label">
-        <span id="overallProgressText">0%</span> completado
+    <!-- Stats Dashboard -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📚</div>
+        <div class="stat-value" id="totalModules">0</div>
+        <div class="stat-label">Módulos Totales</div>
       </div>
-      <div class="progress">
+      <div class="stat-card success">
+        <div class="stat-icon">✅</div>
+        <div class="stat-value" id="completedModules">0</div>
+        <div class="stat-label">Completados</div>
+      </div>
+      <div class="stat-card info">
+        <div class="stat-icon">📖</div>
+        <div class="stat-value" id="inProgressModules">0</div>
+        <div class="stat-label">En Progreso</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-value" id="overallProgressText">0%</div>
+        <div class="stat-label">Progreso General</div>
+      </div>
+    </div>
+
+    <!-- Progress Card -->
+    <div class="progress-card">
+      <h2><i class="fas fa-chart-line"></i> Tu Progreso de Aprendizaje</h2>
+      <div class="progress" style="height: 12px;">
         <div class="progress-bar" id="overallProgressBar" style="width: 0%;"></div>
       </div>
     </div>
@@ -79,7 +113,16 @@
         
         const data = await response.json();
         
-        // Update progress
+        // Update stats dashboard
+        const totalModules = data.stages.reduce((sum, stage) => sum + stage.modules.length, 0);
+        const completedModules = data.stages.reduce((sum, stage) => 
+          sum + stage.modules.filter(m => m.status === 'completed').length, 0);
+        const inProgressModules = data.stages.reduce((sum, stage) => 
+          sum + stage.modules.filter(m => m.status === 'in_progress').length, 0);
+        
+        document.getElementById('totalModules').textContent = totalModules;
+        document.getElementById('completedModules').textContent = completedModules;
+        document.getElementById('inProgressModules').textContent = inProgressModules;
         document.getElementById('overallProgressText').textContent = data.overallProgress + '%';
         document.getElementById('overallProgressBar').style.width = data.overallProgress + '%';
         
@@ -106,8 +149,8 @@
         
         if (stage.description) {
           const desc = document.createElement('p');
-          desc.style.color = 'var(--text-light)';
-          desc.style.marginBottom = '15px';
+          desc.style.color = 'var(--text-secondary)';
+          desc.style.marginBottom = '20px';
           desc.textContent = stage.description;
           stageCard.appendChild(desc);
         }
@@ -131,23 +174,23 @@
           switch (module.status) {
             case 'completed':
               badge.classList.add('badge-success');
-              badge.textContent = '✓ Completado';
+              badge.innerHTML = '<i class="fas fa-check"></i> Completado';
               break;
             case 'ready_for_quiz':
               badge.classList.add('badge-warning');
-              badge.textContent = '⚡ Listo para evaluación';
+              badge.innerHTML = '<i class="fas fa-bolt"></i> Examen';
               break;
             case 'in_progress':
               badge.classList.add('badge-info');
-              badge.textContent = '📚 En progreso';
+              badge.innerHTML = '<i class="fas fa-book-open"></i> En curso';
               break;
             case 'locked':
               badge.classList.add('badge-secondary');
-              badge.textContent = '🔒 Bloqueado';
+              badge.innerHTML = '<i class="fas fa-lock"></i> Bloqueado';
               break;
             default:
               badge.classList.add('badge-secondary');
-              badge.textContent = 'No iniciado';
+              badge.innerHTML = 'Sin iniciar';
           }
           moduleHeader.appendChild(badge);
           moduleCard.appendChild(moduleHeader);
@@ -159,10 +202,13 @@
             moduleCard.appendChild(desc);
           }
           
+          // Progress Section
+          const progressContainer = document.createElement('div');
+          
           const progressLabel = document.createElement('div');
           progressLabel.className = 'progress-label';
-          progressLabel.textContent = `${module.progress.completedLessons} de ${module.progress.totalLessons} lecciones completadas`;
-          moduleCard.appendChild(progressLabel);
+          progressLabel.innerHTML = `<span>Progreso</span> <span>${module.progress.completedLessons}/${module.progress.totalLessons}</span>`;
+          progressContainer.appendChild(progressLabel);
           
           const progressBar = document.createElement('div');
           progressBar.className = 'progress';
@@ -170,14 +216,24 @@
           progressFill.className = 'progress-bar';
           progressFill.style.width = module.progress.percentage + '%';
           progressBar.appendChild(progressFill);
-          moduleCard.appendChild(progressBar);
+          progressContainer.appendChild(progressBar);
+          
+          moduleCard.appendChild(progressContainer);
           
           if (module.quiz && module.quiz.attempts > 0) {
             const quizInfo = document.createElement('div');
-            quizInfo.style.marginTop = '10px';
-            quizInfo.style.fontSize = '13px';
-            quizInfo.style.color = 'var(--text-light)';
-            quizInfo.textContent = `Mejor score: ${module.quiz.bestScore}% | Intentos: ${module.quiz.attempts}`;
+            quizInfo.style.marginTop = '15px';
+            quizInfo.style.paddingTop = '10px';
+            quizInfo.style.borderTop = '1px solid var(--border)';
+            quizInfo.style.fontSize = '12px';
+            quizInfo.style.color = 'var(--text-secondary)';
+            quizInfo.style.display = 'flex';
+            quizInfo.style.gap = '15px';
+            
+            quizInfo.innerHTML = `
+              <span><i class="fas fa-trophy" style="color:var(--warning)"></i> Score: <b>${module.quiz.bestScore}%</b></span>
+              <span><i class="fas fa-history"></i> Intentos: <b>${module.quiz.attempts}</b></span>
+            `;
             moduleCard.appendChild(quizInfo);
           }
           
@@ -212,3 +268,5 @@
   </script>
 </body>
 </html>
+
+
