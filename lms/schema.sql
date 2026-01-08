@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS lms_quizzes (
   module_id UUID NOT NULL REFERENCES lms_modules(id) ON DELETE CASCADE,
   passing_score INTEGER DEFAULT 80 CHECK (passing_score >= 0 AND passing_score <= 100),
   max_attempts INTEGER DEFAULT 3 CHECK (max_attempts > 0),
-  cooldown_minutes INTEGER DEFAULT 60 CHECK (cooldown_minutes >= 0),
+  cooldown_minutes INTEGER DEFAULT 5 CHECK (cooldown_minutes >= 0),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
