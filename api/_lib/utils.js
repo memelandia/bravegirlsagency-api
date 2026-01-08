@@ -187,10 +187,25 @@ function isValidLoomUrl(url) {
 }
 
 /**
+ * Validar que la URL sea de Loom válida
+ */
+function validateLoomUrl(url) {
+  if (!url) return false;
+  
+  const loomPattern = /^https:\/\/(www\.)?loom\.com\/(share|embed)\/[a-f0-9]{32}(\?.*)?$/i;
+  return loomPattern.test(url);
+}
+
+/**
  * Normalizar URL de Loom a formato embed
  */
 function normalizeLoomUrl(url) {
   if (!url) return null;
+  
+  // Validar formato antes de procesar
+  if (!validateLoomUrl(url)) {
+    throw new Error('URL de Loom inválida. Debe ser formato: https://loom.com/share/xxx o https://loom.com/embed/xxx');
+  }
   
   // Si ya es embed, retornar tal cual
   if (url.includes('/embed/')) {
@@ -241,6 +256,7 @@ module.exports = {
   getModuleStatus,
   formatDate,
   isValidLoomUrl,
+  validateLoomUrl,
   normalizeLoomUrl,
   paginate,
   sleep

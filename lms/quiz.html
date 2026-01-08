@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Evaluación - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.10">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.11">
 </head>
 <body>
   <header class="lms-header">
@@ -193,8 +193,9 @@
       }
       
       const submitBtn = e.target.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Enviando...';
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
       
       try {
         const response = await fetch(`${API_BASE}/quiz/${moduleId}/submit`, {
@@ -215,7 +216,7 @@
       } catch (error) {
         showAlert(error.message);
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Enviar Respuestas';
+        submitBtn.textContent = originalText;
       }
     }
 
