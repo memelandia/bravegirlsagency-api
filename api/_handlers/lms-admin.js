@@ -858,7 +858,7 @@ async function handleProgress(req, res, user, deps) {
 // STAGES - CRUD de etapas (solo admin)
 // ===================================================================
 async function handleStages(req, res, user, deps) {
-  const { query, validateRequired } = deps;
+  const { query, isValidUUID, validateRequired } = deps;
 
   if (user.role !== 'admin') {
     return res.status(403).json({ error: 'Solo administradores pueden gestionar etapas' });
