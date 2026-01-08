@@ -7,8 +7,28 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Campus - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.10">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.13">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Animaciones de entrada */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .stat-card { animation: scaleIn 0.5s ease backwards; }
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+    .card { animation: fadeInUp 0.6s ease backwards; }
+    .progress-card { animation: fadeInUp 0.5s ease backwards; animation-delay: 0.5s; }
+    .module-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .module-card:hover { transform: translateY(-8px) scale(1.02); }
+  </style>
 </head>
 <body>
   <header class="lms-header">
@@ -138,22 +158,33 @@
       const container = document.getElementById('stagesContainer');
       container.innerHTML = '';
       
-      stages.forEach(stage => {
+      stages.forEach((stage, index) => {
         const stageCard = document.createElement('div');
         stageCard.className = 'card';
+        stageCard.style.animationDelay = `${0.6 + index * 0.1}s`;
         
         const stageHeader = document.createElement('div');
         stageHeader.className = 'card-header';
-        stageHeader.textContent = stage.name;
+        stageHeader.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 2rem;">${['🚀', '💼', '📱', '🎯', '⭐'][index % 5]}</span>
+            <div>
+              <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">${stage.name}</h2>
+              <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: var(--text-secondary); font-weight: 400;">${stage.modules.length} módulos disponibles</p>
+            </div>
+          </div>
+        `;
         stageCard.appendChild(stageHeader);
         
         if (stage.description) {
           const desc = document.createElement('p');
-          desc.style.color = 'var(--text-secondary)';
-          desc.style.marginBottom = '20px';
+          desc.style.cssText = 'color: var(--text-secondary); margin-bottom: 24px; font-size: 0.95rem; line-height: 1.6; padding: 0 4px;';
           desc.textContent = stage.description;
           stageCard.appendChild(desc);
         }
+        
+        const modulesGrid = document.createElement('div');
+        modulesGrid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;';
         
         stage.modules.forEach(module => {
           const moduleCard = document.createElement('div');
@@ -171,26 +202,27 @@
           
           const badge = document.createElement('span');
           badge.className = 'badge';
+          badge.style.cssText = 'font-size: 0.8rem; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px;';
           switch (module.status) {
             case 'completed':
               badge.classList.add('badge-success');
-              badge.innerHTML = '<i class="fas fa-check"></i> Completado';
+              badge.innerHTML = '<i class="fas fa-check-circle" style="font-size: 1em;"></i> Completado';
               break;
             case 'ready_for_quiz':
               badge.classList.add('badge-warning');
-              badge.innerHTML = '<i class="fas fa-bolt"></i> Examen';
+              badge.innerHTML = '<i class="fas fa-bolt" style="font-size: 1em;"></i> Evaluación Lista';
               break;
             case 'in_progress':
               badge.classList.add('badge-info');
-              badge.innerHTML = '<i class="fas fa-book-open"></i> En curso';
+              badge.innerHTML = '<i class="fas fa-book-reader" style="font-size: 1em;"></i> En Progreso';
               break;
             case 'locked':
               badge.classList.add('badge-secondary');
-              badge.innerHTML = '<i class="fas fa-lock"></i> Bloqueado';
+              badge.innerHTML = '<i class="fas fa-lock" style="font-size: 1em;"></i> Bloqueado';
               break;
             default:
               badge.classList.add('badge-secondary');
-              badge.innerHTML = 'Sin iniciar';
+              badge.innerHTML = '<i class="fas fa-circle" style="font-size: 0.6em;"></i> Sin Iniciar';
           }
           moduleHeader.appendChild(badge);
           moduleCard.appendChild(moduleHeader);
@@ -240,13 +272,32 @@
           if (!module.isLocked) {
             moduleCard.style.cursor = 'pointer';
             moduleCard.addEventListener('click', () => {
-              window.location.href = `/lms/module.html?id=${module.id}`;
+              moduleCard.style.transform = 'scale(0.98)';
+              setTimeout(() => {
+                window.location.href = `/lms/module.html?id=${module.id}`;
+              }, 100);
+            });
+            
+            // Agregar indicador visual de clickeable
+            const clickIndicator = document.createElement('div');
+            clickIndicator.style.cssText = 'position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 50%; background: rgba(99, 102, 241, 0.1); display: flex; align-items: center; justify-content: center; transition: all 0.3s;';
+            clickIndicator.innerHTML = '<i class="fas fa-arrow-right" style="font-size: 0.9rem; color: var(--primary);"></i>';
+            moduleCard.appendChild(clickIndicator);
+            
+            moduleCard.addEventListener('mouseenter', () => {
+              clickIndicator.style.background = 'var(--primary)';
+              clickIndicator.querySelector('i').style.color = 'white';
+            });
+            moduleCard.addEventListener('mouseleave', () => {
+              clickIndicator.style.background = 'rgba(99, 102, 241, 0.1)';
+              clickIndicator.querySelector('i').style.color = 'var(--primary)';
             });
           }
           
-          stageCard.appendChild(moduleCard);
+          modulesGrid.appendChild(moduleCard);
         });
         
+        stageCard.appendChild(modulesGrid);
         container.appendChild(stageCard);
       });
     }
