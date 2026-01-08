@@ -3,29 +3,140 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.11">
+  <title>Panel de Administración - BraveGirls LMS</title>
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.15">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <style>
-    .admin-container { display: flex; gap: 20px; }
-    .sidebar { width: 250px; background: white; padding: 20px; border-radius: 8px; height: fit-content; position: sticky; top: 20px; }
-    .sidebar-menu { list-style: none; }
-    .sidebar-menu li { padding: 10px; margin: 5px 0; cursor: pointer; border-radius: 6px; transition: all 0.2s; }
-    .sidebar-menu li:hover { background: var(--bg-secondary); }
-    .sidebar-menu li.active { background: var(--primary); color: white; font-weight: 600; }
-    .main-content { flex: 1; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
+    .admin-container { 
+      display: flex; 
+      gap: var(--space-xl); 
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: var(--space-xl);
+    }
+    
+    .sidebar { 
+      width: 280px; 
+      background: var(--bg-card); 
+      padding: var(--space-xl); 
+      border-radius: var(--radius-xl); 
+      height: fit-content; 
+      position: sticky; 
+      top: 92px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-light);
+    }
+    
+    .sidebar-title {
+      font-size: var(--text-lg);
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: var(--space-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space);
+      padding-bottom: var(--space-md);
+      border-bottom: 2px solid var(--border-light);
+    }
+    
+    .sidebar-menu { 
+      list-style: none; 
+      padding: 0;
+      margin: 0;
+    }
+    
+    .sidebar-menu li { 
+      padding: var(--space-md); 
+      margin: var(--space-sm) 0; 
+      cursor: pointer; 
+      border-radius: var(--radius-md); 
+      transition: all var(--transition);
+      font-weight: 500;
+      font-size: var(--text-sm);
+      display: flex;
+      align-items: center;
+      gap: var(--space);
+      color: var(--text-secondary);
+    }
+    
+    .sidebar-menu li:hover { 
+      background: var(--primary-light);
+      color: var(--primary);
+      transform: translateX(4px);
+    }
+    
+    .sidebar-menu li.active { 
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+      color: white; 
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+    
+    .sidebar-menu li.active:hover {
+      transform: translateX(4px) scale(1.02);
+    }
+    
+    .main-content { 
+      flex: 1; 
+      min-width: 0;
+    }
+    
+    .tab-content { 
+      display: none; 
+    }
+    
+    .tab-content.active { 
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-2xl);
+      padding-bottom: var(--space-lg);
+      border-bottom: 2px solid var(--border-light);
+    }
+    
+    .page-title {
+      font-size: var(--text-3xl);
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      margin: 0;
+    }
+    
+    .page-actions {
+      display: flex;
+      gap: var(--space);
+      align-items: center;
+    }
   </style>
 </head>
 <body>
   <header class="lms-header">
     <div class="container-fluid">
-      <div class="lms-logo">🎓 BraveGirls LMS - Admin</div>
+      <div class="lms-logo">
+        <i class="fas fa-graduation-cap"></i>
+        BraveGirls LMS
+      </div>
       <nav class="lms-nav">
         <div class="user-info">
+          <i class="fas fa-user-shield"></i>
           <span id="userName"></span>
-          <button class="btn btn-sm btn-outline" id="logoutBtn">Salir</button>
+          <button class="btn btn-sm btn-outline" id="logoutBtn">
+            <i class="fas fa-sign-out-alt"></i>
+            Salir
+          </button>
         </div>
       </nav>
     </div>
@@ -33,16 +144,38 @@
 
   <div class="container-fluid">
     <div class="admin-container">
-      <div class="sidebar">
+      <aside class="sidebar">
+        <div class="sidebar-title">
+          <i class="fas fa-bars"></i>
+          Menú Principal
+        </div>
         <ul class="sidebar-menu">
-          <li data-tab="users" class="active">👥 Usuarios</li>
-          <li data-tab="stages">📑 Etapas</li>
-          <li data-tab="modules">📚 Módulos</li>
-          <li data-tab="lessons">📝 Lecciones</li>
-          <li data-tab="questions">❓ Preguntas</li>
-          <li data-tab="progress">📊 Progreso</li>
+          <li data-tab="users" class="active">
+            <i class="fas fa-users"></i>
+            Usuarios
+          </li>
+          <li data-tab="stages">
+            <i class="fas fa-layer-group"></i>
+            Etapas
+          </li>
+          <li data-tab="modules">
+            <i class="fas fa-book"></i>
+            Módulos
+          </li>
+          <li data-tab="lessons">
+            <i class="fas fa-file-alt"></i>
+            Lecciones
+          </li>
+          <li data-tab="questions">
+            <i class="fas fa-question-circle"></i>
+            Preguntas
+          </li>
+          <li data-tab="progress">
+            <i class="fas fa-chart-line"></i>
+            Progreso
+          </li>
         </ul>
-      </div>
+      </aside>
 
       <div class="main-content">
         <div id="alert" class="hidden"></div>
@@ -51,11 +184,17 @@
         <!-- USERS TAB -->
         <div id="users-tab" class="tab-content active">
           <div class="card">
-            <div class="flex-between mb-20">
-              <h2>👥 Gestión de Usuarios</h2>
-              <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="text" id="searchUsers" class="form-input" placeholder="🔍 Buscar usuarios..." style="width: 250px;">
-                <button class="btn btn-primary" onclick="showCreateUserModal()">+ Crear Usuario</button>
+            <div class="page-header">
+              <h2 class="page-title">
+                <i class="fas fa-users"></i>
+                Gestión de Usuarios
+              </h2>
+              <div class="page-actions">
+                <input type="text" id="searchUsers" class="form-input" placeholder="🔍 Buscar usuarios..." style="width: 280px;">
+                <button class="btn btn-primary" onclick="showCreateUserModal()">
+                  <i class="fas fa-plus"></i>
+                  Crear Usuario
+                </button>
               </div>
             </div>
             <div id="usersTable">
@@ -67,9 +206,15 @@
         <!-- STAGES TAB -->
         <div id="stages-tab" class="tab-content">
           <div class="card">
-            <div class="flex-between mb-20">
-              <h2>📑 Gestión de Etapas</h2>
-              <button class="btn btn-primary" onclick="showStageModal()">+ Nueva Etapa</button>
+            <div class="page-header">
+              <h2 class="page-title">
+                <i class="fas fa-layer-group"></i>
+                Gestión de Etapas
+              </h2>
+              <button class="btn btn-primary" onclick="showStageModal()">
+                <i class="fas fa-plus"></i>
+                Nueva Etapa
+              </button>
             </div>
             <div id="stagesTable">
               <div class="spinner"></div>
@@ -80,11 +225,17 @@
         <!-- MODULES TAB -->
         <div id="modules-tab" class="tab-content">
           <div class="card">
-            <div class="flex-between mb-20">
-              <h2>📚 Gestión de Módulos</h2>
-              <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="text" id="searchModules" class="form-input" placeholder="🔍 Buscar módulos..." style="width: 250px;">
-                <button class="btn btn-primary" onclick="showModuleModal()">+ Nuevo Módulo</button>
+            <div class="page-header">
+              <h2 class="page-title">
+                <i class="fas fa-book"></i>
+                Gestión de Módulos
+              </h2>
+              <div class="page-actions">
+                <input type="text" id="searchModules" class="form-input" placeholder="🔍 Buscar módulos..." style="width: 280px;">
+                <button class="btn btn-primary" onclick="showModuleModal()">
+                  <i class="fas fa-plus"></i>
+                  Nuevo Módulo
+                </button>
               </div>
             </div>
             <div id="modulesTable">
@@ -96,14 +247,20 @@
         <!-- LESSONS TAB -->
         <div id="lessons-tab" class="tab-content">
           <div class="card">
-            <div class="flex-between mb-20">
-              <h2>📝 Gestión de Lecciones</h2>
-              <div style="display: flex; gap: 10px;">
+            <div class="page-header">
+              <h2 class="page-title">
+                <i class="fas fa-file-alt"></i>
+                Gestión de Lecciones
+              </h2>
+              <div class="page-actions">
                 <input type="text" id="searchLessons" class="form-input" placeholder="🔍 Buscar lecciones..." style="width: 200px;">
                 <select id="modulesFilter" class="form-select" style="width: 250px;">
-                  <option value="">Todos los módulos</option>
+                  <option value="">📖 Todos los módulos</option>
                 </select>
-                <button class="btn btn-primary" onclick="showLessonModal()">+ Nueva Lección</button>
+                <button class="btn btn-primary" onclick="showLessonModal()">
+                  <i class="fas fa-plus"></i>
+                  Nueva Lección
+                </button>
               </div>
             </div>
             <div id="lessonsTable">
@@ -115,18 +272,30 @@
         <!-- QUESTIONS TAB -->
         <div id="questions-tab" class="tab-content">
           <div class="card">
-            <div class="flex-between mb-20">
-              <h2>❓ Gestión de Preguntas</h2>
-              <div style="display: flex; gap: 10px;">
+            <div class="page-header">
+              <h2 class="page-title">
+                <i class="fas fa-question-circle"></i>
+                Gestión de Preguntas
+              </h2>
+              <div class="page-actions">
                 <select id="modulesFilterQuestions" class="form-select" style="width: 250px;">
-                  <option value="">Selecciona un módulo</option>
+                  <option value="">❓ Selecciona un módulo</option>
                 </select>
-                <button id="btnAddQuestion" class="btn btn-primary" disabled onclick="showCreateQuestionModal()">+ Agregar Pregunta</button>
-                <button id="btnPreviewQuiz" class="btn btn-outline" disabled onclick="previewQuiz()">👁️ Preview Quiz</button>
+                <button id="btnAddQuestion" class="btn btn-primary" disabled onclick="showCreateQuestionModal()">
+                  <i class="fas fa-plus"></i>
+                  Agregar Pregunta
+                </button>
+                <button id="btnPreviewQuiz" class="btn btn-outline" disabled onclick="previewQuiz()">
+                  <i class="fas fa-eye"></i>
+                  Preview Quiz
+                </button>
               </div>
             </div>
             <div id="questionsTable">
-              <p style="color: var(--text-light);">Selecciona un módulo para ver sus preguntas</p>
+              <p class="text-center text-light" style="padding: var(--space-3xl);">
+                <i class="fas fa-arrow-up" style="font-size: 3rem; opacity: 0.3; display: block; margin-bottom: var(--space);"></i>
+                Selecciona un módulo para ver sus preguntas
+              </p>
             </div>
           </div>
         </div>
@@ -134,7 +303,10 @@
         <!-- PROGRESS TAB -->
         <div id="progress-tab" class="tab-content">
           <div class="card">
-            <h2 class="mb-20">📊 Estadísticas y Progreso</h2>
+            <h2 class="page-title mb-20">
+              <i class="fas fa-chart-line"></i>
+              Estadísticas y Progreso
+            </h2>
             
             <!-- Stats Dashboard -->
             <div class="stats-grid" style="margin-bottom: 30px;">
@@ -271,8 +443,12 @@
                   <td><small>${stage.description || '-'}</small></td>
                   <td>${stage.modules_count || 0}</td>
                   <td>
-                    <button class="btn btn-sm btn-outline" onclick='showStageModal(${JSON.stringify(stage)})'>Editar</button>
-                    ${stage.modules_count == 0 ? `<button class="btn btn-sm btn-danger" onclick="deleteStage('${stage.id}')">Eliminar</button>` : ''}
+                    <button class="btn btn-sm btn-outline" onclick='showStageModal(${JSON.stringify(stage)})'>
+                      <i class="fas fa-edit"></i> Editar
+                    </button>
+                    ${stage.modules_count == 0 ? `<button class="btn btn-sm btn-danger" onclick="deleteStage('${stage.id}')">
+                      <i class="fas fa-trash"></i> Eliminar
+                    </button>` : ''}
                   </td>
                 </tr>
               `).join('')}
@@ -372,8 +548,12 @@
                   <td><span class="badge badge-${module.published ? 'success' : 'warning'}">${module.published ? 'Publicado' : 'Borrador'}</span></td>
                   <td><small>${module.lessons_count || 0} lecciones${module.has_quiz ? ', 1 quiz' : ''}</small></td>
                   <td>
-                    <button class="btn btn-sm btn-outline" onclick='showModuleModal(${JSON.stringify(module).replace(/'/g, "&#39;")})'>Editar</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteModule('${module.id}')">Eliminar</button>
+                    <button class="btn btn-sm btn-outline" onclick='showModuleModal(${JSON.stringify(module).replace(/'/g, "&#39;")})'>
+                      <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteModule('${module.id}')">
+                      <i class="fas fa-trash"></i> Eliminar
+                    </button>
                   </td>
                 </tr>
               `).join('')}
@@ -491,8 +671,12 @@
                   <td>${lesson.title}</td>
                   <td><span class="badge badge-${lesson.type === 'video' ? 'info' : 'secondary'}">${lesson.type === 'video' ? '🎥 Video' : '📄 Texto'}</span></td>
                   <td>
-                    <button class="btn btn-sm btn-outline" onclick='showLessonModal(${JSON.stringify(lesson).replace(/'/g, "&#39;")})'>Editar</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteLesson('${lesson.id}')">Eliminar</button>
+                    <button class="btn btn-sm btn-outline" onclick='showLessonModal(${JSON.stringify(lesson).replace(/'/g, "&#39;")})'>
+                      <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteLesson('${lesson.id}')">
+                      <i class="fas fa-trash"></i> Eliminar
+                    </button>
                   </td>
                 </tr>
               `).join('')}
@@ -748,7 +932,9 @@
                   <td><small>${question.options.length} opciones</small></td>
                   <td><strong>${question.options[question.correct_option_index]}</strong></td>
                   <td>
-                    <button class="btn btn-sm btn-danger" onclick="deleteQuestion('${question.id}', '${moduleId}')">Eliminar</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteQuestion('${question.id}', '${moduleId}')">
+                      <i class="fas fa-trash"></i> Eliminar
+                    </button>
                   </td>
                 </tr>
               `).join('')}
