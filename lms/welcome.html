@@ -451,10 +451,13 @@
   <script src="https://cdn.jsdelivr.net/npm/shepherd.js@11.2.0/dist/js/shepherd.min.js"></script>
 
   <script>
+    // URL base del API en Vercel (igual que login.html)
+    const API_BASE = 'https://bravegirlsagency-api.vercel.app/api/lms';
+
     // Check if user should be here
     async function checkAuth() {
       try {
-        const response = await fetch('/api/lms/auth/me', {
+        const response = await fetch(`${API_BASE}/auth/me`, {
           credentials: 'include'
         });
         
@@ -467,12 +470,13 @@
         const data = await response.json();
         
         // If onboarding already completed, redirect to campus
-        if (data.onboarding_completed_at) {
+        if (data.user && data.user.onboarding_completed_at) {
           window.location.href = '/lms/campus.html';
         }
       } catch (error) {
         console.error('Auth check failed:', error);
-        window.location.href = '/lms/login.html';
+        // Don't redirect on error - stay on welcome page
+        // Only redirect if explicitly not authenticated
       }
     }
 
@@ -486,7 +490,7 @@
       progress.classList.add('show');
 
       try {
-        const response = await fetch('/api/lms/auth/complete-onboarding', {
+        const response = await fetch(`${API_BASE}/auth/complete-onboarding`, {
           method: 'PATCH',
           credentials: 'include'
         });
