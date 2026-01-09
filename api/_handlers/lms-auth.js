@@ -9,6 +9,10 @@ module.exports = async (req, res, deps) => {
   try {
     // Manejar preflight CORS (OPTIONS)
     if (req.method === 'OPTIONS') {
+      res.setHeader('Access-Control-Allow-Origin', 'https://bravegirlsagency.com');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,PUT,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie, X-Requested-With');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
       return res.status(200).end();
     }
 
