@@ -873,6 +873,74 @@ async function handleQuizSubmit(req, res, user, deps) {
         RETURNING id, created_at
       `, [quiz.id, user.id, score, passed, JSON.stringify(answers)]);
 
+      // ===================================================================
+      // AUTO-DETECCIÓN: ¿Completó todo el curso?
+      // ===================================================================
+      let courseCompleted = false;
+      let completionData = null;
+
+      if (passed) {
+        // Verificar si ya tiene una completación registrada
+        const existingCompletion = await client.query(
+          'SELECT id FROM lms_course_completions WHERE user_id = $1',
+          [user.id]
+        );
+
+        if (existingCompletion.rows.length === 0) {
+          // Verificar si este fue el último quiz pendiente
+          const allQuizzesResult = await client.query(`
+            SELECT 
+              q.id as quiz_id,
+              q.module_id,
+              BOOL_OR(qa.passed) as passed
+            FROM lms_quizzes q
+            LEFT JOIN lms_quiz_attempts qa ON qa.quiz_id = q.id AND qa.user_id = $1
+            GROUP BY q.id, q.module_id
+          `, [user.id]);
+
+          const allQuizzes = allQuizzesResult.rows;
+          const totalQuizzes = allQuizzes.length;
+          const passedQuizzes = allQuizzes.filter(q => q.passed).length;
+
+          // Si aprobó todos los quizzes, calcular nota final y registrar completación
+          if (totalQuizzes > 0 && passedQuizzes === totalQuizzes) {
+            // Calcular overall_score (promedio de todos los quizzes)
+            const scoresResult = await client.query(`
+              SELECT 
+                qa.quiz_id,
+                MAX(qa.score) as best_score
+              FROM lms_quiz_attempts qa
+              WHERE qa.user_id = $1 AND qa.passed = true
+              GROUP BY qa.quiz_id
+            `, [user.id]);
+
+            const scores = scoresResult.rows.map(r => r.best_score);
+            const overallScore = Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length);
+            const approved = overallScore >= 80;
+
+            // Registrar completación del curso
+            const completionResult = await client.query(`
+              INSERT INTO lms_course_completions 
+                (user_id, completed_at, overall_score, approved)
+              VALUES ($1, NOW(), $2, $3)
+              RETURNING id, completed_at, overall_score, approved
+            `, [user.id, overallScore, approved]);
+
+            courseCompleted = true;
+            completionData = {
+              completionId: completionResult.rows[0].id,
+              completedAt: completionResult.rows[0].completed_at,
+              overallScore,
+              approved,
+              totalQuizzes,
+              message: approved 
+                ? '🎉 ¡FELICITACIONES! Has completado exitosamente todo el curso.'
+                : '✅ Completaste todos los módulos, pero tu promedio es menor a 80%.'
+            };
+          }
+        }
+      }
+
       return {
         attemptId: attemptResult.rows[0].id,
         score,
@@ -883,7 +951,9 @@ async function handleQuizSubmit(req, res, user, deps) {
         detailedResults,
         passingScore: quiz.passing_score,
         attemptsUsed: parseInt(quiz.user_attempts) + 1,
-        maxAttempts: quiz.max_attempts
+        maxAttempts: quiz.max_attempts,
+        courseCompleted,
+        completion: completionData
       };
     });
 

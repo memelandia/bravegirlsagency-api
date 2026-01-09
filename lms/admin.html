@@ -174,6 +174,10 @@
             <i class="fas fa-chart-line"></i>
             Progreso
           </li>
+          <li data-tab="completions">
+            <i class="fas fa-graduation-cap"></i>
+            Graduados
+          </li>
         </ul>
       </aside>
 
@@ -337,6 +341,58 @@
             </div>
           </div>
         </div>
+
+        <!-- COMPLETIONS TAB -->
+        <div id="completions-tab" class="tab-content">
+          <div class="card">
+            <div class="page-header">
+              <h2 class="page-title">
+                <i class="fas fa-graduation-cap"></i>
+                Chatters Graduados
+              </h2>
+              <div class="page-actions">
+                <select id="filterApproved" class="form-input" onchange="loadCompletions()" style="width: 200px;">
+                  <option value="">Todos los estados</option>
+                  <option value="true">✅ Aprobados (≥80)</option>
+                  <option value="false">❌ No aprobados (<80)</option>
+                </select>
+                <select id="filterHired" class="form-input" onchange="loadCompletions()" style="width: 200px;">
+                  <option value="">Estado contratación</option>
+                  <option value="true">💼 Contratados</option>
+                  <option value="false">⏳ No contratados</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Stats Dashboard -->
+            <div class="stats-grid" style="margin-bottom: 30px;">
+              <div class="stat-card success">
+                <div class="stat-icon">🎓</div>
+                <div class="stat-value" id="statTotalGraduates">0</div>
+                <div class="stat-label">Total Graduados</div>
+              </div>
+              <div class="stat-card info">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value" id="statApproved">0</div>
+                <div class="stat-label">Aprobados (≥80)</div>
+              </div>
+              <div class="stat-card warning">
+                <div class="stat-icon">💼</div>
+                <div class="stat-value" id="statHired">0</div>
+                <div class="stat-label">Contratados</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="statAvgScore">0</div>
+                <div class="stat-label">Score Promedio</div>
+              </div>
+            </div>
+
+            <div id="completionsTable">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -411,6 +467,9 @@
           break;
         case 'progress':
           await loadProgress();
+          break;
+        case 'completions':
+          await loadCompletions();
           break;
       }
     }
@@ -1415,6 +1474,298 @@
             row.style.display = text.includes(query) ? '' : 'none';
           });
         });
+      }
+    }
+
+    // ===================================================================
+    // COMPLETIONS - Gestión de graduados
+    // ===================================================================
+    async function loadCompletions() {
+      const approved = document.getElementById('filterApproved')?.value || '';
+      const hired = document.getElementById('filterHired')?.value || '';
+      
+      const params = new URLSearchParams();
+      if (approved) params.append('approved', approved);
+      if (hired) params.append('hired', hired);
+
+      try {
+        const response = await fetch(`${API_BASE}/admin/completions?${params}`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) throw new Error('Error al cargar completions');
+        
+        const { completions } = await response.json();
+
+        // Actualizar stats
+        document.getElementById('statTotalGraduates').textContent = completions.length;
+        document.getElementById('statApproved').textContent = completions.filter(c => c.approved).length;
+        document.getElementById('statHired').textContent = completions.filter(c => c.hired).length;
+        
+        const avgScore = completions.length > 0 
+          ? Math.round(completions.reduce((sum, c) => sum + c.overall_score, 0) / completions.length)
+          : 0;
+        document.getElementById('statAvgScore').textContent = avgScore + '%';
+
+        // Renderizar tabla
+        const tableHtml = `
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Chatter</th>
+                <th>Email</th>
+                <th>Fecha Graduación</th>
+                <th>Score Final</th>
+                <th>Estado</th>
+                <th>Contratado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${completions.length === 0 ? `
+                <tr>
+                  <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-light);">
+                    <i class="fas fa-inbox" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px;"></i>
+                    <p>No hay graduados aún</p>
+                  </td>
+                </tr>
+              ` : completions.map(c => `
+                <tr>
+                  <td><strong>${c.user_name}</strong></td>
+                  <td>${c.user_email}</td>
+                  <td>${new Date(c.completed_at).toLocaleString('es', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}</td>
+                  <td>
+                    <span class="badge ${c.overall_score >= 80 ? 'badge-success' : 'badge-warning'}">
+                      ${c.overall_score}%
+                    </span>
+                  </td>
+                  <td>
+                    ${c.approved 
+                      ? '<span class="badge badge-success">✅ Aprobado</span>' 
+                      : '<span class="badge badge-warning">⚠️ No aprobado</span>'}
+                  </td>
+                  <td>
+                    ${c.hired 
+                      ? `<span class="badge badge-info">💼 Contratado ${c.hired_at ? '(' + new Date(c.hired_at).toLocaleDateString('es') + ')' : ''}</span>`
+                      : '<span class="badge badge-secondary">⏳ Pendiente</span>'}
+                  </td>
+                  <td>
+                    <div class="btn-group">
+                      <button class="btn btn-sm btn-primary" onclick="viewReport('${c.user_id}')" title="Ver Reporte">
+                        <i class="fas fa-chart-bar"></i>
+                      </button>
+                      <button class="btn btn-sm ${c.hired ? 'btn-warning' : 'btn-success'}" 
+                              onclick="toggleHired('${c.id}', ${!c.hired})" 
+                              title="${c.hired ? 'Marcar como no contratado' : 'Marcar como contratado'}">
+                        <i class="fas fa-${c.hired ? 'times' : 'check'}"></i>
+                      </button>
+                      <button class="btn btn-sm btn-secondary" onclick="editCompletionNotes('${c.id}', '${c.user_name}')" title="Notas">
+                        <i class="fas fa-sticky-note"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+
+        document.getElementById('completionsTable').innerHTML = tableHtml;
+      } catch (error) {
+        console.error('Error loading completions:', error);
+        document.getElementById('completionsTable').innerHTML = 
+          '<p class="text-error">Error al cargar graduados</p>';
+      }
+    }
+
+    async function viewReport(userId) {
+      try {
+        const response = await fetch(`${API_BASE}/admin/reports/user/${userId}`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) throw new Error('Error al cargar reporte');
+        
+        const report = await response.json();
+
+        const modalHtml = `
+          <div id="reportModal" class="modal-overlay" onclick="if(event.target === this) closeReportModal()">
+            <div class="modal-content" style="max-width: 900px;" onclick="event.stopPropagation()">
+              <div class="modal-header">
+                <h3>📊 Reporte de Rendimiento - ${report.user.name}</h3>
+                <button class="btn-icon" onclick="closeReportModal()">✕</button>
+              </div>
+              <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <!-- User Info -->
+                <div style="background: var(--bg); padding: var(--space-lg); border-radius: var(--radius-lg); margin-bottom: var(--space-lg);">
+                  <h4 style="margin-bottom: var(--space);">Información General</h4>
+                  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-lg);">
+                    <div>
+                      <small style="color: var(--text-light);">Email</small>
+                      <p><strong>${report.user.email}</strong></p>
+                    </div>
+                    <div>
+                      <small style="color: var(--text-light);">Progreso Global</small>
+                      <p><strong>${report.courseProgress}%</strong></p>
+                    </div>
+                    <div>
+                      <small style="color: var(--text-light);">Score Final</small>
+                      <p><strong style="color: ${report.performance.overallScore >= 80 ? 'var(--success)' : 'var(--warning)'};">
+                        ${report.performance.overallScore}%
+                      </strong></p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Module Scores -->
+                <div style="margin-bottom: var(--space-lg);">
+                  <h4 style="margin-bottom: var(--space);">Scores por Módulo</h4>
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Módulo</th>
+                        <th>Score</th>
+                        <th>Intentos</th>
+                        <th>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${report.moduleScores.map(m => `
+                        <tr>
+                          <td>${m.module}</td>
+                          <td>
+                            <span class="badge ${m.score >= 80 ? 'badge-success' : m.score >= 60 ? 'badge-warning' : 'badge-danger'}">
+                              ${m.score}%
+                            </span>
+                          </td>
+                          <td>${m.attempts}</td>
+                          <td>
+                            ${m.passed 
+                              ? '<span class="badge badge-success">✅</span>' 
+                              : '<span class="badge badge-danger">❌</span>'}
+                          </td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Strengths & Weaknesses -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-lg);">
+                  <div style="background: var(--success-light); padding: var(--space-lg); border-radius: var(--radius-lg);">
+                    <h4 style="color: var(--success); margin-bottom: var(--space);">💪 Fortalezas</h4>
+                    ${report.strengths.length > 0 
+                      ? report.strengths.map(s => `<p>• ${s}</p>`).join('') 
+                      : '<p style="color: var(--text-light);">No identificadas</p>'}
+                  </div>
+                  <div style="background: var(--warning-light); padding: var(--space-lg); border-radius: var(--radius-lg);">
+                    <h4 style="color: var(--warning); margin-bottom: var(--space);">⚠️ Debilidades</h4>
+                    ${report.weaknesses.length > 0 
+                      ? report.weaknesses.map(w => `<p>• ${w}</p>`).join('') 
+                      : '<p style="color: var(--text-light);">Ninguna</p>'}
+                  </div>
+                </div>
+
+                <!-- Time Tracking -->
+                <div style="background: var(--bg); padding: var(--space-lg); border-radius: var(--radius-lg); margin-bottom: var(--space-lg);">
+                  <h4 style="margin-bottom: var(--space);">⏱️ Tiempo de Estudio</h4>
+                  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-lg);">
+                    <div>
+                      <small style="color: var(--text-light);">Tiempo Total</small>
+                      <p><strong>${report.timeTracking.totalTimeInCourse}</strong></p>
+                    </div>
+                    <div>
+                      <small style="color: var(--text-light);">Promedio por Lección</small>
+                      <p><strong>${report.timeTracking.avgTimePerLesson}</strong></p>
+                    </div>
+                    <div>
+                      <small style="color: var(--text-light);">Lecciones Completadas</small>
+                      <p><strong>${report.timeTracking.completedLessons}</strong></p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Recommendation -->
+                <div style="background: ${report.recommendHire ? 'var(--success-light)' : 'var(--warning-light)'}; 
+                            padding: var(--space-xl); border-radius: var(--radius-lg); text-align: center;">
+                  <h3 style="color: ${report.recommendHire ? 'var(--success)' : 'var(--warning)'}; margin-bottom: var(--space);">
+                    ${report.recommendHire ? '🎉 Recomendado para Contratación' : '⚠️ Necesita Mejorar'}
+                  </h3>
+                  <p style="color: var(--text-secondary);">
+                    ${report.recommendHire 
+                      ? 'Este chatter cumple con todos los estándares de calidad.' 
+                      : 'Considerar entrenamiento adicional o nueva evaluación.'}
+                  </p>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeReportModal()">Cerrar</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+      } catch (error) {
+        showAlert('Error al cargar reporte');
+      }
+    }
+
+    function closeReportModal() {
+      const modal = document.getElementById('reportModal');
+      if (modal) modal.remove();
+    }
+
+    async function toggleHired(completionId, newStatus) {
+      if (!confirm(`¿Marcar como ${newStatus ? 'CONTRATADO' : 'NO CONTRATADO'}?`)) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/admin/completions?id=${completionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ hired: newStatus })
+        });
+
+        if (!response.ok) throw new Error('Error al actualizar');
+
+        showAlert(`Estado actualizado exitosamente`, 'success');
+        await loadCompletions();
+      } catch (error) {
+        showAlert('Error al actualizar estado');
+      }
+    }
+
+    function editCompletionNotes(completionId, userName) {
+      const currentNotes = ''; // Podrías obtener las notas actuales del DOM
+      const newNotes = prompt(`Notas para ${userName}:`, currentNotes);
+      
+      if (newNotes === null) return; // Cancelado
+
+      saveCompletionNotes(completionId, newNotes);
+    }
+
+    async function saveCompletionNotes(completionId, notes) {
+      try {
+        const response = await fetch(`${API_BASE}/admin/completions?id=${completionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ notes })
+        });
+
+        if (!response.ok) throw new Error('Error al guardar notas');
+
+        showAlert('Notas guardadas exitosamente', 'success');
+        await loadCompletions();
+      } catch (error) {
+        showAlert('Error al guardar notas');
       }
     }
 

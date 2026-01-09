@@ -38,6 +38,10 @@ module.exports = async (req, res, deps) => {
         return await handleStages(req, res, user, deps);
       case 'quizzes':
         return await handleQuizzes(req, res, user, deps);
+      case 'reports':
+        return await handleReports(req, res, user, deps);
+      case 'completions':
+        return await handleCompletions(req, res, user, deps);
       default:
         return res.status(404).json({ error: 'Recurso no encontrado', resource, path });
     }
@@ -1100,6 +1104,286 @@ async function handleQuizzes(req, res, user, deps) {
     await query('DELETE FROM lms_quizzes WHERE id = $1', [id]);
     
     return res.status(200).json({ message: 'Quiz eliminado exitosamente' });
+  }
+
+  return res.status(405).json({ error: 'Método no permitido' });
+}
+
+// ===================================================================
+// REPORTS - Reportes individuales de rendimiento
+// ===================================================================
+async function handleReports(req, res, user, deps) {
+  const { query, isValidUUID } = deps;
+
+  if (user.role !== 'admin' && user.role !== 'supervisor') {
+    return res.status(403).json({ error: 'Solo admins y supervisores pueden ver reportes' });
+  }
+
+  // GET /admin/reports/user/:userId - Reporte individual detallado
+  if (req.method === 'GET') {
+    // Extraer userId de la path: "reports/user/[uuid]"
+    const pathParts = req.lmsPath.split('/');
+    if (pathParts.length < 3 || pathParts[1] !== 'user') {
+      return res.status(400).json({ error: 'Path inválido. Use: /admin/reports/user/:userId' });
+    }
+
+    const userId = pathParts[2];
+    
+    if (!isValidUUID(userId)) {
+      return res.status(400).json({ error: 'ID de usuario inválido' });
+    }
+
+    // 1. Información del usuario
+    const userResult = await query(
+      'SELECT id, name, email, role, created_at, last_login FROM lms_users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const userData = userResult.rows[0];
+
+    // 2. Progreso global del curso
+    const totalModulesResult = await query(
+      'SELECT COUNT(*) as total FROM lms_modules WHERE published = true'
+    );
+    const totalModules = parseInt(totalModulesResult.rows[0].total);
+
+    const completedModulesResult = await query(`
+      SELECT COUNT(DISTINCT m.id) as completed
+      FROM lms_modules m
+      INNER JOIN lms_lessons l ON l.module_id = m.id
+      INNER JOIN lms_progress_lessons pl ON pl.lesson_id = l.id
+      WHERE pl.user_id = $1 AND m.published = true
+      GROUP BY m.id
+      HAVING COUNT(DISTINCT l.id) = COUNT(DISTINCT pl.lesson_id)
+    `, [userId]);
+    const completedModules = completedModulesResult.rows.length;
+    const courseProgress = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+
+    // 3. Etapas completadas
+    const stagesResult = await query(`
+      SELECT DISTINCT s.id, s.name, s.order_index
+      FROM lms_stages s
+      INNER JOIN lms_modules m ON m.stage_id = s.id
+      INNER JOIN lms_quizzes q ON q.module_id = m.id
+      INNER JOIN lms_quiz_attempts qa ON qa.quiz_id = q.id
+      WHERE qa.user_id = $1 AND qa.passed = true
+      ORDER BY s.order_index
+    `, [userId]);
+    const stagesCompleted = stagesResult.rows.map(s => ({ id: s.id, name: s.name, order: s.order_index }));
+
+    // 4. Scores por módulo
+    const moduleScoresResult = await query(`
+      SELECT 
+        m.id,
+        m.title as module,
+        q.id as quiz_id,
+        MAX(qa.score) as score,
+        COUNT(qa.id) as attempts,
+        BOOL_OR(qa.passed) as passed
+      FROM lms_modules m
+      LEFT JOIN lms_quizzes q ON q.module_id = m.id
+      LEFT JOIN lms_quiz_attempts qa ON qa.quiz_id = q.id AND qa.user_id = $1
+      WHERE m.published = true
+      GROUP BY m.id, m.title, q.id, m.order_index
+      ORDER BY m.order_index
+    `, [userId]);
+
+    const moduleScores = moduleScoresResult.rows.map(row => ({
+      moduleId: row.id,
+      module: row.module,
+      score: row.score || 0,
+      attempts: parseInt(row.attempts),
+      passed: row.passed || false
+    }));
+
+    // 5. Fortalezas y debilidades (módulos con score > 85 vs < 70)
+    const strengths = moduleScores.filter(m => m.score >= 85 && m.passed).map(m => m.module);
+    const weaknesses = moduleScores.filter(m => m.score < 70 || (m.attempts > 0 && !m.passed)).map(m => m.module);
+
+    // 6. Tiempo promedio (si tenemos tracking de tiempo - por ahora estimado)
+    const totalTimeResult = await query(`
+      SELECT 
+        COUNT(DISTINCT pl.lesson_id) as completed_lessons,
+        COALESCE(SUM(pl.time_spent_seconds), 0) as total_seconds
+      FROM lms_progress_lessons pl
+      WHERE pl.user_id = $1
+    `, [userId]);
+    
+    const { completed_lessons, total_seconds } = totalTimeResult.rows[0];
+    const totalHours = Math.round((parseInt(total_seconds) / 3600) * 10) / 10;
+    const avgMinutesPerLesson = completed_lessons > 0 
+      ? Math.round((parseInt(total_seconds) / completed_lessons) / 60) 
+      : 0;
+
+    // 7. Recomendación de contratación (AI suggestion)
+    const overallScore = moduleScores.length > 0
+      ? Math.round(moduleScores.reduce((sum, m) => sum + m.score, 0) / moduleScores.length)
+      : 0;
+    
+    const allModulesAttempted = moduleScores.every(m => m.attempts > 0);
+    const allModulesPassed = moduleScores.every(m => m.passed);
+    const avgAttempts = moduleScores.length > 0
+      ? moduleScores.reduce((sum, m) => sum + m.attempts, 0) / moduleScores.length
+      : 0;
+
+    const recommendHire = 
+      allModulesPassed && 
+      overallScore >= 80 && 
+      avgAttempts <= 2 && 
+      weaknesses.length === 0;
+
+    // 8. Verificar si tiene completación registrada
+    const completionResult = await query(
+      'SELECT completed_at, overall_score, approved, certificate_issued, hired FROM lms_course_completions WHERE user_id = $1',
+      [userId]
+    );
+    const completion = completionResult.rows.length > 0 ? completionResult.rows[0] : null;
+
+    // Respuesta final
+    return res.status(200).json({
+      user: userData,
+      courseProgress,
+      totalModules,
+      completedModules,
+      stagesCompleted,
+      moduleScores,
+      strengths,
+      weaknesses,
+      timeTracking: {
+        totalTimeInCourse: `${totalHours} horas`,
+        avgTimePerLesson: `${avgMinutesPerLesson} min`,
+        completedLessons: parseInt(completed_lessons)
+      },
+      performance: {
+        overallScore,
+        allModulesAttempted,
+        allModulesPassed,
+        avgAttempts: Math.round(avgAttempts * 10) / 10
+      },
+      recommendHire,
+      completion
+    });
+  }
+
+  return res.status(405).json({ error: 'Método no permitido' });
+}
+
+// ===================================================================
+// COMPLETIONS - Gestión de completaciones del curso
+// ===================================================================
+async function handleCompletions(req, res, user, deps) {
+  const { query, isValidUUID } = deps;
+
+  if (user.role !== 'admin' && user.role !== 'supervisor') {
+    return res.status(403).json({ error: 'Solo admins y supervisores pueden ver completaciones' });
+  }
+
+  // GET /admin/completions - Listar todas las completaciones
+  if (req.method === 'GET') {
+    const { approved, hired } = req.query;
+
+    let sql = `
+      SELECT 
+        cc.id,
+        cc.user_id,
+        cc.completed_at,
+        cc.overall_score,
+        cc.approved,
+        cc.certificate_issued,
+        cc.certificate_url,
+        cc.hired,
+        cc.hired_at,
+        cc.notes,
+        u.name as user_name,
+        u.email as user_email
+      FROM lms_course_completions cc
+      INNER JOIN lms_users u ON u.id = cc.user_id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (approved !== undefined) {
+      params.push(approved === 'true');
+      sql += ` AND cc.approved = $${params.length}`;
+    }
+
+    if (hired !== undefined) {
+      params.push(hired === 'true');
+      sql += ` AND cc.hired = $${params.length}`;
+    }
+
+    sql += ' ORDER BY cc.completed_at DESC';
+
+    const result = await query(sql, params);
+
+    return res.status(200).json({ completions: result.rows });
+  }
+
+  // PATCH /admin/completions?id=xxx - Actualizar completación (hired, notes, certificate)
+  if (req.method === 'PATCH') {
+    if (user.role !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden actualizar completaciones' });
+    }
+
+    const { id } = req.query;
+    const { hired, hired_at, notes, certificate_issued, certificate_url } = req.body;
+
+    if (!id || !isValidUUID(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+
+    const updates = [];
+    const params = [id];
+
+    if (hired !== undefined) {
+      params.push(hired);
+      updates.push(`hired = $${params.length}`);
+      
+      if (hired && !hired_at) {
+        params.push(new Date().toISOString());
+        updates.push(`hired_at = $${params.length}`);
+      }
+    }
+
+    if (hired_at) {
+      params.push(hired_at);
+      updates.push(`hired_at = $${params.length}`);
+    }
+
+    if (notes !== undefined) {
+      params.push(notes);
+      updates.push(`notes = $${params.length}`);
+    }
+
+    if (certificate_issued !== undefined) {
+      params.push(certificate_issued);
+      updates.push(`certificate_issued = $${params.length}`);
+    }
+
+    if (certificate_url !== undefined) {
+      params.push(certificate_url);
+      updates.push(`certificate_url = $${params.length}`);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
+    }
+
+    params.push(new Date().toISOString());
+    updates.push(`updated_at = $${params.length}`);
+
+    const sql = `UPDATE lms_course_completions SET ${updates.join(', ')} WHERE id = $1 RETURNING *`;
+    const result = await query(sql, params);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Completación no encontrada' });
+    }
+
+    return res.status(200).json({ completion: result.rows[0] });
   }
 
   return res.status(405).json({ error: 'Método no permitido' });
