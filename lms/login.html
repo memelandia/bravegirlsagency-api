@@ -1,0 +1,280 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar Sesión - BraveGirls LMS</title>
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.15">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .login-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Animación de fondo */
+    .login-container::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      animation: rotate 30s linear infinite;
+    }
+    
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    .login-card {
+      background: var(--bg-card);
+      padding: var(--space-3xl);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-2xl);
+      width: 100%;
+      max-width: 450px;
+      position: relative;
+      z-index: 1;
+      animation: slideUp 0.5s ease;
+    }
+    
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .login-header {
+      text-align: center;
+      margin-bottom: var(--space-2xl);
+    }
+    
+    .login-icon {
+      font-size: 4rem;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: var(--space);
+      display: inline-block;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    
+    .login-header h1 {
+      font-size: var(--text-3xl);
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: var(--space-xs);
+    }
+    
+    .login-header p {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      font-weight: 500;
+    }
+    
+    .form-group-login {
+      position: relative;
+      margin-bottom: var(--space-xl);
+    }
+    
+    .form-group-login .form-icon {
+      position: absolute;
+      left: var(--space-md);
+      top: 48px;
+      color: var(--text-light);
+      font-size: var(--text-lg);
+      pointer-events: none;
+      transition: color var(--transition);
+    }
+    
+    .form-group-login input:focus ~ .form-icon {
+      color: var(--primary);
+    }
+    
+    .form-group-login input {
+      padding-left: var(--space-3xl);
+    }
+    
+    .login-footer {
+      margin-top: var(--space-xl);
+      text-align: center;
+      font-size: var(--text-xs);
+      color: var(--text-light);
+    }
+    
+    .login-footer a {
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    
+    .login-footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-icon">
+          <i class="fas fa-graduation-cap"></i>
+        </div>
+        <h1>BraveGirls LMS</h1>
+        <p>Learning Management System</p>
+      </div>
+
+      <div id="alert" class="hidden"></div>
+
+      <form id="loginForm">
+        <div class="form-group-login">
+          <label class="form-label" for="email">
+            <i class="fas fa-envelope"></i>
+            Correo Electrónico
+          </label>
+          <input 
+            type="email" 
+            id="email" 
+            class="form-control" 
+            placeholder="tu@email.com"
+            required
+            autocomplete="email"
+          >
+          <i class="fas fa-envelope form-icon"></i>
+        </div>
+
+        <div class="form-group-login">
+          <label class="form-label" for="password">
+            <i class="fas fa-lock"></i>
+            Contraseña
+          </label>
+          <input 
+            type="password" 
+            id="password" 
+            class="form-control" 
+            placeholder="••••••••"
+            required
+            autocomplete="current-password"
+          >
+          <i class="fas fa-lock form-icon"></i>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;" id="loginBtn">
+          <i class="fas fa-sign-in-alt"></i>
+          Iniciar Sesión
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <p>¿Olvidaste tu contraseña? <a href="#">Contacta al administrador</a></p>
+        <p style="margin-top: var(--space-sm); font-size: var(--text-xs); opacity: 0.7;">
+          © 2025 BraveGirls Agency. Todos los derechos reservados.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // URL base del API en Vercel (igual que supervision)
+    const API_BASE = 'https://bravegirlsagency-api.vercel.app/api/lms';
+
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const alertDiv = document.getElementById('alert');
+
+    function showAlert(message, type = 'error') {
+      alertDiv.className = `alert alert-${type}`;
+      alertDiv.textContent = message;
+      alertDiv.classList.remove('hidden');
+      setTimeout(() => alertDiv.classList.add('hidden'), 5000);
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Iniciando sesión...';
+
+      try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Error al iniciar sesión');
+        }
+
+        showAlert('¡Login exitoso! Redirigiendo...', 'success');
+        
+        setTimeout(() => {
+          // Check if user needs onboarding (first login for chatters)
+          if (data.user.role === 'chatter' && data.user.first_login && !data.user.onboarding_completed_at) {
+            window.location.href = '/lms/welcome.html';
+          } else if (data.user.role === 'admin' || data.user.role === 'supervisor') {
+            window.location.href = '/lms/admin.html';
+          } else {
+            window.location.href = '/lms/campus.html';
+          }
+        }, 1000);
+
+      } catch (error) {
+        showAlert(error.message);
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Iniciar Sesión';
+      }
+    });
+
+    // Check if already logged in
+    (async () => {
+      try {
+        const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          // Check if chatter needs onboarding
+          if (data.user.role === 'chatter' && data.user.first_login && !data.user.onboarding_completed_at) {
+            window.location.href = '/lms/welcome.html';
+          } else if (data.user.role === 'admin' || data.user.role === 'supervisor') {
+            window.location.href = '/lms/admin.html';
+          } else {
+            window.location.href = '/lms/campus.html';
+          }
+        }
+      } catch (error) {
+        // Not logged in, stay on login page
+      }
+    })();
+  </script>
+</body>
+</html>
+
+

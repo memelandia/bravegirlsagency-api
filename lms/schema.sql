@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS lms_users (
   password_hash TEXT NOT NULL,
   role VARCHAR(50) NOT NULL CHECK (role IN ('chatter', 'supervisor', 'admin')),
   active BOOLEAN DEFAULT true,
+  first_login BOOLEAN DEFAULT true,
+  onboarding_completed_at TIMESTAMP,
+  must_change_password BOOLEAN DEFAULT false,
+  password_changed_at TIMESTAMP,
   last_login TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()

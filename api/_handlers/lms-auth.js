@@ -21,6 +21,8 @@ module.exports = async (req, res, deps) => {
         return await handleLogout(req, res, deps);
       case 'me':
         return await handleMe(req, res, deps);
+      case 'complete-onboarding':
+        return await handleCompleteOnboarding(req, res, deps);
       default:
         return res.status(404).json({ error: 'Acción de auth no encontrada', action, path });
     }
@@ -55,7 +57,7 @@ async function handleLogin(req, res, deps) {
 
   // Buscar usuario por email
   const result = await query(
-    'SELECT id, name, email, password_hash, role, active FROM lms_users WHERE email = $1',
+    'SELECT id, name, email, password_hash, role, active, first_login, onboarding_completed_at, must_change_password FROM lms_users WHERE email = $1',
     [email.toLowerCase()]
   );
 
@@ -94,7 +96,10 @@ async function handleLogin(req, res, deps) {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      first_login: user.first_login,
+      onboarding_completed_at: user.onboarding_completed_at,
+      must_change_password: user.must_change_password
     },
     message: 'Login exitoso'
   });
@@ -146,7 +151,45 @@ async function handleMe(req, res, deps) {
       name: user.name,
       email: user.email,
       role: user.role,
-      last_login: user.last_login
+      last_login: user.last_login,
+      first_login: user.first_login,
+      onboarding_completed_at: user.onboarding_completed_at,
+      must_change_password: user.must_change_password
     }
   });
 }
+
+// ===================================================================
+// COMPLETE ONBOARDING
+// ===================================================================
+async function handleCompleteOnboarding(req, res, deps) {
+  const { query, parseCookies, validateSession } = deps;
+  
+  if (req.method !== 'PATCH') {
+    return res.status(405).json({ error: 'Método no permitido' });
+  }
+
+  req.cookies = parseCookies(req);
+  const user = await validateSession(req);
+
+  if (!user) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+
+  // Marcar onboarding como completado
+  await query(
+    `UPDATE lms_users 
+     SET 
+       first_login = false,
+       onboarding_completed_at = NOW(),
+       updated_at = NOW()
+     WHERE id = $1`,
+    [user.id]
+  );
+
+  return res.status(200).json({
+    message: 'Onboarding completado',
+    onboarding_completed_at: new Date().toISOString()
+  });
+}
+

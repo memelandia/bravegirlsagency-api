@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bienvenida - BraveGirls Academy 🎓</title>
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Shepherd.js for guided tour -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shepherd.js@11.2.0/dist/css/shepherd.css">
+  
+  <!-- LMS Styles -->
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.15">
+  
+  <style>
+    body {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .welcome-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 24px;
+      box-shadow: var(--shadow-2xl);
+      overflow: hidden;
+      animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .welcome-header {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      padding: 40px 30px;
+      text-align: center;
+    }
+
+    .welcome-header h1 {
+      margin: 0 0 10px 0;
+      font-size: 32px;
+      font-weight: 700;
+    }
+
+    .welcome-header .subtitle {
+      font-size: 18px;
+      opacity: 0.95;
+      margin: 0;
+    }
+
+    .welcome-content {
+      padding: 40px 30px;
+    }
+
+    .section {
+      margin-bottom: 40px;
+    }
+
+    .section h2 {
+      color: var(--text-primary);
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section h2 i {
+      color: var(--primary);
+      font-size: 28px;
+    }
+
+    .video-container {
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 aspect ratio */
+      height: 0;
+      overflow: hidden;
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      margin-bottom: 20px;
+    }
+
+    .video-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .info-card {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05));
+      border: 2px solid rgba(99, 102, 241, 0.15);
+      border-radius: 16px;
+      padding: 24px;
+      transition: all 0.3s ease;
+    }
+
+    .info-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--primary);
+    }
+
+    .info-card i {
+      font-size: 32px;
+      color: var(--primary);
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .info-card h3 {
+      margin: 0 0 8px 0;
+      color: var(--text-primary);
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .info-card p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .rules-list {
+      background: #f8f9ff;
+      border-left: 4px solid var(--primary);
+      border-radius: 8px;
+      padding: 24px;
+      margin-top: 20px;
+    }
+
+    .rules-list ul {
+      margin: 0;
+      padding-left: 24px;
+    }
+
+    .rules-list li {
+      color: var(--text-primary);
+      font-size: 16px;
+      margin-bottom: 12px;
+      line-height: 1.6;
+    }
+
+    .rules-list li strong {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .cta-section {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.08));
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+      margin-top: 40px;
+    }
+
+    .cta-section p {
+      font-size: 18px;
+      color: var(--text-primary);
+      margin-bottom: 24px;
+    }
+
+    .btn-start {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border: none;
+      padding: 16px 48px;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow-md);
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-start:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-xl);
+    }
+
+    .btn-start:active {
+      transform: translateY(0);
+    }
+
+    .btn-tour {
+      background: white;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+      padding: 12px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 12px;
+    }
+
+    .btn-tour:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    .progress-indicator {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin: 30px 0;
+      opacity: 0;
+    }
+
+    .progress-indicator.show {
+      opacity: 1;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .progress-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gray-300);
+      animation: pulse 1.5s infinite;
+    }
+
+    .progress-dot:nth-child(2) {
+      animation-delay: 0.3s;
+    }
+
+    .progress-dot:nth-child(3) {
+      animation-delay: 0.6s;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.5;
+      }
+      50% {
+        transform: scale(1.5);
+        opacity: 1;
+      }
+    }
+
+    /* Shepherd.js custom styles */
+    .shepherd-element {
+      z-index: 10000;
+    }
+
+    .shepherd-button {
+      background: var(--primary) !important;
+      color: white !important;
+      border-radius: 8px !important;
+      padding: 10px 20px !important;
+      font-weight: 600 !important;
+    }
+
+    .shepherd-button:hover {
+      background: var(--secondary) !important;
+    }
+
+    @media (max-width: 768px) {
+      .welcome-header {
+        padding: 30px 20px;
+      }
+
+      .welcome-header h1 {
+        font-size: 24px;
+      }
+
+      .welcome-content {
+        padding: 30px 20px;
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .btn-start, .btn-tour {
+        width: 100%;
+        justify-content: center;
+        margin: 8px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="welcome-container">
+    <!-- Header -->
+    <div class="welcome-header">
+      <h1>¡Bienvenido/a a BraveGirls Academy! 🎓</h1>
+      <p class="subtitle">Estás a punto de comenzar tu formación como Chatter profesional</p>
+    </div>
+
+    <!-- Content -->
+    <div class="welcome-content">
+      
+      <!-- Section 1: Video de Bienvenida -->
+      <div class="section">
+        <h2>
+          <i class="fas fa-play-circle"></i>
+          Video de Bienvenida
+        </h2>
+        <div class="video-container">
+          <!-- Replace with actual Loom video URL -->
+          <iframe 
+            src="https://www.loom.com/embed/YOUR_VIDEO_ID_HERE"
+            allowfullscreen>
+          </iframe>
+        </div>
+        <p style="color: var(--text-secondary); font-size: 14px; margin-top: 12px;">
+          <i class="fas fa-clock"></i> 5 minutos · Conoce la visión de BraveGirls Agency
+        </p>
+      </div>
+
+      <!-- Section 2: Qué Esperar -->
+      <div class="section">
+        <h2>
+          <i class="fas fa-map-marked-alt"></i>
+          ¿Qué te espera en este curso?
+        </h2>
+        <div class="info-grid">
+          <div class="info-card">
+            <i class="fas fa-layer-group"></i>
+            <h3>Etapas Estructuradas</h3>
+            <p>El curso está dividido en etapas progresivas. Avanzarás paso a paso, desbloqueando nuevo contenido.</p>
+          </div>
+          <div class="info-card">
+            <i class="fas fa-book-open"></i>
+            <h3>Módulos y Lecciones</h3>
+            <p>Cada etapa contiene módulos con lecciones en video y texto. Aprenderás a tu ritmo.</p>
+          </div>
+          <div class="info-card">
+            <i class="fas fa-clipboard-check"></i>
+            <h3>Evaluaciones</h3>
+            <p>Al final de cada módulo, completarás un quiz para validar tu conocimiento.</p>
+          </div>
+          <div class="info-card">
+            <i class="fas fa-trophy"></i>
+            <h3>Certificación</h3>
+            <p>Al completar todo el curso con éxito, recibirás tu certificado oficial.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Reglas Importantes -->
+      <div class="section">
+        <h2>
+          <i class="fas fa-exclamation-triangle"></i>
+          Reglas Importantes
+        </h2>
+        <div class="rules-list">
+          <ul>
+            <li>
+              <strong>80% para aprobar:</strong> Necesitas al menos 80% en cada evaluación para avanzar.
+            </li>
+            <li>
+              <strong>3 intentos máximo:</strong> Tienes hasta 3 oportunidades para aprobar cada quiz. ¡Estudia bien!
+            </li>
+            <li>
+              <strong>Progreso secuencial:</strong> Debes completar todas las lecciones de un módulo antes de tomar la evaluación.
+            </li>
+            <li>
+              <strong>Sin trampa:</strong> Todo intento de hacer trampa será detectado y resultará en descalificación inmediata.
+            </li>
+            <li>
+              <strong>Fecha límite:</strong> Tienes tiempo limitado para completar tu formación. ¡Organiza tu tiempo!
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Section 4: Cultura BraveGirls -->
+      <div class="section">
+        <h2>
+          <i class="fas fa-heart"></i>
+          Nuestra Cultura
+        </h2>
+        <p style="color: var(--text-primary); font-size: 16px; line-height: 1.8;">
+          En BraveGirls Agency valoramos la <strong>profesionalidad</strong>, la <strong>empatía con los fans</strong>, 
+          y el <strong>compromiso con la excelencia</strong>. Como chatter, serás la voz de las modelos. 
+          Tu rol es crear conexiones auténticas, ofrecer un servicio excepcional, y generar resultados.
+        </p>
+        <p style="color: var(--text-secondary); font-size: 15px; line-height: 1.8; margin-top: 16px;">
+          Este curso te preparará para entender nuestros valores, dominar las técnicas de chatting, 
+          conocer los precios y paquetes, y manejar cualquier situación con fans de manera profesional.
+        </p>
+      </div>
+
+      <!-- CTA Section -->
+      <div class="cta-section">
+        <p>¿Listo/a para comenzar tu formación?</p>
+        <button class="btn-start" onclick="completeOnboarding()">
+          <i class="fas fa-rocket"></i>
+          Comenzar mi Formación
+        </button>
+        <button class="btn-tour" onclick="startTour()">
+          <i class="fas fa-route"></i>
+          Hacer Tour del Campus
+        </button>
+      </div>
+
+      <!-- Progress Indicator (hidden by default) -->
+      <div class="progress-indicator" id="progressIndicator">
+        <span style="color: var(--text-secondary); font-size: 14px;">Configurando tu cuenta</span>
+        <div class="progress-dot"></div>
+        <div class="progress-dot"></div>
+        <div class="progress-dot"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Shepherd.js -->
+  <script src="https://cdn.jsdelivr.net/npm/shepherd.js@11.2.0/dist/js/shepherd.min.js"></script>
+
+  <script>
+    // Check if user should be here
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/lms/auth/me', {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          // Not logged in, redirect to login
+          window.location.href = '/lms/login.html';
+          return;
+        }
+
+        const data = await response.json();
+        
+        // If onboarding already completed, redirect to campus
+        if (data.onboarding_completed_at) {
+          window.location.href = '/lms/campus.html';
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        window.location.href = '/lms/login.html';
+      }
+    }
+
+    // Complete onboarding and redirect to campus
+    async function completeOnboarding() {
+      const btn = document.querySelector('.btn-start');
+      const progress = document.getElementById('progressIndicator');
+      
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparando...';
+      progress.classList.add('show');
+
+      try {
+        const response = await fetch('/api/lms/auth/complete-onboarding', {
+          method: 'PATCH',
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al completar onboarding');
+        }
+
+        // Success! Redirect to campus
+        setTimeout(() => {
+          window.location.href = '/lms/campus.html';
+        }, 800);
+
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Hubo un error. Por favor intenta de nuevo.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-rocket"></i> Comenzar mi Formación';
+        progress.classList.remove('show');
+      }
+    }
+
+    // Guided tour with Shepherd.js
+    function startTour() {
+      const tour = new Shepherd.Tour({
+        useModalOverlay: true,
+        defaultStepOptions: {
+          cancelIcon: {
+            enabled: true
+          },
+          classes: 'shepherd-theme-custom',
+          scrollTo: { behavior: 'smooth', block: 'center' }
+        }
+      });
+
+      tour.addStep({
+        id: 'intro',
+        text: '👋 ¡Hola! Te voy a mostrar cómo funciona el campus de BraveGirls Academy.',
+        buttons: [
+          {
+            text: 'Comenzar Tour',
+            action: tour.next
+          }
+        ]
+      });
+
+      tour.addStep({
+        id: 'stages',
+        text: '📚 Verás todas las <strong>etapas</strong> del curso. Solo puedes acceder a una a la vez, avanzando en orden.',
+        buttons: [
+          {
+            text: 'Atrás',
+            action: tour.back
+          },
+          {
+            text: 'Siguiente',
+            action: tour.next
+          }
+        ]
+      });
+
+      tour.addStep({
+        id: 'modules',
+        text: '📖 Cada etapa tiene <strong>módulos</strong>. Dentro de cada módulo encontrarás lecciones en video y texto.',
+        buttons: [
+          {
+            text: 'Atrás',
+            action: tour.back
+          },
+          {
+            text: 'Siguiente',
+            action: tour.next
+          }
+        ]
+      });
+
+      tour.addStep({
+        id: 'lessons',
+        text: '✅ Completa todas las lecciones de un módulo para desbloquear el <strong>quiz de evaluación</strong>.',
+        buttons: [
+          {
+            text: 'Atrás',
+            action: tour.back
+          },
+          {
+            text: 'Siguiente',
+            action: tour.next
+          }
+        ]
+      });
+
+      tour.addStep({
+        id: 'quiz',
+        text: '🎯 Necesitas <strong>80% o más</strong> para aprobar. Tienes <strong>3 intentos</strong>. ¡Estudia bien antes de intentar!',
+        buttons: [
+          {
+            text: 'Atrás',
+            action: tour.back
+          },
+          {
+            text: 'Siguiente',
+            action: tour.next
+          }
+        ]
+      });
+
+      tour.addStep({
+        id: 'progress',
+        text: '📊 Tu progreso se guarda automáticamente. Puedes salir y volver cuando quieras.',
+        buttons: [
+          {
+            text: 'Atrás',
+            action: tour.back
+          },
+          {
+            text: 'Siguiente',
+            action: tour.next
+          }
+        ]
+      });
+
+      tour.addStep({
+        id: 'finish',
+        text: '🏆 Al completar todos los módulos y aprobar todas las evaluaciones, recibirás tu <strong>certificado oficial</strong>. ¡Vamos a comenzar!',
+        buttons: [
+          {
+            text: 'Atrás',
+            action: tour.back
+          },
+          {
+            text: 'Empezar Ahora',
+            action: () => {
+              tour.complete();
+              completeOnboarding();
+            }
+          }
+        ]
+      });
+
+      tour.start();
+    }
+
+    // Check authentication on page load
+    checkAuth();
+  </script>
+</body>
+</html>

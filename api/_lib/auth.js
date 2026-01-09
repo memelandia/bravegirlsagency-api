@@ -25,7 +25,7 @@ async function getUserByEmail(email) {
 }
 
 async function getUserById(userId) {
-  const result = await query('SELECT id, name, email, role, active, last_login FROM lms_users WHERE id = $1', [userId]);
+  const result = await query('SELECT id, name, email, role, active, last_login, first_login, onboarding_completed_at, must_change_password FROM lms_users WHERE id = $1', [userId]);
   return result.rows[0] || null;
 }
 
