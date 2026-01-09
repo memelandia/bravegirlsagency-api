@@ -19,8 +19,8 @@ module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
   }
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Cookie, X-Requested-With, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -36,8 +36,8 @@ module.exports = async (req, res) => {
     // Parsear cookies
     req.cookies = parseCookies(req);
     
-    // Parsear body si es POST/PUT
-    if (['POST', 'PUT'].includes(req.method)) {
+    // Parsear body si es POST/PUT/PATCH
+    if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
       req.body = await parseBody(req);
     }
 
