@@ -7,6 +7,11 @@ module.exports = async (req, res, deps) => {
   const { query, verifyPassword, createSession, updateLastLogin, validateSession, getUserByEmail, parseCookies, setCookie, deleteCookie, isValidEmail, validateRequired, parseBody } = deps;
 
   try {
+    // Manejar preflight CORS (OPTIONS)
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+
     // Usar el path limpio que viene de api/lms.js
     const path = req.lmsPath || '';
     const action = path.replace('auth/', '');
