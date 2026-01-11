@@ -112,12 +112,18 @@ async function handleLogin(req, res, deps) {
     deadlineExpired = diffDays < 0;
   }
 
-  // Verificar si completó el curso completo
-  const completionResult = await query(
-    'SELECT id FROM lms_course_completions WHERE user_id = $1',
-    [user.id]
-  );
-  const courseCompleted = completionResult.rows.length > 0;
+  // Verificar si completó el curso completo (tolerante a errores si tabla no existe)
+  let courseCompleted = false;
+  try {
+    const completionResult = await query(
+      'SELECT id FROM lms_course_completions WHERE user_id = $1',
+      [user.id]
+    );
+    courseCompleted = completionResult.rows.length > 0;
+  } catch (error) {
+    // Tabla lms_course_completions aún no existe - ignorar error
+    console.log('lms_course_completions table not found, assuming not completed');
+  }
 
   return res.status(200).json({
     user: {
@@ -190,12 +196,18 @@ async function handleMe(req, res, deps) {
     deadlineExpired = diffDays < 0;
   }
 
-  // Verificar si completó el curso completo
-  const completionResult = await query(
-    'SELECT id FROM lms_course_completions WHERE user_id = $1',
-    [user.id]
-  );
-  const courseCompleted = completionResult.rows.length > 0;
+  // Verificar si completó el curso completo (tolerante a errores si tabla no existe)
+  let courseCompleted = false;
+  try {
+    const completionResult = await query(
+      'SELECT id FROM lms_course_completions WHERE user_id = $1',
+      [user.id]
+    );
+    courseCompleted = completionResult.rows.length > 0;
+  } catch (error) {
+    // Tabla lms_course_completions aún no existe - ignorar error
+    console.log('lms_course_completions table not found, assuming not completed');
+  }
 
   return res.status(200).json({
     user: {
