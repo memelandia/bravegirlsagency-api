@@ -26,7 +26,26 @@ async function getUserByEmail(email) {
 
 async function getUserById(userId) {
   const result = await query('SELECT id, name, email, role, active, last_login, first_login, onboarding_completed_at, must_change_password FROM lms_users WHERE id = $1', [userId]);
-  return result.rows[0] || null;
+  const user = result.rows[0] || null;
+  
+  if (user) {
+    // Intentar obtener campos opcionales (course_deadline, enrollment_date)
+    try {
+      const deadlineResult = await query(
+        'SELECT course_deadline, enrollment_date FROM lms_users WHERE id = $1',
+        [userId]
+      );
+      if (deadlineResult.rows[0]) {
+        user.course_deadline = deadlineResult.rows[0].course_deadline;
+        user.enrollment_date = deadlineResult.rows[0].enrollment_date;
+      }
+    } catch (error) {
+      // Columnas no existen - ignorar
+      console.log('course_deadline/enrollment_date columns not found in getUserById');
+    }
+  }
+  
+  return user;
 }
 
 async function updateLastLogin(userId) {

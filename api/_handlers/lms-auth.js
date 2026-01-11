@@ -64,9 +64,9 @@ async function handleLogin(req, res, deps) {
     return res.status(400).json({ error: 'Email inválido' });
   }
 
-  // Buscar usuario por email
-  const result = await query(
-    'SELECT id, name, email, password_hash, role, active, first_login, onboarding_completed_at, must_change_password, course_deadline, enrollment_date FROM lms_users WHERE email = $1',
+  // Buscar usuario por email (primero campos obligatorios)
+  let result = await query(
+    'SELECT id, name, email, password_hash, role, active, first_login, onboarding_completed_at, must_change_password FROM lms_users WHERE email = $1',
     [email.toLowerCase()]
   );
 
@@ -74,6 +74,22 @@ async function handleLogin(req, res, deps) {
 
   if (!user) {
     return res.status(401).json({ error: 'Credenciales inválidas' });
+  }
+
+  // Intentar obtener campos opcionales (course_deadline, enrollment_date)
+  // Si no existen las columnas, ignorar el error
+  try {
+    const deadlineResult = await query(
+      'SELECT course_deadline, enrollment_date FROM lms_users WHERE id = $1',
+      [user.id]
+    );
+    if (deadlineResult.rows[0]) {
+      user.course_deadline = deadlineResult.rows[0].course_deadline;
+      user.enrollment_date = deadlineResult.rows[0].enrollment_date;
+    }
+  } catch (error) {
+    // Columnas course_deadline/enrollment_date no existen - ignorar
+    console.log('course_deadline/enrollment_date columns not found');
   }
 
   if (!user.active) {
