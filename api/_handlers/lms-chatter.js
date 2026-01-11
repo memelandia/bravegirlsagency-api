@@ -458,7 +458,7 @@ async function handleLessonComplete(req, res, user, deps) {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  const { lessonId } = req.body;
+  const { lessonId, timeSpentSeconds } = req.body;
 
   // Validar campos requeridos
   const validation = validateRequired(req.body, ['lessonId']);
@@ -470,9 +470,14 @@ async function handleLessonComplete(req, res, user, deps) {
     return res.status(400).json({ error: 'ID de lección inválido' });
   }
 
-  // Verificar que la lección existe
+  // Validar timeSpentSeconds si viene
+  if (timeSpentSeconds !== undefined && (typeof timeSpentSeconds !== 'number' || timeSpentSeconds < 0)) {
+    return res.status(400).json({ error: 'timeSpentSeconds debe ser un número positivo' });
+  }
+
+  // Verificar que la lección existe y obtener su configuración
   const lessonResult = await query(
-    'SELECT id, module_id FROM lms_lessons WHERE id = $1',
+    'SELECT id, module_id, content_type, title, min_time_required_seconds FROM lms_lessons WHERE id = $1',
     [lessonId]
   );
 
@@ -482,6 +487,19 @@ async function handleLessonComplete(req, res, user, deps) {
 
   const lesson = lessonResult.rows[0];
   const moduleId = lesson.module_id;
+
+  // VALIDACIÓN DE TIEMPO: Verificar tiempo mínimo requerido
+  if (timeSpentSeconds !== undefined && lesson.min_time_required_seconds) {
+    if (timeSpentSeconds < lesson.min_time_required_seconds) {
+      const minutesRequired = Math.ceil(lesson.min_time_required_seconds / 60);
+      const minutesSpent = Math.ceil(timeSpentSeconds / 60);
+      return res.status(400).json({ 
+        error: `Debes dedicar al menos ${minutesRequired} minutos a esta lección. Has dedicado ${minutesSpent} minuto(s).`,
+        required: lesson.min_time_required_seconds,
+        spent: timeSpentSeconds
+      });
+    }
+  }
 
   // Verificar acceso secuencial (Server-Side Logic Replacement)
   if (user.role === 'chatter') {
@@ -539,12 +557,36 @@ async function handleLessonComplete(req, res, user, deps) {
     }
   }
 
-  // Marcar lección como completada (INSERT ... ON CONFLICT DO NOTHING)
-  await query(`
-    INSERT INTO lms_progress_lessons (user_id, lesson_id, completed_at)
-    VALUES ($1, $2, NOW())
-    ON CONFLICT (user_id, lesson_id) DO NOTHING
-  `, [user.id, lessonId]);
+  // Marcar lección como completada con tracking de tiempo
+  // Usar try-catch para ser tolerante si columnas no existen aún
+  try {
+    if (timeSpentSeconds !== undefined) {
+      // Con tracking de tiempo (si columnas existen)
+      await query(`
+        INSERT INTO lms_progress_lessons (user_id, lesson_id, completed_at, time_spent_seconds, last_activity_at)
+        VALUES ($1, $2, NOW(), $3, NOW())
+        ON CONFLICT (user_id, lesson_id) DO UPDATE SET
+          completed_at = NOW(),
+          time_spent_seconds = GREATEST(lms_progress_lessons.time_spent_seconds, $3),
+          last_activity_at = NOW()
+      `, [user.id, lessonId, timeSpentSeconds]);
+    } else {
+      // Sin tracking (fallback)
+      await query(`
+        INSERT INTO lms_progress_lessons (user_id, lesson_id, completed_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (user_id, lesson_id) DO UPDATE SET completed_at = NOW()
+      `, [user.id, lessonId]);
+    }
+  } catch (error) {
+    // Si falla (columnas no existen), usar versión simple
+    console.log('Time tracking columns not found, using simple insert');
+    await query(`
+      INSERT INTO lms_progress_lessons (user_id, lesson_id, completed_at)
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (user_id, lesson_id) DO NOTHING
+    `, [user.id, lessonId]);
+  }
 
   // Verificar si todas las lecciones del módulo están completadas
   const progressResult = await query(`

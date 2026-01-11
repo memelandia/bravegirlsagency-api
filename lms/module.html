@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Módulo - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.15">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.18.0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="course-view">
@@ -81,6 +81,8 @@
     let currentUser = null;
     let moduleData = null;
     let currentLessonIndex = -1; // -1: none, 0-N: lesson, 999: quiz
+    let lessonStartTime = null; // Track when lesson was opened
+    let totalTimeSpent = 0; // Accumulated time in seconds
 
     // Utility
     function showAlert(message, type = 'error') {
@@ -210,7 +212,18 @@
 
     function openLesson(index) {
       if (index < 0 || index >= moduleData.lessons.length) return;
+      
+      // Guardar tiempo de la lección anterior si había una abierta
+      if (lessonStartTime !== null && currentLessonIndex >= 0) {
+        const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
+        totalTimeSpent += timeSpent;
+      }
+      
+      // Resetear timer para nueva lección
       currentLessonIndex = index;
+      lessonStartTime = Date.now();
+      totalTimeSpent = 0;
+      
       renderSidebar();
       
       const lesson = moduleData.lessons[index];
@@ -400,14 +413,24 @@
       if (moduleData.lessons[index].completed) return; // Already done
 
       try {
+        // Calcular tiempo total dedicado a esta lección
+        const currentSessionTime = lessonStartTime ? Math.floor((Date.now() - lessonStartTime) / 1000) : 0;
+        const timeSpentSeconds = totalTimeSpent + currentSessionTime;
+
         const response = await fetch(`${API_BASE}/lesson/complete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ lessonId })
+          body: JSON.stringify({ 
+            lessonId,
+            timeSpentSeconds 
+          })
         });
         
-        if (!response.ok) throw new Error('Error al completar lección');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Error al completar lección');
+        }
         
         // Update local state locally to feel instant
         moduleData.lessons[index].completed = true;
@@ -474,6 +497,24 @@
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
       window.location.href = '/lms/login.html';
+    });
+
+    // Track time spent even if user closes tab
+    window.addEventListener('beforeunload', () => {
+      if (lessonStartTime !== null && currentLessonIndex >= 0) {
+        const currentSessionTime = Math.floor((Date.now() - lessonStartTime) / 1000);
+        const timeSpentSeconds = totalTimeSpent + currentSessionTime;
+        
+        // Use sendBeacon for reliable sending on page unload
+        if (navigator.sendBeacon) {
+          const lesson = moduleData.lessons[currentLessonIndex];
+          const data = new Blob([JSON.stringify({ 
+            lessonId: lesson.id, 
+            timeSpentSeconds 
+          })], { type: 'application/json' });
+          navigator.sendBeacon(`${API_BASE}/lesson/track-time`, data);
+        }
+      }
     });
 
     (async () => {
