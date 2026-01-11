@@ -112,6 +112,13 @@ async function handleLogin(req, res, deps) {
     deadlineExpired = diffDays < 0;
   }
 
+  // Verificar si completó el curso completo
+  const completionResult = await query(
+    'SELECT id FROM lms_course_completions WHERE user_id = $1',
+    [user.id]
+  );
+  const courseCompleted = completionResult.rows.length > 0;
+
   return res.status(200).json({
     user: {
       id: user.id,
@@ -124,7 +131,8 @@ async function handleLogin(req, res, deps) {
       course_deadline: user.course_deadline,
       enrollment_date: user.enrollment_date,
       days_remaining: daysRemaining,
-      deadline_expired: deadlineExpired
+      deadline_expired: deadlineExpired,
+      course_completed: courseCompleted
     },
     message: 'Login exitoso'
   });
@@ -182,6 +190,13 @@ async function handleMe(req, res, deps) {
     deadlineExpired = diffDays < 0;
   }
 
+  // Verificar si completó el curso completo
+  const completionResult = await query(
+    'SELECT id FROM lms_course_completions WHERE user_id = $1',
+    [user.id]
+  );
+  const courseCompleted = completionResult.rows.length > 0;
+
   return res.status(200).json({
     user: {
       id: user.id,
@@ -195,7 +210,8 @@ async function handleMe(req, res, deps) {
       course_deadline: user.course_deadline,
       enrollment_date: user.enrollment_date,
       days_remaining: daysRemaining,
-      deadline_expired: deadlineExpired
+      deadline_expired: deadlineExpired,
+      course_completed: courseCompleted
     }
   });
 }

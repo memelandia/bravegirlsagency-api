@@ -142,8 +142,8 @@
       const message = document.getElementById('deadlineMessage');
       const daysRemaining = currentUser.days_remaining;
 
-      // Si ya completó el curso, no mostrar banner
-      if (currentUser.onboarding_completed_at) return;
+      // Si ya completó el curso completo, no mostrar banner
+      if (currentUser.course_completed) return;
 
       if (currentUser.deadline_expired) {
         // Deadline vencido - Banner rojo crítico
