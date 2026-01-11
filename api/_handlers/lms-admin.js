@@ -400,7 +400,7 @@ async function handleLessons(req, res, user, deps) {
       return res.status(403).json({ error: 'Solo administradores pueden crear lecciones' });
     }
 
-    const { moduleId, title, type, orderIndex, loomUrl, textContent } = req.body;
+    const { moduleId, title, type, orderIndex, loomUrl, textContent, estimatedDurationSeconds, minTimeRequiredSeconds } = req.body;
     
     const validation = validateRequired(req.body, ['moduleId', 'title', 'type', 'orderIndex']);
     if (!validation.valid) {
@@ -422,10 +422,11 @@ async function handleLessons(req, res, user, deps) {
     const finalLoomUrl = type === 'video' ? normalizeLoomUrl(loomUrl) : null;
     
     const result = await query(`
-      INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url, text_content)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url, text_content, estimated_duration_seconds, min_time_required_seconds)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
-    `, [moduleId, title, type, orderIndex, finalLoomUrl, type === 'text' ? textContent : null]);
+    `, [moduleId, title, type, orderIndex, finalLoomUrl, type === 'text' ? textContent : null, 
+        estimatedDurationSeconds || null, minTimeRequiredSeconds || null]);
     
     return res.status(201).json({ lesson: result.rows[0] });
   }
@@ -436,7 +437,7 @@ async function handleLessons(req, res, user, deps) {
       return res.status(403).json({ error: 'Solo administradores pueden actualizar lecciones' });
     }
 
-    const { id, title, type, orderIndex, loomUrl, textContent } = req.body;
+    const { id, title, type, orderIndex, loomUrl, textContent, estimatedDurationSeconds, minTimeRequiredSeconds } = req.body;
     
     if (!id || !isValidUUID(id)) {
       return res.status(400).json({ error: 'ID inválido' });
@@ -472,6 +473,16 @@ async function handleLessons(req, res, user, deps) {
     if (textContent !== undefined) {
       updates.push(`text_content = $${paramIndex++}`);
       params.push(textContent);
+    }
+    
+    if (estimatedDurationSeconds !== undefined) {
+      updates.push(`estimated_duration_seconds = $${paramIndex++}`);
+      params.push(estimatedDurationSeconds || null);
+    }
+    
+    if (minTimeRequiredSeconds !== undefined) {
+      updates.push(`min_time_required_seconds = $${paramIndex++}`);
+      params.push(minTimeRequiredSeconds || null);
     }
     
     if (updates.length === 0) {

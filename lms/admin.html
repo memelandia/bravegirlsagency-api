@@ -791,10 +791,37 @@
                 </div>
               </div>
               
-              <div id="textFields" class="${!isEdit || lesson.type === 'video' ? '🎥 Video' : '📄 Texto'}">
+              <div id="textFields" class="${!isEdit || lesson.type === 'video' ? 'hidden' : ''}">
                 <div class="form-group">
                   <label>Contenido de Texto</label>
                   <textarea id="lsText" class="form-input" rows="6">${isEdit && lesson.text_content ? lesson.text_content : ''}</textarea>
+                </div>
+              </div>
+
+              <!-- Configuración de Tiempo -->
+              <div class="form-group" style="border-top: 1px solid var(--gray-200); padding-top: 15px; margin-top: 15px;">
+                <label style="font-weight: 600; margin-bottom: 10px; display: block;">⏱️ Configuración de Tiempo de Estudio</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                  <div>
+                    <label style="font-size: 13px; color: var(--text-secondary);">Duración estimada (minutos)</label>
+                    <input type="number" id="lsEstimated" class="form-input" min="0" step="0.5" 
+                           placeholder="Ej: 2.5" 
+                           value="${isEdit && lesson.estimated_duration_seconds ? (lesson.estimated_duration_seconds / 60).toFixed(1) : ''}">
+                    <small style="color: var(--text-secondary); font-size: 12px;">Tiempo que toma completar esta lección</small>
+                  </div>
+                  <div>
+                    <label style="font-size: 13px; color: var(--text-secondary);">Tiempo mínimo requerido (minutos)</label>
+                    <input type="number" id="lsMinRequired" class="form-input" min="0" step="0.5" 
+                           placeholder="Ej: 2" 
+                           value="${isEdit && lesson.min_time_required_seconds ? (lesson.min_time_required_seconds / 60).toFixed(1) : ''}">
+                    <small style="color: var(--text-secondary); font-size: 12px;">Mínimo para marcar como completo (vacío = sin restricción)</small>
+                  </div>
+                </div>
+                <div style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 8px; font-size: 13px;">
+                  <strong>💡 Sugerencias:</strong><br>
+                  • Videos cortos (1 min): min 0.5-0.75 min<br>
+                  • Videos medianos (3-5 min): min 2-4 min<br>
+                  • Textos: Se calcula automático si se deja vacío (200 palabras/min)
                 </div>
               </div>
 
@@ -811,13 +838,18 @@
       document.getElementById('lessonForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const type = document.getElementById('lsType').value;
+        const estimatedMin = parseFloat(document.getElementById('lsEstimated').value);
+        const minRequiredMin = parseFloat(document.getElementById('lsMinRequired').value);
+        
         const body = {
           moduleId: document.getElementById('lsMod').value,
           title: document.getElementById('lsTitle').value,
           orderIndex: parseInt(document.getElementById('lsOrder').value),
           type: type,
           loomUrl: type === 'video' ? document.getElementById('lsLoom').value : null,
-          textContent: type === 'text' ? document.getElementById('lsText').value : null
+          textContent: type === 'text' ? document.getElementById('lsText').value : null,
+          estimatedDurationSeconds: estimatedMin ? Math.round(estimatedMin * 60) : null,
+          minTimeRequiredSeconds: minRequiredMin ? Math.round(minRequiredMin * 60) : null
         };
         
         if (isEdit) body.id = document.getElementById('lsId').value;
