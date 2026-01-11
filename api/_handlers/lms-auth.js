@@ -66,7 +66,7 @@ async function handleLogin(req, res, deps) {
 
   // Buscar usuario por email
   const result = await query(
-    'SELECT id, name, email, password_hash, role, active, first_login, onboarding_completed_at, must_change_password FROM lms_users WHERE email = $1',
+    'SELECT id, name, email, password_hash, role, active, first_login, onboarding_completed_at, must_change_password, course_deadline, enrollment_date FROM lms_users WHERE email = $1',
     [email.toLowerCase()]
   );
 
@@ -100,6 +100,18 @@ async function handleLogin(req, res, deps) {
     maxAge: 86400 * 1000 // 24 horas (en milisegundos)
   });
 
+  // Calcular días restantes si hay deadline
+  let daysRemaining = null;
+  let deadlineExpired = false;
+  if (user.course_deadline) {
+    const now = new Date();
+    const deadline = new Date(user.course_deadline);
+    const diffTime = deadline - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    daysRemaining = diffDays;
+    deadlineExpired = diffDays < 0;
+  }
+
   return res.status(200).json({
     user: {
       id: user.id,
@@ -108,7 +120,11 @@ async function handleLogin(req, res, deps) {
       role: user.role,
       first_login: user.first_login,
       onboarding_completed_at: user.onboarding_completed_at,
-      must_change_password: user.must_change_password
+      must_change_password: user.must_change_password,
+      course_deadline: user.course_deadline,
+      enrollment_date: user.enrollment_date,
+      days_remaining: daysRemaining,
+      deadline_expired: deadlineExpired
     },
     message: 'Login exitoso'
   });
@@ -154,6 +170,18 @@ async function handleMe(req, res, deps) {
     return res.status(401).json({ error: 'No autorizado' });
   }
 
+  // Calcular días restantes si hay deadline
+  let daysRemaining = null;
+  let deadlineExpired = false;
+  if (user.course_deadline) {
+    const now = new Date();
+    const deadline = new Date(user.course_deadline);
+    const diffTime = deadline - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    daysRemaining = diffDays;
+    deadlineExpired = diffDays < 0;
+  }
+
   return res.status(200).json({
     user: {
       id: user.id,
@@ -163,7 +191,11 @@ async function handleMe(req, res, deps) {
       last_login: user.last_login,
       first_login: user.first_login,
       onboarding_completed_at: user.onboarding_completed_at,
-      must_change_password: user.must_change_password
+      must_change_password: user.must_change_password,
+      course_deadline: user.course_deadline,
+      enrollment_date: user.enrollment_date,
+      days_remaining: daysRemaining,
+      deadline_expired: deadlineExpired
     }
   });
 }

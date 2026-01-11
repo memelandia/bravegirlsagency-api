@@ -87,7 +87,7 @@ async function handleUsers(req, res, user, deps) {
 
   // POST: Crear usuario
   if (req.method === 'POST') {
-    const { name, email, role, password } = req.body;
+    const { name, email, role, password, deadlineDays } = req.body;
     
     const validation = validateRequired(req.body, ['name', 'email', 'role']);
     if (!validation.valid) {
@@ -112,11 +112,14 @@ async function handleUsers(req, res, user, deps) {
     const finalPassword = password || generateTempPassword();
     const passwordHash = await hashPassword(finalPassword);
     
-    const result = await query(`
-      INSERT INTO lms_users (name, email, role, password_hash, active)
-      VALUES ($1, $2, $3, $4, true)
-      RETURNING id, name, email, role, active, created_at
-    `, [name, email.toLowerCase(), role, passwordHash]);
+    // Construir query dinámicamente según si hay deadline o no
+    let insertQuery = `
+      INSERT INTO lms_users (name, email, role, password_hash, active, enrollment_date${deadlineDays ? ', course_deadline' : ''})
+      VALUES ($1, $2, $3, $4, true, NOW()${deadlineDays ? `, NOW() + INTERVAL '${parseInt(deadlineDays)} days'` : ''})
+      RETURNING id, name, email, role, active, enrollment_date, course_deadline, created_at
+    `;
+    
+    const result = await query(insertQuery, [name, email.toLowerCase(), role, passwordHash]);
     
     return successResponse(res, {
       user: result.rows[0],

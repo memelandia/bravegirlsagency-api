@@ -1292,6 +1292,17 @@
                 <input type="text" id="newUserPassword" class="form-input" placeholder="Dejar en blanco para autogenerar">
                 <small style="color: var(--text-light)">Si se deja vacío, el sistema generará una contraseña aleatoria.</small>
               </div>
+              <div class="form-group">
+                <label>Días para completar curso</label>
+                <select id="newUserDeadlineDays" class="form-select">
+                  <option value="">Sin fecha límite</option>
+                  <option value="3">3 días (urgente)</option>
+                  <option value="7" selected>7 días (recomendado)</option>
+                  <option value="14">14 días (extendido)</option>
+                  <option value="30">30 días (flexible)</option>
+                </select>
+                <small style="color: var(--text-light)">⏰ Tiempo máximo para completar el curso</small>
+              </div>
               <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                 <button type="button" class="btn btn-outline" onclick="closeUserModal()">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Crear Usuario</button>
@@ -1311,8 +1322,9 @@
         const email = document.getElementById('newUserEmail').value;
         const role = document.getElementById('newUserRole').value;
         const password = document.getElementById('newUserPassword').value;
+        const deadlineDays = document.getElementById('newUserDeadlineDays').value;
         
-        createUser(name, email, role, password);
+        createUser(name, email, role, password, deadlineDays);
         closeUserModal();
       });
     }
@@ -1322,11 +1334,14 @@
       if (modal) modal.parentElement.remove();
     }
 
-    async function createUser(name, email, role, password) {
+    async function createUser(name, email, role, password, deadlineDays) {
       try {
         const body = { name, email, role };
         if (password && password.trim() !== '') {
           body.password = password.trim();
+        }
+        if (deadlineDays && deadlineDays !== '') {
+          body.deadlineDays = parseInt(deadlineDays);
         }
 
         const response = await fetch(`${API_BASE}/admin/users`, {

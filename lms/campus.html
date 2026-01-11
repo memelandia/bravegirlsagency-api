@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Campus - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.15">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.17.1">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     /* Animaciones de entrada */
@@ -53,6 +53,15 @@
     </nav>
 
     <div id="alert" class="hidden"></div>
+
+    <!-- Deadline Warning Banner -->
+    <div id="deadlineBanner" class="hidden" style="margin-bottom: 20px; padding: 16px 20px; border-radius: 12px; display: flex; align-items: center; gap: 12px; animation: fadeInUp 0.5s ease;">
+      <i class="fas fa-clock" style="font-size: 24px;"></i>
+      <div style="flex: 1;">
+        <div id="deadlineTitle" style="font-weight: 600; font-size: 16px; margin-bottom: 4px;"></div>
+        <div id="deadlineMessage" style="font-size: 14px; opacity: 0.9;"></div>
+      </div>
+    </div>
 
     <!-- Stats Dashboard -->
     <div class="stats-grid">
@@ -114,12 +123,62 @@
         currentUser = data.user;
         document.getElementById('userName').textContent = currentUser.name;
         
+        // Mostrar banner de deadline si aplica
+        showDeadlineBanner();
+        
         if (currentUser.role === 'admin' || currentUser.role === 'supervisor') {
           window.location.href = '/lms/admin.html';
         }
       } catch (error) {
         window.location.href = '/lms/login.html';
       }
+    }
+
+    function showDeadlineBanner() {
+      if (!currentUser.course_deadline) return; // Sin deadline configurado
+
+      const banner = document.getElementById('deadlineBanner');
+      const title = document.getElementById('deadlineTitle');
+      const message = document.getElementById('deadlineMessage');
+      const daysRemaining = currentUser.days_remaining;
+
+      // Si ya completó el curso, no mostrar banner
+      if (currentUser.onboarding_completed_at) return;
+
+      if (currentUser.deadline_expired) {
+        // Deadline vencido - Banner rojo crítico
+        banner.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+        banner.style.color = 'white';
+        banner.style.boxShadow = '0 4px 20px rgba(239, 68, 68, 0.4)';
+        title.innerHTML = '🚨 ¡Plazo Vencido!';
+        message.innerHTML = `Tu fecha límite era el ${new Date(currentUser.course_deadline).toLocaleDateString('es-ES')}. Contacta a tu supervisor urgentemente.`;
+        banner.classList.remove('hidden');
+      } else if (daysRemaining <= 1) {
+        // Menos de 1 día - Banner rojo urgente
+        banner.style.background = 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)';
+        banner.style.color = 'white';
+        banner.style.boxShadow = '0 4px 20px rgba(249, 115, 22, 0.4)';
+        title.innerHTML = daysRemaining === 1 ? '⚠️ ¡ÚLTIMO DÍA!' : '⏰ ¡QUEDAN HORAS!';
+        message.innerHTML = `Tu plazo vence ${daysRemaining === 1 ? 'mañana' : 'HOY'}. Completa el curso lo antes posible.`;
+        banner.classList.remove('hidden');
+      } else if (daysRemaining <= 3) {
+        // 2-3 días - Banner amarillo advertencia
+        banner.style.background = 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)';
+        banner.style.color = '#78350f';
+        banner.style.boxShadow = '0 4px 20px rgba(251, 191, 36, 0.3)';
+        title.innerHTML = '⏱️ Tiempo Limitado';
+        message.innerHTML = `Quedan ${daysRemaining} días para completar tu formación. ¡Apresúrate!`;
+        banner.classList.remove('hidden');
+      } else if (daysRemaining <= 7) {
+        // 4-7 días - Banner azul informativo
+        banner.style.background = 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)';
+        banner.style.color = 'white';
+        banner.style.boxShadow = '0 4px 20px rgba(96, 165, 250, 0.3)';
+        title.innerHTML = '📅 Fecha Límite Próxima';
+        message.innerHTML = `Tienes hasta el ${new Date(currentUser.course_deadline).toLocaleDateString('es-ES')} para completar el curso (${daysRemaining} días).`;
+        banner.classList.remove('hidden');
+      }
+      // Si quedan más de 7 días, no mostrar banner
     }
 
     async function loadCampus() {
