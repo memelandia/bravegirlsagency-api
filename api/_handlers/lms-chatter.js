@@ -477,7 +477,7 @@ async function handleLessonComplete(req, res, user, deps) {
 
   // Verificar que la lección existe y obtener su configuración
   const lessonResult = await query(
-    'SELECT id, module_id, content_type, title, min_time_required_seconds FROM lms_lessons WHERE id = $1',
+    'SELECT id, module_id, type, title, min_time_required_seconds FROM lms_lessons WHERE id = $1',
     [lessonId]
   );
 

@@ -28,13 +28,13 @@ ADD COLUMN IF NOT EXISTS min_time_required_seconds INTEGER;
 UPDATE lms_lessons 
 SET 
   estimated_duration_seconds = CASE 
-    WHEN content_type = 'video' THEN 420  -- 7 minutos promedio
-    WHEN content_type = 'text' THEN 180   -- 3 minutos promedio
+    WHEN type = 'video' THEN 420  -- 7 minutos promedio
+    WHEN type = 'text' THEN 180   -- 3 minutos promedio
     ELSE 300
   END,
   min_time_required_seconds = CASE 
-    WHEN content_type = 'video' THEN 300  -- Mínimo 5 minutos para videos
-    WHEN content_type = 'text' THEN 120   -- Mínimo 2 minutos para texto
+    WHEN type = 'video' THEN 300  -- Mínimo 5 minutos para videos
+    WHEN type = 'text' THEN 120   -- Mínimo 2 minutos para texto
     ELSE 180
   END
 WHERE estimated_duration_seconds IS NULL;
@@ -66,14 +66,14 @@ COMMENT ON COLUMN lms_lessons.min_time_required_seconds IS 'Tiempo mínimo reque
 -- Ver tiempo promedio por lección
 SELECT 
   l.title,
-  l.content_type,
+  l.type,
   l.estimated_duration_seconds / 60 as estimated_minutes,
   AVG(pl.time_spent_seconds) / 60 as avg_minutes_spent,
   COUNT(DISTINCT pl.user_id) as users_completed
 FROM lms_lessons l
 LEFT JOIN lms_progress_lessons pl ON l.id = pl.lesson_id
 WHERE pl.completed = true
-GROUP BY l.id, l.title, l.content_type, l.estimated_duration_seconds
+GROUP BY l.id, l.title, l.type, l.estimated_duration_seconds
 ORDER BY avg_minutes_spent DESC;
 
 -- Ver usuarios que completaron lecciones muy rápido (posible trampa)
