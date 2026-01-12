@@ -133,10 +133,6 @@
         BraveGirls LMS
       </div>
       <nav class="lms-nav">
-        <a href="/lms/admin-analytics.html" class="btn btn-sm" style="background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white; border: none;">
-          <i class="fas fa-chart-line"></i>
-          Analytics
-        </a>
         <div class="user-info">
           <i class="fas fa-user-shield"></i>
           <span id="userName"></span>
@@ -180,6 +176,10 @@
           <li data-tab="progress">
             <i class="fas fa-chart-line"></i>
             Progreso
+          </li>
+          <li data-tab="analytics">
+            <i class="fas fa-chart-bar"></i>
+            Analytics
           </li>
           <li data-tab="completions">
             <i class="fas fa-graduation-cap"></i>
@@ -349,6 +349,87 @@
           </div>
         </div>
 
+        <!-- ANALYTICS TAB -->
+        <div id="analytics-tab" class="tab-content">
+          <div class="card">
+            <div class="page-header">
+              <h1><i class="fas fa-chart-bar"></i> Analytics del Curso</h1>
+            </div>
+
+            <div id="analyticsLoading" style="text-align: center; padding: 40px;">
+              <div class="spinner"></div>
+              <p style="margin-top: 20px; color: var(--text-secondary);">Cargando métricas...</p>
+            </div>
+
+            <div id="analyticsContent" style="display: none;">
+              <!-- Metrics Grid -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                <div class="stat-card">
+                  <div class="stat-icon" style="background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); color: white;">
+                    <i class="fas fa-users"></i>
+                  </div>
+                  <div class="stat-value" id="metricTotalStudents">-</div>
+                  <div class="stat-label">Total Estudiantes</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon" style="background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: white;">
+                    <i class="fas fa-user-check"></i>
+                  </div>
+                  <div class="stat-value" id="metricActiveStudents">-</div>
+                  <div class="stat-label">Activos (7 días)</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon" style="background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white;">
+                    <i class="fas fa-graduation-cap"></i>
+                  </div>
+                  <div class="stat-value" id="metricCompletionRate">-</div>
+                  <div class="stat-label">Completaron</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                    <i class="fas fa-star"></i>
+                  </div>
+                  <div class="stat-value" id="metricAvgScore">-</div>
+                  <div class="stat-label">Score Promedio</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon" style="background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: white;">
+                    <i class="fas fa-check-circle"></i>
+                  </div>
+                  <div class="stat-value" id="metricPassRate">-</div>
+                  <div class="stat-label">Tasa Aprobación</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon" style="background: linear-gradient(135deg, #f87171 0%, #ef4444 100%); color: white;">
+                    <i class="fas fa-user-times"></i>
+                  </div>
+                  <div class="stat-value" id="metricDropoutRate">-</div>
+                  <div class="stat-label">Abandono</div>
+                </div>
+              </div>
+
+              <!-- Module Stats Table -->
+              <div class="card" style="margin-top: 24px;">
+                <h3 style="margin-bottom: 16px; color: var(--text-main);">
+                  <i class="fas fa-table"></i> Estadísticas por Módulo
+                </h3>
+                <table class="data-table" style="width: 100%;">
+                  <thead>
+                    <tr>
+                      <th>Módulo</th>
+                      <th>Score Promedio</th>
+                      <th>Intentos Promedio</th>
+                    </tr>
+                  </thead>
+                  <tbody id="moduleStatsTableBody">
+                    <tr><td colspan="3" style="text-align: center; padding: 20px; color: var(--text-secondary);">Cargando...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- COMPLETIONS TAB -->
         <div id="completions-tab" class="tab-content">
           <div class="card">
@@ -474,6 +555,9 @@
           break;
         case 'progress':
           await loadProgress();
+          break;
+        case 'analytics':
+          await loadAnalytics();
           break;
         case 'completions':
           await loadCompletions();
@@ -1528,6 +1612,79 @@
             row.style.display = text.includes(query) ? '' : 'none';
           });
         });
+      }
+    }
+
+    // ===================================================================
+    // ANALYTICS - Dashboard de métricas
+    // ===================================================================
+    async function loadAnalytics() {
+      const loadingDiv = document.getElementById('analyticsLoading');
+      const contentDiv = document.getElementById('analyticsContent');
+      
+      loadingDiv.style.display = 'block';
+      contentDiv.style.display = 'none';
+
+      try {
+        const response = await fetch(`${API_BASE}/admin/analytics`, { 
+          credentials: 'include' 
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Error al cargar analytics');
+        }
+        
+        const data = await response.json();
+        
+        // Update metric cards
+        document.getElementById('metricTotalStudents').textContent = data.totalStudents;
+        document.getElementById('metricActiveStudents').textContent = data.activeStudents;
+        document.getElementById('metricCompletionRate').textContent = data.completionRate + '%';
+        document.getElementById('metricAvgScore').textContent = data.avgScore + '%';
+        document.getElementById('metricPassRate').textContent = data.passRate + '%';
+        document.getElementById('metricDropoutRate').textContent = data.dropoutRate + '%';
+        
+        // Update module stats table
+        const tbody = document.getElementById('moduleStatsTableBody');
+        tbody.innerHTML = '';
+        
+        if (data.moduleStats.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 20px; color: var(--text-secondary);">No hay datos disponibles</td></tr>';
+        } else {
+          data.moduleStats.forEach(module => {
+            const tr = document.createElement('tr');
+            
+            let scoreBadge = '';
+            if (module.avgScore >= 90) {
+              scoreBadge = `<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-weight: 600;">${module.avgScore}%</span>`;
+            } else if (module.avgScore >= 80) {
+              scoreBadge = `<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-weight: 600;">${module.avgScore}%</span>`;
+            } else if (module.avgScore >= 70) {
+              scoreBadge = `<span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-weight: 600;">${module.avgScore}%</span>`;
+            } else {
+              scoreBadge = `<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-weight: 600;">${module.avgScore}%</span>`;
+            }
+            
+            tr.innerHTML = `
+              <td style="font-weight: 600;">${module.module}</td>
+              <td>${scoreBadge}</td>
+              <td>${module.avgAttempts.toFixed(1)}</td>
+            `;
+            
+            tbody.appendChild(tr);
+          });
+        }
+        
+        loadingDiv.style.display = 'none';
+        contentDiv.style.display = 'block';
+        
+      } catch (error) {
+        console.error('Error loading analytics:', error);
+        loadingDiv.innerHTML = `
+          <p style="color: var(--error); font-weight: 600;">Error al cargar analytics</p>
+          <p style="color: var(--text-secondary); margin-top: 8px;">${error.message}</p>
+        `;
       }
     }
 

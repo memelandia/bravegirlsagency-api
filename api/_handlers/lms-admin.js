@@ -1426,13 +1426,13 @@ async function handleAnalytics(req, res, user, deps) {
     `);
     const totalStudents = parseInt(totalStudentsResult.rows[0].total);
 
-    // 2. Estudiantes activos (últimos 7 días)
+    // 2. Estudiantes activos (últimos 7 días) - tolerante a datos vacíos
     const activeStudentsResult = await query(`
       SELECT COUNT(DISTINCT user_id) as active
       FROM lms_progress_lessons
       WHERE completed_at > NOW() - INTERVAL '7 days'
-    `);
-    const activeStudents = parseInt(activeStudentsResult.rows[0].active);
+    `).catch(() => ({ rows: [{ active: 0 }] }));
+    const activeStudents = parseInt(activeStudentsResult.rows[0].active) || 0;
 
     // 3. Tasa de completación (usuarios que completaron todos los módulos)
     const completionRateResult = await query(`
@@ -1456,16 +1456,21 @@ async function handleAnalytics(req, res, user, deps) {
       ? Math.round((parseInt(completionRateResult.rows[0].completed_users) / totalStudents) * 100)
       : 0;
 
-    // 4. Tiempo promedio de completación
-    const avgCompletionTimeResult = await query(`
-      SELECT 
-        AVG(EXTRACT(EPOCH FROM (cc.completed_at - u.created_at)) / 86400) as avg_days
-      FROM lms_course_completions cc
-      JOIN lms_users u ON u.id = cc.user_id
-      WHERE cc.approved = true
-    `);
-    const avgDays = parseFloat(avgCompletionTimeResult.rows[0].avg_days) || 0;
-    const avgCompletionTime = avgDays > 0 ? `${avgDays.toFixed(1)} días` : 'N/A';
+    // 4. Tiempo promedio de completación - tolerante si tabla no existe
+    let avgCompletionTime = 'N/A';
+    try {
+      const avgCompletionTimeResult = await query(`
+        SELECT 
+          AVG(EXTRACT(EPOCH FROM (cc.completed_at - u.created_at)) / 86400) as avg_days
+        FROM lms_course_completions cc
+        JOIN lms_users u ON u.id = cc.user_id
+        WHERE cc.approved = true
+      `);
+      const avgDays = parseFloat(avgCompletionTimeResult.rows[0].avg_days) || 0;
+      avgCompletionTime = avgDays > 0 ? `${avgDays.toFixed(1)} días` : 'N/A';
+    } catch (error) {
+      console.log('[Analytics] lms_course_completions no existe, usando N/A');
+    }
 
     // 5. Score promedio general
     const avgScoreResult = await query(`
@@ -1545,34 +1550,24 @@ async function handleAnalytics(req, res, user, deps) {
         COUNT(*) as activity_count
       FROM lms_progress_lessons
       WHERE completed_at > NOW() - INTERVAL '30 days'
+        AND completed_at IS NOT NULL
       GROUP BY hour
       ORDER BY activity_count DESC
       LIMIT 3
-    `);
-    const peakStudyHours = peakHoursResult.rows.map(row => {
-      const hour = parseInt(row.hour);
-      return `${hour.toString().padStart(2, '0')}:00-${(hour + 1).toString().padStart(2, '0')}:00`;
-    });
-
-    // 11. Stats por módulo
+    `).catch(() => ({ rows: [] }));
+    const peakStudyHours = peakHoursResult.rows.length > 0 
+      ? peakHoursResult.rows.map(row => {
+          const hour = parseInt(row.hour);
+          return `${hour.toString().padStart(2, '0')}:00-${(hour + 1).toString().padStart(2, '0')}:00`;
+        }) - simplificado sin tiempo (requiere columnas nuevas)
     const moduleStatsResult = await query(`
       SELECT 
         m.title as module,
         ROUND(AVG(qa.score)) as avg_score,
-        ROUND(AVG(attempts_count.attempts), 1) as avg_attempts,
-        ROUND(AVG(EXTRACT(EPOCH FROM (qa.created_at - first_lesson.first_completed)) / 60)) as avg_time_minutes
+        ROUND(AVG(attempts_count.attempts), 1) as avg_attempts
       FROM lms_modules m
       LEFT JOIN lms_quizzes q ON q.module_id = m.id
       LEFT JOIN lms_quiz_attempts qa ON qa.quiz_id = q.id AND qa.passed = true
-      LEFT JOIN (
-        SELECT 
-          l.module_id,
-          pl.user_id,
-          MIN(pl.completed_at) as first_completed
-        FROM lms_progress_lessons pl
-        JOIN lms_lessons l ON l.id = pl.lesson_id
-        GROUP BY l.module_id, pl.user_id
-      ) first_lesson ON first_lesson.module_id = m.id AND first_lesson.user_id = qa.user_id
       LEFT JOIN (
         SELECT 
           q.module_id,
@@ -1585,10 +1580,13 @@ async function handleAnalytics(req, res, user, deps) {
       WHERE m.published = true
       GROUP BY m.id, m.title, m.order_index
       ORDER BY m.order_index
-    `);
+    `).catch(() => ({ rows: [] }));
     
     const moduleStats = moduleStatsResult.rows.map(row => ({
       module: row.module,
+      avgScore: parseInt(row.avg_score) || 0,
+      avgAttempts: parseFloat(row.avg_attempts) || 0,
+      avgTimeToComplete: 'N/A' // Requiere migrate-time-tracking.sql
       avgScore: parseInt(row.avg_score) || 0,
       avgAttempts: parseFloat(row.avg_attempts) || 0,
       avgTimeToComplete: row.avg_time_minutes ? `${Math.round(row.avg_time_minutes)} min` : 'N/A'
