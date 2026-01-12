@@ -611,27 +611,27 @@ GET /admin/export/attempts?moduleId=X&format=json
 
 ---
 
-### 17. **Falta breadcrumb navigation**
+### 17. ✅ **Breadcrumb navigation** [IMPLEMENTADO]
 ```html
-<!-- En module.html -->
+<!-- Ya implementado en module.html -->
 <nav class="breadcrumb">
   <a href="/campus.html">🏠 Campus</a> 
-  → <a href="#">Etapa 1: Onboarding</a>
-  → <span>Módulo 2: Cultura del Negocio</span>
+  → Etapa 1: Onboarding
+  → Módulo 2: Cultura del Negocio
 </nav>
 ```
 
 ---
 
-### 18. **No hay "vista previa" de quiz antes de empezar**
+### 18. ✅ **Vista previa de quiz antes de empezar** [IMPLEMENTADO]
 ```javascript
-// Antes de startQuiz(), mostrar:
-Modal:
-  - Número de preguntas: 10
-  - Duración estimada: 15 minutos
+// Implementado en quiz.html - showQuizPreview()
+// Muestra pantalla con:
+  - Número de preguntas: dinámico
+  - Duración estimada: calculada
   - Puntaje requerido: 80%
-  - Intentos disponibles: 3
-  - [Botón: "Estoy listo/a, comenzar"]
+  - Intentos disponibles: dinámico
+  - [Botón: "Estoy listo/a, comenzar evaluación"]
   - [Link: "Repasar contenido primero"]
 ```
 
