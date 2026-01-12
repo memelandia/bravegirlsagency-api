@@ -7,28 +7,8 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Campus - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.17.1">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.20.0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    /* Animaciones de entrada */
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes scaleIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
-    }
-    .stat-card { animation: scaleIn 0.5s ease backwards; }
-    .stat-card:nth-child(1) { animation-delay: 0.1s; }
-    .stat-card:nth-child(2) { animation-delay: 0.2s; }
-    .stat-card:nth-child(3) { animation-delay: 0.3s; }
-    .stat-card:nth-child(4) { animation-delay: 0.4s; }
-    .card { animation: fadeInUp 0.6s ease backwards; }
-    .progress-card { animation: fadeInUp 0.5s ease backwards; animation-delay: 0.5s; }
-    .module-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-    .module-card:hover { transform: translateY(-8px) scale(1.02); }
-  </style>
 </head>
 <body>
   <header class="lms-header">
@@ -376,7 +356,6 @@
           }
           
           if (!module.isLocked) {
-            moduleCard.style.cursor = 'pointer';
             moduleCard.addEventListener('click', () => {
               moduleCard.style.transform = 'scale(0.98)';
               setTimeout(() => {

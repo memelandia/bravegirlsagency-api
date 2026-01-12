@@ -595,27 +595,31 @@ DELETE FROM lms_stages WHERE id = 'etapa-4-uuid'
 
 ---
 
-### Caso 6: ⚠️ Eliminar Etapa con Módulos (bloqueado)
+### Caso 6: ✅ Eliminar Etapa con Módulos (validación funcionando)
 
 **Pasos**:
 1. Admin → Stages tab
 2. Intentar eliminar "Etapa 1" (tiene 3 módulos)
 
-**Backend**:
-```sql
--- Validación previa:
-SELECT id FROM lms_modules WHERE stage_id = 'etapa-1-uuid' LIMIT 1
--- Result: [{'id': 'modulo-1-uuid'}] → BLOQUEADO
-
-RETURN 400 Error: 'No se puede eliminar una etapa con módulos asociados'
+**Backend** (lms-admin.js líneas 1080-1091):
+```javascript
+// Verificar que no tenga módulos asociados
+const hasModules = await query('SELECT id FROM lms_modules WHERE stage_id = $1 LIMIT 1', [id]);
+if (hasModules.rows.length > 0) {
+  return res.status(400).json({ error: 'No se puede eliminar una etapa con módulos asociados' });
+}
 ```
 
 **Frontend**:
 ```javascript
-alert('No se puede eliminar esta etapa porque tiene módulos asociados');
+// admin.html - Error handler
+if (!response.ok) {
+  const error = await response.json();
+  alert(error.error); // "No se puede eliminar una etapa con módulos asociados"
+}
 ```
 
-**Resultado**: ✅ Sistema previene pérdida de datos
+**Resultado**: ✅ Sistema previene pérdida de datos - validación implementada correctamente
 
 ---
 
