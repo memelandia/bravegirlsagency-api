@@ -1420,81 +1420,98 @@ async function handleAnalytics(req, res, user, deps) {
   }
 
   try {
+    console.log('[Analytics] Iniciando cálculo de métricas...');
+
     // 1. Total de estudiantes
-    const totalStudentsResult = await query(`
-      SELECT COUNT(*) as total FROM lms_users WHERE role = 'chatter'
-    `);
-    const totalStudents = parseInt(totalStudentsResult.rows[0].total);
-
-    // 2. Estudiantes activos (últimos 7 días) - tolerante a datos vacíos
-    const activeStudentsResult = await query(`
-      SELECT COUNT(DISTINCT user_id) as active
-      FROM lms_progress_lessons
-      WHERE completed_at > NOW() - INTERVAL '7 days'
-    `).catch(() => ({ rows: [{ active: 0 }] }));
-    const activeStudents = parseInt(activeStudentsResult.rows[0].active) || 0;
-
-    // 3. Tasa de completación (usuarios que completaron todos los módulos)
-    const completionRateResult = await query(`
-      SELECT 
-        COUNT(DISTINCT u.id) as total_users,
-        COUNT(DISTINCT CASE 
-          WHEN (
-            SELECT COUNT(DISTINCT m.id) 
-            FROM lms_modules m 
-            WHERE m.published = true
-          ) = (
-            SELECT COUNT(DISTINCT qa.module_id)
-            FROM lms_quiz_attempts qa
-            WHERE qa.user_id = u.id AND qa.passed = true
-          ) THEN u.id 
-        END) as completed_users
-      FROM lms_users u
-      WHERE u.role = 'chatter'
-    `);
-    const completionRate = totalStudents > 0 
-      ? Math.round((parseInt(completionRateResult.rows[0].completed_users) / totalStudents) * 100)
-      : 0;
-
-    // 4. Tiempo promedio de completación - tolerante si tabla no existe
-    let avgCompletionTime = 'N/A';
+    let totalStudents = 0;
     try {
-      const avgCompletionTimeResult = await query(`
-        SELECT 
-          AVG(EXTRACT(EPOCH FROM (cc.completed_at - u.created_at)) / 86400) as avg_days
-        FROM lms_course_completions cc
-        JOIN lms_users u ON u.id = cc.user_id
-        WHERE cc.approved = true
-      `);
-      const avgDays = parseFloat(avgCompletionTimeResult.rows[0].avg_days) || 0;
-      avgCompletionTime = avgDays > 0 ? `${avgDays.toFixed(1)} días` : 'N/A';
+      const result = await query(`SELECT COUNT(*) as total FROM lms_users WHERE role = 'chatter'`);
+      totalStudents = parseInt(result.rows[0].total) || 0;
+      console.log('[Analytics] totalStudents:', totalStudents);
     } catch (error) {
-      console.log('[Analytics] lms_course_completions no existe, usando N/A');
+      console.error('[Analytics] Error en totalStudents:', error.message);
     }
 
+    // 2. Estudiantes activos (últimos 7 días)
+    let activeStudents = 0;
+    try {
+      const result = await query(`
+        SELECT COUNT(DISTINCT user_id) as active
+        FROM lms_progress_lessons
+        WHERE completed_at > NOW() - INTERVAL '7 days'
+      `);
+      activeStudents = parseInt(result.rows[0].active) || 0;
+      console.log('[Analytics] activeStudents:', activeStudents);
+    } catch (error) {
+      console.error('[Analytics] Error en activeStudents:', error.message);
+    }
+
+    // 3. Tasa de completación
+    let completionRate = 0;
+    try {
+      const result = await query(`
+        SELECT 
+          COUNT(DISTINCT u.id) as total_users,
+          COUNT(DISTINCT CASE 
+            WHEN (
+              SELECT COUNT(DISTINCT m.id) 
+              FROM lms_modules m 
+              WHERE m.published = true
+            ) = (
+              SELECT COUNT(DISTINCT q.module_id)
+              FROM lms_quiz_attempts qa
+              JOIN lms_quizzes q ON q.id = qa.quiz_id
+              WHERE qa.user_id = u.id AND qa.passed = true
+            ) THEN u.id 
+          END) as completed_users
+        FROM lms_users u
+        WHERE u.role = 'chatter'
+      `);
+      const completed = parseInt(result.rows[0].completed_users) || 0;
+      completionRate = totalStudents > 0 ? Math.round((completed / totalStudents) * 100) : 0;
+      console.log('[Analytics] completionRate:', completionRate);
+    } catch (error) {
+      console.error('[Analytics] Error en completionRate:', error.message);
+    }
+
+    // 4. Tiempo promedio de completación - N/A por ahora
+    const avgCompletionTime = 'N/A';
+
     // 5. Score promedio general
-    const avgScoreResult = await query(`
-      SELECT AVG(score) as avg_score
-      FROM lms_quiz_attempts
-      WHERE passed = true
-    `);
-    const avgScore = Math.round(parseFloat(avgScoreResult.rows[0].avg_score) || 0);
+    let avgScore = 0;
+    try {
+      const result = await query(`
+        SELECT COALESCE(AVG(score), 0) as avg_score
+        FROM lms_quiz_attempts
+        WHERE passed = true
+      `);
+      avgScore = Math.round(parseFloat(result.rows[0].avg_score) || 0);
+      console.log('[Analytics] avgScore:', avgScore);
+    } catch (error) {
+      console.error('[Analytics] Error en avgScore:', error.message);
+    }
 
-    // 6. Tasa de aprobación (% con score >= 80)
-    const passRateResult = await query(`
-      SELECT 
-        COUNT(*) as total_attempts,
-        COUNT(CASE WHEN passed = true THEN 1 END) as passed_attempts
-      FROM lms_quiz_attempts
-    `);
-    const passRate = parseInt(passRateResult.rows[0].total_attempts) > 0
-      ? Math.round((parseInt(passRateResult.rows[0].passed_attempts) / parseInt(passRateResult.rows[0].total_attempts)) * 100)
-      : 0;
+    // 6. Tasa de aprobación
+    let passRate = 0;
+    try {
+      const result = await query(`
+        SELECT 
+          COUNT(*) as total_attempts,
+          COUNT(CASE WHEN passed = true THEN 1 END) as passed_attempts
+        FROM lms_quiz_attempts
+      `);
+      const total = parseInt(result.rows[0].total_attempts) || 0;
+      const passed = parseInt(result.rows[0].passed_attempts) || 0;
+      passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+      console.log('[Analytics] passRate:', passRate);
+    } catch (error) {
+      console.error('[Analytics] Error en passRate:', error.message);
+    }
 
-    // 7. Tasa de abandono (sin actividad en 14 días) - tolerante
+    // 7. Tasa de abandono
     let dropoutRate = 0;
     try {
-      const dropoutRateResult = await query(`
+      const result = await query(`
         SELECT 
           COUNT(*) as total_users,
           COUNT(CASE 
@@ -1508,87 +1525,109 @@ async function handleAnalytics(req, res, user, deps) {
         WHERE u.role = 'chatter'
         AND u.created_at < NOW() - INTERVAL '14 days'
       `);
-      dropoutRate = parseInt(dropoutRateResult.rows[0].total_users) > 0
-        ? Math.round((parseInt(dropoutRateResult.rows[0].dropout_users) / parseInt(dropoutRateResult.rows[0].total_users)) * 100)
-        : 0;
+      const total = parseInt(result.rows[0].total_users) || 0;
+      const dropout = parseInt(result.rows[0].dropout_users) || 0;
+      dropoutRate = total > 0 ? Math.round((dropout / total) * 100) : 0;
+      console.log('[Analytics] dropoutRate:', dropoutRate);
     } catch (error) {
-      console.log('[Analytics] Error en dropoutRate:', error.message);
-      dropoutRate = 0;
+      console.error('[Analytics] Error en dropoutRate:', error.message);
     }
 
-    // 8. Módulo más difícil (menor score promedio)
-    const difficultModuleResult = await query(`
-      SELECT 
-        m.title,
-        AVG(qa.score) as avg_score
-      FROM lms_quiz_attempts qa
-      JOIN lms_quizzes q ON q.id = qa.quiz_id
-      JOIN lms_modules m ON m.id = q.module_id
-      WHERE qa.passed = true
-      GROUP BY m.id, m.title
-      ORDER BY avg_score ASC
-      LIMIT 1
-    `).catch(() => ({ rows: [] }));
-    const mostDifficultModule = difficultModuleResult.rows[0]?.title || 'N/A';
+    // 8. Módulo más difícil
+    let mostDifficultModule = 'N/A';
+    try {
+      const result = await query(`
+        SELECT m.title, AVG(qa.score) as avg_score
+        FROM lms_quiz_attempts qa
+        JOIN lms_quizzes q ON q.id = qa.quiz_id
+        JOIN lms_modules m ON m.id = q.module_id
+        WHERE qa.passed = true
+        GROUP BY m.id, m.title
+        ORDER BY avg_score ASC
+        LIMIT 1
+      `);
+      if (result.rows.length > 0) {
+        mostDifficultModule = result.rows[0].title;
+      }
+      console.log('[Analytics] mostDifficultModule:', mostDifficultModule);
+    } catch (error) {
+      console.error('[Analytics] Error en mostDifficultModule:', error.message);
+    }
 
-    // 9. Módulo más fácil (mayor score promedio)
-    const easiestModuleResult = await query(`
-      SELECT 
-        m.title,
-        AVG(qa.score) as avg_score
-      FROM lms_quiz_attempts qa
-      JOIN lms_quizzes q ON q.id = qa.quiz_id
-      JOIN lms_modules m ON m.id = q.module_id
-      WHERE qa.passed = true
-      GROUP BY m.id, m.title
-      ORDER BY avg_score DESC
-      LIMIT 1
-    `).catch(() => ({ rows: [] }));
-    const easiestModule = easiestModuleResult.rows[0]?.title || 'N/A';
+    // 9. Módulo más fácil
+    let easiestModule = 'N/A';
+    try {
+      const result = await query(`
+        SELECT m.title, AVG(qa.score) as avg_score
+        FROM lms_quiz_attempts qa
+        JOIN lms_quizzes q ON q.id = qa.quiz_id
+        JOIN lms_modules m ON m.id = q.module_id
+        WHERE qa.passed = true
+        GROUP BY m.id, m.title
+        ORDER BY avg_score DESC
+        LIMIT 1
+      `);
+      if (result.rows.length > 0) {
+        easiestModule = result.rows[0].title;
+      }
+      console.log('[Analytics] easiestModule:', easiestModule);
+    } catch (error) {
+      console.error('[Analytics] Error en easiestModule:', error.message);
+    }
 
-    // 10. Horarios pico de estudio (horas con más actividad)
-    const peakHoursResult = await query(`
-      SELECT 
-        EXTRACT(HOUR FROM completed_at) as hour,
-        COUNT(*) as activity_count
-      FROM lms_progress_lessons
-      WHERE completed_at > NOW() - INTERVAL '30 days'
-        AND completed_at IS NOT NULL
-      GROUP BY hour
-      ORDER BY activity_count DESC
-      LIMIT 3
-    `).catch(() => ({ rows: [] }));
-    const peakStudyHours = peakHoursResult.rows.length > 0 
-      ? peakHoursResult.rows.map(row => {
+    // 10. Horarios pico de estudio
+    let peakStudyHours = ['N/A'];
+    try {
+      const result = await query(`
+        SELECT 
+          EXTRACT(HOUR FROM completed_at) as hour,
+          COUNT(*) as activity_count
+        FROM lms_progress_lessons
+        WHERE completed_at > NOW() - INTERVAL '30 days'
+          AND completed_at IS NOT NULL
+        GROUP BY hour
+        ORDER BY activity_count DESC
+        LIMIT 3
+      `);
+      if (result.rows.length > 0) {
+        peakStudyHours = result.rows.map(row => {
           const hour = parseInt(row.hour);
           return `${hour.toString().padStart(2, '0')}:00-${(hour + 1).toString().padStart(2, '0')}:00`;
-        })
-      : ['N/A'];
+        });
+      }
+      console.log('[Analytics] peakStudyHours:', peakStudyHours);
+    } catch (error) {
+      console.error('[Analytics] Error en peakStudyHours:', error.message);
+    }
 
-    // 11. Estadísticas por módulo - simplificado
-    const moduleStatsResult = await query(`
-      SELECT 
-        m.title as module,
-        m.order_index,
-        COALESCE(ROUND(AVG(qa.score)), 0) as avg_score,
-        COALESCE(COUNT(DISTINCT qa.user_id), 0) as total_attempts
-      FROM lms_modules m
-      LEFT JOIN lms_quizzes q ON q.module_id = m.id
-      LEFT JOIN lms_quiz_attempts qa ON qa.quiz_id = q.id AND qa.passed = true
-      WHERE m.published = true
-      GROUP BY m.id, m.title, m.order_index
-      ORDER BY m.order_index
-    `).catch((err) => {
-      console.error('[Analytics] Error en moduleStats:', err);
-      return { rows: [] };
-    });
-    
-    const moduleStats = moduleStatsResult.rows.map(row => ({
-      module: row.module || 'Sin nombre',
-      avgScore: parseInt(row.avg_score) || 0,
-      avgAttempts: parseInt(row.total_attempts) || 0,
-      avgTimeToComplete: 'N/A'
-    }));
+    // 11. Estadísticas por módulo
+    let moduleStats = [];
+    try {
+      const result = await query(`
+        SELECT 
+          m.title as module,
+          m.order_index,
+          COALESCE(ROUND(AVG(qa.score)), 0) as avg_score,
+          COALESCE(COUNT(DISTINCT qa.user_id), 0) as total_users
+        FROM lms_modules m
+        LEFT JOIN lms_quizzes q ON q.module_id = m.id
+        LEFT JOIN lms_quiz_attempts qa ON qa.quiz_id = q.id AND qa.passed = true
+        WHERE m.published = true
+        GROUP BY m.id, m.title, m.order_index
+        ORDER BY m.order_index
+      `);
+      moduleStats = result.rows.map(row => ({
+        module: row.module || 'Sin nombre',
+        avgScore: parseInt(row.avg_score) || 0,
+        avgAttempts: parseInt(row.total_users) || 0,
+        avgTimeToComplete: 'N/A'
+      }));
+      console.log('[Analytics] moduleStats count:', moduleStats.length);
+    } catch (error) {
+      console.error('[Analytics] Error en moduleStats:', error.message);
+    }
+
+    console.log('[Analytics] Métricas calculadas exitosamente');
 
     // Respuesta completa
     return res.status(200).json({
@@ -1606,8 +1645,12 @@ async function handleAnalytics(req, res, user, deps) {
     });
 
   } catch (error) {
-    console.error('[Analytics] Error:', error);
-    return res.status(500).json({ error: 'Error al obtener analytics', message: error.message });
+    console.error('[Analytics] Error general:', error);
+    return res.status(500).json({ 
+      error: 'Error al obtener analytics', 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }
 
