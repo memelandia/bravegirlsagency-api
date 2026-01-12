@@ -1491,29 +1491,30 @@ async function handleAnalytics(req, res, user, deps) {
       ? Math.round((parseInt(passRateResult.rows[0].passed_attempts) / parseInt(passRateResult.rows[0].total_attempts)) * 100)
       : 0;
 
-    // 7. Tasa de abandono (sin actividad en 14 días)
-    const dropoutRateResult = await query(`
-      SELECT 
-        COUNT(*) as total_users,
-        COUNT(CASE 
-          WHEN NOT EXISTS (
-            SELECT 1 FROM lms_progress_lessons pl
-            WHERE pl.user_id = u.id 
-            AND pl.completed_at > NOW() - INTERVAL '14 days'
-          ) 
-          AND NOT EXISTS (
-            SELECT 1 FROM lms_course_completions cc
-            WHERE cc.user_id = u.id
-          )
-          THEN 1 
-        END) as dropout_users
-      FROM lms_users u
-      WHERE u.role = 'chatter'
-      AND u.created_at < NOW() - INTERVAL '14 days'
-    `);
-    const dropoutRate = parseInt(dropoutRateResult.rows[0].total_users) > 0
-      ? Math.round((parseInt(dropoutRateResult.rows[0].dropout_users) / parseInt(dropoutRateResult.rows[0].total_users)) * 100)
-      : 0;
+    // 7. Tasa de abandono (sin actividad en 14 días) - tolerante
+    let dropoutRate = 0;
+    try {
+      const dropoutRateResult = await query(`
+        SELECT 
+          COUNT(*) as total_users,
+          COUNT(CASE 
+            WHEN NOT EXISTS (
+              SELECT 1 FROM lms_progress_lessons pl
+              WHERE pl.user_id = u.id 
+              AND pl.completed_at > NOW() - INTERVAL '14 days'
+            ) THEN 1 
+          END) as dropout_users
+        FROM lms_users u
+        WHERE u.role = 'chatter'
+        AND u.created_at < NOW() - INTERVAL '14 days'
+      `);
+      dropoutRate = parseInt(dropoutRateResult.rows[0].total_users) > 0
+        ? Math.round((parseInt(dropoutRateResult.rows[0].dropout_users) / parseInt(dropoutRateResult.rows[0].total_users)) * 100)
+        : 0;
+    } catch (error) {
+      console.log('[Analytics] Error en dropoutRate:', error.message);
+      dropoutRate = 0;
+    }
 
     // 8. Módulo más difícil (menor score promedio)
     const difficultModuleResult = await query(`
@@ -1523,10 +1524,11 @@ async function handleAnalytics(req, res, user, deps) {
       FROM lms_quiz_attempts qa
       JOIN lms_quizzes q ON q.id = qa.quiz_id
       JOIN lms_modules m ON m.id = q.module_id
+      WHERE qa.passed = true
       GROUP BY m.id, m.title
       ORDER BY avg_score ASC
       LIMIT 1
-    `);
+    `).catch(() => ({ rows: [] }));
     const mostDifficultModule = difficultModuleResult.rows[0]?.title || 'N/A';
 
     // 9. Módulo más fácil (mayor score promedio)
@@ -1537,10 +1539,11 @@ async function handleAnalytics(req, res, user, deps) {
       FROM lms_quiz_attempts qa
       JOIN lms_quizzes q ON q.id = qa.quiz_id
       JOIN lms_modules m ON m.id = q.module_id
+      WHERE qa.passed = true
       GROUP BY m.id, m.title
       ORDER BY avg_score DESC
       LIMIT 1
-    `);
+    `).catch(() => ({ rows: [] }));
     const easiestModule = easiestModuleResult.rows[0]?.title || 'N/A';
 
     // 10. Horarios pico de estudio (horas con más actividad)
@@ -1562,34 +1565,29 @@ async function handleAnalytics(req, res, user, deps) {
         })
       : ['N/A'];
 
-    // 11. Estadísticas por módulo - simplificado sin tiempo (requiere columnas nuevas)
+    // 11. Estadísticas por módulo - simplificado
     const moduleStatsResult = await query(`
       SELECT 
         m.title as module,
-        ROUND(AVG(qa.score)) as avg_score,
-        ROUND(AVG(attempts_count.attempts), 1) as avg_attempts
+        m.order_index,
+        COALESCE(ROUND(AVG(qa.score)), 0) as avg_score,
+        COALESCE(COUNT(DISTINCT qa.user_id), 0) as total_attempts
       FROM lms_modules m
       LEFT JOIN lms_quizzes q ON q.module_id = m.id
       LEFT JOIN lms_quiz_attempts qa ON qa.quiz_id = q.id AND qa.passed = true
-      LEFT JOIN (
-        SELECT 
-          q.module_id,
-          qa_inner.user_id,
-          COUNT(*) as attempts
-        FROM lms_quiz_attempts qa_inner
-        JOIN lms_quizzes q ON q.id = qa_inner.quiz_id
-        GROUP BY q.module_id, qa_inner.user_id
-      ) attempts_count ON attempts_count.module_id = m.id AND attempts_count.user_id = qa.user_id
       WHERE m.published = true
       GROUP BY m.id, m.title, m.order_index
       ORDER BY m.order_index
-    `).catch(() => ({ rows: [] }));
+    `).catch((err) => {
+      console.error('[Analytics] Error en moduleStats:', err);
+      return { rows: [] };
+    });
     
     const moduleStats = moduleStatsResult.rows.map(row => ({
-      module: row.module,
+      module: row.module || 'Sin nombre',
       avgScore: parseInt(row.avg_score) || 0,
-      avgAttempts: parseFloat(row.avg_attempts) || 0,
-      avgTimeToComplete: 'N/A' // Requiere migrate-time-tracking.sql
+      avgAttempts: parseInt(row.total_attempts) || 0,
+      avgTimeToComplete: 'N/A'
     }));
 
     // Respuesta completa
