@@ -268,23 +268,25 @@ a:hover {
 .btn-primary { 
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); 
   color: var(--text-white);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5), 0 3px 8px rgba(0,0,0,0.15);
+  border: 2px solid rgba(255, 255, 255, 0.2);
 }
 .btn-primary:hover { 
   background: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-dark) 100%);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
-  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(99, 102, 241, 0.6), 0 5px 16px rgba(0,0,0,0.2);
+  transform: translateY(-4px) scale(1.02);
 }
 
 .btn-secondary { 
   background: linear-gradient(135deg, var(--secondary) 0%, #7c3aed 100%); 
   color: var(--text-white);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5), 0 3px 8px rgba(0,0,0,0.15);
+  border: 2px solid rgba(255, 255, 255, 0.2);
 }
 .btn-secondary:hover { 
   background: linear-gradient(135deg, var(--secondary-hover) 0%, #6d28d9 100%);
-  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
-  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(139, 92, 246, 0.6), 0 5px 16px rgba(0,0,0,0.2);
+  transform: translateY(-4px) scale(1.02);
 }
 
 .btn-success { 
@@ -641,8 +643,8 @@ body.course-view .container {
   background: var(--bg-card);
   padding: var(--space-xl);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--border-light);
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.18), 0 4px 8px rgba(0,0,0,0.1);
+  border: 2px solid rgba(139, 92, 246, 0.15);
   transition: all var(--transition-slow);
   position: relative;
   overflow: hidden;
@@ -662,9 +664,10 @@ body.course-view .container {
 }
 
 .card:hover {
-  box-shadow: var(--shadow-xl);
-  transform: translateY(-4px);
-  border-color: var(--primary);
+  box-shadow: 0 24px 48px -8px rgba(139, 92, 246, 0.25), 0 12px 24px rgba(0,0,0,0.15);
+  transform: translateY(-8px);
+  border-color: #8b5cf6;
+  border-width: 2px;
 }
 
 .card:hover::before {
@@ -703,17 +706,17 @@ body.course-view .container {
   align-items: center;
 }
 
-/* Module Cards (Campus) */
+/* Module Cards (Campus) - ULTRA visible con sombras profundas */
 .module-card {
   background: white;
-  border: 1px solid var(--border);
+  border: 3px solid rgba(139, 92, 246, 0.2);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 28px;
   margin-bottom: 0;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: visible;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 16px 32px -8px rgba(139, 92, 246, 0.25), 0 8px 16px rgba(0,0,0,0.15);
 }
 
 /* Cursor pointer para cards clickeables */
@@ -741,9 +744,10 @@ body.course-view .container {
 }
 
 .module-card:hover {
-  border-color: var(--primary);
-  box-shadow: 0 20px 40px -12px rgba(99, 102, 241, 0.3), 0 12px 24px -8px rgba(0,0,0,0.12);
-  transform: translateY(-4px);
+  border-color: #8b5cf6;
+  border-width: 3px;
+  box-shadow: 0 32px 64px -12px rgba(139, 92, 246, 0.5), 0 20px 40px -8px rgba(236, 72, 153, 0.3);
+  transform: translateY(-10px) scale(1.02);
 }
 
 .module-card.locked {
@@ -813,41 +817,55 @@ body.course-view .container {
 .badge-success { 
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
-  border: none;
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  font-weight: 800;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.6), inset 0 1px 0 rgba(255,255,255,0.4);
 }
 .badge-warning { 
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   color: white;
-  border: none;
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  font-weight: 800;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.6), inset 0 1px 0 rgba(255,255,255,0.4);
 }
 .badge-info { 
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
-  border: none;
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  font-weight: 800;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6), inset 0 1px 0 rgba(255,255,255,0.4);
 }
 .badge-secondary { 
-  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
   color: white;
-  border: none;
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  font-weight: 800;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  box-shadow: 0 6px 16px rgba(107, 114, 128, 0.6), inset 0 1px 0 rgba(255,255,255,0.4);
 }
 
-/* Progress Bars */
+/* Progress Bars - ULTRA visibles y dramáticos */
 .progress {
-  background: linear-gradient(to right, #e2e8f0, #f1f5f9);
-  height: 12px;
+  background: rgba(139, 92, 246, 0.15);
+  height: 20px;
   border-radius: 999px;
   overflow: hidden;
   margin-top: 10px;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.08);
+  box-shadow: inset 0 4px 8px rgba(0,0,0,0.15);
   position: relative;
+  border: 2px solid rgba(139, 92, 246, 0.25);
 }
 
 .progress-bar {
-  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+  background: linear-gradient(90deg, #8b5cf6 0%, #a855f7 50%, #ec4899 100%);
   height: 100%;
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 999px;
   position: relative;
+  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.7), inset 0 2px 0 rgba(255,255,255,0.5);
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
 }
@@ -1479,15 +1497,15 @@ textarea.form-input {
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 50%, #8b5cf6 100%);
-  padding: 28px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #ec4899 100%);
+  padding: 32px;
   border-radius: var(--radius-xl);
   color: white;
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35), 0 4px 8px rgba(0,0,0,0.12);
+  box-shadow: 0 16px 40px rgba(139, 92, 246, 0.5), 0 8px 16px rgba(236, 72, 153, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 3px solid rgba(255, 255, 255, 0.3);
 }
 
 .stat-card::before {
@@ -1508,43 +1526,50 @@ textarea.form-input {
 }
 
 .stat-card:hover {
-  transform: translateY(-8px) scale(1.03);
-  box-shadow: 0 20px 40px rgba(99, 102, 241, 0.45), 0 12px 24px rgba(0,0,0,0.2);
+  transform: translateY(-12px) scale(1.06);
+  box-shadow: 0 30px 60px rgba(139, 92, 246, 0.6), 0 16px 32px rgba(236, 72, 153, 0.5);
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
 .stat-card.success {
   background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
-  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.35), 0 4px 8px rgba(0,0,0,0.12);
+  box-shadow: 0 16px 40px rgba(16, 185, 129, 0.6), 0 8px 16px rgba(0,0,0,0.2);
 }
 
 .stat-card.warning {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
-  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.35), 0 4px 8px rgba(0,0,0,0.12);
+  box-shadow: 0 16px 40px rgba(245, 158, 11, 0.6), 0 8px 16px rgba(0,0,0,0.2);
 }
 
 .stat-card.info {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35), 0 4px 8px rgba(0,0,0,0.12);
+  box-shadow: 0 16px 40px rgba(59, 130, 246, 0.6), 0 8px 16px rgba(0,0,0,0.2);
 }
 
 .stat-icon {
-  font-size: 3rem;
-  margin-bottom: 12px;
-  opacity: 0.95;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  font-size: 4.5rem;
+  margin-bottom: 16px;
+  opacity: 1;
+  filter: drop-shadow(0 6px 16px rgba(255,255,255,0.5)) drop-shadow(0 3px 12px rgba(0,0,0,0.4));
+  text-shadow: 0 0 30px rgba(255,255,255,0.6);
 }
 
 .stat-value {
-  font-size: 2.5rem;
-  font-weight: 700;
+  font-size: 4rem;
+  font-weight: 900;
   line-height: 1;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
+  text-shadow: 0 6px 20px rgba(0,0,0,0.4), 0 0 40px rgba(255,255,255,0.3);
+  letter-spacing: -0.03em;
 }
 
 .stat-label {
-  font-size: 0.9rem;
-  opacity: 0.9;
-  font-weight: 500;
+  font-size: 1.1rem;
+  opacity: 1;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
 .progress-card {
