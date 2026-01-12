@@ -1559,7 +1559,10 @@ async function handleAnalytics(req, res, user, deps) {
       ? peakHoursResult.rows.map(row => {
           const hour = parseInt(row.hour);
           return `${hour.toString().padStart(2, '0')}:00-${(hour + 1).toString().padStart(2, '0')}:00`;
-        }) - simplificado sin tiempo (requiere columnas nuevas)
+        })
+      : ['N/A'];
+
+    // 11. Estadísticas por módulo - simplificado sin tiempo (requiere columnas nuevas)
     const moduleStatsResult = await query(`
       SELECT 
         m.title as module,
@@ -1587,9 +1590,6 @@ async function handleAnalytics(req, res, user, deps) {
       avgScore: parseInt(row.avg_score) || 0,
       avgAttempts: parseFloat(row.avg_attempts) || 0,
       avgTimeToComplete: 'N/A' // Requiere migrate-time-tracking.sql
-      avgScore: parseInt(row.avg_score) || 0,
-      avgAttempts: parseFloat(row.avg_attempts) || 0,
-      avgTimeToComplete: row.avg_time_minutes ? `${Math.round(row.avg_time_minutes)} min` : 'N/A'
     }));
 
     // Respuesta completa
