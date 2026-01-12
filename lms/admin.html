@@ -1656,21 +1656,21 @@
             const tr = document.createElement('tr');
             
             let scoreBadge = '';
+            const scoreStyle = 'padding: 4px 12px; border-radius: 12px; font-weight: 600;';
             if (module.avgScore >= 90) {
-              scoreBadge = `<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-weight: 600;">${module.avgScore}%</span>`;
+              scoreBadge = '<span style="background: #d1fae5; color: #065f46; ' + scoreStyle + '">' + module.avgScore + '%</span>';
             } else if (module.avgScore >= 80) {
-              scoreBadge = `<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-weight: 600;">${module.avgScore}%</span>`;
+              scoreBadge = '<span style="background: #dbeafe; color: #1e40af; ' + scoreStyle + '">' + module.avgScore + '%</span>';
             } else if (module.avgScore >= 70) {
-              scoreBadge = `<span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-weight: 600;">${module.avgScore}%</span>`;
+              scoreBadge = '<span style="background: #fef3c7; color: #92400e; ' + scoreStyle + '">' + module.avgScore + '%</span>';
             } else {
-              scoreBadge = `<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-weight: 600;">${module.avgScore}%</span>`;
+              scoreBadge = '<span style="background: #fee2e2; color: #991b1b; ' + scoreStyle + '">' + module.avgScore + '%</span>';
             }
             
-            tr.innerHTML = `
-              <td style="font-weight: 600;">${module.module}</td>
-              <td>${scoreBadge}</td>
-              <td>${module.avgAttempts.toFixed(1)}</td>
-            `;
+            tr.innerHTML = 
+              '<td style="font-weight: 600;">' + module.module + '</td>' +
+              '<td>' + scoreBadge + '</td>' +
+              '<td>' + module.avgAttempts.toFixed(1) + '</td>';
             
             tbody.appendChild(tr);
           });
@@ -1681,10 +1681,9 @@
         
       } catch (error) {
         console.error('Error loading analytics:', error);
-        loadingDiv.innerHTML = `
-          <p style="color: var(--error); font-weight: 600;">Error al cargar analytics</p>
-          <p style="color: var(--text-secondary); margin-top: 8px;">${error.message}</p>
-        `;
+        loadingDiv.innerHTML = 
+          '<p style="color: var(--error); font-weight: 600;">Error al cargar analytics</p>' +
+          '<p style="color: var(--text-secondary); margin-top: 8px;">' + error.message + '</p>';
       }
     }
 
