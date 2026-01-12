@@ -65,7 +65,11 @@ async function handleUsers(req, res, user, deps) {
 
   // GET: Listar usuarios
   if (req.method === 'GET') {
-    const { role, active } = req.query;
+    const { role, active, page = '1', limit = '50' } = req.query;
+    
+    const pageNum = parseInt(page) || 1;
+    const limitNum = Math.min(parseInt(limit) || 50, 100); // Máximo 100
+    const offset = (pageNum - 1) * limitNum;
     
     let sql = 'SELECT id, name, email, role, active, last_login, created_at FROM lms_users WHERE 1=1';
     const params = [];
@@ -82,9 +86,40 @@ async function handleUsers(req, res, user, deps) {
     
     sql += ' ORDER BY created_at DESC';
     
+    // Agregar paginación
+    params.push(limitNum);
+    sql += ` LIMIT $${params.length}`;
+    params.push(offset);
+    sql += ` OFFSET $${params.length}`;
+    
     const result = await query(sql, params);
     
-    return res.status(200).json({ users: result.rows });
+    // Contar total para paginación
+    let countSql = 'SELECT COUNT(*) as total FROM lms_users WHERE 1=1';
+    const countParams = [];
+    
+    if (role) {
+      countParams.push(role);
+      countSql += ` AND role = $${countParams.length}`;
+    }
+    
+    if (active !== undefined) {
+      countParams.push(active === 'true');
+      countSql += ` AND active = $${countParams.length}`;
+    }
+    
+    const countResult = await query(countSql, countParams);
+    const total = parseInt(countResult.rows[0].total);
+    
+    return res.status(200).json({ 
+      users: result.rows,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
   }
 
   // POST: Crear usuario
@@ -706,7 +741,11 @@ async function handleProgress(req, res, user, deps) {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  const { userId, moduleId, status } = req.query;
+  const { userId, moduleId, status, page = '1', limit = '50' } = req.query;
+
+  const pageNum = parseInt(page) || 1;
+  const limitNum = Math.min(parseInt(limit) || 50, 100); // Máximo 100
+  const offset = (pageNum - 1) * limitNum;
 
   // Reemplazamos el uso de la VISTA lms_user_module_progress por la query directa
   // Esto es para evitar el error de MAX(boolean) que existe en la definición actual de la vista en BD
@@ -780,8 +819,40 @@ async function handleProgress(req, res, user, deps) {
   }
 
   sql += ' ORDER BY u.name, m.order_index';
+  
+  // Agregar paginación si no se especificó userId (detalle individual)
+  if (!userId) {
+    sql += ` LIMIT ${limitNum} OFFSET ${offset}`;
+  }
 
   const result = await query(sql, params);
+  
+  // Contar total para paginación (solo si no es vista individual)
+  let total = 0;
+  let totalPages = 1;
+  
+  if (!userId) {
+    let countSql = `
+      SELECT COUNT(DISTINCT u.id) as total
+      FROM lms_users u
+      CROSS JOIN lms_modules m
+      WHERE u.role = 'chatter' AND u.active = true AND m.published = true
+    `;
+    
+    const countParams = [];
+    if (userId) {
+      countParams.push(userId);
+      countSql += ` AND u.id = $${countParams.length}`;
+    }
+    if (moduleId) {
+      countParams.push(moduleId);
+      countSql += ` AND m.id = $${countParams.length}`;
+    }
+    
+    const countResult = await query(countSql, countParams);
+    total = parseInt(countResult.rows[0].total);
+    totalPages = Math.ceil(total / limitNum);
+  }
 
   // Agrupar por usuario si no se especificó userId
   if (!userId) {
@@ -852,7 +923,16 @@ async function handleProgress(req, res, user, deps) {
         : 0
     };
 
-    return successResponse(res, { users, stats });
+    return successResponse(res, { 
+      users, 
+      stats,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages
+      }
+    });
   } else {
     // Si se especificó userId, retornar directamente los módulos
     return successResponse(res, { 
