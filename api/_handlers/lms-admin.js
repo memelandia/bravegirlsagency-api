@@ -42,6 +42,8 @@ module.exports = async (req, res, deps) => {
         return await handleReports(req, res, user, deps);
       case 'completions':
         return await handleCompletions(req, res, user, deps);
+      case 'analytics':
+        return await handleAnalytics(req, res, user, deps);
       default:
         return res.status(404).json({ error: 'Recurso no encontrado', resource, path });
     }
@@ -1403,6 +1405,215 @@ async function handleCompletions(req, res, user, deps) {
   return res.status(405).json({ error: 'Método no permitido' });
 }
 
+// ===================================================================
+// GET /admin/analytics - Dashboard de métricas agregadas
+// ===================================================================
+async function handleAnalytics(req, res, user, deps) {
+  const { query } = deps;
+
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Método no permitido' });
+  }
+
+  if (user.role !== 'admin' && user.role !== 'supervisor') {
+    return res.status(403).json({ error: 'Solo admins y supervisores pueden ver analytics' });
+  }
+
+  try {
+    // 1. Total de estudiantes
+    const totalStudentsResult = await query(`
+      SELECT COUNT(*) as total FROM lms_users WHERE role = 'chatter'
+    `);
+    const totalStudents = parseInt(totalStudentsResult.rows[0].total);
+
+    // 2. Estudiantes activos (últimos 7 días)
+    const activeStudentsResult = await query(`
+      SELECT COUNT(DISTINCT user_id) as active
+      FROM lms_progress_lessons
+      WHERE completed_at > NOW() - INTERVAL '7 days'
+    `);
+    const activeStudents = parseInt(activeStudentsResult.rows[0].active);
+
+    // 3. Tasa de completación (usuarios que completaron todos los módulos)
+    const completionRateResult = await query(`
+      SELECT 
+        COUNT(DISTINCT u.id) as total_users,
+        COUNT(DISTINCT CASE 
+          WHEN (
+            SELECT COUNT(DISTINCT m.id) 
+            FROM lms_modules m 
+            WHERE m.published = true
+          ) = (
+            SELECT COUNT(DISTINCT qa.module_id)
+            FROM lms_quiz_attempts qa
+            WHERE qa.user_id = u.id AND qa.passed = true
+          ) THEN u.id 
+        END) as completed_users
+      FROM lms_users u
+      WHERE u.role = 'chatter'
+    `);
+    const completionRate = totalStudents > 0 
+      ? Math.round((parseInt(completionRateResult.rows[0].completed_users) / totalStudents) * 100)
+      : 0;
+
+    // 4. Tiempo promedio de completación
+    const avgCompletionTimeResult = await query(`
+      SELECT 
+        AVG(EXTRACT(EPOCH FROM (cc.completed_at - u.created_at)) / 86400) as avg_days
+      FROM lms_course_completions cc
+      JOIN lms_users u ON u.id = cc.user_id
+      WHERE cc.approved = true
+    `);
+    const avgDays = parseFloat(avgCompletionTimeResult.rows[0].avg_days) || 0;
+    const avgCompletionTime = avgDays > 0 ? `${avgDays.toFixed(1)} días` : 'N/A';
+
+    // 5. Score promedio general
+    const avgScoreResult = await query(`
+      SELECT AVG(score) as avg_score
+      FROM lms_quiz_attempts
+      WHERE passed = true
+    `);
+    const avgScore = Math.round(parseFloat(avgScoreResult.rows[0].avg_score) || 0);
+
+    // 6. Tasa de aprobación (% con score >= 80)
+    const passRateResult = await query(`
+      SELECT 
+        COUNT(*) as total_attempts,
+        COUNT(CASE WHEN passed = true THEN 1 END) as passed_attempts
+      FROM lms_quiz_attempts
+    `);
+    const passRate = parseInt(passRateResult.rows[0].total_attempts) > 0
+      ? Math.round((parseInt(passRateResult.rows[0].passed_attempts) / parseInt(passRateResult.rows[0].total_attempts)) * 100)
+      : 0;
+
+    // 7. Tasa de abandono (sin actividad en 14 días)
+    const dropoutRateResult = await query(`
+      SELECT 
+        COUNT(*) as total_users,
+        COUNT(CASE 
+          WHEN NOT EXISTS (
+            SELECT 1 FROM lms_progress_lessons pl
+            WHERE pl.user_id = u.id 
+            AND pl.completed_at > NOW() - INTERVAL '14 days'
+          ) 
+          AND NOT EXISTS (
+            SELECT 1 FROM lms_course_completions cc
+            WHERE cc.user_id = u.id
+          )
+          THEN 1 
+        END) as dropout_users
+      FROM lms_users u
+      WHERE u.role = 'chatter'
+      AND u.created_at < NOW() - INTERVAL '14 days'
+    `);
+    const dropoutRate = parseInt(dropoutRateResult.rows[0].total_users) > 0
+      ? Math.round((parseInt(dropoutRateResult.rows[0].dropout_users) / parseInt(dropoutRateResult.rows[0].total_users)) * 100)
+      : 0;
+
+    // 8. Módulo más difícil (menor score promedio)
+    const difficultModuleResult = await query(`
+      SELECT 
+        m.title,
+        AVG(qa.score) as avg_score
+      FROM lms_quiz_attempts qa
+      JOIN lms_quizzes q ON q.id = qa.quiz_id
+      JOIN lms_modules m ON m.id = q.module_id
+      GROUP BY m.id, m.title
+      ORDER BY avg_score ASC
+      LIMIT 1
+    `);
+    const mostDifficultModule = difficultModuleResult.rows[0]?.title || 'N/A';
+
+    // 9. Módulo más fácil (mayor score promedio)
+    const easiestModuleResult = await query(`
+      SELECT 
+        m.title,
+        AVG(qa.score) as avg_score
+      FROM lms_quiz_attempts qa
+      JOIN lms_quizzes q ON q.id = qa.quiz_id
+      JOIN lms_modules m ON m.id = q.module_id
+      GROUP BY m.id, m.title
+      ORDER BY avg_score DESC
+      LIMIT 1
+    `);
+    const easiestModule = easiestModuleResult.rows[0]?.title || 'N/A';
+
+    // 10. Horarios pico de estudio (horas con más actividad)
+    const peakHoursResult = await query(`
+      SELECT 
+        EXTRACT(HOUR FROM completed_at) as hour,
+        COUNT(*) as activity_count
+      FROM lms_progress_lessons
+      WHERE completed_at > NOW() - INTERVAL '30 days'
+      GROUP BY hour
+      ORDER BY activity_count DESC
+      LIMIT 3
+    `);
+    const peakStudyHours = peakHoursResult.rows.map(row => {
+      const hour = parseInt(row.hour);
+      return `${hour.toString().padStart(2, '0')}:00-${(hour + 1).toString().padStart(2, '0')}:00`;
+    });
+
+    // 11. Stats por módulo
+    const moduleStatsResult = await query(`
+      SELECT 
+        m.title as module,
+        ROUND(AVG(qa.score)) as avg_score,
+        ROUND(AVG(attempts_count.attempts), 1) as avg_attempts,
+        ROUND(AVG(EXTRACT(EPOCH FROM (qa.created_at - first_lesson.first_completed)) / 60)) as avg_time_minutes
+      FROM lms_modules m
+      LEFT JOIN lms_quizzes q ON q.module_id = m.id
+      LEFT JOIN lms_quiz_attempts qa ON qa.quiz_id = q.id AND qa.passed = true
+      LEFT JOIN (
+        SELECT 
+          l.module_id,
+          pl.user_id,
+          MIN(pl.completed_at) as first_completed
+        FROM lms_progress_lessons pl
+        JOIN lms_lessons l ON l.id = pl.lesson_id
+        GROUP BY l.module_id, pl.user_id
+      ) first_lesson ON first_lesson.module_id = m.id AND first_lesson.user_id = qa.user_id
+      LEFT JOIN (
+        SELECT 
+          q.module_id,
+          qa_inner.user_id,
+          COUNT(*) as attempts
+        FROM lms_quiz_attempts qa_inner
+        JOIN lms_quizzes q ON q.id = qa_inner.quiz_id
+        GROUP BY q.module_id, qa_inner.user_id
+      ) attempts_count ON attempts_count.module_id = m.id AND attempts_count.user_id = qa.user_id
+      WHERE m.published = true
+      GROUP BY m.id, m.title, m.order_index
+      ORDER BY m.order_index
+    `);
+    
+    const moduleStats = moduleStatsResult.rows.map(row => ({
+      module: row.module,
+      avgScore: parseInt(row.avg_score) || 0,
+      avgAttempts: parseFloat(row.avg_attempts) || 0,
+      avgTimeToComplete: row.avg_time_minutes ? `${Math.round(row.avg_time_minutes)} min` : 'N/A'
+    }));
+
+    // Respuesta completa
+    return res.status(200).json({
+      totalStudents,
+      activeStudents,
+      completionRate,
+      avgCompletionTime,
+      avgScore,
+      passRate,
+      dropoutRate,
+      mostDifficultModule,
+      easiestModule,
+      peakStudyHours,
+      moduleStats
+    });
+
+  } catch (error) {
+    console.error('[Analytics] Error:', error);
+    return res.status(500).json({ error: 'Error al obtener analytics', message: error.message });
+  }
+}
 
 
 
