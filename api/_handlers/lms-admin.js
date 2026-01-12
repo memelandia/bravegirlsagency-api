@@ -554,6 +554,42 @@ async function handleLessons(req, res, user, deps) {
     return res.status(200).json({ message: 'Lección eliminada exitosamente' });
   }
 
+  // PATCH: Reordenar múltiples lecciones en transacción
+  if (req.method === 'PATCH') {
+    if (user.role !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores pueden reordenar lecciones' });
+    }
+
+    const { items } = req.body; // items = [{id, orderIndex}, ...]
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Se requiere array de items con {id, orderIndex}' });
+    }
+
+    // Validar todos los IDs
+    for (const item of items) {
+      if (!item.id || !isValidUUID(item.id)) {
+        return res.status(400).json({ error: 'ID inválido en items' });
+      }
+      if (typeof item.orderIndex !== 'number') {
+        return res.status(400).json({ error: 'orderIndex debe ser número' });
+      }
+    }
+
+    // Actualizar todas en transacción
+    await transaction(async (client) => {
+      for (const item of items) {
+        await client.query(`
+          UPDATE lms_lessons 
+          SET order_index = $1 
+          WHERE id = $2
+        `, [item.orderIndex, item.id]);
+      }
+    });
+
+    return res.status(200).json({ message: 'Lecciones reordenadas exitosamente' });
+  }
+
   return res.status(405).json({ error: 'Método no permitido' });
 }
 
