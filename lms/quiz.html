@@ -8,8 +8,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Evaluación - BraveGirls LMS</title>
   <link rel="stylesheet" href="/lms/lms-styles.css?v=2.15">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
-<body>
   <header class="lms-header">
     <div class="container">
       <div class="lms-logo">🎓 BraveGirls LMS</div>
@@ -229,6 +229,11 @@
       
       const isPassed = results.passed;
       
+      // 🎊 Celebración con confetti si aprobó
+      if (isPassed) {
+        celebrateSuccess(results.score);
+      }
+      
       resultCard.innerHTML = `
         <div style="text-align: center;">
           <div style="font-size: 64px; margin-bottom: 20px;">
@@ -245,6 +250,16 @@
             Puntaje mínimo requerido: ${results.passingScore}%
           </p>
           
+          ${isPassed 
+            ? `
+              <div class="alert alert-success" style="text-align: left; margin-bottom: 20px;">
+                <strong>¡Excelente trabajo! 🎊</strong><br>
+                Has demostrado tu dominio del contenido. El siguiente módulo ya está disponible.
+              </div>
+            `
+            : ''
+          }
+          
           ${!isPassed && results.attemptsUsed < results.maxAttempts 
             ? `
               <div class="alert alert-info" style="text-align: left; margin-bottom: 20px;">
@@ -258,8 +273,8 @@
               : ''
           }
           
-          <button class="btn btn-outline mt-20" onclick="goBack()">
-            ${isPassed ? 'Continuar al Siguiente Módulo' : 'Volver al Módulo'}
+          <button class="btn ${isPassed ? 'btn-primary' : 'btn-outline'} mt-20" onclick="goBack()">
+            ${isPassed ? '✨ Continuar al Siguiente Módulo' : 'Volver al Módulo'}
           </button>
         </div>
       `;
@@ -283,6 +298,40 @@
       }
       
       container.insertBefore(resultCard, container.firstChild);
+    }
+
+    function celebrateSuccess(score) {
+      // Efecto confetti - Más intenso si score >= 90%
+      const count = score >= 90 ? 200 : 100;
+      const spread = score >= 90 ? 100 : 70;
+      
+      // Confetti desde el centro
+      confetti({
+        particleCount: count,
+        spread: spread,
+        origin: { y: 0.6 },
+        colors: ['#10b981', '#34d399', '#6ee7b7', '#fbbf24', '#f59e0b']
+      });
+      
+      // Si es score perfecto (100%), más confetti
+      if (score === 100) {
+        setTimeout(() => {
+          confetti({
+            particleCount: 150,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0, y: 0.6 }
+          });
+        }, 250);
+        setTimeout(() => {
+          confetti({
+            particleCount: 150,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1, y: 0.6 }
+          });
+        }, 400);
+      }
     }
 
     function goBack() {
