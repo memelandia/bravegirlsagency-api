@@ -639,16 +639,19 @@ GET /admin/export/attempts?moduleId=X&format=json
 
 ## 🏗️ ARQUITECTURA Y CÓDIGO
 
-### 19. **Queries no optimizadas**
+### 19. ✅ **Queries optimizadas** [IMPLEMENTADO]
 ```sql
--- Problema: En handleCampus, hace múltiples queries
--- Solución: Usar una sola query con JOINs más eficientes
+-- ✅ Paginación implementada en admin
+GET /admin/users?page=1&limit=50
+GET /admin/progress?page=1&limit=50
 
--- Implementar paginación en admin tables
-SELECT * FROM lms_users LIMIT 50 OFFSET ${page * 50}
-
--- Agregar índices faltantes
+-- ✅ Índices agregados en migrate-indexes.sql
 CREATE INDEX idx_quiz_attempts_user_created ON lms_quiz_attempts(user_id, created_at DESC);
+CREATE INDEX idx_progress_lessons_user_lesson ON lms_progress_lessons(user_id, lesson_id);
+CREATE INDEX idx_lessons_module_order ON lms_lessons(module_id, order_index);
+-- + 10 índices más para tablas críticas
+
+-- Para aplicar: Ejecutar migrate-indexes.sql en Vercel Postgres
 ```
 
 ---
