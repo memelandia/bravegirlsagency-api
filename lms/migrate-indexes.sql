@@ -26,10 +26,6 @@ WHERE completed_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_lessons_module_order 
 ON lms_lessons(module_id, order_index);
 
-CREATE INDEX IF NOT EXISTS idx_lessons_module_published 
-ON lms_lessons(module_id, published) 
-WHERE published = true;
-
 -- Índices para lms_modules (usado en campus)
 CREATE INDEX IF NOT EXISTS idx_modules_stage_order 
 ON lms_modules(stage_id, order_index);
