@@ -117,10 +117,12 @@ async function handleLogin(req, res, deps) {
     httpOnly: true,
     secure: true,
     sameSite: 'none',
-    maxAge: 86400 * 1000 // 24 horas (en milisegundos)
+    maxAge: 86400 * 1000, // 24 horas (en milisegundos)
+    path: '/',
+    domain: '.bravegirlsagency.com' // Permitir subdominios
   });
   
-  console.log('[Login] Cookie set for user:', email, 'Role:', user.role);
+  console.log('[Login] Cookie set for user:', email, 'Role:', user.role, 'Token length:', sessionToken.length);
 
   // Calcular días restantes si hay deadline
   let daysRemaining = null;

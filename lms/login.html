@@ -226,11 +226,18 @@
           credentials: 'include'
         });
 
+        console.log('[Login] Response status:', response.status);
+        console.log('[Login] Response headers:', [...response.headers.entries()]);
+        
         const data = await response.json();
+        console.log('[Login] Response data:', data);
 
         if (!response.ok) {
           throw new Error(data.error || 'Error al iniciar sesión');
         }
+
+        // Verificar si la cookie se estableció
+        console.log('[Login] Document cookies:', document.cookie);
 
         showAlert('¡Login exitoso! Redirigiendo...', 'success');
         

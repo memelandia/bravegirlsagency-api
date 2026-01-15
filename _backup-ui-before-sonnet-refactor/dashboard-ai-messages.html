@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador IA - BraveGirls Agency</title>
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="tailwind.min.css">
+    <link rel="stylesheet" href="dashboard-guias.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #0A0A0A; color: #FFFFFF; min-height: 100vh; }
+        .dashboard-container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .card-glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1rem; padding: 1.5rem; }
+        .header-dashboard { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1rem; padding: 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .btn-primary { background: linear-gradient(135deg, #FF6BB3, #FFD700); color: #0A0A0A; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; border: none; cursor: pointer; transition: all 0.3s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255, 107, 179, 0.3); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        .models-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .model-card { background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 0.75rem; padding: 1rem; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .model-card:hover { border-color: rgba(255, 107, 179, 0.5); transform: translateY(-2px); }
+        .model-card.selected { border-color: #FF6BB3; background: rgba(255, 107, 179, 0.1); }
+        .model-avatar { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #FF6BB3, #FFD700); margin: 0 auto 0.75rem; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; }
+        .model-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; }
+        .model-username { font-size: 0.8rem; color: #9CA3AF; }
+        
+        .message-type-btn { background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 0.75rem; padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .message-type-btn:hover { border-color: rgba(255, 107, 179, 0.3); }
+        .message-type-btn.active { border-color: #FF6BB3; background: rgba(255, 107, 179, 0.1); }
+        
+        .message-item { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem; }
+        .message-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+        .message-actions button { background: rgba(255, 255, 255, 0.1); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+        .message-actions button:hover { background: rgba(255, 107, 179, 0.3); }
+        
+        /* Estilos para select */
+        select { 
+            width: 100%; 
+            padding: 0.75rem; 
+            background: #1F2937 !important; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 0.5rem; 
+            color: white !important; 
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+        }
+        select option { 
+            background: #1F2937 !important; 
+            color: white !important; 
+            padding: 0.5rem;
+        }
+        select:focus {
+            outline: none;
+            border-color: #FF6BB3;
+        }
+        
+        .context-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header-dashboard">
+            <div>
+                <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">🤖 Generador de Mensajes IA</h1>
+                <p style="color: #9CA3AF;">Genera mensajes únicos y personalizados con inteligencia artificial</p>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <a href="dashboard-chatter.html" class="btn-primary" style="text-decoration: none; background: rgba(255,255,255,0.1); display: inline-flex; align-items: center;">← Volver al Dashboard</a>
+                <button id="logout-btn" class="btn-primary" style="background: rgba(220, 38, 38, 0.8);">Cerrar Sesión</button>
+            </div>
+        </div>
+
+        <!-- Selector de Modelo -->
+        <div class="card-glass" style="margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">📋 Selecciona la Modelo</h2>
+            <div id="models-grid" class="models-grid">
+                <div style="text-align: center; color: #6B7280; padding: 2rem;">Cargando modelos...</div>
+            </div>
+        </div>
+
+        <!-- Tipo de Mensaje -->
+        <div class="card-glass" style="margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">📝 Tipo de Mensaje</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <div class="message-type-btn" data-type="masivo">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">💬</div>
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">Mensaje Masivo</div>
+                    <div style="font-size: 0.8rem; color: #9CA3AF;">Para interactuar con tus suscrips</div>
+                </div>
+                <div class="message-type-btn" data-type="posteo">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">📸</div>
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">Descripción de Posteo</div>
+                    <div style="font-size: 0.8rem; color: #9CA3AF;">Para acompañar fotos/videos</div>
+                </div>
+                <div class="message-type-btn" data-type="venta">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">💰</div>
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">Venta de Pack</div>
+                    <div style="font-size: 0.8rem; color: #9CA3AF;">Para vender contenido bloqueado</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contexto -->
+        <div id="context-section" class="card-glass hidden" style="margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">⚙️ Contexto</h2>
+            <div id="context-masivo" class="hidden context-grid">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; color: #9CA3AF; font-size: 0.9rem;">Hora del día</label>
+                    <select id="time-of-day">
+                        <option value="manana">Mañana</option>
+                        <option value="tarde" selected>Tarde</option>
+                        <option value="noche">Noche</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; color: #9CA3AF; font-size: 0.9rem;">Temporada</label>
+                    <select id="season">
+                        <option value="invierno" selected>Invierno ❄️ (frío)</option>
+                        <option value="verano">Verano ☀️ (calor)</option>
+                    </select>
+                </div>
+            </div>
+            <div id="context-posteo" class="hidden">
+                <label style="display: block; margin-bottom: 0.5rem; color: #9CA3AF; font-size: 0.9rem;">Describe la foto/video</label>
+                <textarea id="photo-description" placeholder="Ej: Foto en lencería negra, mirando a cámara..." style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; color: white; min-height: 80px; resize: vertical;"></textarea>
+            </div>
+            <div id="context-venta" class="hidden">
+                <label style="display: block; margin-bottom: 0.5rem; color: #9CA3AF; font-size: 0.9rem;">Describe el contenido del pack</label>
+                <textarea id="pack-description" placeholder="Ej: 5 fotos + 2 videos de 30 seg masturbándome..." style="width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; color: white; min-height: 80px; resize: vertical;"></textarea>
+            </div>
+        </div>
+
+        <!-- Botón Generar -->
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <button id="generate-btn" class="btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;" disabled>🔥 Generar 3 Mensajes</button>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="card-glass hidden" style="text-align: center; padding: 2rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
+            <div style="font-size: 1.2rem; font-weight: 600;">Generando mensajes...</div>
+            <div style="color: #9CA3AF; margin-top: 0.5rem;">Esto puede tardar unos segundos</div>
+        </div>
+
+        <!-- Layout 3 Columnas: Resultados | Historial | Favoritos -->
+        <div style="display: grid; grid-template-columns: 1fr 350px 350px; gap: 1.5rem; align-items: start;">
+            <!-- Resultados -->
+            <div id="results" class="card-glass hidden">
+                <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">✨ Mensajes Generados</h2>
+                <div id="messages-container"></div>
+            </div>
+
+            <!-- Historial -->
+            <div class="card-glass">
+                <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">📜 Historial</h2>
+                <div id="history-list" style="max-height: 600px; overflow-y: auto;">
+                    <p class="text-gray-400 text-sm text-center py-4">No hay historial aún</p>
+                </div>
+            </div>
+
+            <!-- Favoritos -->
+            <div class="card-glass">
+                <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">⭐ Favoritos</h2>
+                <div id="favorites-list" style="max-height: 600px; overflow-y: auto;">
+                    <p class="text-gray-400 text-sm text-center py-4">No hay favoritos aún</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error -->
+        <div id="error-message" class="card-glass hidden" style="border-color: rgba(220, 38, 38, 0.5); background: rgba(220, 38, 38, 0.1); margin-top: 1.5rem;">
+            <h3 style="color: #FCA5A5; font-weight: 600; margin-bottom: 0.5rem;">❌ Error</h3>
+            <p style="color: #FCA5A5;"></p>
+        </div>
+    </div>
+
+    <script src="config.js?v=20260107"></script>
+    <script src="dashboard-guias.js?v=20260107"></script>
+    <script src="dashboard-ai-messages-final.js?v=20251227-1830"></script>
+</body>
+</html>

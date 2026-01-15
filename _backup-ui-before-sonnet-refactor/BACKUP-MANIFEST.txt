@@ -1,0 +1,11 @@
+﻿dashboard-ai-messages.html
+dashboard-chatter.html
+dashboard-modelo.html
+guia-chatting.html
+index.html
+login.html
+test-modelos.html
+dashboard-guias.css
+dashboard-styles.css
+styles.css
+tailwind.min.css

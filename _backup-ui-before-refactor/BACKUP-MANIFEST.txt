@@ -1,0 +1,38 @@
+﻿Backup UI BEFORE refactor
+Created: 2026-01-12 20:18:45
+Root: C:\Users\franc\OneDrive\Desktop\bravegirlsagencyweb - copia
+
+FILES:
+crm\crm.css
+dashboard-guias.css
+dashboard-styles.css
+index.html
+lms\admin.html
+lms\admin-analytics.html
+lms\ADMIN-IMPROVEMENTS.md
+lms\ADMIN-VISUAL-GUIDE.md
+lms\AUDITORIA-COMPLETA-v2.11.md
+lms\AUDITORIA-COMPLETA-v2.15.md
+lms\AUDITORIA-CSS-FRONTEND.md
+lms\AUDITORIA-FUNCIONALIDAD-v2.19.md
+lms\BANNER-DEADLINE-FIX.md
+lms\campus.html
+lms\CONSOLIDACION-ENDPOINTS.md
+lms\CORRECCIONES-APLICADAS.md
+lms\DEPLOYMENT.md
+lms\ERRORES-ENCONTRADOS.md
+lms\GUIA-CONFIGURACION-QUIZ.md
+lms\GUIA-MIGRACIONES.md
+lms\index.html
+lms\lms-styles.css
+lms\login.html
+lms\module.html
+lms\ONBOARDING-README.md
+lms\PLAN-DE-PRUEBAS.md
+lms\quiz.html
+lms\SISTEMA-DEADLINES.md
+lms\SISTEMA-EVALUACION-COMPLETO.md
+lms\welcome.html
+login.html
+styles.css
+tailwind.min.css

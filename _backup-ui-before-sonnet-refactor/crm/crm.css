@@ -1,0 +1,1734 @@
+/* crm.css - CRM Visual Profesional v2.0 */
+
+/* ============================================
+   VARIABLES Y PALETA DE COLORES
+   ============================================ */
+:root {
+    /* Layout */
+    --crm-sidebar-width: 280px;
+    --crm-topbar-height: 72px;
+    --crm-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Colores principales */
+    --crm-primary: #FF6BB3;
+    --crm-primary-dark: #E54F99;
+    --crm-secondary: #8B5CF6;
+    --crm-secondary-dark: #7C3AED;
+    
+    /* Fondo y superficies */
+    --crm-bg-dark: #0F172A;
+    --crm-bg-darker: #0A0F1E;
+    --crm-surface: rgba(30, 41, 59, 0.5);
+    --crm-surface-hover: rgba(30, 41, 59, 0.7);
+    
+    /* Bordes */
+    --crm-border: rgba(148, 163, 184, 0.1);
+    --crm-border-light: rgba(148, 163, 184, 0.05);
+    
+    /* Texto */
+    --crm-text-primary: #F1F5F9;
+    --crm-text-secondary: #94A3B8;
+    --crm-text-muted: #64748B;
+    
+    /* Estados */
+    --crm-success: #10B981;
+    --crm-warning: #F59E0B;
+    --crm-error: #EF4444;
+    --crm-info: #3B82F6;
+}
+
+/* Selección de texto con contraste mejorado */
+::selection {
+    background: rgba(255, 107, 179, 0.3);
+    color: #FFFFFF;
+}
+
+::-moz-selection {
+    background: rgba(255, 107, 179, 0.3);
+    color: #FFFFFF;
+}
+
+/* CRM Layout Principal */
+.crm-container {
+    display: flex;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--crm-bg-darker) 0%, var(--crm-bg-dark) 50%, #1E293B 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Patrón de fondo sutil */
+.crm-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        radial-gradient(circle at 20% 50%, rgba(255, 107, 179, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ============================================
+   SIDEBAR - Glassmorphism Profesional
+   ============================================ */
+.crm-sidebar {
+    width: var(--crm-sidebar-width);
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-right: 1px solid var(--crm-border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    height: 100vh;
+    z-index: 40;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1);
+    transition: var(--crm-transition);
+}
+
+/* Sidebar colapsado */
+.crm-sidebar.collapsed {
+    width: 80px;
+}
+
+.crm-sidebar.collapsed .crm-sidebar-title,
+.crm-sidebar.collapsed .crm-sidebar-logo,
+.crm-sidebar.collapsed .crm-menu-text,
+.crm-sidebar.collapsed .crm-user-details {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.crm-sidebar.collapsed .crm-menu-item {
+    justify-content: center;
+    padding: 0.75rem;
+}
+
+.crm-sidebar.collapsed .crm-menu-icon {
+    margin-right: 0;
+    font-size: 1.25rem;
+}
+
+.crm-sidebar.collapsed .crm-user-info {
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem;
+}
+
+.crm-sidebar.collapsed .crm-user-avatar {
+    margin-right: 0;
+    margin-bottom: 0.25rem;
+}
+
+/* Botón toggle del sidebar */
+.crm-sidebar-toggle {
+    position: fixed;
+    top: 1.25rem;
+    left: calc(var(--crm-sidebar-width) - 12px);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255, 107, 179, 0.9);
+    border: 2px solid var(--crm-bg-dark);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.7rem;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.crm-sidebar.collapsed .crm-sidebar-toggle {
+    left: 68px;
+}
+
+.crm-sidebar-toggle:hover {
+    background: var(--crm-primary-dark);
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(255, 107, 179, 0.4);
+}
+
+.crm-sidebar-toggle:hover {
+    background: var(--crm-primary-dark);
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(255, 107, 179, 0.4);
+}
+
+.crm-sidebar-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--crm-border);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.crm-sidebar-logo {
+    height: 40px;
+    margin-bottom: 0.75rem;
+    filter: drop-shadow(0 2px 8px rgba(255, 107, 179, 0.2));
+}
+
+.crm-sidebar-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--crm-primary) 0%, var(--crm-secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+}
+
+.crm-sidebar-nav {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+/* Scrollbar personalizado */
+.crm-sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.crm-sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.crm-sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.2);
+    border-radius: 3px;
+}
+
+.crm-sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.3);
+}
+
+.crm-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.75rem;
+    color: var(--crm-text-secondary);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--crm-transition);
+    border: 1px solid transparent;
+    position: relative;
+}
+
+.crm-nav-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 0;
+    background: linear-gradient(135deg, var(--crm-primary), var(--crm-secondary));
+    border-radius: 0 3px 3px 0;
+    transition: height 0.3s ease;
+}
+
+.crm-nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--crm-text-primary);
+    border-color: var(--crm-border);
+    transform: translateX(2px);
+}
+
+.crm-nav-item.active {
+    background: rgba(255, 107, 179, 0.1);
+    color: var(--crm-primary);
+    border-color: rgba(255, 107, 179, 0.2);
+    box-shadow: 0 4px 12px rgba(255, 107, 179, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.crm-nav-item.active::before {
+    height: 60%;
+}
+
+.crm-nav-icon {
+    font-size: 1.25rem;
+    width: 1.5rem;
+    text-align: center;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.crm-sidebar-footer {
+    padding: 1rem;
+    border-top: 1px solid var(--crm-border);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.crm-user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.75rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--crm-border-light);
+    transition: var(--crm-transition);
+}
+
+.crm-user-info:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--crm-border);
+}
+
+.crm-user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--crm-primary) 0%, var(--crm-secondary) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 107, 179, 0.3);
+}
+
+.crm-user-details {
+    flex: 1;
+}
+
+.crm-user-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--crm-text-primary);
+    margin-bottom: 0.125rem;
+}
+
+.crm-user-role {
+    font-size: 0.75rem;
+    color: var(--crm-text-muted);
+}
+
+.crm-logout-btn {
+    width: 100%;
+    padding: 0.75rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #FCA5A5;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--crm-transition);
+}
+
+.crm-logout-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+/* ============================================
+   MAIN CONTENT AREA
+   ============================================ */
+.crm-main {
+    flex: 1;
+    margin-left: var(--crm-sidebar-width);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 1;
+    transition: var(--crm-transition);
+}
+
+/* Main con sidebar colapsado */
+.crm-main.sidebar-collapsed {
+    margin-left: 80px;
+}
+
+.crm-topbar {
+    height: var(--crm-topbar-height);
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--crm-border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.crm-topbar-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--crm-text-primary);
+    letter-spacing: -0.5px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.crm-topbar-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.crm-content {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+/* Scrollbar personalizado para content */
+.crm-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.crm-content::-webkit-scrollbar-track {
+    background: rgba(148, 163, 184, 0.05);
+}
+
+.crm-content::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.2);
+    border-radius: 4px;
+}
+
+.crm-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.3);
+}
+
+/* ============================================
+   TABS - Estilo Moderno
+   ============================================ */
+.crm-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 2px solid var(--crm-border-light);
+    margin-bottom: 2rem;
+    overflow-x: auto;
+    position: relative;
+}
+
+.crm-tabs::-webkit-scrollbar {
+    height: 4px;
+}
+
+.crm-tabs::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.crm-tabs::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.2);
+    border-radius: 2px;
+}
+
+.crm-tab {
+    padding: 1rem 1.5rem;
+    color: var(--crm-text-secondary);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: var(--crm-transition);
+    white-space: nowrap;
+    position: relative;
+}
+
+.crm-tab::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%) scaleX(0);
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--crm-primary), var(--crm-secondary));
+    border-radius: 3px 3px 0 0;
+    transition: transform 0.3s ease;
+}
+
+.crm-tab:hover {
+    color: var(--crm-text-primary);
+}
+
+.crm-tab.active {
+    color: var(--crm-primary);
+}
+
+.crm-tab.active::after {
+    transform: translateX(-50%) scaleX(1);
+}
+
+/* ============================================
+   CARDS - Glassmorphism Avanzado
+   ============================================ */
+.crm-card {
+    background: rgba(30, 41, 59, 0.4);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--crm-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    transition: var(--crm-transition);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.crm-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
+
+.crm-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255, 107, 179, 0.3);
+    box-shadow: 0 12px 32px rgba(255, 107, 179, 0.15), 0 4px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.crm-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--crm-border-light);
+}
+
+.crm-card-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--crm-text-primary);
+    letter-spacing: -0.3px;
+}
+
+/* ============================================
+   BUTTONS - Efectos Premium
+   ============================================ */
+.crm-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--crm-transition);
+    border: 1px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.crm-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: inherit;
+    transition: transform 0.5s ease;
+}
+
+.crm-btn:active::before {
+    transform: translate(-50%, -50%) scale(1);
+    transition: transform 0s;
+}
+
+.crm-btn-primary {
+    background: linear-gradient(135deg, var(--crm-primary) 0%, var(--crm-secondary) 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 107, 179, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.crm-btn-primary:hover {
+    box-shadow: 0 6px 24px rgba(255, 107, 179, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.crm-btn-secondary {
+    background: rgba(30, 41, 59, 0.5);
+    border-color: var(--crm-border);
+    color: var(--crm-text-primary);
+    backdrop-filter: blur(10px);
+}
+
+.crm-btn-secondary:hover {
+    background: rgba(30, 41, 59, 0.7);
+    border-color: rgba(148, 163, 184, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.crm-btn-danger {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #FCA5A5;
+}
+
+.crm-btn-danger:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.crm-btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    border-radius: 0.5rem;
+}
+
+/* ============================================
+   TABLES - Diseño Profesional
+   ============================================ */
+.crm-table-container {
+    overflow-x: auto;
+    border-radius: 0.75rem;
+    border: 1px solid var(--crm-border);
+    background: rgba(30, 41, 59, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.crm-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.crm-table thead {
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 2px solid var(--crm-border);
+}
+
+.crm-table th {
+    padding: 1rem 1.25rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--crm-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.crm-table td {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--crm-border-light);
+    color: var(--crm-text-primary);
+    font-size: 0.9rem;
+}
+
+.crm-table tbody tr {
+    transition: var(--crm-transition);
+}
+
+.crm-table tbody tr:hover {
+    background: rgba(255, 107, 179, 0.05);
+}
+
+.crm-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.crm-table-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* ============================================
+   FORMS - Inputs Modernos
+   ============================================ */
+.crm-form-group {
+    margin-bottom: 1.5rem;
+}
+
+.crm-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--crm-text-primary);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.3px;
+}
+
+.crm-input,
+.crm-select,
+.crm-textarea {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    background: rgba(15, 23, 42, 0.8) !important;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 0.75rem;
+    color: #FFFFFF !important;
+    font-size: 0.95rem;
+    transition: var(--crm-transition);
+    backdrop-filter: blur(10px);
+    font-weight: 500;
+}
+
+.crm-input::selection,
+.crm-textarea::selection {
+    background: rgba(255, 107, 179, 0.4);
+    color: #FFFFFF;
+}
+
+.crm-input:focus,
+.crm-select:focus,
+.crm-textarea:focus {
+    outline: none;
+    border-color: var(--crm-primary);
+    background: rgba(15, 23, 42, 0.95) !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 0 0 3px rgba(255, 107, 179, 0.25), 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.crm-input::placeholder,
+.crm-textarea::placeholder {
+    color: rgba(148, 163, 184, 0.5);
+    font-weight: 400;
+}
+
+.crm-textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+/* ============================================
+   SELECT - Máxima fuerza para tema oscuro
+   ============================================ */
+
+select.crm-input,
+.crm-select,
+select {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394A3B8' d='M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 3rem;
+    font-weight: 500;
+    
+    /* CRÍTICO: Forzar color-scheme dark */
+    color-scheme: dark !important;
+    
+    /* Forzar colores base del select */
+    background-color: rgba(30, 41, 59, 0.6) !important;
+    color: #F1F5F9 !important;
+}
+
+select:focus {
+    background-color: rgba(30, 41, 59, 0.9) !important;
+}
+
+/* ============================================
+   OPTIONS - Fuerza máxima con todos los selectores
+   ============================================ */
+
+/* Selectores múltiples para máxima cobertura */
+option,
+select option,
+.crm-input option,
+.crm-select option,
+select.crm-input option,
+.crm-modal option,
+.crm-form-group option {
+    background-color: #1E293B !important;
+    background: #1E293B !important;
+    color: #F1F5F9 !important;
+    padding: 14px 16px !important;
+    font-size: 1rem !important;
+    font-weight: 500 !important;
+    line-height: 1.6 !important;
+    border: none !important;
+    min-height: 40px !important;
+}
+
+/* Opción seleccionada/checked - MORADO FUERTE */
+option:checked,
+select option:checked,
+.crm-input option:checked,
+.crm-select option:checked,
+select.crm-input option:checked,
+.crm-modal option:checked,
+.crm-form-group option:checked {
+    background-color: #7C3AED !important;
+    background: #7C3AED !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Hover/Focus - Gris más claro */
+option:hover,
+option:focus,
+select option:hover,
+select option:focus,
+.crm-input option:hover,
+.crm-select option:hover,
+select.crm-input option:hover {
+    background-color: #1E293B !important;
+    background: #1E293B !important;
+    color: #FF6BB3 !important;
+}
+
+/* Active state */
+option:active,
+select option:active {
+    background-color: #7C3AED !important;
+    color: #FFFFFF !important;
+}
+
+/* ============================================
+   NAVEGADORES ESPECÍFICOS
+   ============================================ */
+
+/* Firefox - Máxima prioridad */
+@-moz-document url-prefix() {
+    select,
+    select.crm-input,
+    .crm-select {
+        color-scheme: dark !important;
+        background-color: #1E293B !important;
+    }
+    
+    option,
+    select option {
+        background-color: #0F172A !important;
+        color: #F1F5F9 !important;
+        padding: 14px !important;
+    }
+    
+    option:checked,
+    select option:checked {
+        background-color: #7C3AED !important;
+        background: #7C3AED !important;
+        color: #FFFFFF !important;
+    }
+    
+    option:hover,
+    select option:hover {
+        background-color: #1E293B !important;
+    }
+}
+
+/* Chrome/Edge/Safari - Webkit */
+@supports (-webkit-appearance: none) {
+    select,
+    select.crm-input,
+    .crm-select {
+        -webkit-appearance: none;
+        appearance: none;
+        color-scheme: dark !important;
+    }
+    
+    option,
+    select option {
+        background-color: #0F172A !important;
+        color: #F1F5F9 !important;
+    }
+    
+    option:checked,
+    select option:checked {
+        background: #7C3AED !important;
+        color: #FFFFFF !important;
+    }
+}
+
+/* Edge específico */
+@supports (-ms-ime-align: auto) {
+    select {
+        color-scheme: dark !important;
+    }
+    option {
+        background-color: #0F172A !important;
+        color: #F1F5F9 !important;
+    }
+}
+
+/* ============================================
+   MODAL - Overlay y Animaciones
+   ============================================ */
+.crm-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 1rem;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { 
+        opacity: 0;
+        backdrop-filter: blur(0px);
+    }
+    to { 
+        opacity: 1;
+        backdrop-filter: blur(8px);
+    }
+}
+
+.crm-modal {
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--crm-border);
+    border-radius: 1rem;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Scrollbar para modal */
+.crm-modal::-webkit-scrollbar {
+    width: 8px;
+}
+
+.crm-modal::-webkit-scrollbar-track {
+    background: rgba(148, 163, 184, 0.05);
+    border-radius: 0 1rem 1rem 0;
+}
+
+.crm-modal::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.2);
+    border-radius: 4px;
+}
+
+.crm-modal::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.3);
+}
+
+.crm-modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--crm-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.crm-modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--crm-text-primary);
+    letter-spacing: -0.3px;
+}
+
+.crm-modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--crm-border);
+    color: var(--crm-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--crm-transition);
+    font-size: 1.25rem;
+    font-weight: 400;
+}
+
+.crm-modal-close:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #FCA5A5;
+    transform: rotate(90deg);
+}
+
+.crm-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.crm-modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid var(--crm-border);
+    display: flex !important;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    background: rgba(255, 255, 255, 0.02);
+    flex-shrink: 0;
+}
+
+/* ============================================
+   FLOW MAP (React Flow) - Contraste Mejorado
+   ============================================ */
+.crm-flow-container {
+    height: calc(100vh - var(--crm-topbar-height) - 8rem);
+    background: #F8FAFC !important;
+    border: 1px solid var(--crm-border);
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* ============================================
+   REACT FLOW - Professional Organization Chart
+   ============================================ */
+
+/* Container principal */
+.crm-flow-container {
+    height: calc(100vh - 420px);
+    min-height: 600px;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Fondo profesional con patrón sutil */
+.react-flow__pane {
+    background: linear-gradient(180deg, #F8FAFC 0%, #EFF6FF 100%) !important;
+}
+
+.react-flow__renderer {
+    background: transparent !important;
+}
+
+.react-flow__viewport {
+    background: transparent !important;
+}
+
+/* ============================================
+   NODOS BASE - Premium Cards
+   ============================================ */
+
+.react-flow__node {
+    border-radius: 1rem;
+    padding: 0 !important;
+    border: 2px solid;
+    background: white;
+    color: #0F172A;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.08),
+        0 4px 8px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 1);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 500;
+    cursor: pointer;
+    overflow: visible !important;
+    min-width: 220px !important;
+    width: auto !important;
+}
+
+/* Eliminar padding del contenedor interno de React Flow */
+.react-flow__node > div {
+    padding: 0 !important;
+}
+
+.react-flow__node:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 
+        0 20px 50px rgba(0, 0, 0, 0.15),
+        0 8px 16px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.react-flow__node.selected {
+    transform: scale(1.05);
+    box-shadow: 
+        0 0 0 4px rgba(255, 107, 179, 0.25),
+        0 20px 50px rgba(255, 107, 179, 0.2),
+        0 8px 16px rgba(0, 0, 0, 0.08);
+    z-index: 10;
+}
+
+/* ============================================
+   SUPERVISOR NODES - Executive Purple
+   ============================================ */
+
+.react-flow__node-supervisor {
+    border-color: #8B5CF6;
+    border-width: 3px;
+    background: linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 50%, #EDE9FE 100%);
+    box-shadow: 
+        0 12px 40px rgba(139, 92, 246, 0.15),
+        0 6px 12px rgba(139, 92, 246, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 1),
+        inset 0 -1px 0 rgba(139, 92, 246, 0.1);
+}
+
+.react-flow__node-supervisor:hover {
+    border-color: #7C3AED;
+    box-shadow: 
+        0 20px 60px rgba(139, 92, 246, 0.25),
+        0 10px 20px rgba(139, 92, 246, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+/* ============================================
+   CHATTER NODES - Gradient by Level
+   ============================================ */
+
+/* Base chatter style */
+.react-flow__node-chatter {
+    border-color: #3B82F6;
+    background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 50%, #DBEAFE 100%);
+    box-shadow: 
+        0 10px 30px rgba(59, 130, 246, 0.12),
+        0 4px 8px rgba(59, 130, 246, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 1),
+        inset 0 -1px 0 rgba(59, 130, 246, 0.1);
+}
+
+/* Senior Chatter - Blue Premium */
+.react-flow__node-chatter-senior {
+    border-color: #3B82F6;
+    border-width: 2.5px;
+    background: linear-gradient(135deg, #FFFFFF 0%, #DBEAFE 50%, #BFDBFE 100%);
+    box-shadow: 
+        0 12px 35px rgba(59, 130, 246, 0.18),
+        0 6px 12px rgba(59, 130, 246, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 1),
+        inset 0 -2px 0 rgba(59, 130, 246, 0.15);
+}
+
+.react-flow__node-chatter-senior:hover {
+    border-color: #2563EB;
+    box-shadow: 
+        0 20px 50px rgba(59, 130, 246, 0.25),
+        0 10px 20px rgba(59, 130, 246, 0.15);
+}
+
+/* Mid Chatter - Amber/Orange */
+.react-flow__node-chatter-mid {
+    border-color: #F59E0B;
+    background: linear-gradient(135deg, #FFFFFF 0%, #FEF3C7 50%, #FDE68A 100%);
+    box-shadow: 
+        0 10px 30px rgba(245, 158, 11, 0.15),
+        0 4px 8px rgba(245, 158, 11, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 1),
+        inset 0 -1px 0 rgba(245, 158, 11, 0.1);
+}
+
+.react-flow__node-chatter-mid:hover {
+    border-color: #D97706;
+}
+
+/* Junior Chatter - Gray/Slate */
+.react-flow__node-chatter-junior {
+    border-color: #94A3B8;
+    background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 50%, #F1F5F9 100%);
+    box-shadow: 
+        0 8px 24px rgba(100, 116, 139, 0.12),
+        0 4px 8px rgba(100, 116, 139, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.react-flow__node-chatter-junior:hover {
+    border-color: #64748B;
+}
+
+/* ============================================
+   MODEL NODES - Premium Pink/Rose
+   ============================================ */
+
+.react-flow__node-model {
+    border-color: #FF6BB3;
+    border-width: 2.5px;
+    background: linear-gradient(135deg, #FFFFFF 0%, #FFF1F2 50%, #FFE4E6 100%);
+    box-shadow: 
+        0 12px 35px rgba(255, 107, 179, 0.18),
+        0 6px 12px rgba(255, 107, 179, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 1),
+        inset 0 -2px 0 rgba(255, 107, 179, 0.15);
+}
+
+.react-flow__node-model:hover {
+    border-color: #E54F99;
+    background: linear-gradient(135deg, #FFFFFF 0%, #FFE4E6 50%, #FECDD3 100%);
+    box-shadow: 
+        0 20px 50px rgba(255, 107, 179, 0.25),
+        0 10px 20px rgba(255, 107, 179, 0.15);
+}
+
+/* ============================================
+   EDGES - FLECHAS ULTRA VISIBLES CON RESPLANDOR
+   ============================================ */
+
+.react-flow__edge-path {
+    stroke: #E879F9 !important;
+    stroke-width: 6px !important;
+    filter: drop-shadow(0 0 10px #E879F9) drop-shadow(0 0 20px #E879F9) !important;
+    transition: all 0.2s ease;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+    stroke: #F0ABFC !important;
+    stroke-width: 8px !important;
+    filter: drop-shadow(0 0 15px #F0ABFC) drop-shadow(0 0 30px #F0ABFC) !important;
+}
+
+.react-flow__edge.animated .react-flow__edge-path {
+    stroke-dasharray: 10 !important;
+    stroke: #FB7ADB !important;
+    stroke-width: 6px !important;
+    animation: dash 25s linear infinite;
+    filter: drop-shadow(0 0 10px #FB7ADB) drop-shadow(0 0 20px #FB7ADB) !important;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: -200;
+    }
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+    stroke: #FB7ADB !important;
+    stroke-width: 8px !important;
+    filter: drop-shadow(0 0 15px #FB7ADB) drop-shadow(0 0 30px #FB7ADB) !important;
+}
+
+/* Flechas (arrowheads) - MUCHO MÁS GRANDES Y BRILLANTES */
+.react-flow__arrowhead {
+    fill: #E879F9 !important;
+    filter: drop-shadow(0 0 8px #E879F9) !important;
+}
+
+.react-flow__edge.animated .react-flow__arrowhead {
+    fill: #FB7ADB !important;
+    filter: drop-shadow(0 0 8px #FB7ADB) !important;
+}
+
+.react-flow__edge.selected .react-flow__arrowhead {
+    fill: #FB7ADB !important;
+    filter: drop-shadow(0 0 8px #FB7ADB) !important;
+}
+
+.react-flow__edge-text {
+    font-size: 0.7rem;
+    font-weight: 600;
+    fill: #64748B;
+}
+
+/* ============================================
+   CONTROLS - Premium Styling
+   ============================================ */
+
+.react-flow__controls {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid rgba(139, 92, 246, 0.2);
+    border-radius: 1rem;
+    backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.15),
+        0 4px 8px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 1);
+    padding: 0.25rem;
+}
+
+.react-flow__controls-button {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+    color: #64748B;
+    transition: all 0.2s ease;
+    padding: 0.5rem;
+}
+
+.react-flow__controls-button:last-child {
+    border-bottom: none;
+}
+
+.react-flow__controls-button:hover {
+    background: rgba(139, 92, 246, 0.1);
+    color: #8B5CF6;
+    transform: scale(1.1);
+}
+
+.react-flow__controls-button:active {
+    background: rgba(139, 92, 246, 0.2);
+}
+
+/* Background pattern premium */
+.react-flow__background {
+    background-color: transparent;
+}
+
+.react-flow__background-pattern {
+    stroke: #CBD5E1;
+    stroke-width: 0.5;
+    opacity: 0.4;
+}
+
+/* ============================================
+   MINIMAP (if enabled)
+   ============================================ */
+
+.react-flow__minimap {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid rgba(139, 92, 246, 0.2);
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================
+   BADGES - Vibrantes y Modernos
+   ============================================ */
+.crm-badge {
+    display: inline-block;
+    padding: 0.375rem 0.875rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid;
+    backdrop-filter: blur(10px);
+    transition: var(--crm-transition);
+}
+
+.crm-badge-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #6EE7B7;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.crm-badge-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #FCD34D;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.crm-badge-danger,
+.crm-badge-error {
+    background: rgba(239, 68, 68, 0.15);
+    color: #FCA5A5;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.crm-badge-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: #93C5FD;
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.crm-badge-secondary {
+    background: rgba(148, 163, 184, 0.15);
+    color: #CBD5E1;
+    border-color: rgba(148, 163, 184, 0.3);
+}
+
+/* ============================================
+   FORMS & INPUTS
+   ============================================ */
+.crm-form-group {
+    margin-bottom: 1.25rem;
+}
+
+.crm-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.5rem;
+}
+
+.crm-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    color: white;
+    font-size: 0.95rem;
+    transition: var(--crm-transition);
+}
+
+.crm-input:focus {
+    outline: none;
+    border-color: #FF6BB3;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(255, 107, 179, 0.1);
+}
+
+.crm-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+select.crm-input,
+.crm-select {
+    cursor: pointer;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    color: white;
+    font-size: 0.95rem;
+    transition: var(--crm-transition);
+}
+
+select.crm-input:focus,
+.crm-select:focus {
+    outline: none;
+    border-color: #FF6BB3;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(255, 107, 179, 0.1);
+}
+
+textarea.crm-input {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* ============================================
+   TABLES
+   ============================================ */
+.crm-table-container {
+    overflow-x: auto;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.crm-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.crm-table thead {
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.crm-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.crm-table td {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.crm-table tbody tr {
+    transition: var(--crm-transition);
+}
+
+.crm-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.crm-table-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* ============================================
+   MODALS
+   ============================================ */
+.crm-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.crm-modal {
+    background: rgba(20, 20, 20, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.crm-modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.crm-modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+}
+
+.crm-modal-close {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: var(--crm-transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.crm-modal-close:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #FCA5A5;
+}
+
+/* ============================================
+   BUTTON SIZES
+   ============================================ */
+.crm-btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    border-radius: 0.5rem;
+}
+
+.crm-btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    border-radius: 0.875rem;
+}
+
+/* ============================================
+   UTILITIES - Helpers
+   ============================================ */
+.crm-grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.crm-grid-2 {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.crm-flex {
+    display: flex;
+}
+
+.crm-flex-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.crm-gap-4 {
+    gap: 1rem;
+}
+
+.crm-mb-4 {
+    margin-bottom: 1rem;
+}
+
+.crm-empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--crm-text-muted);
+}
+
+.crm-empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+    filter: grayscale(100%);
+}
+
+.crm-empty-text {
+    font-size: 1.125rem;
+    margin-bottom: 1.5rem;
+    color: var(--crm-text-secondary);
+}
+
+/* ============================================
+   ANIMATIONS - Keyframes
+   ============================================ */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+.crm-loading {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+@media (max-width: 1024px) {
+    .crm-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --crm-sidebar-width: 280px;
+        --crm-topbar-height: 64px;
+    }
+    
+    .crm-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .crm-sidebar.open {
+        transform: translateX(0);
+        box-shadow: 8px 0 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    .crm-main {
+        margin-left: 0;
+    }
+    
+    .crm-topbar {
+        padding: 0 1rem;
+    }
+    
+    .crm-topbar-title {
+        font-size: 1.25rem;
+    }
+    
+    .crm-content {
+        padding: 1rem;
+    }
+    
+    .crm-tabs {
+        gap: 0.25rem;
+    }
+    
+    .crm-tab {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+    
+    .crm-modal {
+        margin: 0.5rem;
+        max-height: 95vh;
+    }
+    
+    .crm-flow-container {
+        height: calc(100vh - var(--crm-topbar-height) - 4rem);
+    }
+}
+
+@media (max-width: 480px) {
+    .crm-topbar-title {
+        font-size: 1.125rem;
+    }
+    
+    .crm-btn {
+        padding: 0.625rem 1rem;
+        font-size: 0.875rem;
+    }
+    
+    .crm-table th,
+    .crm-table td {
+        padding: 0.75rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* ============================================
+   DARK MODE SUPPORT (future-proof)
+   ============================================ */
+@media (prefers-color-scheme: light) {
+    /* Los usuarios con preferencia de tema claro verán el mismo diseño */
+    /* Ya que el CRM está optimizado para dark mode profesional */
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+@media print {
+    .crm-sidebar,
+    .crm-topbar-actions,
+    .crm-table-actions,
+    .crm-modal-overlay {
+        display: none !important;
+    }
+    
+    .crm-main {
+        margin-left: 0;
+    }
+    
+    .crm-card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+}

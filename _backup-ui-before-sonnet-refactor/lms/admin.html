@@ -1,0 +1,2048 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Panel de Administración - BraveGirls LMS</title>
+  <link rel="stylesheet" href="lms-styles.css?v=2.22.1&t=20260112223000">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js?v=2.22.1&t=20260112223000"></script>
+  <style>
+    .admin-container { 
+      display: flex; 
+      gap: var(--space-xl); 
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: var(--space-xl);
+    }
+    
+    .sidebar { 
+      width: 280px; 
+      background: var(--bg-card); 
+      padding: var(--space-xl); 
+      border-radius: var(--radius-xl); 
+      height: fit-content; 
+      position: sticky; 
+      top: 92px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-light);
+    }
+    
+    .sidebar-title {
+      font-size: var(--text-lg);
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: var(--space-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space);
+      padding-bottom: var(--space-md);
+      border-bottom: 2px solid var(--border-light);
+    }
+    
+    .sidebar-menu { 
+      list-style: none; 
+      padding: 0;
+      margin: 0;
+    }
+    
+    .sidebar-menu li { 
+      padding: var(--space-md); 
+      margin: var(--space-sm) 0; 
+      cursor: pointer; 
+      border-radius: var(--radius-md); 
+      transition: all var(--transition);
+      font-weight: 500;
+      font-size: var(--text-sm);
+      display: flex;
+      align-items: center;
+      gap: var(--space);
+      color: var(--text-secondary);
+    }
+    
+    .sidebar-menu li:hover { 
+      background: var(--primary-light);
+      color: var(--primary);
+      transform: translateX(4px);
+    }
+    
+    .sidebar-menu li.active { 
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+      color: white; 
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+    
+    .sidebar-menu li.active:hover {
+      transform: translateX(4px) scale(1.02);
+    }
+    
+    .main-content { 
+      flex: 1; 
+      min-width: 0;
+    }
+    
+    .tab-content { 
+      display: none; 
+    }
+    
+    .tab-content.active { 
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-2xl);
+      padding-bottom: var(--space-lg);
+      border-bottom: 2px solid var(--border-light);
+    }
+    
+    .page-title {
+      font-size: var(--text-3xl);
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      margin: 0;
+    }
+    
+    .page-actions {
+      display: flex;
+      gap: var(--space);
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <header class="lms-header">
+    <div class="container-fluid">
+      <div class="lms-logo">
+        <i class="fas fa-graduation-cap"></i>
+        BraveGirls LMS
+      </div>
+      <nav class="lms-nav">
+        <div class="user-info">
+          <i class="fas fa-user-shield"></i>
+          <span id="userName"></span>
+          <button class="btn btn-sm btn-outline" id="logoutBtn">
+            <i class="fas fa-sign-out-alt"></i>
+            Salir
+          </button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container-fluid">
+    <div class="admin-container">
+      <aside class="sidebar">
+        <div class="sidebar-title">
+          <i class="fas fa-bars"></i>
+          Menú Principal
+        </div>
+        <ul class="sidebar-menu">
+          <li data-tab="users" class="active">
+            <i class="fas fa-users"></i>
+            Usuarios
+          </li>
+          <li data-tab="stages">
+            <i class="fas fa-layer-group"></i>
+            Etapas
+          </li>
+          <li data-tab="modules">
+            <i class="fas fa-book"></i>
+            Módulos
+          </li>
+          <li data-tab="lessons">
+            <i class="fas fa-file-alt"></i>
+            Lecciones
+          </li>
+          <li data-tab="questions">
+            <i class="fas fa-question-circle"></i>
+            Preguntas
+          </li>
+          <li data-tab="progress">
+            <i class="fas fa-chart-line"></i>
+            Progreso
+          </li>
+          <li data-tab="analytics">
+            <i class="fas fa-chart-bar"></i>
+            Analytics
+          </li>
+          <li data-tab="completions">
+            <i class="fas fa-graduation-cap"></i>
+            Graduados
+          </li>
+        </ul>
+      </aside>
+
+      <div class="main-content">
+        <div id="alert" class="hidden"></div>
+
+
+        <!-- USERS TAB -->
+        <div id="users-tab" class="tab-content active">
+          <div class="card">
+            <div class="page-header">
+              <h2 class="page-title">
+                <i class="fas fa-users"></i>
+                Gestión de Usuarios
+              </h2>
+              <div class="page-actions">
+                <input type="text" id="searchUsers" class="form-input" placeholder="🔍 Buscar usuarios..." style="width: 280px;">
+                <button class="btn btn-primary" onclick="showCreateUserModal()">
+                  <i class="fas fa-plus"></i>
+                  Crear Usuario
+                </button>
+              </div>
+            </div>
+            <div id="usersTable">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STAGES TAB -->
+        <div id="stages-tab" class="tab-content">
+          <div class="card">
+            <div class="page-header">
+              <h2 class="page-title">
+                <i class="fas fa-layer-group"></i>
+                Gestión de Etapas
+              </h2>
+              <button class="btn btn-primary" onclick="showStageModal()">
+                <i class="fas fa-plus"></i>
+                Nueva Etapa
+              </button>
+            </div>
+            <div id="stagesTable">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODULES TAB -->
+        <div id="modules-tab" class="tab-content">
+          <div class="card">
+            <div class="page-header">
+              <h2 class="page-title">
+                <i class="fas fa-book"></i>
+                Gestión de Módulos
+              </h2>
+              <div class="page-actions">
+                <input type="text" id="searchModules" class="form-input" placeholder="🔍 Buscar módulos..." style="width: 280px;">
+                <button class="btn btn-primary" onclick="showModuleModal()">
+                  <i class="fas fa-plus"></i>
+                  Nuevo Módulo
+                </button>
+              </div>
+            </div>
+            <div id="modulesTable">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LESSONS TAB -->
+        <div id="lessons-tab" class="tab-content">
+          <div class="card">
+            <div class="page-header">
+              <h2 class="page-title">
+                <i class="fas fa-file-alt"></i>
+                Gestión de Lecciones
+              </h2>
+              <div class="page-actions">
+                <input type="text" id="searchLessons" class="form-input" placeholder="🔍 Buscar lecciones..." style="width: 200px;">
+                <select id="modulesFilter" class="form-select" style="width: 250px;">
+                  <option value="">📖 Todos los módulos</option>
+                </select>
+                <button class="btn btn-primary" onclick="showLessonModal()">
+                  <i class="fas fa-plus"></i>
+                  Nueva Lección
+                </button>
+              </div>
+            </div>
+            <div id="lessonsTable">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- QUESTIONS TAB -->
+        <div id="questions-tab" class="tab-content">
+          <div class="card">
+            <div class="page-header">
+              <h2 class="page-title">
+                <i class="fas fa-question-circle"></i>
+                Gestión de Preguntas
+              </h2>
+              <div class="page-actions">
+                <select id="modulesFilterQuestions" class="form-select" style="width: 250px;">
+                  <option value="">❓ Selecciona un módulo</option>
+                </select>
+                <button id="btnAddQuestion" class="btn btn-primary" disabled onclick="showCreateQuestionModal()">
+                  <i class="fas fa-plus"></i>
+                  Agregar Pregunta
+                </button>
+                <button id="btnPreviewQuiz" class="btn btn-outline" disabled onclick="previewQuiz()">
+                  <i class="fas fa-eye"></i>
+                  Preview Quiz
+                </button>
+              </div>
+            </div>
+            <div id="questionsTable">
+              <p class="text-center text-light" style="padding: var(--space-3xl);">
+                <i class="fas fa-arrow-up" style="font-size: 3rem; opacity: 0.3; display: block; margin-bottom: var(--space);"></i>
+                Selecciona un módulo para ver sus preguntas
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROGRESS TAB -->
+        <div id="progress-tab" class="tab-content">
+          <div class="card">
+            <h2 class="page-title mb-20">
+              <i class="fas fa-chart-line"></i>
+              Estadísticas y Progreso
+            </h2>
+            
+            <!-- Stats Dashboard -->
+            <div class="stats-grid" style="margin-bottom: 30px;">
+              <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-value" id="statTotalUsers">0</div>
+                <div class="stat-label">Usuarios Activos</div>
+              </div>
+              <div class="stat-card success">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value" id="statCompletedModules">0</div>
+                <div class="stat-label">Módulos Completados</div>
+              </div>
+              <div class="stat-card info">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-value" id="statAvgProgress">0%</div>
+                <div class="stat-label">Progreso Promedio</div>
+              </div>
+              <div class="stat-card warning">
+                <div class="stat-icon">📝</div>
+                <div class="stat-value" id="statQuizzesTaken">0</div>
+                <div class="stat-label">Exámenes Realizados</div>
+              </div>
+            </div>
+
+            <div id="progressTable">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ANALYTICS TAB -->
+        <div id="analytics-tab" class="tab-content">
+          <div class="card">
+            <div class="page-header">
+              <h1><i class="fas fa-chart-bar"></i> Analytics del Curso</h1>
+            </div>
+
+            <div id="analyticsLoading" style="text-align: center; padding: 40px;">
+              <div class="spinner"></div>
+              <p style="margin-top: 20px; color: var(--text-secondary);">Cargando métricas...</p>
+            </div>
+
+            <div id="analyticsContent" style="display: none;">
+              <!-- Metrics Grid -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                <div class="stat-card">
+                  <div class="stat-icon" style="background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); color: white;">
+                    <i class="fas fa-users"></i>
+                  </div>
+                  <div class="stat-value" id="metricTotalStudents">-</div>
+                  <div class="stat-label">Total Estudiantes</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon" style="background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: white;">
+                    <i class="fas fa-user-check"></i>
+                  </div>
+                  <div class="stat-value" id="metricActiveStudents">-</div>
+                  <div class="stat-label">Activos (7 días)</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon" style="background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white;">
+                    <i class="fas fa-graduation-cap"></i>
+                  </div>
+                  <div class="stat-value" id="metricCompletionRate">-</div>
+                  <div class="stat-label">Completaron</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                    <i class="fas fa-star"></i>
+                  </div>
+                  <div class="stat-value" id="metricAvgScore">-</div>
+                  <div class="stat-label">Score Promedio</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon" style="background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: white;">
+                    <i class="fas fa-check-circle"></i>
+                  </div>
+                  <div class="stat-value" id="metricPassRate">-</div>
+                  <div class="stat-label">Tasa Aprobación</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon" style="background: linear-gradient(135deg, #f87171 0%, #ef4444 100%); color: white;">
+                    <i class="fas fa-user-times"></i>
+                  </div>
+                  <div class="stat-value" id="metricDropoutRate">-</div>
+                  <div class="stat-label">Abandono</div>
+                </div>
+              </div>
+
+              <!-- Module Stats Table -->
+              <div class="card" style="margin-top: 24px;">
+                <h3 style="margin-bottom: 16px; color: var(--text-main);">
+                  <i class="fas fa-table"></i> Estadísticas por Módulo
+                </h3>
+                <table class="data-table" style="width: 100%;">
+                  <thead>
+                    <tr>
+                      <th>Módulo</th>
+                      <th>Score Promedio</th>
+                      <th>Intentos Promedio</th>
+                    </tr>
+                  </thead>
+                  <tbody id="moduleStatsTableBody">
+                    <tr><td colspan="3" style="text-align: center; padding: 20px; color: var(--text-secondary);">Cargando...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COMPLETIONS TAB -->
+        <div id="completions-tab" class="tab-content">
+          <div class="card">
+            <div class="page-header">
+              <h2 class="page-title">
+                <i class="fas fa-graduation-cap"></i>
+                Chatters Graduados
+              </h2>
+              <div class="page-actions">
+                <select id="filterApproved" class="form-input" onchange="loadCompletions()" style="width: 200px;">
+                  <option value="">Todos los estados</option>
+                  <option value="true">✅ Aprobados (≥80)</option>
+                  <option value="false">❌ No aprobados (<80)</option>
+                </select>
+                <select id="filterHired" class="form-input" onchange="loadCompletions()" style="width: 200px;">
+                  <option value="">Estado contratación</option>
+                  <option value="true">💼 Contratados</option>
+                  <option value="false">⏳ No contratados</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Stats Dashboard -->
+            <div class="stats-grid" style="margin-bottom: 30px;">
+              <div class="stat-card success">
+                <div class="stat-icon">🎓</div>
+                <div class="stat-value" id="statTotalGraduates">0</div>
+                <div class="stat-label">Total Graduados</div>
+              </div>
+              <div class="stat-card info">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value" id="statApproved">0</div>
+                <div class="stat-label">Aprobados (≥80)</div>
+              </div>
+              <div class="stat-card warning">
+                <div class="stat-icon">💼</div>
+                <div class="stat-value" id="statHired">0</div>
+                <div class="stat-label">Contratados</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="statAvgScore">0</div>
+                <div class="stat-label">Score Promedio</div>
+              </div>
+            </div>
+
+            <div id="completionsTable">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // URL base del API en Vercel
+    const API_BASE = 'https://bravegirlsagency-api.vercel.app/api/lms';
+    
+    let currentUser = null;
+    let currentTab = 'users';
+
+    function showAlert(message, type = 'error') {
+      const alertDiv = document.getElementById('alert');
+      alertDiv.className = `alert alert-${type}`;
+      alertDiv.textContent = message;
+      alertDiv.classList.remove('hidden');
+      setTimeout(() => alertDiv.classList.add('hidden'), 5000);
+    }
+
+    async function checkAuth() {
+      try {
+        const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Not authenticated');
+        const data = await response.json();
+        currentUser = data.user;
+        document.getElementById('userName').textContent = currentUser.name + ' (' + currentUser.role + ')';
+        
+        if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+          window.location.href = '/lms/campus.html';
+        }
+      } catch (error) {
+        window.location.href = '/lms/login.html';
+      }
+    }
+
+    // Tab switching
+    document.querySelectorAll('.sidebar-menu li').forEach(item => {
+      item.addEventListener('click', () => {
+        const tab = item.dataset.tab;
+        switchTab(tab);
+      });
+    });
+
+    function switchTab(tab) {
+      document.querySelectorAll('.sidebar-menu li').forEach(li => li.classList.remove('active'));
+      document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+      
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      document.getElementById(`${tab}-tab`).classList.add('active');
+      
+      currentTab = tab;
+      loadTabData(tab);
+    }
+
+    async function loadTabData(tab) {
+      switch(tab) {
+        case 'users':
+          await loadUsers();
+          break;
+        case 'stages':
+          await loadStages();
+          break;
+        case 'modules':
+          await loadModules();
+          break;
+        case 'lessons':
+          await loadLessons();
+          await loadModulesForFilter();
+          break;
+        case 'questions':
+          await loadModulesForFilter('questions');
+          break;
+        case 'progress':
+          await loadProgress();
+          break;
+        case 'analytics':
+          await loadAnalytics();
+          break;
+        case 'completions':
+          await loadCompletions();
+          break;
+      }
+    }
+
+    // ==========================================
+    // STAGES LOGIC
+    // ==========================================
+    async function loadStages() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/stages`, { credentials: 'include' });
+        const data = await response.json();
+        
+        const table = document.getElementById('stagesTable');
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Orden</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Módulos</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.stages.map(stage => `
+                <tr>
+                  <td>${stage.order_index}</td>
+                  <td><strong>${stage.name}</strong></td>
+                  <td><small>${stage.description || '-'}</small></td>
+                  <td>${stage.modules_count || 0}</td>
+                  <td>
+                    <button class="btn btn-sm btn-outline" onclick='showStageModal(${JSON.stringify(stage)})'>
+                      <i class="fas fa-edit"></i> Editar
+                    </button>
+                    ${stage.modules_count == 0 ? `<button class="btn btn-sm btn-danger" onclick="deleteStage('${stage.id}')">
+                      <i class="fas fa-trash"></i> Eliminar
+                    </button>` : ''}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        showAlert('Error al cargar etapas');
+      }
+    }
+
+    function showStageModal(stage = null) {
+      const isEdit = !!stage;
+      const modalHtml = `
+        <div id="stageModal" class="modal-overlay">
+          <div class="card modal-content">
+            <h2 class="mb-20">${isEdit ? 'Editar Etapa' : 'Nueva Etapa'}</h2>
+            <form id="stageForm">
+              ${isEdit ? `<input type="hidden" id="stId" value="${stage.id}">` : ''}
+              <div class="form-group">
+                <label>Nombre</label>
+                <input type="text" id="stName" class="form-input" required value="${isEdit ? stage.name : ''}">
+              </div>
+              <div class="form-group">
+                <label>Descripción</label>
+                <textarea id="stDesc" class="form-input" rows="3">${isEdit ? (stage.description || '') : ''}</textarea>
+              </div>
+              <div class="form-group">
+                <label>Orden (Número)</label>
+                <input type="number" id="stOrder" class="form-input" required value="${isEdit ? stage.order_index : 0}">
+              </div>
+              <div class="flex-end mt-20">
+                <button type="button" class="btn btn-outline mr-10" onclick="closeModal('stageModal')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      appendModal(modalHtml);
+      
+      document.getElementById('stageForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = {
+          name: document.getElementById('stName').value,
+          description: document.getElementById('stDesc').value,
+          orderIndex: parseInt(document.getElementById('stOrder').value)
+        };
+        
+        if (isEdit) body.id = document.getElementById('stId').value;
+
+        await apiRequest('/admin/stages', isEdit ? 'PUT' : 'POST', body);
+        closeModal('stageModal');
+        loadStages();
+      });
+    }
+
+    async function deleteStage(id) {
+      if(!confirm('¿Eliminar esta etapa?')) return;
+      await apiRequest(`/admin/stages?id=${id}`, 'DELETE');
+      loadStages();
+    }
+
+    // ==========================================
+    // MODULES LOGIC
+    // ==========================================
+    async function loadModules() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/modules`, { credentials: 'include' });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || 'Error al cargar módulos');
+        }
+        
+        const data = await response.json();
+        
+        const table = document.getElementById('modulesTable');
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Orden</th>
+                <th>Etapa</th>
+                <th>Título</th>
+                <th>Estado</th>
+                <th>Contenido</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.modules.map(module => `
+                <tr>
+                  <td>${module.order_index}</td>
+                  <td><span class="badge badge-secondary">${module.stage_name}</span></td>
+                  <td><strong>${module.title}</strong><br><small style="color: var(--text-light);">${module.description || ''}</small></td>
+                  <td><span class="badge badge-${module.published ? 'success' : 'warning'}">${module.published ? 'Publicado' : 'Borrador'}</span></td>
+                  <td><small>${module.lessons_count || 0} lecciones${module.has_quiz ? ', 1 quiz' : ''}</small></td>
+                  <td>
+                    <button class="btn btn-sm btn-outline" onclick='showModuleModal(${JSON.stringify(module).replace(/'/g, "&#39;")})'>
+                      <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteModule('${module.id}')">
+                      <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        showAlert(error.message || 'Error al cargar módulos');
+      }
+    }
+
+    async function showModuleModal(module = null) {
+      // Need stages for the select
+      const stagesRes = await fetch(`${API_BASE}/admin/stages`, { credentials: 'include' });
+      const stagesData = await stagesRes.json();
+      
+      const isEdit = !!module;
+      const modalHtml = `
+        <div id="moduleModal" class="modal-overlay">
+          <div class="card modal-content">
+            <h2 class="mb-20">${isEdit ? 'Editar Módulo' : 'Nuevo Módulo'}</h2>
+            <form id="moduleForm">
+              ${isEdit ? `<input type="hidden" id="mdId" value="${module.id}">` : ''}
+              <div class="form-group">
+                <label>Etapa</label>
+                <select id="mdStage" class="form-select" required>
+                  ${stagesData.stages.map(s => `<option value="${s.id}" ${isEdit && module.stage_id === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Título</label>
+                <input type="text" id="mdTitle" class="form-input" required value="${isEdit ? module.title : ''}">
+              </div>
+              <div class="form-group">
+                <label>Descripción</label>
+                <textarea id="mdDesc" class="form-input" rows="2">${isEdit ? (module.description || '') : ''}</textarea>
+              </div>
+              <div class="form-group">
+                <label>Orden</label>
+                <input type="number" id="mdOrder" class="form-input" required value="${isEdit ? module.order_index : 0}">
+              </div>
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" id="mdPub" ${isEdit && module.published ? 'checked' : ''}> Publicado
+                </label>
+              </div>
+              <div class="flex-end mt-20">
+                <button type="button" class="btn btn-outline mr-10" onclick="closeModal('moduleModal')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      appendModal(modalHtml);
+      
+      document.getElementById('moduleForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = {
+          stageId: document.getElementById('mdStage').value,
+          title: document.getElementById('mdTitle').value,
+          description: document.getElementById('mdDesc').value,
+          orderIndex: parseInt(document.getElementById('mdOrder').value),
+          published: document.getElementById('mdPub').checked
+        };
+        
+        if (isEdit) body.id = document.getElementById('mdId').value;
+
+        await apiRequest('/admin/modules', isEdit ? 'PUT' : 'POST', body);
+        closeModal('moduleModal');
+        loadModules();
+      });
+    }
+
+    async function deleteModule(id) {
+       if(!confirm('¿Eliminar este módulo? Si tiene lecciones con progreso de alumnos no se podrá borrar.')) return;
+       try {
+         await apiRequest(`/admin/modules?id=${id}`, 'DELETE');
+         loadModules();
+       } catch(e) { /* Warning handled in apiRequest helper wrapper if I add it, otherwise here */ }
+    }
+
+    // ==========================================
+    // LESSONS LOGIC
+    // ==========================================
+    async function loadLessons(moduleId = '') {
+      try {
+        const url = moduleId ? `${API_BASE}/admin/lessons?moduleId=${moduleId}` : `${API_BASE}/admin/lessons`;
+        const response = await fetch(url, { credentials: 'include' });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || 'Error al cargar lecciones');
+        }
+        
+        const data = await response.json();
+        
+        const table = document.getElementById('lessonsTable');
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 40px;"></th>
+                <th>Orden</th>
+                <th>Módulo</th>
+                <th>Título</th>
+                <th>Tipo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="sortable-lessons" id="lessonsSortable">
+              ${data.lessons.map(lesson => `
+                <tr data-id="${lesson.id}">
+                  <td style="cursor: grab;"><i class="fas fa-grip-vertical"></i></td>
+                  <td>${lesson.order_index}</td>
+                  <td><small>${lesson.module_title}</small></td>
+                  <td>${lesson.title}</td>
+                  <td><span class="badge badge-${lesson.type === 'video' ? 'info' : 'secondary'}">${lesson.type === 'video' ? '🎥 Video' : '📄 Texto'}</span></td>
+                  <td>
+                    <button class="btn btn-sm btn-outline" onclick='showLessonModal(${JSON.stringify(lesson).replace(/'/g, "&#39;")})'>
+                      <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteLesson('${lesson.id}')">
+                      <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+
+        // Inicializar drag & drop si hay lecciones
+        if (data.lessons.length > 0) {
+          initLessonsSortable();
+        }
+      } catch (error) {
+        showAlert(error.message || 'Error al cargar lecciones');
+      }
+    }
+
+    function initLessonsSortable() {
+      const tbody = document.getElementById('lessonsSortable');
+      if (!tbody || !window.Sortable) return;
+
+      Sortable.create(tbody, {
+        animation: 150,
+        handle: '.fa-grip-vertical',
+        ghostClass: 'sortable-ghost',
+        dragClass: 'sortable-drag',
+        onEnd: async function(evt) {
+          // Recopilar todos los IDs en el nuevo orden
+          const rows = Array.from(tbody.children);
+          const items = rows.map((row, index) => ({
+            id: row.dataset.id,
+            orderIndex: index
+          }));
+
+          try {
+            const response = await fetch(`${API_BASE}/admin/lessons`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ items })
+            });
+
+            if (!response.ok) {
+              throw new Error('Error al reordenar');
+            }
+
+            // Actualizar números de orden en la UI
+            rows.forEach((row, index) => {
+              row.children[1].textContent = index; // Columna "Orden"
+            });
+
+            showAlert('Lecciones reordenadas exitosamente', 'success');
+          } catch (error) {
+            showAlert(error.message || 'Error al reordenar lecciones');
+            // Recargar para restaurar orden original
+            loadLessons(document.getElementById('modulesFilter').value);
+          }
+        }
+      });
+    }
+
+    async function showLessonModal(lesson = null) {
+      // Need modules for select
+      const modRes = await fetch(`${API_BASE}/admin/modules`, { credentials: 'include' });
+      const modData = await modRes.json();
+      
+      const isEdit = !!lesson;
+      const modalHtml = `
+        <div id="lessonModal" class="modal-overlay">
+          <div class="card modal-content">
+            <h2 class="mb-20">${isEdit ? 'Editar Lección' : 'Nueva Lección'}</h2>
+            <form id="lessonForm">
+              ${isEdit ? `<input type="hidden" id="lsId" value="${lesson.id}">` : ''}
+              <div class="form-group">
+                <label>Módulo</label>
+                <select id="lsMod" class="form-select" required>
+                  ${modData.modules.map(m => `<option value="${m.id}" ${isEdit && lesson.module_id === m.id ? 'selected' : ''}>${m.title}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Título</label>
+                <input type="text" id="lsTitle" class="form-input" required value="${isEdit ? lesson.title : ''}">
+              </div>
+              <div class="form-group">
+                <label>Orden</label>
+                <input type="number" id="lsOrder" class="form-input" required value="${isEdit ? lesson.order_index : 0}">
+              </div>
+              <div class="form-group">
+                <label>Tipo</label>
+                <select id="lsType" class="form-select" onchange="toggleLessonContent()" required>
+                  <option value="video" ${isEdit && lesson.type === 'video' ? '🎥 Video' : '📄 Texto'}>Video (Loom)</option>
+                  <option value="text" ${isEdit && lesson.type === 'text' ? 'selected' : ''}>Texto</option>
+                </select>
+              </div>
+              
+              <div id="videoFields" class="${isEdit && lesson.type === 'text' ? 'hidden' : ''}">
+                <div class="form-group">
+                  <label>URL de Loom (Share o Embed)</label>
+                  <input type="text" id="lsLoom" class="form-input" placeholder="https://www.loom.com/share/..." value="${isEdit && lesson.loom_url ? lesson.loom_url : ''}">
+                </div>
+              </div>
+              
+              <div id="textFields" class="${!isEdit || lesson.type === 'video' ? 'hidden' : ''}">
+                <div class="form-group">
+                  <label>Contenido de Texto</label>
+                  <textarea id="lsText" class="form-input" rows="6">${isEdit && lesson.text_content ? lesson.text_content : ''}</textarea>
+                </div>
+              </div>
+
+              <!-- Configuración de Tiempo -->
+              <div class="form-group" style="border-top: 1px solid var(--gray-200); padding-top: 15px; margin-top: 15px;">
+                <label style="font-weight: 600; margin-bottom: 10px; display: block;">⏱️ Configuración de Tiempo de Estudio</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                  <div>
+                    <label style="font-size: 13px; color: var(--text-secondary);">Duración estimada (minutos)</label>
+                    <input type="number" id="lsEstimated" class="form-input" min="0" step="0.5" 
+                           placeholder="Ej: 2.5" 
+                           value="${isEdit && lesson.estimated_duration_seconds ? (lesson.estimated_duration_seconds / 60).toFixed(1) : ''}">
+                    <small style="color: var(--text-secondary); font-size: 12px;">Tiempo que toma completar esta lección</small>
+                  </div>
+                  <div>
+                    <label style="font-size: 13px; color: var(--text-secondary);">Tiempo mínimo requerido (minutos)</label>
+                    <input type="number" id="lsMinRequired" class="form-input" min="0" step="0.5" 
+                           placeholder="Ej: 2" 
+                           value="${isEdit && lesson.min_time_required_seconds ? (lesson.min_time_required_seconds / 60).toFixed(1) : ''}">
+                    <small style="color: var(--text-secondary); font-size: 12px;">Mínimo para marcar como completo (vacío = sin restricción)</small>
+                  </div>
+                </div>
+                <div style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 8px; font-size: 13px;">
+                  <strong>💡 Sugerencias:</strong><br>
+                  • Videos cortos (1 min): min 0.5-0.75 min<br>
+                  • Videos medianos (3-5 min): min 2-4 min<br>
+                  • Textos: Se calcula automático si se deja vacío (200 palabras/min)
+                </div>
+              </div>
+
+              <div class="flex-end mt-20">
+                <button type="button" class="btn btn-outline mr-10" onclick="closeModal('lessonModal')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      appendModal(modalHtml);
+      
+      document.getElementById('lessonForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const type = document.getElementById('lsType').value;
+        const estimatedMin = parseFloat(document.getElementById('lsEstimated').value);
+        const minRequiredMin = parseFloat(document.getElementById('lsMinRequired').value);
+        
+        const body = {
+          moduleId: document.getElementById('lsMod').value,
+          title: document.getElementById('lsTitle').value,
+          orderIndex: parseInt(document.getElementById('lsOrder').value),
+          type: type,
+          loomUrl: type === 'video' ? document.getElementById('lsLoom').value : null,
+          textContent: type === 'text' ? document.getElementById('lsText').value : null,
+          estimatedDurationSeconds: estimatedMin ? Math.round(estimatedMin * 60) : null,
+          minTimeRequiredSeconds: minRequiredMin ? Math.round(minRequiredMin * 60) : null
+        };
+        
+        if (isEdit) body.id = document.getElementById('lsId').value;
+
+        await apiRequest('/admin/lessons', isEdit ? 'PUT' : 'POST', body);
+        closeModal('lessonModal');
+        loadLessons(); // reload all or filter?
+      });
+    }
+
+    async function deleteLesson(id) {
+       if(!confirm('¿Eliminar esta lección?')) return;
+       await apiRequest(`/admin/lessons?id=${id}`, 'DELETE');
+       loadLessons();
+    }
+    
+    // Helper to toggle fields
+    window.toggleLessonContent = function() {
+      const type = document.getElementById('lsType').value;
+      if (type === 'video') {
+         document.getElementById('videoFields').classList.remove('hidden');
+         document.getElementById('textFields').classList.add('hidden');
+      } else {
+         document.getElementById('videoFields').classList.add('hidden');
+         document.getElementById('textFields').classList.remove('hidden');
+      }
+    };
+
+    // Generic helpers
+    function appendModal(html) {
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      document.body.appendChild(div);
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if(el) el.parentElement.remove();
+    }
+    
+    async function apiRequest(endpoint, method, body = null) {
+      try {
+        const opts = { method, credentials: 'include' };
+        if (body) {
+          opts.headers = { 'Content-Type': 'application/json' };
+          opts.body = JSON.stringify(body);
+        }
+        const res = await fetch(API_BASE + endpoint, opts);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error en la petición');
+        if (method !== 'GET') showAlert('Operación exitosa', 'success');
+        return data;
+      } catch (e) {
+        showAlert(e.message);
+        throw e;
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/users`, { credentials: 'include' });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || 'Error al cargar usuarios');
+        }
+        
+        const data = await response.json();
+        
+        const table = document.getElementById('usersTable');
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Último Login</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.users.map(user => `
+                <tr>
+                  <td>${user.name}</td>
+                  <td>${user.email}</td>
+                  <td><span class="badge badge-info">${user.role}</span></td>
+                  <td><span class="badge badge-${user.active ? 'success' : 'danger'}">${user.active ? 'Activo' : 'Inactivo'}</span></td>
+                  <td>${user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Nunca'}</td>
+                  <td>
+                    <button class="btn btn-sm btn-outline" onclick="resetPassword('${user.id}')">Reset Password</button>
+                    <button class="btn btn-sm btn-${user.active ? 'danger' : 'success'}" onclick="toggleUserStatus('${user.id}', ${!user.active})">
+                      ${user.active ? 'Desactivar' : 'Activar'}
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        showAlert(error.message);
+      }
+    }
+
+
+
+
+
+    async function loadModulesForFilter(target = 'lessons') {
+      try {
+        const response = await fetch(`${API_BASE}/admin/modules`, { credentials: 'include' });
+        const data = await response.json();
+        
+        const selectId = target === 'questions' ? 'modulesFilterQuestions' : 'modulesFilter';
+        const select = document.getElementById(selectId);
+        
+        select.innerHTML = `<option value="">${target === 'questions' ? 'Selecciona un módulo' : 'Todos los módulos'}</option>`;
+        data.modules.forEach(module => {
+          const option = document.createElement('option');
+          option.value = module.id;
+          option.textContent = `${module.title} (${module.stage_name})`;
+          select.appendChild(option);
+        });
+        
+        if (target === 'questions') {
+          select.addEventListener('change', (e) => loadQuestions(e.target.value));
+        } else {
+          select.addEventListener('change', (e) => loadLessons(e.target.value));
+        }
+      } catch (error) {
+        showAlert('Error al cargar módulos', 'error');
+      }
+    }
+
+    async function loadQuestions(moduleId) {
+      const btnAdd = document.getElementById('btnAddQuestion');
+      if (!moduleId) {
+        document.getElementById('questionsTable').innerHTML = '<p style="color: var(--text-light);">Selecciona un módulo para ver sus preguntas</p>';
+        if (btnAdd) btnAdd.disabled = true;
+        return;
+      }
+      
+      if (btnAdd) btnAdd.disabled = false;
+      
+      try {
+        const response = await fetch(`${API_BASE}/admin/questions?moduleId=${moduleId}`, { credentials: 'include' });
+        const data = await response.json();
+        
+        const table = document.getElementById('questionsTable');
+        
+        if (data.questions.length === 0) {
+          table.innerHTML = '<div class="alert alert-info">Este módulo no tiene preguntas aún. Haz clic en "Agregar Pregunta" para crear una.</div>';
+          return;
+        }
+        
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 50px;">#</th>
+                <th>Pregunta</th>
+                <th>Opciones</th>
+                <th>Respuesta Correcta</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.questions.map((question, index) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${question.prompt}</td>
+                  <td><small>${question.options.length} opciones</small></td>
+                  <td><strong>${question.options[question.correct_option_index]}</strong></td>
+                  <td>
+                    <button class="btn btn-sm btn-danger" onclick="deleteQuestion('${question.id}', '${moduleId}')">
+                      <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        showAlert('Error al cargar preguntas');
+      }
+    }
+
+    async function deleteQuestion(questionId, moduleId) {
+      if (!confirm('¿Estás seguro de eliminar esta pregunta?')) return;
+      
+      try {
+        const response = await fetch(`${API_BASE}/admin/questions?id=${questionId}`, { 
+          method: 'DELETE',
+          credentials: 'include' 
+        });
+        
+        if (!response.ok) throw new Error('Error al eliminar');
+        
+        showAlert('Pregunta eliminada', 'success');
+        loadQuestions(moduleId);
+      } catch (error) {
+        showAlert('Error al eliminar pregunta');
+      }
+    }
+    
+    // Global variable to keep track of options
+    let currentOptions = [];
+
+    function showCreateQuestionModal() {
+      const moduleId = document.getElementById('modulesFilterQuestions').value;
+      if (!moduleId) {
+        alert('Selecciona un módulo primero');
+        return;
+      }
+
+      currentOptions = ['', '']; // Start with 2 empty options
+
+      const modalHtml = `
+        <div id="questionModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+          <div class="card" style="width: 600px; max-width: 90%; max-height: 90vh; overflow-y: auto;">
+            <h2 class="mb-20">Agregar Pregunta</h2>
+            <form id="createQuestionForm">
+              <input type="hidden" id="qModuleId" value="${moduleId}">
+              <div class="form-group">
+                <label>Pregunta</label>
+                <textarea id="qPrompt" class="form-input" rows="3" required placeholder="Escribe la pregunta aquí..."></textarea>
+              </div>
+              <div class="form-group">
+                <label>Tipo de Pregunta</label>
+                <select id="qType" class="form-select" onchange="updateQuestionType()">
+                  <option value="multiple">Opción Múltiple</option>
+                  <option value="boolean">Verdadero / Falso</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Opciones (Selecciona la correcta)</label>
+                <div id="optionsContainer">
+                  <!-- Generated by JS -->
+                </div>
+                <button type="button" id="btnAddOption" class="btn btn-sm btn-outline mt-10" onclick="addOption()">+ Agregar Opción</button>
+              </div>
+
+              <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn btn-outline" onclick="closeQuestionModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar Pregunta</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      
+      const modalContainer = document.createElement('div');
+      modalContainer.innerHTML = modalHtml;
+      document.body.appendChild(modalContainer);
+      
+      updateOptionsUI();
+      
+      document.getElementById('createQuestionForm').addEventListener('submit', handleCreateQuestion);
+    }
+
+    function closeQuestionModal() {
+      const modal = document.getElementById('questionModal');
+      if (modal) modal.parentElement.remove();
+    }
+
+    function updateQuestionType() {
+      const type = document.getElementById('qType').value;
+      const btnAddOption = document.getElementById('btnAddOption');
+      
+      if (type === 'boolean') {
+        currentOptions = ['Verdadero', 'Falso'];
+        btnAddOption.style.display = 'none';
+      } else {
+        currentOptions = ['', ''];
+        btnAddOption.style.display = 'inline-block';
+      }
+      updateOptionsUI();
+    }
+
+    function addOption() {
+      currentOptions.push('');
+      updateOptionsUI();
+    }
+
+    function removeOption(index) {
+      if (currentOptions.length <= 2) {
+        alert('Debe haber al menos 2 opciones');
+        return;
+      }
+      currentOptions.splice(index, 1);
+      updateOptionsUI();
+    }
+
+    function updateOptionsUI() {
+      const container = document.getElementById('optionsContainer');
+      const type = document.getElementById('qType').value;
+      
+      container.innerHTML = currentOptions.map((opt, index) => `
+        <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+          <input type="radio" name="correctOption" value="${index}" required ${index === 0 ? 'checked' : ''}>
+          <input type="text" class="form-input" value="${opt}" 
+            onchange="currentOptions[${index}] = this.value"
+            placeholder="Opción ${index + 1}" 
+            ${type === 'boolean' ? 'readonly' : 'required'}>
+          ${type !== 'boolean' ? `
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeOption(${index})" tabindex="-1">X</button>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    async function handleCreateQuestion(e) {
+      e.preventDefault();
+      
+      const moduleId = document.getElementById('qModuleId').value;
+      const prompt = document.getElementById('qPrompt').value;
+      const correctOptionIndex = parseInt(document.querySelector('input[name="correctOption"]:checked').value);
+      
+      // Filter empty options just in case
+      const finalOptions = currentOptions.filter(o => o.trim() !== '');
+      
+      if (finalOptions.length < 2) {
+        alert('Debes escribir al menos 2 opciones');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/admin/questions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            moduleId, // The backend will find/create the quiz based on this
+            prompt,
+            options: finalOptions,
+            correctOptionIndex,
+            orderIndex: 0 // Default to 0/append for now
+          })
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || error.message || 'Error al guardar');
+        }
+        
+        closeQuestionModal();
+        showAlert('Pregunta agregada', 'success');
+        loadQuestions(moduleId);
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    async function loadProgress() {
+      try {
+        const response = await fetch(`${API_BASE}/admin/progress`, { credentials: 'include' });
+        const data = await response.json();
+        
+        // Calculate and update stats
+        const totalUsers = data.users?.length || 0;
+        const completedModules = data.users?.reduce((sum, u) => sum + (u.completedModules || 0), 0) || 0;
+        const avgProgress = totalUsers > 0 
+          ? Math.round(data.users?.reduce((sum, u) => sum + (u.overallProgress || 0), 0) / totalUsers) 
+          : 0;
+        const quizzesTaken = data.users?.reduce((sum, u) => sum + (u.quizzesTaken || 0), 0) || 0;
+
+        document.getElementById('statTotalUsers').textContent = totalUsers;
+        document.getElementById('statCompletedModules').textContent = completedModules;
+        document.getElementById('statAvgProgress').textContent = `${avgProgress}%`;
+        document.getElementById('statQuizzesTaken').textContent = quizzesTaken;
+
+        const table = document.getElementById('progressTable');
+        table.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Progreso General</th>
+                <th>Módulos Completados</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.users.map(user => `
+                <tr>
+                  <td>${user.userName}</td>
+                  <td>${user.userEmail}</td>
+                  <td>
+                    <div class="progress" style="margin: 0;">
+                      <div class="progress-bar" style="width: ${user.overallProgress}%;"></div>
+                    </div>
+                    <small>${user.overallProgress}%</small>
+                  </td>
+                  <td>${user.completedModules} / ${user.totalModules}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        showAlert('Error al cargar progreso');
+      }
+    }
+
+    async function resetPassword(userId) {
+      if (!confirm('¿Generar nueva contraseña temporal para este usuario?')) return;
+      
+      try {
+        const response = await fetch(`${API_BASE}/admin/users`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ id: userId, resetPassword: true })
+        });
+        
+        const data = await response.json();
+        alert(`Nueva contraseña temporal: ${data.newPassword}\n\nCopia esta contraseña y envíala al usuario de forma segura.`);
+        showAlert('Contraseña reseteada exitosamente', 'success');
+      } catch (error) {
+        showAlert('Error al resetear contraseña');
+      }
+    }
+
+    async function toggleUserStatus(userId, activate) {
+      try {
+        const response = await fetch(`${API_BASE}/admin/users`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ id: userId, active: activate })
+        });
+        
+        showAlert(`Usuario ${activate ? 'activado' : 'desactivado'} exitosamente`, 'success');
+        await loadUsers();
+      } catch (error) {
+        showAlert('Error al cambiar estado del usuario');
+      }
+    }
+
+    function showCreateUserModal() {
+      // Usar un formulario en un diálogo modal sería mejor, pero para mantener la simplicidad
+      // usaremos prompts secuenciales o un formulario personalizado si es necesario.
+      // Aquí mejoraremos la UI para permitir contraseña opcional.
+      
+      const modalHtml = `
+        <div id="userModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+          <div class="card" style="width: 400px; max-width: 90%;">
+            <h2 class="mb-20">Crear Nuevo Usuario</h2>
+            <form id="createUserForm">
+              <div class="form-group">
+                <label>Nombre Completo</label>
+                <input type="text" id="newUserName" class="form-input" required>
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="newUserEmail" class="form-input" required>
+              </div>
+              <div class="form-group">
+                <label>Rol</label>
+                <select id="newUserRole" class="form-select" required>
+                  <option value="chatter">Chatter</option>
+                  <option value="supervisor">Supervisor</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Contraseña (Opcional)</label>
+                <input type="text" id="newUserPassword" class="form-input" placeholder="Dejar en blanco para autogenerar">
+                <small style="color: var(--text-light)">Si se deja vacío, el sistema generará una contraseña aleatoria.</small>
+              </div>
+              <div class="form-group">
+                <label>Días para completar curso</label>
+                <select id="newUserDeadlineDays" class="form-select">
+                  <option value="">Sin fecha límite</option>
+                  <option value="3">3 días (urgente)</option>
+                  <option value="7" selected>7 días (recomendado)</option>
+                  <option value="14">14 días (extendido)</option>
+                  <option value="30">30 días (flexible)</option>
+                </select>
+                <small style="color: var(--text-light)">⏰ Tiempo máximo para completar el curso</small>
+              </div>
+              <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn btn-outline" onclick="closeUserModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear Usuario</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      
+      const modalContainer = document.createElement('div');
+      modalContainer.innerHTML = modalHtml;
+      document.body.appendChild(modalContainer);
+      
+      document.getElementById('createUserForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('newUserName').value;
+        const email = document.getElementById('newUserEmail').value;
+        const role = document.getElementById('newUserRole').value;
+        const password = document.getElementById('newUserPassword').value;
+        const deadlineDays = document.getElementById('newUserDeadlineDays').value;
+        
+        createUser(name, email, role, password, deadlineDays);
+        closeUserModal();
+      });
+    }
+
+    function closeUserModal() {
+      const modal = document.getElementById('userModal');
+      if (modal) modal.parentElement.remove();
+    }
+
+    async function createUser(name, email, role, password, deadlineDays) {
+      try {
+        const body = { name, email, role };
+        if (password && password.trim() !== '') {
+          body.password = password.trim();
+        }
+        if (deadlineDays && deadlineDays !== '') {
+          body.deadlineDays = parseInt(deadlineDays);
+        }
+
+        const response = await fetch(`${API_BASE}/admin/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body)
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Error al crear usuario');
+        }
+
+        let msg = `Usuario creado exitosamente.\n\n`;
+        if (data.temporaryPassword && data.temporaryPassword !== 'Usuario creado con contraseña manual') {
+          msg += `Contraseña temporal: ${data.temporaryPassword}\n\nCopia esta contraseña y envíala al usuario.`;
+        } else {
+          msg += `Contraseña asignada manualmente.`;
+        }
+        
+        alert(msg);
+        showAlert('Usuario creado exitosamente', 'success');
+        await loadUsers();
+      } catch (error) {
+        showAlert(error.message);
+      }
+    }
+
+    // Quiz Preview Modal
+    async function previewQuiz(moduleId) {
+      try {
+        const response = await fetch(`${API_BASE}/admin/questions?moduleId=${moduleId}`, { credentials: 'include' });
+        const data = await response.json();
+        const questions = data.questions || [];
+
+        if (questions.length === 0) {
+          alert('Este módulo no tiene preguntas todavía.');
+          return;
+        }
+
+        const modalHtml = `
+          <div class="modal-overlay" id="previewModal" onclick="if(event.target === this) closePreviewModal()">
+            <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">👁️ Preview del Quiz</h2>
+                <button class="btn btn-outline" onclick="closePreviewModal()" style="padding: 8px 16px;">✕</button>
+              </div>
+              
+              <div class="quiz-preview-container">
+                ${questions.map((q, idx) => `
+                  <div class="quiz-question-preview" style="margin-bottom: 30px; padding: 20px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                      <div style="background: var(--primary); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0;">
+                        ${idx + 1}
+                      </div>
+                      <div style="flex: 1;">
+                        <p style="margin: 0; font-size: 16px; font-weight: 500; color: var(--text);">${q.prompt}</p>
+                      </div>
+                    </div>
+                    
+                    <div class="quiz-options" style="display: flex; flex-direction: column; gap: 10px; margin-left: 44px;">
+                      ${q.options.map((opt, i) => `
+                        <div class="quiz-option ${i === q.correctOptionIndex ? 'correct-preview' : ''}" 
+                             style="padding: 12px 16px; background: ${i === q.correctOptionIndex ? 'var(--success-light, #d1fae5)' : 'white'}; 
+                                    border: 2px solid ${i === q.correctOptionIndex ? 'var(--success)' : 'var(--border)'}; 
+                                    border-radius: 8px; cursor: default; transition: all 0.3s ease;">
+                          <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 20px; height: 20px; border: 2px solid ${i === q.correctOptionIndex ? 'var(--success)' : 'var(--border)'}; 
+                                        border-radius: 50%; flex-shrink: 0; background: ${i === q.correctOptionIndex ? 'var(--success)' : 'white'};
+                                        display: flex; align-items: center; justify-content: center;">
+                              ${i === q.correctOptionIndex ? '<i class="fas fa-check" style="color: white; font-size: 10px;"></i>' : ''}
+                            </div>
+                            <span style="color: var(--text); font-weight: ${i === q.correctOptionIndex ? '600' : '400'};">${opt}</span>
+                            ${i === q.correctOptionIndex ? '<span style="margin-left: auto; color: var(--success); font-size: 12px; font-weight: 600;">✓ CORRECTA</span>' : ''}
+                          </div>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+
+              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border); text-align: center;">
+                <p style="color: var(--text-light); margin-bottom: 16px;">
+                  <i class="fas fa-info-circle"></i> Este quiz tiene <strong>${questions.length}</strong> pregunta${questions.length !== 1 ? 's' : ''}
+                </p>
+                <button class="btn btn-primary" onclick="closePreviewModal()">Cerrar Preview</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+      } catch (error) {
+        showAlert('Error al cargar preview del quiz');
+      }
+    }
+
+    function closePreviewModal() {
+      const modal = document.getElementById('previewModal');
+      if (modal) modal.remove();
+    }
+
+    // Search functionality setup
+    function setupSearch() {
+      // Setup search for Users table
+      const searchUsers = document.getElementById('searchUsers');
+      if (searchUsers) {
+        searchUsers.addEventListener('input', (e) => {
+          const query = e.target.value.toLowerCase();
+          const table = document.getElementById('usersTable');
+          const rows = table.querySelectorAll('tbody tr');
+          
+          rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+          });
+        });
+      }
+
+      // Setup search for Modules table
+      const searchModules = document.getElementById('searchModules');
+      if (searchModules) {
+        searchModules.addEventListener('input', (e) => {
+          const query = e.target.value.toLowerCase();
+          const table = document.getElementById('modulesTable');
+          const rows = table.querySelectorAll('tbody tr');
+          
+          rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+          });
+        });
+      }
+
+      // Setup search for Lessons table
+      const searchLessons = document.getElementById('searchLessons');
+      if (searchLessons) {
+        searchLessons.addEventListener('input', (e) => {
+          const query = e.target.value.toLowerCase();
+          const table = document.getElementById('lessonsTable');
+          const rows = table.querySelectorAll('tbody tr');
+          
+          rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+          });
+        });
+      }
+    }
+
+    // ===================================================================
+    // ANALYTICS - Dashboard de métricas
+    // ===================================================================
+    async function loadAnalytics() {
+      const loadingDiv = document.getElementById('analyticsLoading');
+      const contentDiv = document.getElementById('analyticsContent');
+      
+      loadingDiv.style.display = 'block';
+      contentDiv.style.display = 'none';
+
+      try {
+        const response = await fetch(`${API_BASE}/admin/analytics`, { 
+          credentials: 'include' 
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Error al cargar analytics');
+        }
+        
+        const data = await response.json();
+        
+        // Update metric cards
+        document.getElementById('metricTotalStudents').textContent = data.totalStudents;
+        document.getElementById('metricActiveStudents').textContent = data.activeStudents;
+        document.getElementById('metricCompletionRate').textContent = data.completionRate + '%';
+        document.getElementById('metricAvgScore').textContent = data.avgScore + '%';
+        document.getElementById('metricPassRate').textContent = data.passRate + '%';
+        document.getElementById('metricDropoutRate').textContent = data.dropoutRate + '%';
+        
+        // Update module stats table
+        const tbody = document.getElementById('moduleStatsTableBody');
+        tbody.innerHTML = '';
+        
+        if (data.moduleStats.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 20px; color: var(--text-secondary);">No hay datos disponibles</td></tr>';
+        } else {
+          data.moduleStats.forEach(module => {
+            const tr = document.createElement('tr');
+            
+            let scoreBadge = '';
+            const scoreStyle = 'padding: 4px 12px; border-radius: 12px; font-weight: 600;';
+            if (module.avgScore >= 90) {
+              scoreBadge = '<span style="background: #d1fae5; color: #065f46; ' + scoreStyle + '">' + module.avgScore + '%</span>';
+            } else if (module.avgScore >= 80) {
+              scoreBadge = '<span style="background: #dbeafe; color: #1e40af; ' + scoreStyle + '">' + module.avgScore + '%</span>';
+            } else if (module.avgScore >= 70) {
+              scoreBadge = '<span style="background: #fef3c7; color: #92400e; ' + scoreStyle + '">' + module.avgScore + '%</span>';
+            } else {
+              scoreBadge = '<span style="background: #fee2e2; color: #991b1b; ' + scoreStyle + '">' + module.avgScore + '%</span>';
+            }
+            
+            tr.innerHTML = 
+              '<td style="font-weight: 600;">' + module.module + '</td>' +
+              '<td>' + scoreBadge + '</td>' +
+              '<td>' + module.avgAttempts.toFixed(1) + '</td>';
+            
+            tbody.appendChild(tr);
+          });
+        }
+        
+        loadingDiv.style.display = 'none';
+        contentDiv.style.display = 'block';
+        
+      } catch (error) {
+        console.error('Error loading analytics:', error);
+        loadingDiv.innerHTML = 
+          '<p style="color: var(--error); font-weight: 600;">Error al cargar analytics</p>' +
+          '<p style="color: var(--text-secondary); margin-top: 8px;">' + error.message + '</p>';
+      }
+    }
+
+    // ===================================================================
+    // COMPLETIONS - Gestión de graduados
+    // ===================================================================
+    async function loadCompletions() {
+      const approved = document.getElementById('filterApproved')?.value || '';
+      const hired = document.getElementById('filterHired')?.value || '';
+      
+      const params = new URLSearchParams();
+      if (approved) params.append('approved', approved);
+      if (hired) params.append('hired', hired);
+
+      try {
+        const response = await fetch(`${API_BASE}/admin/completions?${params}`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) throw new Error('Error al cargar completions');
+        
+        const { completions } = await response.json();
+
+        // Actualizar stats
+        document.getElementById('statTotalGraduates').textContent = completions.length;
+        document.getElementById('statApproved').textContent = completions.filter(c => c.approved).length;
+        document.getElementById('statHired').textContent = completions.filter(c => c.hired).length;
+        
+        const avgScore = completions.length > 0 
+          ? Math.round(completions.reduce((sum, c) => sum + c.overall_score, 0) / completions.length)
+          : 0;
+        document.getElementById('statAvgScore').textContent = avgScore + '%';
+
+        // Renderizar tabla
+        const tableHtml = `
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Chatter</th>
+                <th>Email</th>
+                <th>Fecha Graduación</th>
+                <th>Score Final</th>
+                <th>Estado</th>
+                <th>Contratado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${completions.length === 0 ? `
+                <tr>
+                  <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-light);">
+                    <i class="fas fa-inbox" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px;"></i>
+                    <p>No hay graduados aún</p>
+                  </td>
+                </tr>
+              ` : completions.map(c => `
+                <tr>
+                  <td><strong>${c.user_name}</strong></td>
+                  <td>${c.user_email}</td>
+                  <td>${new Date(c.completed_at).toLocaleString('es', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}</td>
+                  <td>
+                    <span class="badge ${c.overall_score >= 80 ? 'badge-success' : 'badge-warning'}">
+                      ${c.overall_score}%
+                    </span>
+                  </td>
+                  <td>
+                    ${c.approved 
+                      ? '<span class="badge badge-success">✅ Aprobado</span>' 
+                      : '<span class="badge badge-warning">⚠️ No aprobado</span>'}
+                  </td>
+                  <td>
+                    ${c.hired 
+                      ? `<span class="badge badge-info">💼 Contratado ${c.hired_at ? '(' + new Date(c.hired_at).toLocaleDateString('es') + ')' : ''}</span>`
+                      : '<span class="badge badge-secondary">⏳ Pendiente</span>'}
+                  </td>
+                  <td>
+                    <div class="btn-group">
+                      <button class="btn btn-sm btn-primary" onclick="viewReport('${c.user_id}')" title="Ver Reporte">
+                        <i class="fas fa-chart-bar"></i>
+                      </button>
+                      <button class="btn btn-sm ${c.hired ? 'btn-warning' : 'btn-success'}" 
+                              onclick="toggleHired('${c.id}', ${!c.hired})" 
+                              title="${c.hired ? 'Marcar como no contratado' : 'Marcar como contratado'}">
+                        <i class="fas fa-${c.hired ? 'times' : 'check'}"></i>
+                      </button>
+                      <button class="btn btn-sm btn-secondary" onclick="editCompletionNotes('${c.id}', '${c.user_name}')" title="Notas">
+                        <i class="fas fa-sticky-note"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+
+        document.getElementById('completionsTable').innerHTML = tableHtml;
+      } catch (error) {
+        console.error('Error loading completions:', error);
+        document.getElementById('completionsTable').innerHTML = 
+          '<p class="text-error">Error al cargar graduados</p>';
+      }
+    }
+
+    async function viewReport(userId) {
+      try {
+        const response = await fetch(`${API_BASE}/admin/reports/user/${userId}`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) throw new Error('Error al cargar reporte');
+        
+        const report = await response.json();
+
+        const modalHtml = `
+          <div id="reportModal" class="modal-overlay" onclick="if(event.target === this) closeReportModal()">
+            <div class="modal-content" style="max-width: 900px;" onclick="event.stopPropagation()">
+              <div class="modal-header">
+                <h3>📊 Reporte de Rendimiento - ${report.user.name}</h3>
+                <button class="btn-icon" onclick="closeReportModal()">✕</button>
+              </div>
+              <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <!-- User Info -->
+                <div style="background: var(--bg); padding: var(--space-lg); border-radius: var(--radius-lg); margin-bottom: var(--space-lg);">
+                  <h4 style="margin-bottom: var(--space);">Información General</h4>
+                  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-lg);">
+                    <div>
+                      <small style="color: var(--text-light);">Email</small>
+                      <p><strong>${report.user.email}</strong></p>
+                    </div>
+                    <div>
+                      <small style="color: var(--text-light);">Progreso Global</small>
+                      <p><strong>${report.courseProgress}%</strong></p>
+                    </div>
+                    <div>
+                      <small style="color: var(--text-light);">Score Final</small>
+                      <p><strong style="color: ${report.performance.overallScore >= 80 ? 'var(--success)' : 'var(--warning)'};">
+                        ${report.performance.overallScore}%
+                      </strong></p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Module Scores -->
+                <div style="margin-bottom: var(--space-lg);">
+                  <h4 style="margin-bottom: var(--space);">Scores por Módulo</h4>
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Módulo</th>
+                        <th>Score</th>
+                        <th>Intentos</th>
+                        <th>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${report.moduleScores.map(m => `
+                        <tr>
+                          <td>${m.module}</td>
+                          <td>
+                            <span class="badge ${m.score >= 80 ? 'badge-success' : m.score >= 60 ? 'badge-warning' : 'badge-danger'}">
+                              ${m.score}%
+                            </span>
+                          </td>
+                          <td>${m.attempts}</td>
+                          <td>
+                            ${m.passed 
+                              ? '<span class="badge badge-success">✅</span>' 
+                              : '<span class="badge badge-danger">❌</span>'}
+                          </td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Strengths & Weaknesses -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-lg);">
+                  <div style="background: var(--success-light); padding: var(--space-lg); border-radius: var(--radius-lg);">
+                    <h4 style="color: var(--success); margin-bottom: var(--space);">💪 Fortalezas</h4>
+                    ${report.strengths.length > 0 
+                      ? report.strengths.map(s => `<p>• ${s}</p>`).join('') 
+                      : '<p style="color: var(--text-light);">No identificadas</p>'}
+                  </div>
+                  <div style="background: var(--warning-light); padding: var(--space-lg); border-radius: var(--radius-lg);">
+                    <h4 style="color: var(--warning); margin-bottom: var(--space);">⚠️ Debilidades</h4>
+                    ${report.weaknesses.length > 0 
+                      ? report.weaknesses.map(w => `<p>• ${w}</p>`).join('') 
+                      : '<p style="color: var(--text-light);">Ninguna</p>'}
+                  </div>
+                </div>
+
+                <!-- Time Tracking -->
+                <div style="background: var(--bg); padding: var(--space-lg); border-radius: var(--radius-lg); margin-bottom: var(--space-lg);">
+                  <h4 style="margin-bottom: var(--space);">⏱️ Tiempo de Estudio</h4>
+                  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-lg);">
+                    <div>
+                      <small style="color: var(--text-light);">Tiempo Total</small>
+                      <p><strong>${report.timeTracking.totalTimeInCourse}</strong></p>
+                    </div>
+                    <div>
+                      <small style="color: var(--text-light);">Promedio por Lección</small>
+                      <p><strong>${report.timeTracking.avgTimePerLesson}</strong></p>
+                    </div>
+                    <div>
+                      <small style="color: var(--text-light);">Lecciones Completadas</small>
+                      <p><strong>${report.timeTracking.completedLessons}</strong></p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Recommendation -->
+                <div style="background: ${report.recommendHire ? 'var(--success-light)' : 'var(--warning-light)'}; 
+                            padding: var(--space-xl); border-radius: var(--radius-lg); text-align: center;">
+                  <h3 style="color: ${report.recommendHire ? 'var(--success)' : 'var(--warning)'}; margin-bottom: var(--space);">
+                    ${report.recommendHire ? '🎉 Recomendado para Contratación' : '⚠️ Necesita Mejorar'}
+                  </h3>
+                  <p style="color: var(--text-secondary);">
+                    ${report.recommendHire 
+                      ? 'Este chatter cumple con todos los estándares de calidad.' 
+                      : 'Considerar entrenamiento adicional o nueva evaluación.'}
+                  </p>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeReportModal()">Cerrar</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+      } catch (error) {
+        showAlert('Error al cargar reporte');
+      }
+    }
+
+    function closeReportModal() {
+      const modal = document.getElementById('reportModal');
+      if (modal) modal.remove();
+    }
+
+    async function toggleHired(completionId, newStatus) {
+      if (!confirm(`¿Marcar como ${newStatus ? 'CONTRATADO' : 'NO CONTRATADO'}?`)) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/admin/completions?id=${completionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ hired: newStatus })
+        });
+
+        if (!response.ok) throw new Error('Error al actualizar');
+
+        showAlert(`Estado actualizado exitosamente`, 'success');
+        await loadCompletions();
+      } catch (error) {
+        showAlert('Error al actualizar estado');
+      }
+    }
+
+    function editCompletionNotes(completionId, userName) {
+      const currentNotes = ''; // Podrías obtener las notas actuales del DOM
+      const newNotes = prompt(`Notas para ${userName}:`, currentNotes);
+      
+      if (newNotes === null) return; // Cancelado
+
+      saveCompletionNotes(completionId, newNotes);
+    }
+
+    async function saveCompletionNotes(completionId, notes) {
+      try {
+        const response = await fetch(`${API_BASE}/admin/completions?id=${completionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ notes })
+        });
+
+        if (!response.ok) throw new Error('Error al guardar notas');
+
+        showAlert('Notas guardadas exitosamente', 'success');
+        await loadCompletions();
+      } catch (error) {
+        showAlert('Error al guardar notas');
+      }
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
+      window.location.href = '/lms/login.html';
+    });
+
+    (async () => {
+      await checkAuth();
+      await loadUsers();
+      // Setup search después de cargar datos iniciales
+      setTimeout(setupSearch, 100);
+    })();
+  </script>
+</body>
+</html>
+
+

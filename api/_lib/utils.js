@@ -78,6 +78,10 @@ function setCookie(res, name, value, options = {}) {
     cookieString += `; Path=${opts.path}`;
   }
   
+  if (opts.domain) {
+    cookieString += `; Domain=${opts.domain}`;
+  }
+  
   if (opts.httpOnly) {
     cookieString += '; HttpOnly';
   }
@@ -90,6 +94,7 @@ function setCookie(res, name, value, options = {}) {
     cookieString += `; SameSite=${opts.sameSite}`;
   }
   
+  console.log('[setCookie] Setting cookie:', name, 'Cookie string:', cookieString.substring(0, 100) + '...');
   res.setHeader('Set-Cookie', cookieString);
 }
 
