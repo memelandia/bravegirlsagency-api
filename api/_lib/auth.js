@@ -54,20 +54,37 @@ async function updateLastLogin(userId) {
 
 async function validateSession(req) {
   const sessionToken = req.cookies?.lms_session;
-  if (!sessionToken) return null;
+  if (!sessionToken) {
+    console.log('[validateSession] No session token found in cookies');
+    return null;
+  }
   
   try {
     const decoded = Buffer.from(sessionToken, 'base64').toString('utf8');
     const [userId, timestamp] = decoded.split(':');
     const sessionAge = Date.now() - parseInt(timestamp);
     
-    if (sessionAge > 24 * 60 * 60 * 1000) return null;
+    console.log('[validateSession] Session age:', Math.round(sessionAge / 1000 / 60), 'minutes');
+    
+    if (sessionAge > 24 * 60 * 60 * 1000) {
+      console.log('[validateSession] Session expired (>24h)');
+      return null;
+    }
     
     const user = await getUserById(userId);
-    if (!user || !user.active) return null;
+    if (!user) {
+      console.log('[validateSession] User not found:', userId);
+      return null;
+    }
+    if (!user.active) {
+      console.log('[validateSession] User inactive:', userId);
+      return null;
+    }
     
+    console.log('[validateSession] Session valid for user:', user.email);
     return user;
   } catch (error) {
+    console.error('[validateSession] Error validating session:', error.message);
     return null;
   }
 }

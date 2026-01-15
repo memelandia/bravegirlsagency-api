@@ -99,11 +99,15 @@ async function handleLogin(req, res, deps) {
   // Verificar contraseña
   const passwordValid = await verifyPassword(password, user.password_hash);
   if (!passwordValid) {
+    console.log('[Login] Invalid password for user:', email);
     return res.status(401).json({ error: 'Credenciales inválidas' });
   }
 
+  console.log('[Login] Password valid for user:', email);
+
   // Crear sesión
   const sessionToken = createSession(user.id);
+  console.log('[Login] Session token created for user:', user.id);
 
   // Actualizar last_login
   await updateLastLogin(user.id);
@@ -115,6 +119,8 @@ async function handleLogin(req, res, deps) {
     sameSite: 'none',
     maxAge: 86400 * 1000 // 24 horas (en milisegundos)
   });
+  
+  console.log('[Login] Cookie set for user:', email, 'Role:', user.role);
 
   // Calcular días restantes si hay deadline
   let daysRemaining = null;
@@ -194,11 +200,21 @@ async function handleMe(req, res, deps) {
 
   req.cookies = parseCookies(req);
 
+  // Debug: log cookies
+  console.log('[Auth /me] Cookies received:', req.cookies ? Object.keys(req.cookies) : 'none');
+  console.log('[Auth /me] lms_session cookie:', req.cookies?.lms_session ? 'present' : 'missing');
+
   const user = await validateSession(req);
 
   if (!user) {
-    return res.status(401).json({ error: 'No autorizado' });
+    console.log('[Auth /me] Session validation failed - no user found');
+    return res.status(401).json({ 
+      error: 'No autorizado',
+      details: 'Sesión inválida o expirada. Por favor, inicia sesión nuevamente.'
+    });
   }
+
+  console.log('[Auth /me] User validated:', user.email, user.role);
 
   // Calcular días restantes si hay deadline
   let daysRemaining = null;

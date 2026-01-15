@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Iniciar Sesión - BraveGirls LMS</title>
-    <link rel="stylesheet" href="/lms/lms-styles.css?v=2.22.0&t=20260112204500">
+    <link rel="stylesheet" href="/lms/lms-styles.css?v=2.26.1&t=20260115170000">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     .login-container {
@@ -17,7 +20,7 @@
       overflow: hidden;
     }
     
-    /* Animación de fondo */
+    /* Animación de fondo reducida */
     .login-container::before {
       content: '';
       position: absolute;
@@ -25,31 +28,32 @@
       left: -50%;
       width: 200%;
       height: 200%;
-      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-      animation: rotate 30s linear infinite;
+      background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+      animation: rotateBackground 40s linear infinite;
+      opacity: 0.6;
     }
     
-    @keyframes rotate {
+    @keyframes rotateBackground {
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
     }
     
     .login-card {
       background: var(--bg-card);
-      padding: var(--space-3xl);
-      border-radius: var(--radius-xl);
+      padding: 32px;
+      border-radius: var(--radius-lg);
       box-shadow: var(--shadow-2xl);
       width: 100%;
-      max-width: 450px;
+      max-width: 420px;
       position: relative;
       z-index: 1;
-      animation: slideUp 0.5s ease;
+      animation: slideUp 0.4s ease;
     }
     
     @keyframes slideUp {
       from {
         opacity: 0;
-        transform: translateY(30px);
+        transform: translateY(20px);
       }
       to {
         opacity: 1;
@@ -59,33 +63,27 @@
     
     .login-header {
       text-align: center;
-      margin-bottom: var(--space-2xl);
+      margin-bottom: 28px;
     }
     
     .login-icon {
-      font-size: 4rem;
+      font-size: 3rem;
       background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: var(--space);
+      margin-bottom: 12px;
       display: inline-block;
-      animation: pulse 2s ease-in-out infinite;
-    }
-    
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
     }
     
     .login-header h1 {
-      font-size: var(--text-3xl);
+      font-size: 1.625rem;
       font-weight: 700;
       background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: var(--space-xs);
+      margin-bottom: 6px;
     }
     
     .login-header p {
@@ -96,15 +94,15 @@
     
     .form-group-login {
       position: relative;
-      margin-bottom: var(--space-xl);
+      margin-bottom: 20px;
     }
     
     .form-group-login .form-icon {
       position: absolute;
       left: var(--space-md);
-      top: 48px;
+      top: 44px;
       color: var(--text-light);
-      font-size: var(--text-lg);
+      font-size: var(--text-base);
       pointer-events: none;
       transition: color var(--transition);
     }
@@ -118,7 +116,7 @@
     }
     
     .login-footer {
-      margin-top: var(--space-xl);
+      margin-top: 24px;
       text-align: center;
       font-size: var(--text-xs);
       color: var(--text-light);
@@ -237,18 +235,22 @@
         showAlert('¡Login exitoso! Redirigiendo...', 'success');
         
         setTimeout(() => {
-          // Check if user needs onboarding (first login for chatters)
-          if (data.user.role === 'chatter' && data.user.first_login && !data.user.onboarding_completed_at) {
+          // Check if user needs onboarding (solo si nunca lo completó)
+          if (data.user.role === 'chatter' && !data.user.onboarding_completed_at) {
+            console.log('[Login] Chatter needs onboarding, redirecting to welcome');
             window.location.href = '/lms/welcome.html';
           } else if (data.user.role === 'admin' || data.user.role === 'supervisor') {
+            console.log('[Login] Admin/supervisor login, redirecting to admin');
             window.location.href = '/lms/admin.html';
           } else {
+            console.log('[Login] Regular user login, redirecting to campus');
             window.location.href = '/lms/campus.html';
           }
         }, 1000);
 
       } catch (error) {
-        showAlert(error.message);
+        console.error('[Login] Login error:', error);
+        showAlert(error.message || 'Error de conexión. Verifica tu internet.');
         loginBtn.disabled = false;
         loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Iniciar Sesión';
       }
@@ -260,16 +262,24 @@
         const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
-          // Check if chatter needs onboarding
-          if (data.user.role === 'chatter' && data.user.first_login && !data.user.onboarding_completed_at) {
+          console.log('[Login] User already logged in:', data.user.email, 'Role:', data.user.role);
+          
+          // Check if chatter needs onboarding (solo si nunca lo completó)
+          if (data.user.role === 'chatter' && !data.user.onboarding_completed_at) {
+            console.log('[Login] Redirecting to onboarding');
             window.location.href = '/lms/welcome.html';
           } else if (data.user.role === 'admin' || data.user.role === 'supervisor') {
+            console.log('[Login] Redirecting to admin');
             window.location.href = '/lms/admin.html';
           } else {
+            console.log('[Login] Redirecting to campus');
             window.location.href = '/lms/campus.html';
           }
+        } else {
+          console.log('[Login] Not authenticated, status:', response.status);
         }
       } catch (error) {
+        console.error('[Login] Error checking auth:', error);
         // Not logged in, stay on login page
       }
     })();

@@ -7,123 +7,9 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Panel de Administración - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.22.0&t=20260112204500">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.26.1&t=20260115170000">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-  <style>
-    .admin-container { 
-      display: flex; 
-      gap: var(--space-xl); 
-      max-width: 1600px;
-      margin: 0 auto;
-      padding: var(--space-xl);
-    }
-    
-    .sidebar { 
-      width: 280px; 
-      background: var(--bg-card); 
-      padding: var(--space-xl); 
-      border-radius: var(--radius-xl); 
-      height: fit-content; 
-      position: sticky; 
-      top: 92px;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border-light);
-    }
-    
-    .sidebar-title {
-      font-size: var(--text-lg);
-      font-weight: 700;
-      color: var(--text-main);
-      margin-bottom: var(--space-lg);
-      display: flex;
-      align-items: center;
-      gap: var(--space);
-      padding-bottom: var(--space-md);
-      border-bottom: 2px solid var(--border-light);
-    }
-    
-    .sidebar-menu { 
-      list-style: none; 
-      padding: 0;
-      margin: 0;
-    }
-    
-    .sidebar-menu li { 
-      padding: var(--space-md); 
-      margin: var(--space-sm) 0; 
-      cursor: pointer; 
-      border-radius: var(--radius-md); 
-      transition: all var(--transition);
-      font-weight: 500;
-      font-size: var(--text-sm);
-      display: flex;
-      align-items: center;
-      gap: var(--space);
-      color: var(--text-secondary);
-    }
-    
-    .sidebar-menu li:hover { 
-      background: var(--primary-light);
-      color: var(--primary);
-      transform: translateX(4px);
-    }
-    
-    .sidebar-menu li.active { 
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
-      color: white; 
-      font-weight: 600;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-    }
-    
-    .sidebar-menu li.active:hover {
-      transform: translateX(4px) scale(1.02);
-    }
-    
-    .main-content { 
-      flex: 1; 
-      min-width: 0;
-    }
-    
-    .tab-content { 
-      display: none; 
-    }
-    
-    .tab-content.active { 
-      display: block;
-      animation: fadeIn 0.3s ease;
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--space-2xl);
-      padding-bottom: var(--space-lg);
-      border-bottom: 2px solid var(--border-light);
-    }
-    
-    .page-title {
-      font-size: var(--text-3xl);
-      font-weight: 700;
-      color: var(--text-main);
-      display: flex;
-      align-items: center;
-      gap: var(--space-md);
-      margin: 0;
-    }
-    
-    .page-actions {
-      display: flex;
-      gap: var(--space);
-      align-items: center;
-    }
-  </style>
 </head>
 <body>
   <header class="lms-header">
@@ -147,53 +33,53 @@
 
   <div class="container-fluid">
     <div class="admin-container">
-      <aside class="sidebar">
-        <div class="sidebar-title">
+      <aside class="admin-sidebar">
+        <div class="admin-sidebar__title">
           <i class="fas fa-bars"></i>
           Menú Principal
         </div>
-        <ul class="sidebar-menu">
-          <li data-tab="users" class="active">
+        <ul class="admin-sidebar__menu">
+          <li data-tab="users" class="admin-sidebar__item admin-sidebar__item--active">
             <i class="fas fa-users"></i>
             Usuarios
           </li>
-          <li data-tab="stages">
+          <li data-tab="stages" class="admin-sidebar__item">
             <i class="fas fa-layer-group"></i>
             Etapas
           </li>
-          <li data-tab="modules">
+          <li data-tab="modules" class="admin-sidebar__item">
             <i class="fas fa-book"></i>
             Módulos
           </li>
-          <li data-tab="lessons">
+          <li data-tab="lessons" class="admin-sidebar__item">
             <i class="fas fa-file-alt"></i>
             Lecciones
           </li>
-          <li data-tab="questions">
+          <li data-tab="questions" class="admin-sidebar__item">
             <i class="fas fa-question-circle"></i>
             Preguntas
           </li>
-          <li data-tab="progress">
+          <li data-tab="progress" class="admin-sidebar__item">
             <i class="fas fa-chart-line"></i>
             Progreso
           </li>
-          <li data-tab="analytics">
+          <li data-tab="analytics" class="admin-sidebar__item">
             <i class="fas fa-chart-bar"></i>
             Analytics
           </li>
-          <li data-tab="completions">
+          <li data-tab="completions" class="admin-sidebar__item">
             <i class="fas fa-graduation-cap"></i>
             Graduados
           </li>
         </ul>
       </aside>
 
-      <div class="main-content">
+      <main class="admin-main">
         <div id="alert" class="hidden"></div>
 
 
         <!-- USERS TAB -->
-        <div id="users-tab" class="tab-content active">
+        <div id="users-tab" class="admin-tab admin-tab--active">
           <div class="card">
             <div class="page-header">
               <h2 class="page-title">
@@ -215,7 +101,7 @@
         </div>
 
         <!-- STAGES TAB -->
-        <div id="stages-tab" class="tab-content">
+        <div id="stages-tab" class="admin-tab">
           <div class="card">
             <div class="page-header">
               <h2 class="page-title">
@@ -234,7 +120,7 @@
         </div>
 
         <!-- MODULES TAB -->
-        <div id="modules-tab" class="tab-content">
+        <div id="modules-tab" class="admin-tab">
           <div class="card">
             <div class="page-header">
               <h2 class="page-title">
@@ -256,7 +142,7 @@
         </div>
 
         <!-- LESSONS TAB -->
-        <div id="lessons-tab" class="tab-content">
+        <div id="lessons-tab" class="admin-tab">
           <div class="card">
             <div class="page-header">
               <h2 class="page-title">
@@ -281,7 +167,7 @@
         </div>
 
         <!-- QUESTIONS TAB -->
-        <div id="questions-tab" class="tab-content">
+        <div id="questions-tab" class="admin-tab">
           <div class="card">
             <div class="page-header">
               <h2 class="page-title">
@@ -312,7 +198,7 @@
         </div>
 
         <!-- PROGRESS TAB -->
-        <div id="progress-tab" class="tab-content">
+        <div id="progress-tab" class="admin-tab">
           <div class="card">
             <h2 class="page-title mb-20">
               <i class="fas fa-chart-line"></i>
@@ -350,10 +236,10 @@
         </div>
 
         <!-- ANALYTICS TAB -->
-        <div id="analytics-tab" class="tab-content">
+        <div id="analytics-tab" class="admin-tab">
           <div class="card">
             <div class="page-header">
-              <h1><i class="fas fa-chart-bar"></i> Analytics del Curso</h1>
+              <h2 class="page-title"><i class="fas fa-chart-bar"></i> Analytics del Curso</h2>
             </div>
 
             <div id="analyticsLoading" style="text-align: center; padding: 40px;">
@@ -362,44 +248,44 @@
             </div>
 
             <div id="analyticsContent" style="display: none;">
-              <!-- Metrics Grid -->
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
-                <div class="stat-card">
+              <!-- Metrics Grid - Unified Component -->
+              <div class="analytics-metrics">
+                <div class="stat-card stat-card--analytics">
                   <div class="stat-icon" style="background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); color: white;">
                     <i class="fas fa-users"></i>
                   </div>
                   <div class="stat-value" id="metricTotalStudents">-</div>
                   <div class="stat-label">Total Estudiantes</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card stat-card--analytics">
                   <div class="stat-icon" style="background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: white;">
                     <i class="fas fa-user-check"></i>
                   </div>
                   <div class="stat-value" id="metricActiveStudents">-</div>
                   <div class="stat-label">Activos (7 días)</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card stat-card--analytics">
                   <div class="stat-icon" style="background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white;">
                     <i class="fas fa-graduation-cap"></i>
                   </div>
                   <div class="stat-value" id="metricCompletionRate">-</div>
                   <div class="stat-label">Completaron</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card stat-card--analytics">
                   <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
                     <i class="fas fa-star"></i>
                   </div>
                   <div class="stat-value" id="metricAvgScore">-</div>
                   <div class="stat-label">Score Promedio</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card stat-card--analytics">
                   <div class="stat-icon" style="background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: white;">
                     <i class="fas fa-check-circle"></i>
                   </div>
                   <div class="stat-value" id="metricPassRate">-</div>
                   <div class="stat-label">Tasa Aprobación</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card stat-card--analytics">
                   <div class="stat-icon" style="background: linear-gradient(135deg, #f87171 0%, #ef4444 100%); color: white;">
                     <i class="fas fa-user-times"></i>
                   </div>
@@ -410,9 +296,7 @@
 
               <!-- Module Stats Table -->
               <div class="card" style="margin-top: 24px;">
-                <h3 style="margin-bottom: 16px; color: var(--text-main);">
-                  <i class="fas fa-table"></i> Estadísticas por Módulo
-                </h3>
+                <h3><i class="fas fa-table"></i> Estadísticas por Módulo</h3>
                 <table class="data-table" style="width: 100%;">
                   <thead>
                     <tr>
@@ -431,7 +315,7 @@
         </div>
 
         <!-- COMPLETIONS TAB -->
-        <div id="completions-tab" class="tab-content">
+        <div id="completions-tab" class="admin-tab">
           <div class="card">
             <div class="page-header">
               <h2 class="page-title">
@@ -481,7 +365,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   </div>
 
@@ -503,21 +387,27 @@
     async function checkAuth() {
       try {
         const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
-        if (!response.ok) throw new Error('Not authenticated');
+        if (!response.ok) {
+          console.error('[Admin] Auth failed:', response.status);
+          throw new Error('Not authenticated');
+        }
         const data = await response.json();
         currentUser = data.user;
+        console.log('[Admin] User authenticated:', currentUser.email, currentUser.role);
         document.getElementById('userName').textContent = currentUser.name + ' (' + currentUser.role + ')';
         
         if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+          console.log('[Admin] User not authorized, redirecting to campus');
           window.location.href = '/lms/campus.html';
         }
       } catch (error) {
+        console.error('[Admin] Auth error:', error);
         window.location.href = '/lms/login.html';
       }
     }
 
     // Tab switching
-    document.querySelectorAll('.sidebar-menu li').forEach(item => {
+    document.querySelectorAll('.admin-sidebar__item').forEach(item => {
       item.addEventListener('click', () => {
         const tab = item.dataset.tab;
         switchTab(tab);
@@ -525,11 +415,15 @@
     });
 
     function switchTab(tab) {
-      document.querySelectorAll('.sidebar-menu li').forEach(li => li.classList.remove('active'));
-      document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+      document.querySelectorAll('.admin-sidebar__item').forEach(li => {
+        li.classList.remove('admin-sidebar__item--active');
+      });
+      document.querySelector(`[data-tab="${tab}"]`).classList.add('admin-sidebar__item--active');
       
-      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-      document.getElementById(`${tab}-tab`).classList.add('active');
+      document.querySelectorAll('.admin-tab').forEach(content => {
+        content.classList.remove('admin-tab--active');
+      });
+      document.getElementById(`${tab}-tab`).classList.add('admin-tab--active');
       
       currentTab = tab;
       loadTabData(tab);

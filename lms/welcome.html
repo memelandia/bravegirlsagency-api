@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shepherd.js@11.2.0/dist/css/shepherd.css">
   
   <!-- LMS Styles -->
-<link rel="stylesheet" href="/lms/lms-styles.css?v=2.21.0&t=20260112195000">
+<link rel="stylesheet" href="/lms/lms-styles.css?v=2.26.0&t=20260115160000">
   
   <style>
     body {
@@ -50,43 +50,43 @@
     .welcome-header {
       background: linear-gradient(135deg, var(--primary), var(--secondary));
       color: white;
-      padding: 40px 30px;
+      padding: 32px 24px;
       text-align: center;
     }
 
     .welcome-header h1 {
-      margin: 0 0 10px 0;
-      font-size: 32px;
+      margin: 0 0 8px 0;
+      font-size: 28px;
       font-weight: 700;
     }
 
     .welcome-header .subtitle {
-      font-size: 18px;
+      font-size: 16px;
       opacity: 0.95;
       margin: 0;
     }
 
     .welcome-content {
-      padding: 40px 30px;
+      padding: 32px 24px;
     }
 
     .section {
-      margin-bottom: 40px;
+      margin-bottom: 32px;
     }
 
     .section h2 {
       color: var(--text-primary);
-      font-size: 24px;
+      font-size: 20px;
       font-weight: 700;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
     .section h2 i {
       color: var(--primary);
-      font-size: 28px;
+      font-size: 24px;
     }
 
     .video-container {
@@ -94,9 +94,9 @@
       padding-bottom: 56.25%; /* 16:9 aspect ratio */
       height: 0;
       overflow: hidden;
-      border-radius: 12px;
+      border-radius: 10px;
       box-shadow: var(--shadow-lg);
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
     .video-container iframe {
@@ -298,29 +298,7 @@
       background: var(--secondary) !important;
     }
 
-    @media (max-width: 768px) {
-      .welcome-header {
-        padding: 30px 20px;
-      }
-
-      .welcome-header h1 {
-        font-size: 24px;
-      }
-
-      .welcome-content {
-        padding: 30px 20px;
-      }
-
-      .info-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .btn-start, .btn-tour {
-        width: 100%;
-        justify-content: center;
-        margin: 8px 0;
-      }
-    }
+    /* Desktop-only: Mobile media query removed */
   </style>
 </head>
 <body>
@@ -385,8 +363,8 @@
           </div>
           <div class="info-card">
             <i class="fas fa-trophy"></i>
-            <h3>Certificación</h3>
-            <p>Al completar todo el curso con éxito, recibirás tu certificado oficial.</p>
+            <h3>Habilitación Interna</h3>
+            <p>Al completar el curso con éxito, habrás completado tu habilitación interna y podrás empezar a trabajar.</p>
           </div>
         </div>
       </div>
@@ -476,6 +454,7 @@
         });
         
         if (!response.ok) {
+          console.error('[Welcome] Auth failed:', response.status);
           // Not logged in, redirect to login
           window.location.href = '/lms/login.html';
           return;
@@ -483,9 +462,11 @@
 
         const data = await response.json();
         currentUser = data.user;
+        console.log('[Welcome] User authenticated:', currentUser.email, 'Onboarding completed:', !!currentUser.onboarding_completed_at);
         
         // If onboarding already completed, redirect to campus
         if (data.user && data.user.onboarding_completed_at) {
+          console.log('[Welcome] Onboarding already completed, redirecting to campus');
           window.location.href = '/lms/campus.html';
           return;
         }
@@ -493,9 +474,9 @@
         // Mostrar banner de deadline si existe
         showDeadlineBanner();
       } catch (error) {
-        console.error('Auth check failed:', error);
-        // Don't redirect on error - stay on welcome page
-        // Only redirect if explicitly not authenticated
+        console.error('[Welcome] Auth error:', error);
+        // Only redirect to login on auth errors
+        window.location.href = '/lms/login.html';
       }
     }
 
@@ -677,7 +658,7 @@
 
       tour.addStep({
         id: 'finish',
-        text: '🏆 Al completar todos los módulos y aprobar todas las evaluaciones, recibirás tu <strong>certificado oficial</strong>. ¡Vamos a comenzar!',
+        text: '🏆 Al completar todos los módulos y aprobar todas las evaluaciones, habrás completado tu <strong>habilitación profesional</strong>. ¡Vamos a comenzar!',
         buttons: [
           {
             text: 'Atrás',

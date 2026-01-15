@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Campus - BraveGirls LMS</title>
-    <link rel="stylesheet" href="/lms/lms-styles.css?v=2.22.0&t=20260112204500">
+    <link rel="stylesheet" href="/lms/lms-styles.css?v=2.26.1&t=20260115170000">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -35,11 +35,11 @@
     <div id="alert" class="hidden"></div>
 
     <!-- Deadline Warning Banner -->
-    <div id="deadlineBanner" class="hidden" style="margin-bottom: 20px; padding: 16px 20px; border-radius: 12px; display: flex; align-items: center; gap: 12px; animation: fadeInUp 0.5s ease;">
-      <i class="fas fa-clock" style="font-size: 24px;"></i>
-      <div style="flex: 1;">
-        <div id="deadlineTitle" style="font-weight: 600; font-size: 16px; margin-bottom: 4px;"></div>
-        <div id="deadlineMessage" style="font-size: 14px; opacity: 0.9;"></div>
+    <div id="deadlineBanner" class="deadline-banner hidden">
+      <i class="fas fa-clock deadline-banner__icon"></i>
+      <div class="deadline-banner__content">
+        <div id="deadlineTitle" class="deadline-banner__title"></div>
+        <div id="deadlineMessage" class="deadline-banner__msg"></div>
       </div>
     </div>
 
@@ -70,8 +70,8 @@
     <!-- Progress Card with Motivational Message -->
     <div class="progress-card">
       <h2><i class="fas fa-chart-line"></i> Tu Progreso de Aprendizaje</h2>
-      <div id="motivationalMessage" style="margin: 16px 0; padding: 12px 16px; border-radius: 8px; font-size: 15px; font-weight: 500; text-align: center; display: none;"></div>
-      <div class="progress" style="height: 12px;">
+      <div id="motivationalMessage" class="motivational-msg" style="display: none;"></div>
+      <div class="progress" style="height: 10px;">
         <div class="progress-bar" id="overallProgressBar" style="width: 0%;"></div>
       </div>
     </div>
@@ -98,19 +98,25 @@
     async function checkAuth() {
       try {
         const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
-        if (!response.ok) throw new Error('Not authenticated');
+        if (!response.ok) {
+          console.error('[Campus] Auth failed:', response.status);
+          throw new Error('Not authenticated');
+        }
         
         const data = await response.json();
         currentUser = data.user;
+        console.log('[Campus] User authenticated:', currentUser.email, currentUser.role);
         document.getElementById('userName').textContent = currentUser.name;
         
         // Mostrar banner de deadline si aplica
         showDeadlineBanner();
         
         if (currentUser.role === 'admin' || currentUser.role === 'supervisor') {
+          console.log('[Campus] Admin/supervisor detected, redirecting to admin');
           window.location.href = '/lms/admin.html';
         }
       } catch (error) {
+        console.error('[Campus] Auth error:', error);
         window.location.href = '/lms/login.html';
       }
     }
@@ -252,11 +258,11 @@
         const stageHeader = document.createElement('div');
         stageHeader.className = 'card-header';
         stageHeader.innerHTML = `
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 2rem;">${['🚀', '💼', '📱', '🎯', '⭐'][index % 5]}</span>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.5rem;">${['🚀', '💼', '📱', '🎯', '⭐'][index % 5]}</span>
             <div>
-              <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">${stage.name}</h2>
-              <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: var(--text-secondary); font-weight: 400;">${stage.modules.length} módulos disponibles</p>
+              <h2 style="margin: 0; font-size: 1.25rem; color: var(--text-main);">${stage.name}</h2>
+              <p style="margin: 4px 0 0 0; font-size: 0.8125rem; color: var(--text-secondary); font-weight: 400;">${stage.modules.length} módulos disponibles</p>
             </div>
           </div>
         `;
@@ -264,13 +270,13 @@
         
         if (stage.description) {
           const desc = document.createElement('p');
-          desc.style.cssText = 'color: var(--text-secondary); margin-bottom: 24px; font-size: 0.95rem; line-height: 1.6; padding: 0 4px;';
+          desc.style.cssText = 'color: var(--text-secondary); margin-bottom: 20px; font-size: 0.875rem; line-height: 1.6; padding: 0 4px;';
           desc.textContent = stage.description;
           stageCard.appendChild(desc);
         }
         
         const modulesGrid = document.createElement('div');
-        modulesGrid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;';
+        modulesGrid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;';
         
         stage.modules.forEach(module => {
           const moduleCard = document.createElement('div');
@@ -288,7 +294,7 @@
           
           const badge = document.createElement('span');
           badge.className = 'badge';
-          badge.style.cssText = 'font-size: 0.8rem; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px;';
+          badge.style.cssText = 'font-size: 0.75rem; padding: 5px 12px; display: inline-flex; align-items: center; gap: 5px;';
           switch (module.status) {
             case 'completed':
               badge.classList.add('badge-success');
@@ -340,13 +346,13 @@
           
           if (module.quiz && module.quiz.attempts > 0) {
             const quizInfo = document.createElement('div');
-            quizInfo.style.marginTop = '15px';
-            quizInfo.style.paddingTop = '10px';
+            quizInfo.style.marginTop = '12px';
+            quizInfo.style.paddingTop = '8px';
             quizInfo.style.borderTop = '1px solid var(--border)';
-            quizInfo.style.fontSize = '12px';
+            quizInfo.style.fontSize = '11px';
             quizInfo.style.color = 'var(--text-secondary)';
             quizInfo.style.display = 'flex';
-            quizInfo.style.gap = '15px';
+            quizInfo.style.gap = '12px';
             
             quizInfo.innerHTML = `
               <span><i class="fas fa-trophy" style="color:var(--warning)"></i> Score: <b>${module.quiz.bestScore}%</b></span>
@@ -365,8 +371,8 @@
             
             // Agregar indicador visual de clickeable
             const clickIndicator = document.createElement('div');
-            clickIndicator.style.cssText = 'position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 50%; background: rgba(99, 102, 241, 0.1); display: flex; align-items: center; justify-content: center; transition: all 0.3s;';
-            clickIndicator.innerHTML = '<i class="fas fa-arrow-right" style="font-size: 0.9rem; color: var(--primary);"></i>';
+            clickIndicator.style.cssText = 'position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%; background: rgba(99, 102, 241, 0.1); display: flex; align-items: center; justify-content: center; transition: all 0.3s;';
+            clickIndicator.innerHTML = '<i class="fas fa-arrow-right" style="font-size: 0.8rem; color: var(--primary);"></i>';
             moduleCard.appendChild(clickIndicator);
             
             moduleCard.addEventListener('mouseenter', () => {
