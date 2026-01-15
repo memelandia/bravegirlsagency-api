@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Panel de Administraci�n - BraveGirls LMS</title>
+  <title>Panel de Administración - BraveGirls LMS</title>
   <link rel="stylesheet" href="/lms/lms-styles.css?v=2.26.1&t=20260115170000">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -36,7 +36,7 @@
       <aside class="admin-sidebar">
         <div class="admin-sidebar__title">
           <i class="fas fa-bars"></i>
-          Men� Principal
+          Menú Principal
         </div>
         <ul class="admin-sidebar__menu">
           <li data-tab="users" class="admin-sidebar__item admin-sidebar__item--active">
@@ -49,7 +49,7 @@
           </li>
           <li data-tab="modules" class="admin-sidebar__item">
             <i class="fas fa-book"></i>
-            M�dulos
+            Módulos
           </li>
           <li data-tab="lessons" class="admin-sidebar__item">
             <i class="fas fa-file-alt"></i>
@@ -84,10 +84,10 @@
             <div class="page-header">
               <h2 class="page-title">
                 <i class="fas fa-users"></i>
-                Gesti�n de Usuarios
+                Gestión de Usuarios
               </h2>
               <div class="page-actions">
-                <input type="text" id="searchUsers" class="form-input" placeholder="?? Buscar usuarios..." style="width: 280px;">
+                <input type="text" id="searchUsers" class="form-input" placeholder="🔍 Buscar usuarios..." style="width: 280px;">
                 <button class="btn btn-primary" onclick="showCreateUserModal()">
                   <i class="fas fa-plus"></i>
                   Crear Usuario
@@ -106,7 +106,7 @@
             <div class="page-header">
               <h2 class="page-title">
                 <i class="fas fa-layer-group"></i>
-                Gesti�n de Etapas
+                Gestión de Etapas
               </h2>
               <button class="btn btn-primary" onclick="showStageModal()">
                 <i class="fas fa-plus"></i>
@@ -125,13 +125,13 @@
             <div class="page-header">
               <h2 class="page-title">
                 <i class="fas fa-book"></i>
-                Gesti�n de M�dulos
+                Gestión de Módulos
               </h2>
               <div class="page-actions">
-                <input type="text" id="searchModules" class="form-input" placeholder="?? Buscar m�dulos..." style="width: 280px;">
+                <input type="text" id="searchModules" class="form-input" placeholder="🔍 Buscar módulos..." style="width: 280px;">
                 <button class="btn btn-primary" onclick="showModuleModal()">
                   <i class="fas fa-plus"></i>
-                  Nuevo M�dulo
+                  Nuevo Módulo
                 </button>
               </div>
             </div>
@@ -147,16 +147,16 @@
             <div class="page-header">
               <h2 class="page-title">
                 <i class="fas fa-file-alt"></i>
-                Gesti�n de Lecciones
+                Gestión de Lecciones
               </h2>
               <div class="page-actions">
-                <input type="text" id="searchLessons" class="form-input" placeholder="?? Buscar lecciones..." style="width: 200px;">
+                <input type="text" id="searchLessons" class="form-input" placeholder="🔍 Buscar lecciones..." style="width: 200px;">
                 <select id="modulesFilter" class="form-select" style="width: 250px;">
-                  <option value="">?? Todos los m�dulos</option>
+                  <option value="">📖 Todos los módulos</option>
                 </select>
                 <button class="btn btn-primary" onclick="showLessonModal()">
                   <i class="fas fa-plus"></i>
-                  Nueva Lecci�n
+                  Nueva Lección
                 </button>
               </div>
             </div>
@@ -172,11 +172,11 @@
             <div class="page-header">
               <h2 class="page-title">
                 <i class="fas fa-question-circle"></i>
-                Gesti�n de Preguntas
+                Gestión de Preguntas
               </h2>
               <div class="page-actions">
                 <select id="modulesFilterQuestions" class="form-select" style="width: 250px;">
-                  <option value="">? Selecciona un m�dulo</option>
+                  <option value="">❓ Selecciona un módulo</option>
                 </select>
                 <button id="btnAddQuestion" class="btn btn-primary" disabled onclick="showCreateQuestionModal()">
                   <i class="fas fa-plus"></i>
@@ -191,7 +191,7 @@
             <div id="questionsTable">
               <p class="text-center text-light" style="padding: var(--space-3xl);">
                 <i class="fas fa-arrow-up" style="font-size: 3rem; opacity: 0.3; display: block; margin-bottom: var(--space);"></i>
-                Selecciona un m�dulo para ver sus preguntas
+                Selecciona un módulo para ver sus preguntas
               </p>
             </div>
           </div>
@@ -202,30 +202,30 @@
           <div class="card">
             <h2 class="page-title mb-20">
               <i class="fas fa-chart-line"></i>
-              Estad�sticas y Progreso
+              Estadísticas y Progreso
             </h2>
             
             <!-- Stats Dashboard -->
             <div class="stats-grid" style="margin-bottom: 30px;">
               <div class="stat-card">
-                <div class="stat-icon">??</div>
+                <div class="stat-icon">👥</div>
                 <div class="stat-value" id="statTotalUsers">0</div>
                 <div class="stat-label">Usuarios Activos</div>
               </div>
               <div class="stat-card success">
-                <div class="stat-icon">?</div>
+                <div class="stat-icon">✅</div>
                 <div class="stat-value" id="statCompletedModules">0</div>
-                <div class="stat-label">M�dulos Completados</div>
+                <div class="stat-label">Módulos Completados</div>
               </div>
               <div class="stat-card info">
-                <div class="stat-icon">??</div>
+                <div class="stat-icon">🎯</div>
                 <div class="stat-value" id="statAvgProgress">0%</div>
                 <div class="stat-label">Progreso Promedio</div>
               </div>
               <div class="stat-card warning">
-                <div class="stat-icon">??</div>
+                <div class="stat-icon">📝</div>
                 <div class="stat-value" id="statQuizzesTaken">0</div>
-                <div class="stat-label">Ex�menes Realizados</div>
+                <div class="stat-label">Exámenes Realizados</div>
               </div>
             </div>
 
@@ -244,7 +244,7 @@
 
             <div id="analyticsLoading" style="text-align: center; padding: 40px;">
               <div class="spinner"></div>
-              <p style="margin-top: 20px; color: var(--text-secondary);">Cargando m�tricas...</p>
+              <p style="margin-top: 20px; color: var(--text-secondary);">Cargando métricas...</p>
             </div>
 
             <div id="analyticsContent" style="display: none;">
@@ -262,7 +262,7 @@
                     <i class="fas fa-user-check"></i>
                   </div>
                   <div class="stat-value" id="metricActiveStudents">-</div>
-                  <div class="stat-label">Activos (7 d�as)</div>
+                  <div class="stat-label">Activos (7 días)</div>
                 </div>
                 <div class="stat-card stat-card--analytics">
                   <div class="stat-icon" style="background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white;">
@@ -283,7 +283,7 @@
                     <i class="fas fa-check-circle"></i>
                   </div>
                   <div class="stat-value" id="metricPassRate">-</div>
-                  <div class="stat-label">Tasa Aprobaci�n</div>
+                  <div class="stat-label">Tasa Aprobación</div>
                 </div>
                 <div class="stat-card stat-card--analytics">
                   <div class="stat-icon" style="background: linear-gradient(135deg, #f87171 0%, #ef4444 100%); color: white;">
@@ -296,11 +296,11 @@
 
               <!-- Module Stats Table -->
               <div class="card" style="margin-top: 24px;">
-                <h3><i class="fas fa-table"></i> Estad�sticas por M�dulo</h3>
+                <h3><i class="fas fa-table"></i> Estadísticas por Módulo</h3>
                 <table class="data-table" style="width: 100%;">
                   <thead>
                     <tr>
-                      <th>M�dulo</th>
+                      <th>Módulo</th>
                       <th>Score Promedio</th>
                       <th>Intentos Promedio</th>
                     </tr>
@@ -325,13 +325,13 @@
               <div class="page-actions">
                 <select id="filterApproved" class="form-input" onchange="loadCompletions()" style="width: 200px;">
                   <option value="">Todos los estados</option>
-                  <option value="true">? Aprobados (=80)</option>
-                  <option value="false">? No aprobados (<80)</option>
+                  <option value="true">✅ Aprobados (≥80)</option>
+                  <option value="false">❌ No aprobados (<80)</option>
                 </select>
                 <select id="filterHired" class="form-input" onchange="loadCompletions()" style="width: 200px;">
-                  <option value="">Estado contrataci�n</option>
-                  <option value="true">?? Contratados</option>
-                  <option value="false">? No contratados</option>
+                  <option value="">Estado contratación</option>
+                  <option value="true">💼 Contratados</option>
+                  <option value="false">⏳ No contratados</option>
                 </select>
               </div>
             </div>
@@ -339,22 +339,22 @@
             <!-- Stats Dashboard -->
             <div class="stats-grid" style="margin-bottom: 30px;">
               <div class="stat-card success">
-                <div class="stat-icon">??</div>
+                <div class="stat-icon">🎓</div>
                 <div class="stat-value" id="statTotalGraduates">0</div>
                 <div class="stat-label">Total Graduados</div>
               </div>
               <div class="stat-card info">
-                <div class="stat-icon">?</div>
+                <div class="stat-icon">✅</div>
                 <div class="stat-value" id="statApproved">0</div>
-                <div class="stat-label">Aprobados (=80)</div>
+                <div class="stat-label">Aprobados (≥80)</div>
               </div>
               <div class="stat-card warning">
-                <div class="stat-icon">??</div>
+                <div class="stat-icon">💼</div>
                 <div class="stat-value" id="statHired">0</div>
                 <div class="stat-label">Contratados</div>
               </div>
               <div class="stat-card">
-                <div class="stat-icon">??</div>
+                <div class="stat-icon">📊</div>
                 <div class="stat-value" id="statAvgScore">0</div>
                 <div class="stat-label">Score Promedio</div>
               </div>
@@ -379,19 +379,9 @@
     // Helper function to make authenticated fetch requests
     async function fetchWithAuth(url, options = {}) {
       const sessionToken = localStorage.getItem('lms_session');
-      
-      if (!options.headers) {
-        options.headers = {};
-      }
-      
-      if (sessionToken) {
-        options.headers['Authorization'] = `Bearer ${sessionToken}`;
-      }
-      
-      if (!options.credentials) {
-        options.credentials = 'include';
-      }
-      
+      if (!options.headers) options.headers = {};
+      if (sessionToken) options.headers['Authorization'] = `Bearer ${sessionToken}`;
+      if (!options.credentials) options.credentials = 'include';
       return fetch(url, options);
     }
 
@@ -405,22 +395,10 @@
 
     async function checkAuth() {
       try {
-        const sessionToken = localStorage.getItem('lms_session');
-        const headers = {};
-        if (sessionToken) {
-          headers['Authorization'] = `Bearer ${sessionToken}`;
-        }
-        
-        const response = await fetchWithAuth(`${API_BASE}/auth/me`, { 
-          credentials: 'include',
-          headers: headers
-        });
-        
+        const response = await fetchWithAuth(`${API_BASE}/auth/me`);
         if (!response.ok) {
           console.error('[Admin] Auth failed:', response.status);
-          if (sessionToken) {
-            localStorage.removeItem('lms_session');
-          }
+          localStorage.removeItem('lms_session');
           throw new Error('Not authenticated');
         }
         const data = await response.json();
@@ -506,8 +484,8 @@
               <tr>
                 <th>Orden</th>
                 <th>Nombre</th>
-                <th>Descripci�n</th>
-                <th>M�dulos</th>
+                <th>Descripción</th>
+                <th>Módulos</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -549,11 +527,11 @@
                 <input type="text" id="stName" class="form-input" required value="${isEdit ? stage.name : ''}">
               </div>
               <div class="form-group">
-                <label>Descripci�n</label>
+                <label>Descripción</label>
                 <textarea id="stDesc" class="form-input" rows="3">${isEdit ? (stage.description || '') : ''}</textarea>
               </div>
               <div class="form-group">
-                <label>Orden (N�mero)</label>
+                <label>Orden (Número)</label>
                 <input type="number" id="stOrder" class="form-input" required value="${isEdit ? stage.order_index : 0}">
               </div>
               <div class="flex-end mt-20">
@@ -583,7 +561,7 @@
     }
 
     async function deleteStage(id) {
-      if(!confirm('�Eliminar esta etapa?')) return;
+      if(!confirm('¿Eliminar esta etapa?')) return;
       await apiRequest(`/admin/stages?id=${id}`, 'DELETE');
       loadStages();
     }
@@ -597,7 +575,7 @@
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || errorData.error || 'Error al cargar m�dulos');
+          throw new Error(errorData.message || errorData.error || 'Error al cargar módulos');
         }
         
         const data = await response.json();
@@ -609,7 +587,7 @@
               <tr>
                 <th>Orden</th>
                 <th>Etapa</th>
-                <th>T�tulo</th>
+                <th>Título</th>
                 <th>Estado</th>
                 <th>Contenido</th>
                 <th>Acciones</th>
@@ -637,7 +615,7 @@
           </table>
         `;
       } catch (error) {
-        showAlert(error.message || 'Error al cargar m�dulos');
+        showAlert(error.message || 'Error al cargar módulos');
       }
     }
 
@@ -650,7 +628,7 @@
       const modalHtml = `
         <div id="moduleModal" class="modal-overlay">
           <div class="card modal-content">
-            <h2 class="mb-20">${isEdit ? 'Editar M�dulo' : 'Nuevo M�dulo'}</h2>
+            <h2 class="mb-20">${isEdit ? 'Editar Módulo' : 'Nuevo Módulo'}</h2>
             <form id="moduleForm">
               ${isEdit ? `<input type="hidden" id="mdId" value="${module.id}">` : ''}
               <div class="form-group">
@@ -660,11 +638,11 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>T�tulo</label>
+                <label>Título</label>
                 <input type="text" id="mdTitle" class="form-input" required value="${isEdit ? module.title : ''}">
               </div>
               <div class="form-group">
-                <label>Descripci�n</label>
+                <label>Descripción</label>
                 <textarea id="mdDesc" class="form-input" rows="2">${isEdit ? (module.description || '') : ''}</textarea>
               </div>
               <div class="form-group">
@@ -705,7 +683,7 @@
     }
 
     async function deleteModule(id) {
-       if(!confirm('�Eliminar este m�dulo? Si tiene lecciones con progreso de alumnos no se podr� borrar.')) return;
+       if(!confirm('¿Eliminar este módulo? Si tiene lecciones con progreso de alumnos no se podrá borrar.')) return;
        try {
          await apiRequest(`/admin/modules?id=${id}`, 'DELETE');
          loadModules();
@@ -734,8 +712,8 @@
               <tr>
                 <th style="width: 40px;"></th>
                 <th>Orden</th>
-                <th>M�dulo</th>
-                <th>T�tulo</th>
+                <th>Módulo</th>
+                <th>Título</th>
                 <th>Tipo</th>
                 <th>Acciones</th>
               </tr>
@@ -747,7 +725,7 @@
                   <td>${lesson.order_index}</td>
                   <td><small>${lesson.module_title}</small></td>
                   <td>${lesson.title}</td>
-                  <td><span class="badge badge-${lesson.type === 'video' ? 'info' : 'secondary'}">${lesson.type === 'video' ? '?? Video' : '?? Texto'}</span></td>
+                  <td><span class="badge badge-${lesson.type === 'video' ? 'info' : 'secondary'}">${lesson.type === 'video' ? '🎥 Video' : '📄 Texto'}</span></td>
                   <td>
                     <button class="btn btn-sm btn-outline" onclick='showLessonModal(${JSON.stringify(lesson).replace(/'/g, "&#39;")})'>
                       <i class="fas fa-edit"></i> Editar
@@ -800,7 +778,7 @@
               throw new Error('Error al reordenar');
             }
 
-            // Actualizar n�meros de orden en la UI
+            // Actualizar números de orden en la UI
             rows.forEach((row, index) => {
               row.children[1].textContent = index; // Columna "Orden"
             });
@@ -824,17 +802,17 @@
       const modalHtml = `
         <div id="lessonModal" class="modal-overlay">
           <div class="card modal-content">
-            <h2 class="mb-20">${isEdit ? 'Editar Lecci�n' : 'Nueva Lecci�n'}</h2>
+            <h2 class="mb-20">${isEdit ? 'Editar Lección' : 'Nueva Lección'}</h2>
             <form id="lessonForm">
               ${isEdit ? `<input type="hidden" id="lsId" value="${lesson.id}">` : ''}
               <div class="form-group">
-                <label>M�dulo</label>
+                <label>Módulo</label>
                 <select id="lsMod" class="form-select" required>
                   ${modData.modules.map(m => `<option value="${m.id}" ${isEdit && lesson.module_id === m.id ? 'selected' : ''}>${m.title}</option>`).join('')}
                 </select>
               </div>
               <div class="form-group">
-                <label>T�tulo</label>
+                <label>Título</label>
                 <input type="text" id="lsTitle" class="form-input" required value="${isEdit ? lesson.title : ''}">
               </div>
               <div class="form-group">
@@ -844,7 +822,7 @@
               <div class="form-group">
                 <label>Tipo</label>
                 <select id="lsType" class="form-select" onchange="toggleLessonContent()" required>
-                  <option value="video" ${isEdit && lesson.type === 'video' ? '?? Video' : '?? Texto'}>Video (Loom)</option>
+                  <option value="video" ${isEdit && lesson.type === 'video' ? '🎥 Video' : '📄 Texto'}>Video (Loom)</option>
                   <option value="text" ${isEdit && lesson.type === 'text' ? 'selected' : ''}>Texto</option>
                 </select>
               </div>
@@ -863,30 +841,30 @@
                 </div>
               </div>
 
-              <!-- Configuraci�n de Tiempo -->
+              <!-- Configuración de Tiempo -->
               <div class="form-group" style="border-top: 1px solid var(--gray-200); padding-top: 15px; margin-top: 15px;">
-                <label style="font-weight: 600; margin-bottom: 10px; display: block;">?? Configuraci�n de Tiempo de Estudio</label>
+                <label style="font-weight: 600; margin-bottom: 10px; display: block;">⏱️ Configuración de Tiempo de Estudio</label>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                   <div>
-                    <label style="font-size: 13px; color: var(--text-secondary);">Duraci�n estimada (minutos)</label>
+                    <label style="font-size: 13px; color: var(--text-secondary);">Duración estimada (minutos)</label>
                     <input type="number" id="lsEstimated" class="form-input" min="0" step="0.5" 
                            placeholder="Ej: 2.5" 
                            value="${isEdit && lesson.estimated_duration_seconds ? (lesson.estimated_duration_seconds / 60).toFixed(1) : ''}">
-                    <small style="color: var(--text-secondary); font-size: 12px;">Tiempo que toma completar esta lecci�n</small>
+                    <small style="color: var(--text-secondary); font-size: 12px;">Tiempo que toma completar esta lección</small>
                   </div>
                   <div>
-                    <label style="font-size: 13px; color: var(--text-secondary);">Tiempo m�nimo requerido (minutos)</label>
+                    <label style="font-size: 13px; color: var(--text-secondary);">Tiempo mínimo requerido (minutos)</label>
                     <input type="number" id="lsMinRequired" class="form-input" min="0" step="0.5" 
                            placeholder="Ej: 2" 
                            value="${isEdit && lesson.min_time_required_seconds ? (lesson.min_time_required_seconds / 60).toFixed(1) : ''}">
-                    <small style="color: var(--text-secondary); font-size: 12px;">M�nimo para marcar como completo (vac�o = sin restricci�n)</small>
+                    <small style="color: var(--text-secondary); font-size: 12px;">Mínimo para marcar como completo (vacío = sin restricción)</small>
                   </div>
                 </div>
                 <div style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 8px; font-size: 13px;">
-                  <strong>?? Sugerencias:</strong><br>
-                  � Videos cortos (1 min): min 0.5-0.75 min<br>
-                  � Videos medianos (3-5 min): min 2-4 min<br>
-                  � Textos: Se calcula autom�tico si se deja vac�o (200 palabras/min)
+                  <strong>💡 Sugerencias:</strong><br>
+                  • Videos cortos (1 min): min 0.5-0.75 min<br>
+                  • Videos medianos (3-5 min): min 2-4 min<br>
+                  • Textos: Se calcula automático si se deja vacío (200 palabras/min)
                 </div>
               </div>
 
@@ -926,7 +904,7 @@
     }
 
     async function deleteLesson(id) {
-       if(!confirm('�Eliminar esta lecci�n?')) return;
+       if(!confirm('¿Eliminar esta lección?')) return;
        await apiRequest(`/admin/lessons?id=${id}`, 'DELETE');
        loadLessons();
     }
@@ -964,8 +942,8 @@
         }
         const res = await fetchWithAuth(API_BASE + endpoint, opts);
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error en la petici�n');
-        if (method !== 'GET') showAlert('Operaci�n exitosa', 'success');
+        if (!res.ok) throw new Error(data.error || 'Error en la petición');
+        if (method !== 'GET') showAlert('Operación exitosa', 'success');
         return data;
       } catch (e) {
         showAlert(e.message);
@@ -993,7 +971,7 @@
                 <th>Email</th>
                 <th>Rol</th>
                 <th>Estado</th>
-                <th>�ltimo Login</th>
+                <th>Último Login</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -1033,7 +1011,7 @@
         const selectId = target === 'questions' ? 'modulesFilterQuestions' : 'modulesFilter';
         const select = document.getElementById(selectId);
         
-        select.innerHTML = `<option value="">${target === 'questions' ? 'Selecciona un m�dulo' : 'Todos los m�dulos'}</option>`;
+        select.innerHTML = `<option value="">${target === 'questions' ? 'Selecciona un módulo' : 'Todos los módulos'}</option>`;
         data.modules.forEach(module => {
           const option = document.createElement('option');
           option.value = module.id;
@@ -1047,14 +1025,14 @@
           select.addEventListener('change', (e) => loadLessons(e.target.value));
         }
       } catch (error) {
-        showAlert('Error al cargar m�dulos', 'error');
+        showAlert('Error al cargar módulos', 'error');
       }
     }
 
     async function loadQuestions(moduleId) {
       const btnAdd = document.getElementById('btnAddQuestion');
       if (!moduleId) {
-        document.getElementById('questionsTable').innerHTML = '<p style="color: var(--text-light);">Selecciona un m�dulo para ver sus preguntas</p>';
+        document.getElementById('questionsTable').innerHTML = '<p style="color: var(--text-light);">Selecciona un módulo para ver sus preguntas</p>';
         if (btnAdd) btnAdd.disabled = true;
         return;
       }
@@ -1068,7 +1046,7 @@
         const table = document.getElementById('questionsTable');
         
         if (data.questions.length === 0) {
-          table.innerHTML = '<div class="alert alert-info">Este m�dulo no tiene preguntas a�n. Haz clic en "Agregar Pregunta" para crear una.</div>';
+          table.innerHTML = '<div class="alert alert-info">Este módulo no tiene preguntas aún. Haz clic en "Agregar Pregunta" para crear una.</div>';
           return;
         }
         
@@ -1106,7 +1084,7 @@
     }
 
     async function deleteQuestion(questionId, moduleId) {
-      if (!confirm('�Est�s seguro de eliminar esta pregunta?')) return;
+      if (!confirm('¿Estás seguro de eliminar esta pregunta?')) return;
       
       try {
         const response = await fetchWithAuth(`${API_BASE}/admin/questions?id=${questionId}`, { 
@@ -1129,7 +1107,7 @@
     function showCreateQuestionModal() {
       const moduleId = document.getElementById('modulesFilterQuestions').value;
       if (!moduleId) {
-        alert('Selecciona un m�dulo primero');
+        alert('Selecciona un módulo primero');
         return;
       }
 
@@ -1143,12 +1121,12 @@
               <input type="hidden" id="qModuleId" value="${moduleId}">
               <div class="form-group">
                 <label>Pregunta</label>
-                <textarea id="qPrompt" class="form-input" rows="3" required placeholder="Escribe la pregunta aqu�..."></textarea>
+                <textarea id="qPrompt" class="form-input" rows="3" required placeholder="Escribe la pregunta aquí..."></textarea>
               </div>
               <div class="form-group">
                 <label>Tipo de Pregunta</label>
                 <select id="qType" class="form-select" onchange="updateQuestionType()">
-                  <option value="multiple">Opci�n M�ltiple</option>
+                  <option value="multiple">Opción Múltiple</option>
                   <option value="boolean">Verdadero / Falso</option>
                 </select>
               </div>
@@ -1158,7 +1136,7 @@
                 <div id="optionsContainer">
                   <!-- Generated by JS -->
                 </div>
-                <button type="button" id="btnAddOption" class="btn btn-sm btn-outline mt-10" onclick="addOption()">+ Agregar Opci�n</button>
+                <button type="button" id="btnAddOption" class="btn btn-sm btn-outline mt-10" onclick="addOption()">+ Agregar Opción</button>
               </div>
 
               <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
@@ -1221,7 +1199,7 @@
           <input type="radio" name="correctOption" value="${index}" required ${index === 0 ? 'checked' : ''}>
           <input type="text" class="form-input" value="${opt}" 
             onchange="currentOptions[${index}] = this.value"
-            placeholder="Opci�n ${index + 1}" 
+            placeholder="Opción ${index + 1}" 
             ${type === 'boolean' ? 'readonly' : 'required'}>
           ${type !== 'boolean' ? `
             <button type="button" class="btn btn-sm btn-danger" onclick="removeOption(${index})" tabindex="-1">X</button>
@@ -1298,7 +1276,7 @@
                 <th>Usuario</th>
                 <th>Email</th>
                 <th>Progreso General</th>
-                <th>M�dulos Completados</th>
+                <th>Módulos Completados</th>
               </tr>
             </thead>
             <tbody>
@@ -1324,7 +1302,7 @@
     }
 
     async function resetPassword(userId) {
-      if (!confirm('�Generar nueva contrase�a temporal para este usuario?')) return;
+      if (!confirm('¿Generar nueva contraseña temporal para este usuario?')) return;
       
       try {
         const response = await fetchWithAuth(`${API_BASE}/admin/users`, {
@@ -1335,10 +1313,10 @@
         });
         
         const data = await response.json();
-        alert(`Nueva contrase�a temporal: ${data.newPassword}\n\nCopia esta contrase�a y env�ala al usuario de forma segura.`);
-        showAlert('Contrase�a reseteada exitosamente', 'success');
+        alert(`Nueva contraseña temporal: ${data.newPassword}\n\nCopia esta contraseña y envíala al usuario de forma segura.`);
+        showAlert('Contraseña reseteada exitosamente', 'success');
       } catch (error) {
-        showAlert('Error al resetear contrase�a');
+        showAlert('Error al resetear contraseña');
       }
     }
 
@@ -1359,9 +1337,9 @@
     }
 
     function showCreateUserModal() {
-      // Usar un formulario en un di�logo modal ser�a mejor, pero para mantener la simplicidad
+      // Usar un formulario en un diálogo modal sería mejor, pero para mantener la simplicidad
       // usaremos prompts secuenciales o un formulario personalizado si es necesario.
-      // Aqu� mejoraremos la UI para permitir contrase�a opcional.
+      // Aquí mejoraremos la UI para permitir contraseña opcional.
       
       const modalHtml = `
         <div id="userModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
@@ -1385,20 +1363,20 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Contrase�a (Opcional)</label>
+                <label>Contraseña (Opcional)</label>
                 <input type="text" id="newUserPassword" class="form-input" placeholder="Dejar en blanco para autogenerar">
-                <small style="color: var(--text-light)">Si se deja vac�o, el sistema generar� una contrase�a aleatoria.</small>
+                <small style="color: var(--text-light)">Si se deja vacío, el sistema generará una contraseña aleatoria.</small>
               </div>
               <div class="form-group">
-                <label>D�as para completar curso</label>
+                <label>Días para completar curso</label>
                 <select id="newUserDeadlineDays" class="form-select">
-                  <option value="">Sin fecha l�mite</option>
-                  <option value="3">3 d�as (urgente)</option>
-                  <option value="7" selected>7 d�as (recomendado)</option>
-                  <option value="14">14 d�as (extendido)</option>
-                  <option value="30">30 d�as (flexible)</option>
+                  <option value="">Sin fecha límite</option>
+                  <option value="3">3 días (urgente)</option>
+                  <option value="7" selected>7 días (recomendado)</option>
+                  <option value="14">14 días (extendido)</option>
+                  <option value="30">30 días (flexible)</option>
                 </select>
-                <small style="color: var(--text-light)">? Tiempo m�ximo para completar el curso</small>
+                <small style="color: var(--text-light)">⏰ Tiempo máximo para completar el curso</small>
               </div>
               <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                 <button type="button" class="btn btn-outline" onclick="closeUserModal()">Cancelar</button>
@@ -1455,10 +1433,10 @@
         }
 
         let msg = `Usuario creado exitosamente.\n\n`;
-        if (data.temporaryPassword && data.temporaryPassword !== 'Usuario creado con contrase�a manual') {
-          msg += `Contrase�a temporal: ${data.temporaryPassword}\n\nCopia esta contrase�a y env�ala al usuario.`;
+        if (data.temporaryPassword && data.temporaryPassword !== 'Usuario creado con contraseña manual') {
+          msg += `Contraseña temporal: ${data.temporaryPassword}\n\nCopia esta contraseña y envíala al usuario.`;
         } else {
-          msg += `Contrase�a asignada manualmente.`;
+          msg += `Contraseña asignada manualmente.`;
         }
         
         alert(msg);
@@ -1477,7 +1455,7 @@
         const questions = data.questions || [];
 
         if (questions.length === 0) {
-          alert('Este m�dulo no tiene preguntas todav�a.');
+          alert('Este módulo no tiene preguntas todavía.');
           return;
         }
 
@@ -1485,8 +1463,8 @@
           <div class="modal-overlay" id="previewModal" onclick="if(event.target === this) closePreviewModal()">
             <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="margin: 0;">??? Preview del Quiz</h2>
-                <button class="btn btn-outline" onclick="closePreviewModal()" style="padding: 8px 16px;">?</button>
+                <h2 style="margin: 0;">👁️ Preview del Quiz</h2>
+                <button class="btn btn-outline" onclick="closePreviewModal()" style="padding: 8px 16px;">✕</button>
               </div>
               
               <div class="quiz-preview-container">
@@ -1514,7 +1492,7 @@
                               ${i === q.correctOptionIndex ? '<i class="fas fa-check" style="color: white; font-size: 10px;"></i>' : ''}
                             </div>
                             <span style="color: var(--text); font-weight: ${i === q.correctOptionIndex ? '600' : '400'};">${opt}</span>
-                            ${i === q.correctOptionIndex ? '<span style="margin-left: auto; color: var(--success); font-size: 12px; font-weight: 600;">? CORRECTA</span>' : ''}
+                            ${i === q.correctOptionIndex ? '<span style="margin-left: auto; color: var(--success); font-size: 12px; font-weight: 600;">✓ CORRECTA</span>' : ''}
                           </div>
                         </div>
                       `).join('')}
@@ -1593,7 +1571,7 @@
     }
 
     // ===================================================================
-    // ANALYTICS - Dashboard de m�tricas
+    // ANALYTICS - Dashboard de métricas
     // ===================================================================
     async function loadAnalytics() {
       const loadingDiv = document.getElementById('analyticsLoading');
@@ -1665,7 +1643,7 @@
     }
 
     // ===================================================================
-    // COMPLETIONS - Gesti�n de graduados
+    // COMPLETIONS - Gestión de graduados
     // ===================================================================
     async function loadCompletions() {
       const approved = document.getElementById('filterApproved')?.value || '';
@@ -1701,7 +1679,7 @@
               <tr>
                 <th>Chatter</th>
                 <th>Email</th>
-                <th>Fecha Graduaci�n</th>
+                <th>Fecha Graduación</th>
                 <th>Score Final</th>
                 <th>Estado</th>
                 <th>Contratado</th>
@@ -1713,7 +1691,7 @@
                 <tr>
                   <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-light);">
                     <i class="fas fa-inbox" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px;"></i>
-                    <p>No hay graduados a�n</p>
+                    <p>No hay graduados aún</p>
                   </td>
                 </tr>
               ` : completions.map(c => `
@@ -1734,13 +1712,13 @@
                   </td>
                   <td>
                     ${c.approved 
-                      ? '<span class="badge badge-success">? Aprobado</span>' 
-                      : '<span class="badge badge-warning">?? No aprobado</span>'}
+                      ? '<span class="badge badge-success">✅ Aprobado</span>' 
+                      : '<span class="badge badge-warning">⚠️ No aprobado</span>'}
                   </td>
                   <td>
                     ${c.hired 
-                      ? `<span class="badge badge-info">?? Contratado ${c.hired_at ? '(' + new Date(c.hired_at).toLocaleDateString('es') + ')' : ''}</span>`
-                      : '<span class="badge badge-secondary">? Pendiente</span>'}
+                      ? `<span class="badge badge-info">💼 Contratado ${c.hired_at ? '(' + new Date(c.hired_at).toLocaleDateString('es') + ')' : ''}</span>`
+                      : '<span class="badge badge-secondary">⏳ Pendiente</span>'}
                   </td>
                   <td>
                     <div class="btn-group">
@@ -1785,13 +1763,13 @@
           <div id="reportModal" class="modal-overlay" onclick="if(event.target === this) closeReportModal()">
             <div class="modal-content" style="max-width: 900px;" onclick="event.stopPropagation()">
               <div class="modal-header">
-                <h3>?? Reporte de Rendimiento - ${report.user.name}</h3>
-                <button class="btn-icon" onclick="closeReportModal()">?</button>
+                <h3>📊 Reporte de Rendimiento - ${report.user.name}</h3>
+                <button class="btn-icon" onclick="closeReportModal()">✕</button>
               </div>
               <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                 <!-- User Info -->
                 <div style="background: var(--bg); padding: var(--space-lg); border-radius: var(--radius-lg); margin-bottom: var(--space-lg);">
-                  <h4 style="margin-bottom: var(--space);">Informaci�n General</h4>
+                  <h4 style="margin-bottom: var(--space);">Información General</h4>
                   <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-lg);">
                     <div>
                       <small style="color: var(--text-light);">Email</small>
@@ -1812,11 +1790,11 @@
 
                 <!-- Module Scores -->
                 <div style="margin-bottom: var(--space-lg);">
-                  <h4 style="margin-bottom: var(--space);">Scores por M�dulo</h4>
+                  <h4 style="margin-bottom: var(--space);">Scores por Módulo</h4>
                   <table class="data-table">
                     <thead>
                       <tr>
-                        <th>M�dulo</th>
+                        <th>Módulo</th>
                         <th>Score</th>
                         <th>Intentos</th>
                         <th>Estado</th>
@@ -1834,8 +1812,8 @@
                           <td>${m.attempts}</td>
                           <td>
                             ${m.passed 
-                              ? '<span class="badge badge-success">?</span>' 
-                              : '<span class="badge badge-danger">?</span>'}
+                              ? '<span class="badge badge-success">✅</span>' 
+                              : '<span class="badge badge-danger">❌</span>'}
                           </td>
                         </tr>
                       `).join('')}
@@ -1846,29 +1824,29 @@
                 <!-- Strengths & Weaknesses -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-lg);">
                   <div style="background: var(--success-light); padding: var(--space-lg); border-radius: var(--radius-lg);">
-                    <h4 style="color: var(--success); margin-bottom: var(--space);">?? Fortalezas</h4>
+                    <h4 style="color: var(--success); margin-bottom: var(--space);">💪 Fortalezas</h4>
                     ${report.strengths.length > 0 
-                      ? report.strengths.map(s => `<p>� ${s}</p>`).join('') 
+                      ? report.strengths.map(s => `<p>• ${s}</p>`).join('') 
                       : '<p style="color: var(--text-light);">No identificadas</p>'}
                   </div>
                   <div style="background: var(--warning-light); padding: var(--space-lg); border-radius: var(--radius-lg);">
-                    <h4 style="color: var(--warning); margin-bottom: var(--space);">?? Debilidades</h4>
+                    <h4 style="color: var(--warning); margin-bottom: var(--space);">⚠️ Debilidades</h4>
                     ${report.weaknesses.length > 0 
-                      ? report.weaknesses.map(w => `<p>� ${w}</p>`).join('') 
+                      ? report.weaknesses.map(w => `<p>• ${w}</p>`).join('') 
                       : '<p style="color: var(--text-light);">Ninguna</p>'}
                   </div>
                 </div>
 
                 <!-- Time Tracking -->
                 <div style="background: var(--bg); padding: var(--space-lg); border-radius: var(--radius-lg); margin-bottom: var(--space-lg);">
-                  <h4 style="margin-bottom: var(--space);">?? Tiempo de Estudio</h4>
+                  <h4 style="margin-bottom: var(--space);">⏱️ Tiempo de Estudio</h4>
                   <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-lg);">
                     <div>
                       <small style="color: var(--text-light);">Tiempo Total</small>
                       <p><strong>${report.timeTracking.totalTimeInCourse}</strong></p>
                     </div>
                     <div>
-                      <small style="color: var(--text-light);">Promedio por Lecci�n</small>
+                      <small style="color: var(--text-light);">Promedio por Lección</small>
                       <p><strong>${report.timeTracking.avgTimePerLesson}</strong></p>
                     </div>
                     <div>
@@ -1882,12 +1860,12 @@
                 <div style="background: ${report.recommendHire ? 'var(--success-light)' : 'var(--warning-light)'}; 
                             padding: var(--space-xl); border-radius: var(--radius-lg); text-align: center;">
                   <h3 style="color: ${report.recommendHire ? 'var(--success)' : 'var(--warning)'}; margin-bottom: var(--space);">
-                    ${report.recommendHire ? '?? Recomendado para Contrataci�n' : '?? Necesita Mejorar'}
+                    ${report.recommendHire ? '🎉 Recomendado para Contratación' : '⚠️ Necesita Mejorar'}
                   </h3>
                   <p style="color: var(--text-secondary);">
                     ${report.recommendHire 
-                      ? 'Este chatter cumple con todos los est�ndares de calidad.' 
-                      : 'Considerar entrenamiento adicional o nueva evaluaci�n.'}
+                      ? 'Este chatter cumple con todos los estándares de calidad.' 
+                      : 'Considerar entrenamiento adicional o nueva evaluación.'}
                   </p>
                 </div>
               </div>
@@ -1910,7 +1888,7 @@
     }
 
     async function toggleHired(completionId, newStatus) {
-      if (!confirm(`�Marcar como ${newStatus ? 'CONTRATADO' : 'NO CONTRATADO'}?`)) return;
+      if (!confirm(`¿Marcar como ${newStatus ? 'CONTRATADO' : 'NO CONTRATADO'}?`)) return;
 
       try {
         const response = await fetchWithAuth(`${API_BASE}/admin/completions?id=${completionId}`, {
@@ -1930,7 +1908,7 @@
     }
 
     function editCompletionNotes(completionId, userName) {
-      const currentNotes = ''; // Podr�as obtener las notas actuales del DOM
+      const currentNotes = ''; // Podrías obtener las notas actuales del DOM
       const newNotes = prompt(`Notas para ${userName}:`, currentNotes);
       
       if (newNotes === null) return; // Cancelado
@@ -1958,14 +1936,14 @@
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       localStorage.removeItem('lms_session');
-      await fetchWithAuth(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
+      await fetchWithAuth(`${API_BASE}/auth/logout`, { method: 'POST' });
       window.location.href = '/lms/login.html';
     });
 
     (async () => {
       await checkAuth();
       await loadUsers();
-      // Setup search despu�s de cargar datos iniciales
+      // Setup search después de cargar datos iniciales
       setTimeout(setupSearch, 100);
     })();
   </script>

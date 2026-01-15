@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -13,7 +13,7 @@
 <body>
   <header class="lms-header">
     <div class="container">
-      <div class="lms-logo">?? BraveGirls LMS</div>
+      <div class="lms-logo">🎓 BraveGirls LMS</div>
       <nav class="lms-nav">
         <div class="user-info">
           <span id="userName">Loading...</span>
@@ -46,22 +46,22 @@
     <!-- Stats Dashboard -->
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-icon">??</div>
+        <div class="stat-icon">📚</div>
         <div class="stat-value" id="totalModules">0</div>
-        <div class="stat-label">M�dulos Totales</div>
+        <div class="stat-label">Módulos Totales</div>
       </div>
       <div class="stat-card success">
-        <div class="stat-icon">?</div>
+        <div class="stat-icon">✅</div>
         <div class="stat-value" id="completedModules">0</div>
         <div class="stat-label">Completados</div>
       </div>
       <div class="stat-card info">
-        <div class="stat-icon">??</div>
+        <div class="stat-icon">📖</div>
         <div class="stat-value" id="inProgressModules">0</div>
         <div class="stat-label">En Progreso</div>
       </div>
       <div class="stat-card warning">
-        <div class="stat-icon">??</div>
+        <div class="stat-icon">🎯</div>
         <div class="stat-value" id="overallProgressText">0%</div>
         <div class="stat-label">Progreso General</div>
       </div>
@@ -90,19 +90,9 @@
     // Helper function to make authenticated fetch requests
     async function fetchWithAuth(url, options = {}) {
       const sessionToken = localStorage.getItem('lms_session');
-      
-      if (!options.headers) {
-        options.headers = {};
-      }
-      
-      if (sessionToken) {
-        options.headers['Authorization'] = `Bearer ${sessionToken}`;
-      }
-      
-      if (!options.credentials) {
-        options.credentials = 'include';
-      }
-      
+      if (!options.headers) options.headers = {};
+      if (sessionToken) options.headers['Authorization'] = `Bearer ${sessionToken}`;
+      if (!options.credentials) options.credentials = 'include';
       return fetch(url, options);
     }
 
@@ -116,22 +106,10 @@
 
     async function checkAuth() {
       try {
-        const sessionToken = localStorage.getItem('lms_session');
-        const headers = {};
-        if (sessionToken) {
-          headers['Authorization'] = `Bearer ${sessionToken}`;
-        }
-        
-        const response = await fetchWithAuth(`${API_BASE}/auth/me`, { 
-          credentials: 'include',
-          headers: headers
-        });
-        
+        const response = await fetchWithAuth(`${API_BASE}/auth/me`);
         if (!response.ok) {
           console.error('[Campus] Auth failed:', response.status);
-          if (sessionToken) {
-            localStorage.removeItem('lms_session');
-          }
+          localStorage.removeItem('lms_session');
           throw new Error('Not authenticated');
         }
         
@@ -160,29 +138,29 @@
       let textColor = '';
 
       if (completedModules === totalModules && totalModules > 0) {
-        // Complet� todo el curso
-        message = '?? �FELICITACIONES! Has completado toda tu formaci�n';
+        // Completó todo el curso
+        message = '🏆 ¡FELICITACIONES! Has completado toda tu formación';
         bgColor = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
         textColor = 'white';
       } else if (progress === 0) {
-        // Reci�n empezando
-        message = '?? �Bienvenido/a! Comienza tu camino hacia el �xito';
+        // Recién empezando
+        message = '🌟 ¡Bienvenido/a! Comienza tu camino hacia el éxito';
         bgColor = 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)';
         textColor = 'white';
       } else if (progress < 25) {
-        message = '?? �Excelente inicio! Ya llevas el ' + progress + '% del camino';
+        message = '🚀 ¡Excelente inicio! Ya llevas el ' + progress + '% del camino';
         bgColor = 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)';
         textColor = 'white';
       } else if (progress >= 25 && progress < 50) {
-        message = '?? �Vas muy bien! Sigue con ese ritmo';
+        message = '💪 ¡Vas muy bien! Sigue con ese ritmo';
         bgColor = 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)';
         textColor = 'white';
       } else if (progress >= 50 && progress < 75) {
-        message = '?? �Mitad del camino! Lo est�s haciendo genial';
+        message = '🎉 ¡Mitad del camino! Lo estás haciendo genial';
         bgColor = 'linear-gradient(135deg, #34d399 0%, #10b981 100%)';
         textColor = 'white';
       } else if (progress >= 75) {
-        message = '?? �Casi lo logras! Solo falta un �ltimo empuj�n';
+        message = '🔥 ¡Casi lo logras! Solo falta un último empujón';
         bgColor = 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)';
         textColor = '#78350f';
       }
@@ -204,43 +182,43 @@
       const message = document.getElementById('deadlineMessage');
       const daysRemaining = currentUser.days_remaining;
 
-      // Si ya complet� el curso completo, no mostrar banner
+      // Si ya completó el curso completo, no mostrar banner
       if (currentUser.course_completed) return;
 
       if (currentUser.deadline_expired) {
-        // Deadline vencido - Banner rojo cr�tico
+        // Deadline vencido - Banner rojo crítico
         banner.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
         banner.style.color = 'white';
         banner.style.boxShadow = '0 4px 20px rgba(239, 68, 68, 0.4)';
-        title.innerHTML = '?? �Plazo Vencido!';
-        message.innerHTML = `Tu fecha l�mite era el ${new Date(currentUser.course_deadline).toLocaleDateString('es-ES')}. Contacta a tu supervisor urgentemente.`;
+        title.innerHTML = '🚨 ¡Plazo Vencido!';
+        message.innerHTML = `Tu fecha límite era el ${new Date(currentUser.course_deadline).toLocaleDateString('es-ES')}. Contacta a tu supervisor urgentemente.`;
         banner.classList.remove('hidden');
       } else if (daysRemaining <= 1) {
-        // Menos de 1 d�a - Banner rojo urgente
+        // Menos de 1 día - Banner rojo urgente
         banner.style.background = 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)';
         banner.style.color = 'white';
         banner.style.boxShadow = '0 4px 20px rgba(249, 115, 22, 0.4)';
-        title.innerHTML = daysRemaining === 1 ? '?? ��LTIMO D�A!' : '? �QUEDAN HORAS!';
-        message.innerHTML = `Tu plazo vence ${daysRemaining === 1 ? 'ma�ana' : 'HOY'}. Completa el curso lo antes posible.`;
+        title.innerHTML = daysRemaining === 1 ? '⚠️ ¡ÚLTIMO DÍA!' : '⏰ ¡QUEDAN HORAS!';
+        message.innerHTML = `Tu plazo vence ${daysRemaining === 1 ? 'mañana' : 'HOY'}. Completa el curso lo antes posible.`;
         banner.classList.remove('hidden');
       } else if (daysRemaining <= 3) {
-        // 2-3 d�as - Banner amarillo advertencia
+        // 2-3 días - Banner amarillo advertencia
         banner.style.background = 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)';
         banner.style.color = '#78350f';
         banner.style.boxShadow = '0 4px 20px rgba(251, 191, 36, 0.3)';
-        title.innerHTML = '?? Tiempo Limitado';
-        message.innerHTML = `Quedan ${daysRemaining} d�as para completar tu formaci�n. �Apres�rate!`;
+        title.innerHTML = '⏱️ Tiempo Limitado';
+        message.innerHTML = `Quedan ${daysRemaining} días para completar tu formación. ¡Apresúrate!`;
         banner.classList.remove('hidden');
       } else if (daysRemaining <= 7) {
-        // 4-7 d�as - Banner azul informativo
+        // 4-7 días - Banner azul informativo
         banner.style.background = 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)';
         banner.style.color = 'white';
         banner.style.boxShadow = '0 4px 20px rgba(96, 165, 250, 0.3)';
-        title.innerHTML = '?? Fecha L�mite Pr�xima';
-        message.innerHTML = `Tienes hasta el ${new Date(currentUser.course_deadline).toLocaleDateString('es-ES')} para completar el curso (${daysRemaining} d�as).`;
+        title.innerHTML = '📅 Fecha Límite Próxima';
+        message.innerHTML = `Tienes hasta el ${new Date(currentUser.course_deadline).toLocaleDateString('es-ES')} para completar el curso (${daysRemaining} días).`;
         banner.classList.remove('hidden');
       }
-      // Si quedan m�s de 7 d�as, no mostrar banner
+      // Si quedan más de 7 días, no mostrar banner
     }
 
     async function loadCampus() {
@@ -291,10 +269,10 @@
         stageHeader.className = 'card-header';
         stageHeader.innerHTML = `
           <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 1.5rem;">${['??', '??', '??', '??', '?'][index % 5]}</span>
+            <span style="font-size: 1.5rem;">${['🚀', '💼', '📱', '🎯', '⭐'][index % 5]}</span>
             <div>
               <h2 style="margin: 0; font-size: 1.25rem; color: var(--text-main);">${stage.name}</h2>
-              <p style="margin: 4px 0 0 0; font-size: 0.8125rem; color: var(--text-secondary); font-weight: 400;">${stage.modules.length} m�dulos disponibles</p>
+              <p style="margin: 4px 0 0 0; font-size: 0.8125rem; color: var(--text-secondary); font-weight: 400;">${stage.modules.length} módulos disponibles</p>
             </div>
           </div>
         `;
@@ -334,7 +312,7 @@
               break;
             case 'ready_for_quiz':
               badge.classList.add('badge-warning');
-              badge.innerHTML = '<i class="fas fa-bolt" style="font-size: 1em;"></i> Evaluaci�n Lista';
+              badge.innerHTML = '<i class="fas fa-bolt" style="font-size: 1em;"></i> Evaluación Lista';
               break;
             case 'in_progress':
               badge.classList.add('badge-info');
@@ -428,10 +406,10 @@
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       try {
         localStorage.removeItem('lms_session');
-        await fetchWithAuth(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
+        await fetchWithAuth(`${API_BASE}/auth/logout`, { method: 'POST' });
         window.location.href = '/lms/login.html';
       } catch (error) {
-        showAlert('Error al cerrar sesi�n');
+        showAlert('Error al cerrar sesión');
       }
     });
 
