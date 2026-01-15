@@ -1715,18 +1715,24 @@ body.modal-open {
 
 /* Deadline Banner Components */
 .deadline-banner {
-  margin-bottom: 16px;
-  padding: 14px 18px;
-  border-radius: 10px;
+  margin-bottom: 24px;
+  padding: 20px 24px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.2);
+  border-left: 4px solid #ff4757;
   animation: fadeInUp 0.4s ease;
 }
 
 .deadline-banner__icon {
-  font-size: 20px;
+  font-size: 28px;
   flex-shrink: 0;
+  color: white;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
 .deadline-banner__content {
@@ -1734,14 +1740,18 @@ body.modal-open {
 }
 
 .deadline-banner__title {
-  font-weight: 600;
-  font-size: 14px;
-  margin-bottom: 3px;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+  color: white;
 }
 
 .deadline-banner__msg {
-  font-size: 13px;
-  opacity: 0.9;
+  font-size: 14px;
+  opacity: 0.95;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 /* Container Utilities */
