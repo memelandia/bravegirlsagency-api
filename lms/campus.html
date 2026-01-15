@@ -97,9 +97,22 @@
 
     async function checkAuth() {
       try {
-        const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+        const sessionToken = localStorage.getItem('lms_session');
+        const headers = {};
+        if (sessionToken) {
+          headers['Authorization'] = `Bearer ${sessionToken}`;
+        }
+        
+        const response = await fetch(`${API_BASE}/auth/me`, { 
+          credentials: 'include',
+          headers: headers
+        });
+        
         if (!response.ok) {
           console.error('[Campus] Auth failed:', response.status);
+          if (sessionToken) {
+            localStorage.removeItem('lms_session');
+          }
           throw new Error('Not authenticated');
         }
         
@@ -395,6 +408,7 @@
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       try {
+        localStorage.removeItem('lms_session');
         await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
         window.location.href = '/lms/login.html';
       } catch (error) {

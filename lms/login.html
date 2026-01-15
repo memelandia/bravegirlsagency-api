@@ -227,7 +227,6 @@
         });
 
         console.log('[Login] Response status:', response.status);
-        console.log('[Login] Response headers:', [...response.headers.entries()]);
         
         const data = await response.json();
         console.log('[Login] Response data:', data);
@@ -236,8 +235,11 @@
           throw new Error(data.error || 'Error al iniciar sesión');
         }
 
-        // Verificar si la cookie se estableció
-        console.log('[Login] Document cookies:', document.cookie);
+        // Guardar session token en localStorage como fallback si cookies no funcionan
+        if (data.sessionToken) {
+          localStorage.setItem('lms_session', data.sessionToken);
+          console.log('[Login] Session token saved to localStorage');
+        }
 
         showAlert('¡Login exitoso! Redirigiendo...', 'success');
         
@@ -266,7 +268,18 @@
     // Check if already logged in
     (async () => {
       try {
-        const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+        const sessionToken = localStorage.getItem('lms_session');
+        const headers = { 'Content-Type': 'application/json' };
+        if (sessionToken) {
+          headers['Authorization'] = `Bearer ${sessionToken}`;
+          console.log('[Login] Sending session token from localStorage');
+        }
+        
+        const response = await fetch(`${API_BASE}/auth/me`, { 
+          credentials: 'include',
+          headers: headers
+        });
+        
         if (response.ok) {
           const data = await response.json();
           console.log('[Login] User already logged in:', data.user.email, 'Role:', data.user.role);
@@ -284,6 +297,11 @@
           }
         } else {
           console.log('[Login] Not authenticated, status:', response.status);
+          // Limpiar localStorage si el token no es válido
+          if (sessionToken) {
+            localStorage.removeItem('lms_session');
+            console.log('[Login] Invalid token removed from localStorage');
+          }
         }
       } catch (error) {
         console.error('[Login] Error checking auth:', error);

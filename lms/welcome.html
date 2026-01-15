@@ -449,12 +449,22 @@
     // Check if user should be here
     async function checkAuth() {
       try {
+        const sessionToken = localStorage.getItem('lms_session');
+        const headers = {};
+        if (sessionToken) {
+          headers['Authorization'] = `Bearer ${sessionToken}`;
+        }
+        
         const response = await fetch(`${API_BASE}/auth/me`, {
-          credentials: 'include'
+          credentials: 'include',
+          headers: headers
         });
         
         if (!response.ok) {
           console.error('[Welcome] Auth failed:', response.status);
+          if (sessionToken) {
+            localStorage.removeItem('lms_session');
+          }
           // Not logged in, redirect to login
           window.location.href = '/lms/login.html';
           return;

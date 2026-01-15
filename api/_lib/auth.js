@@ -53,9 +53,21 @@ async function updateLastLogin(userId) {
 }
 
 async function validateSession(req) {
-  const sessionToken = req.cookies?.lms_session;
+  // Intentar obtener token desde cookie (preferido) o desde Authorization header (fallback)
+  let sessionToken = req.cookies?.lms_session;
+  
   if (!sessionToken) {
-    console.log('[validateSession] No session token found in cookies');
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      sessionToken = authHeader.substring(7);
+      console.log('[validateSession] Using token from Authorization header');
+    }
+  } else {
+    console.log('[validateSession] Using token from cookie');
+  }
+  
+  if (!sessionToken) {
+    console.log('[validateSession] No session token found in cookies or Authorization header');
     return null;
   }
   

@@ -164,6 +164,7 @@ async function handleLogin(req, res, deps) {
       deadline_expired: deadlineExpired,
       course_completed: courseCompleted
     },
+    sessionToken: sessionToken, // Enviar token para localStorage como fallback
     message: 'Login exitoso'
   });
 }
