@@ -446,6 +446,25 @@
 
     let currentUser = null;
 
+    // Helper function to make authenticated fetch requests
+    async function fetchWithAuth(url, options = {}) {
+      const sessionToken = localStorage.getItem('lms_session');
+      
+      if (!options.headers) {
+        options.headers = {};
+      }
+      
+      if (sessionToken) {
+        options.headers['Authorization'] = `Bearer ${sessionToken}`;
+      }
+      
+      if (!options.credentials) {
+        options.credentials = 'include';
+      }
+      
+      return fetch(url, options);
+    }
+
     // Check if user should be here
     async function checkAuth() {
       try {
@@ -455,7 +474,7 @@
           headers['Authorization'] = `Bearer ${sessionToken}`;
         }
         
-        const response = await fetch(`${API_BASE}/auth/me`, {
+        const response = await fetchWithAuth(`${API_BASE}/auth/me`, {
           credentials: 'include',
           headers: headers
         });
@@ -544,7 +563,7 @@
       progress.classList.add('show');
 
       try {
-        const response = await fetch(`${API_BASE}/auth/complete-onboarding`, {
+        const response = await fetchWithAuth(`${API_BASE}/auth/complete-onboarding`, {
           method: 'PATCH',
           credentials: 'include'
         });
