@@ -235,9 +235,9 @@
           throw new Error(data.error || 'Error al iniciar sesión');
         }
 
-        // ✅ Autenticación completamente basada en cookies httpOnly
-        // Las cookies se establecen automáticamente por el servidor
-        console.log('[Login] Session established via httpOnly cookies');
+        // Guardar token de sesión
+        localStorage.setItem('lms_session', data.sessionToken);
+        console.log('[Login] Session token stored');
 
         showAlert('¡Login exitoso! Redirigiendo...', 'success');
         

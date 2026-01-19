@@ -89,8 +89,13 @@
 
     // Helper function to make authenticated fetch requests
     async function fetchWithAuth(url, options = {}) {
-      // ✅ Autenticación basada en cookies httpOnly
-      if (!options.credentials) options.credentials = 'include';
+      const sessionToken = localStorage.getItem('lms_session');
+      if (!sessionToken) {
+        window.location.href = '/lms/login.html';
+        throw new Error('No session token');
+      }
+      if (!options.headers) options.headers = {};
+      options.headers['Authorization'] = `Bearer ${sessionToken}`;
       return fetch(url, options);
     }
 
@@ -401,12 +406,8 @@
     }
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-      try {
-        await fetchWithAuth(`${API_BASE}/auth/logout`, { method: 'POST' });
-        window.location.href = '/lms/login.html';
-      } catch (error) {
-        showAlert('Error al cerrar sesión');
-      }
+      localStorage.removeItem('lms_session');
+      window.location.href = '/lms/login.html';
     });
 
     // Initialize
