@@ -158,15 +158,17 @@ Componente**: 🔴 **BACKEND ONLY** (Vercel API)
   - ✅ Protección contra intentos de iniciar quiz vacío
 
 #### **#11 - Sin Validación de Intentos Máximos en Backend**
-- **Archivo**: quiz.html (L285-300)
+- **Archivo**: api/_handlers/lms-chatter.js (L886-888)
 - **Componente**: 🔴 **BACKEND ONLY** (Vercel API)
 - **Problema**: Frontend valida intentos, backend debe validar también
 - **Riesgo**: 🔴 CRÍTICO - Usuario puede bypassear límite modificando requests
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: Backend debe validar antes de permitir submit en endpoint `/quiz/submit`r también
-- **Riesgo**: 🔴 CRÍTICO - Usuario puede bypassear límite modificando requests
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: Backend debe validar antes de permitir submit
+- **Estado**: ✅ **YA CORREGIDO** (Implementado desde el inicio)
+- **Validación Existente**:
+  - ✅ Backend valida `user_attempts >= max_attempts` antes de permitir submit
+  - ✅ Validación en transacción garantiza consistencia
+  - ✅ Retorna HTTP 403 con mensaje "Has alcanzado el límite de intentos"
+  - ✅ Admins y supervisores exentos (solo aplica a role 'chatter')
+  - ✅ Imposible bypassear límite modificando requests desde frontend
 
 ---Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
 - **
