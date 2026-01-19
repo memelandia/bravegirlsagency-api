@@ -176,59 +176,19 @@ Componente**: 🔴 **BACKEND ONLY** (Vercel API)
 ### 👥 PANEL DE ADMINISTRACIÓN
 
 #### **#12 - Función handleCreateQuestion Incompleta**
-- **Archivo**: admin.html (L1193-1200)
+- **Archivo**: admin.html (L1195-1262)
+- **Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
 - **Problema**: La función `updateOptionsUI()` está cortada, falta código
 - **Riesgo**: 🔴 CRÍTICO - No se pueden crear preguntas correctamente
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: Completar las funciones:
-  ```javascript
-  function updateOptionsUI() {
-    const container = document.getElementById('optionsContainer');
-    const type = document.getElementById('qType').value;
-    
-    container.innerHTML = currentOptions.map((opt, index) => `
-      <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-        <input type="radio" name="correctOption" value="${index}" ${index === 0 ? 'checked' : ''}>
-        <input type="text" class="form-input" value="${opt}" 
-               placeholder="Opción ${index + 1}" 
-               onchange="currentOptions[${index}] = this.value"
-               ${type === 'boolean' ? 'readonly' : ''}>
-        ${type !== 'boolean' && currentOptions.length > 2 ? 
-          `<button type="button" onclick="removeOption(${index})" class="btn btn-sm btn-danger">✕</button>` 
-          : ''}
-      </div>
-    `).join('');
-  }
-
-  async function handleCreateQuestion(e) {
-    e.preventDefault();
-    const moduleId = document.getElementById('qModuleId').value;
-    const prompt = document.getElementById('qPrompt').value;
-    const correctIndex = parseInt(document.querySelector('input[name="correctOption"]:checked').value);
-    
-    try {
-      const response = await fetchWithAuth(`${API_BASE}/admin/questions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          moduleId,
-          prompt,
-          options: currentOptions.filter(opt => opt.trim() !== ''),
-          correctOptionIndex: correctIndex
-        })
-      });
-      
-      if (!response.ok) throw new Error('Error al crear pregunta');
-      
-      showAlert('Pregunta creada exitosamente', 'success');
-      closeQuestionModal();
-      loadQuestions(moduleId);
-    } catch (error) {
-      showAlert(error.message);
-    }
-  }
-  ``Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
+- **Estado**: ✅ **YA CORREGIDO** (Implementado desde el inicio)
+- **Implementación Existente**:
+  - ✅ `updateOptionsUI()` completa: renderiza opciones dinámicas con radio buttons
+  - ✅ `handleCreateQuestion()` completa: valida datos, envía al API, maneja errores
+  - ✅ `addOption()` y `removeOption()` implementadas correctamente
+  - ✅ Validación de mínimo 2 opciones antes de submit
+  - ✅ Filtrado de opciones vacías antes de enviar al backend
+  - ✅ Manejo de tipo boolean (readonly) vs múltiple choice
+  - ✅ Feedback visual con alerts de éxito/error
 - **Problema**: `setupSearch()` se llama, pero event listeners pueden no estar activos
 - **Riesgo**: 🟡 MEDIO - Búsqueda puede no funcionar
 - **Estado**: ❌ NO CORREGIDO
