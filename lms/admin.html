@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Panel de Administración - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.26.1&t=20260115170000">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.28.1&t=20260119203000">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
@@ -378,9 +378,7 @@
 
     // Helper function to make authenticated fetch requests
     async function fetchWithAuth(url, options = {}) {
-      const sessionToken = localStorage.getItem('lms_session');
-      if (!options.headers) options.headers = {};
-      if (sessionToken) options.headers['Authorization'] = `Bearer ${sessionToken}`;
+      // ✅ Autenticación basada en cookies httpOnly
       if (!options.credentials) options.credentials = 'include';
       return fetch(url, options);
     }
@@ -398,7 +396,6 @@
         const response = await fetchWithAuth(`${API_BASE}/auth/me`);
         if (!response.ok) {
           console.error('[Admin] Auth failed:', response.status);
-          localStorage.removeItem('lms_session');
           throw new Error('Not authenticated');
         }
         const data = await response.json();
@@ -1935,7 +1932,6 @@
     }
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-      localStorage.removeItem('lms_session');
       await fetchWithAuth(`${API_BASE}/auth/logout`, { method: 'POST' });
       window.location.href = '/lms/login.html';
     });

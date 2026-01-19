@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Iniciar Sesión - BraveGirls LMS</title>
-    <link rel="stylesheet" href="/lms/lms-styles.css?v=2.26.1&t=20260115170000">
+    <link rel="stylesheet" href="/lms/lms-styles.css?v=2.28.1&t=20260119203000">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     .login-container {
@@ -235,11 +235,9 @@
           throw new Error(data.error || 'Error al iniciar sesión');
         }
 
-        // Guardar session token en localStorage como fallback si cookies no funcionan
-        if (data.sessionToken) {
-          localStorage.setItem('lms_session', data.sessionToken);
-          console.log('[Login] Session token saved to localStorage');
-        }
+        // ✅ Autenticación completamente basada en cookies httpOnly
+        // Las cookies se establecen automáticamente por el servidor
+        console.log('[Login] Session established via httpOnly cookies');
 
         showAlert('¡Login exitoso! Redirigiendo...', 'success');
         
@@ -268,11 +266,11 @@
     // Check if already logged in
     (async () => {
       try {
+        // Sistema híbrido: enviar token en header Y usar cookies
         const sessionToken = localStorage.getItem('lms_session');
         const headers = { 'Content-Type': 'application/json' };
         if (sessionToken) {
           headers['Authorization'] = `Bearer ${sessionToken}`;
-          console.log('[Login] Sending session token from localStorage');
         }
         
         const response = await fetch(`${API_BASE}/auth/me`, { 
@@ -297,11 +295,6 @@
           }
         } else {
           console.log('[Login] Not authenticated, status:', response.status);
-          // Limpiar localStorage si el token no es válido
-          if (sessionToken) {
-            localStorage.removeItem('lms_session');
-            console.log('[Login] Invalid token removed from localStorage');
-          }
         }
       } catch (error) {
         console.error('[Login] Error checking auth:', error);
