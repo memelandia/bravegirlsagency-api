@@ -194,16 +194,21 @@ Componente**: 🔴 **BACKEND ONLY** (Vercel API)
 - **Estado**: ❌ NO CORREGIDO
 - **Solución**: Llamar `setupSearch()` después de renderizar cada tabla
 
-#### **#14 - Preview Quiz Sin Parámetro moduleId**
-- **Archivo**: admin.html (L1230)
+#### **#14 - Preview Quiz Sin Parámetro moduleId** ✅
+- **Archivo**: admin.html (L186)
 - **Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
 - **Problema**: Botón llama a `onclick="previewQuiz()"` sin parámetro
 - **Riesgo**: 🟡 MEDIO - Función no puede obtener módulo correcto
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**:
+- **Estado**: ✅ **CORREGIDO** - Botón ahora pasa moduleId desde dropdown
+- **Solución Implementada**:
   ```html
   <button onclick="previewQuiz(document.getElementById('modulesFilterQuestions').value)">
   ```
+- **Cambios**:
+  - ✅ L186: Agregado parámetro `document.getElementById('modulesFilterQuestions').value`
+  - ✅ CSS cache-busting actualizado: v2.31.0
+  - ⏳ Requiere subida manual a Hostinger vía FTP
+
 
 #### **#15 - Sin Validación al Eliminar Módulos con Progreso**
 - **Archivo**: admin.html (L684)

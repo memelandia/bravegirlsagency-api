@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Panel de Administración - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.29.0&t=20260119215500">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.31.0&t=20260119224500">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
@@ -182,7 +182,7 @@
                   <i class="fas fa-plus"></i>
                   Agregar Pregunta
                 </button>
-                <button id="btnPreviewQuiz" class="btn btn-outline" disabled onclick="previewQuiz()">
+                <button id="btnPreviewQuiz" class="btn btn-outline" disabled onclick="previewQuiz(document.getElementById('modulesFilterQuestions').value)">
                   <i class="fas fa-eye"></i>
                   Preview Quiz
                 </button>
