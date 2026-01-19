@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Panel de Administración - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.31.0&t=20260119224500">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.32.0&t=20260119225500">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
@@ -824,8 +824,8 @@
               <div class="form-group">
                 <label>Tipo</label>
                 <select id="lsType" class="form-select" onchange="toggleLessonContent()" required>
-                  <option value="video" ${isEdit && lesson.type === 'video' ? '🎥 Video' : '📄 Texto'}>Video (Loom)</option>
-                  <option value="text" ${isEdit && lesson.type === 'text' ? 'selected' : ''}>Texto</option>
+                  <option value="video" ${isEdit && lesson.type === 'video' ? 'selected' : ''}>🎥 Video (Loom)</option>
+                  <option value="text" ${isEdit && lesson.type === 'text' ? 'selected' : ''}>📄 Texto</option>
                 </select>
               </div>
               

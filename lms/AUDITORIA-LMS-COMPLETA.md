@@ -247,19 +247,22 @@ Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
 
 ### 🎨 INTERFAZ DE USUARIO
 
-#### **#16 - Error en Select de Tipo de Lección**
-- **Archivo**: admin.html (L764-765)
-- **Problema**: HTML malformado en el select:
-  ```html
-  <option value="video" ${isEdit && lesson.type === 'video' ? '🎥 Video' : '📄 Texto'}>Video (Loom)</option>
-  ```
+#### **#16 - Error en Select de Tipo de Lección** ✅
+- **Archivo**: admin.html (L827-829)
+- **Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
+- **Problema**: HTML malformado - ternario retornaba texto emoji en vez de atributo 'selected'
 - **Riesgo**: 🔴 ALTO - Edición de lecciones no funciona correctamente
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**:
+- **Estado**: ✅ **CORREGIDO** - Select ahora usa 'selected' correctamente
+- **Solución Implementada**:
   ```html
   <option value="video" ${isEdit && lesson.type === 'video' ? 'selected' : ''}>🎥 Video (Loom)</option>
   <option value="text" ${isEdit && lesson.type === 'text' ? 'selected' : ''}>📄 Texto</option>
   ```
+- **Cambios**:
+  - ✅ L827: Corregido ternario de 'video' option (retorna 'selected' en vez de '🎥 Video')
+  - ✅ L828: Mantiene lógica correcta de 'text' option
+  - ✅ CSS cache-busting actualizado: v2.32.0
+  - ⏳ Requiere subida manual a Hostinger vía FTP
 
 #### **#17 - Modal No Se Cierra al Click Fuera**
 - **Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
