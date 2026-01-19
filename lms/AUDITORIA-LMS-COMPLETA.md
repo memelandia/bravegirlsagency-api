@@ -210,17 +210,35 @@ Componente**: 🔴 **BACKEND ONLY** (Vercel API)
   - ⏳ Requiere subida manual a Hostinger vía FTP
 
 
-#### **#15 - Sin Validación al Eliminar Módulos con Progreso**
-- **Archivo**: admin.html (L684)
+#### **#15 - Sin Validación al Eliminar Módulos con Progreso** ✅
+- **Archivo**: api/_handlers/lms-admin.js (L378-391)
 - **Componente**: 🔴 **BACKEND ONLY** (Vercel API)
 - **Problema**: Mensaje dice "no se podrá borrar" pero no valida realmente
 - **Riesgo**: 🔴 ALTO - Pérdida de datos de progreso de alumnos
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: Backend debe validar antes de permitir eliminación en endpoint `/admin/modules/:id`
-- **Problema**: Mensaje dice "no se podrá borrar" pero no valida realmente
-- **Riesgo**: 🔴 ALTO - Pérdida de datos de progreso de alumnos
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: Backend debe validar antes de permitir eliminación
+- **Estado**: ✅ **YA CORREGIDO** (Implementado desde el inicio)
+- **Validación Existente**:
+  - ✅ Backend verifica progreso ANTES de permitir DELETE
+  - ✅ Query JOIN entre `lms_progress_lessons` y `lms_lessons` detecta progreso
+  - ✅ Retorna HTTP 400 con mensaje claro si hay progreso
+  - ✅ Sugiere desactivar (unpublish) en lugar de eliminar
+  - ✅ Solo ejecuta DELETE si NO hay progreso registrado
+  - ✅ Protección a nivel de base de datos (transaccional)
+- **Código Backend**:
+  ```javascript
+  const hasProgress = await query(`
+    SELECT 1 FROM lms_progress_lessons pl
+    JOIN lms_lessons l ON l.id = pl.lesson_id
+    WHERE l.module_id = $1
+    LIMIT 1
+  `, [id]);
+  
+  if (hasProgress.rows.length > 0) {
+    return res.status(400).json({ 
+      error: 'No se puede eliminar este módulo porque hay usuarios con progreso...'
+    });
+  }
+  ```
+
 
 ---
 Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
