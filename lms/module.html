@@ -342,29 +342,29 @@
                </div>
  
                <div style="margin-top: 30px;">
-               ${moduleData.canTakeQuiz 
-                 ? `<button class="btn btn-primary" style="font-size:1.1rem; padding: 12px 30px;" onclick="startQuiz()">Comenzar Examen Ahora</button>`
-                 : (quiz && quiz.userPassed)
-                   ? `<div class="alert alert-success" style="display:inline-block;">✅ ¡Aprobaste con ${quiz.bestScore}%!</div>`
-                   : (quiz && quiz.cooldownRemaining > 0)
-                     ? `<div class="alert alert-info" style="display:inline-block;">⏰ Debes esperar ${quiz.cooldownRemaining} minutos para reintentar.</div>`
-                     : (quiz && quiz.attemptsRemaining === 0)
-                       ? `<div class="alert alert-error" style="display:inline-block;">❌ Sin intentos disponibles. Has usado todos tus ${quiz.maxAttempts} intentos.</div>`
-                       : (quiz && quiz.attemptsRemaining > 0 && quiz.userAttempts > 0)
-                         ? `<div>
-                              <div class="alert alert-warning" style="display:inline-block; margin-bottom: 15px;">
-                                ⚠️ No aprobaste en el intento anterior. Tienes ${quiz.attemptsRemaining} intentos restantes.
-                              </div><br>
-                              <button class="btn btn-primary" style="font-size:1.1rem; padding: 12px 30px;" onclick="startQuiz()">Reintentar Evaluación</button>
-                            </div>`
-                       : !moduleData.allLessonsCompleted
-                         ? `<div class="alert alert-warning" style="display:inline-block;">⚠️ Completa todas las lecciones antes de tomar el examen (${moduleData.lessons.filter(l => l.completed).length}/${moduleData.lessons.length} completadas).</div>`
-                         : (quiz && quiz.totalQuestions === 0)
-                           ? `<div class="alert alert-error" style="display:inline-block;">
-                                <strong>⚠️ Error de Configuración</strong><br>
-                                Este módulo no tiene preguntas configuradas para el examen.<br>
-                                <small>El administrador debe agregar preguntas desde el panel de administración.</small>
+               ${!quiz || quiz.totalQuestions === 0
+                 ? `<div class="alert alert-error" style="display:inline-block;">
+                      <strong>⚠️ Quiz Sin Configurar</strong><br>
+                      Este módulo no tiene preguntas configuradas para el examen.<br>
+                      <small>El administrador debe agregar preguntas desde el panel de administración.</small>
+                    </div>`
+                 : moduleData.canTakeQuiz 
+                   ? `<button class="btn btn-primary" style="font-size:1.1rem; padding: 12px 30px;" onclick="startQuiz()">Comenzar Examen Ahora</button>`
+                   : (quiz && quiz.userPassed)
+                     ? `<div class="alert alert-success" style="display:inline-block;">✅ ¡Aprobaste con ${quiz.bestScore}%!</div>`
+                     : (quiz && quiz.cooldownRemaining > 0)
+                       ? `<div class="alert alert-info" style="display:inline-block;">⏰ Debes esperar ${quiz.cooldownRemaining} minutos para reintentar.</div>`
+                       : (quiz && quiz.attemptsRemaining === 0)
+                         ? `<div class="alert alert-error" style="display:inline-block;">❌ Sin intentos disponibles. Has usado todos tus ${quiz.maxAttempts} intentos.</div>`
+                         : (quiz && quiz.attemptsRemaining > 0 && quiz.userAttempts > 0)
+                           ? `<div>
+                                <div class="alert alert-warning" style="display:inline-block; margin-bottom: 15px;">
+                                  ⚠️ No aprobaste en el intento anterior. Tienes ${quiz.attemptsRemaining} intentos restantes.
+                                </div><br>
+                                <button class="btn btn-primary" style="font-size:1.1rem; padding: 12px 30px;" onclick="startQuiz()">Reintentar Evaluación</button>
                               </div>`
+                         : !moduleData.allLessonsCompleted
+                           ? `<div class="alert alert-warning" style="display:inline-block;">⚠️ Completa todas las lecciones antes de tomar el examen (${moduleData.lessons.filter(l => l.completed).length}/${moduleData.lessons.length} completadas).</div>`
                            : `<div class="alert alert-info" style="display:inline-block;">📝 Evaluación disponible próximamente.</div>`
                }
                

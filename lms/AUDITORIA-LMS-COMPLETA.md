@@ -145,17 +145,17 @@ Componente**: 🔴 **BACKEND ONLY** (Vercel API)
   - ✅ Admins y supervisores exentos de cooldown (solo aplica a 'chatter')
 
 #### **#10 - Quiz Sin Preguntas Permite Acceso**
-- **Archivo**: module.html (L278-280)
+- **Archivo**: module.html (L346-371)
 - **Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
 - **Problema**: Se muestra botón "Comenzar Examen" incluso si `quiz.totalQuestions === 0`
 - **Riesgo**: 🔴 ALTO - Error al intentar tomar quiz vacío
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**:
-  ```javascript
-  if (!quiz || quiz.totalQuestions === 0) {
-    return `<div class="alert alert-error">Este módulo no tiene examen configurado</div>`;
-  }
-  ```
+- **Estado**: ✅ **CORREGIDO** - 19/01/2026
+- **Solución Implementada**:
+  - ✅ Validación prioritaria: verifica `quiz.totalQuestions === 0` ANTES de otras condiciones
+  - ✅ Mensaje claro: "Quiz Sin Configurar" con instrucciones para admin
+  - ✅ Previene mostrar botón "Comenzar Examen" cuando no hay preguntas
+  - ✅ Panel de depuración incluye diagnóstico de quiz sin preguntas
+  - ✅ Protección contra intentos de iniciar quiz vacío
 
 #### **#11 - Sin Validación de Intentos Máximos en Backend**
 - **Archivo**: quiz.html (L285-300)
