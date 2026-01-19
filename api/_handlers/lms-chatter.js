@@ -390,12 +390,9 @@ async function handleModule(req, res, user, deps) {
     const userPassed = row.user_passed || false;
     const userAttempts = parseInt(row.user_attempts) || 0;
     const maxAttempts = parseInt(row.max_attempts);
+    const cooldownMinutes = parseInt(row.cooldown_minutes) || 0;
     
-    // HARD OVERRIDE: Deshabilitar cooldown completamente (siempre 0 minutos)
-    let dbCooldown = parseInt(row.cooldown_minutes);
-    const cooldownMinutes = 0; // Sin cooldown - pueden reintentar inmediatamente
-    
-    // Calcular cooldown
+    // Calcular cooldown remaining
     let cooldownRemaining = 0;
     if (row.last_attempt && cooldownMinutes > 0) {
       const lastAttemptTime = new Date(row.last_attempt).getTime();
@@ -728,17 +725,21 @@ async function handleQuiz(req, res, user, deps) {
 
   const quiz = quizResult.rows[0];
 
-  // COOLDOWN DESHABILITADO - Permitir reintentos inmediatos
-  // if (quiz.last_attempt && quiz.cooldown_minutes > 0) {
-  //   const lastAttemptTime = new Date(quiz.last_attempt).getTime();
-  //   const cooldownMs = quiz.cooldown_minutes * 60 * 1000;
-  //   const elapsedMs = Date.now() - lastAttemptTime;
-  //   
-  //   if (elapsedMs < cooldownMs) {
-  //     const minutesRemaining = Math.ceil((cooldownMs - elapsedMs) / 60000);
-  //     return errorResponse(res, 429, `Debes esperar ${minutesRemaining} minutos antes de intentar de nuevo.`);
-  //   }
-  // }
+  // VALIDACIÓN #9: Verificar cooldown antes de permitir intento
+  if (quiz.last_attempt && quiz.cooldown_minutes > 0) {
+    const lastAttemptTime = new Date(quiz.last_attempt).getTime();
+    const cooldownMs = quiz.cooldown_minutes * 60 * 1000;
+    const elapsedMs = Date.now() - lastAttemptTime;
+    
+    if (elapsedMs < cooldownMs) {
+      const minutesRemaining = Math.ceil((cooldownMs - elapsedMs) / 60000);
+      return res.status(429).json({ 
+        error: `Debes esperar ${minutesRemaining} minutos antes de intentar de nuevo.`,
+        cooldownRemaining: minutesRemaining,
+        cooldownMinutes: quiz.cooldown_minutes
+      });
+    }
+  }
 
   // Verificar intentos máximos
   if (quiz.user_attempts >= quiz.max_attempts && user.role === 'chatter') {
@@ -867,6 +868,19 @@ async function handleQuizSubmit(req, res, user, deps) {
       }
 
       const quiz = quizResult.rows[0];
+
+      // VALIDACIÓN CRÍTICA #9: Verificar cooldown ANTES de permitir submit
+      // Esto previene que usuarios maliciosos bypaseen el cooldown
+      if (quiz.last_attempt && quiz.cooldown_minutes > 0 && user.role === 'chatter') {
+        const lastAttemptTime = new Date(quiz.last_attempt).getTime();
+        const cooldownMs = quiz.cooldown_minutes * 60 * 1000;
+        const elapsedMs = Date.now() - lastAttemptTime;
+        
+        if (elapsedMs < cooldownMs) {
+          const minutesRemaining = Math.ceil((cooldownMs - elapsedMs) / 60000);
+          throw new Error(`COOLDOWN_ACTIVE:${minutesRemaining}`);
+        }
+      }
 
       // Verificar intentos máximos
       if (parseInt(quiz.user_attempts) >= quiz.max_attempts && user.role === 'chatter') {
@@ -1012,6 +1026,12 @@ async function handleQuizSubmit(req, res, user, deps) {
       return res.status(403).json({ error: 'Has alcanzado el límite de intentos.' });
     } else if (error.message === 'NO_QUESTIONS') {
       return res.status(404).json({ error: 'Este quiz no tiene preguntas configuradas.' });
+    } else if (error.message.startsWith('COOLDOWN_ACTIVE:')) {
+      const minutesRemaining = error.message.split(':')[1];
+      return res.status(429).json({ 
+        error: `Debes esperar ${minutesRemaining} minutos antes de intentar de nuevo.`,
+        cooldownRemaining: parseInt(minutesRemaining)
+      });
     } else {
       throw error;
     }

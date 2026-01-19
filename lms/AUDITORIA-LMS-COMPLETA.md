@@ -136,8 +136,13 @@ Se ha realizado una auditoría exhaustiva del Learning Management System (LMS) p
 Componente**: 🔴 **BACKEND ONLY** (Vercel API)
 - **Problema**: El frontend muestra `quiz.cooldownRemaining` pero validación backend inconsistente
 - **Riesgo**: 🔴 ALTO - Usuarios pueden tomar quiz antes del cooldown
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: Validar en backend antes de permitir intento en endpoint `/quiz/start`
+- **Estado**: ✅ **CORREGIDO** - 19/01/2026
+- **Solución Implementada**:
+  - ✅ Restaurado cooldown real de BD (eliminado override que forzaba a 0)
+  - ✅ Validación en GET /quiz/:moduleId (antes de mostrar preguntas)
+  - ✅ Validación CRÍTICA en POST /quiz/:moduleId/submit (previene bypass)
+  - ✅ Respuesta HTTP 429 con minutos restantes cuando cooldown activo
+  - ✅ Admins y supervisores exentos de cooldown (solo aplica a 'chatter')
 
 #### **#10 - Quiz Sin Preguntas Permite Acceso**
 - **Archivo**: module.html (L278-280)
