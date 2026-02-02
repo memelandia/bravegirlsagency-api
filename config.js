@@ -28,7 +28,8 @@ window.CONFIG = {
             'chatter3': { name: 'Alfonso Silva', gid: '1408176673' },
             'chatter4': { name: 'Nicolas Viganotti', gid: '1989454215' },
             'chatter5': { name: 'Kari Narvaez', gid: '1023806221' },
-            'chatter6': { name: 'Emely', gid: '1931030491' }
+            'chatter6': { name: 'Emely', gid: '1931030491' },
+            'chatter7': { name: 'Carlo', gid: '1922350290' }
         }
     },
     
@@ -151,6 +152,15 @@ window.CONFIG = {
                 type: 'chatter',
                 onlyMonsterId: '139826',
                 assignedModels: ['model5'] // Vicky Luna por defecto
+            },
+            {
+                id: 'chatter7',
+                username: 'carlo',
+                password: 'carlo2025',
+                name: 'Carlo',
+                type: 'chatter',
+                onlyMonsterId: 'PENDING',
+                assignedModels: [] // Configurar según modelos asignados
             }
         ]
     },
