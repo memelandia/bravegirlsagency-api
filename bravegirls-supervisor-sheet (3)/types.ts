@@ -13,17 +13,23 @@ export interface ChecklistRow {
 }
 
 export const CHECKLIST_ROWS: ChecklistRow[] = [
-  { chatter: 'Nico', cuenta: 'Carmen' },
   { chatter: 'Nico', cuenta: 'Bellarey' },
   { chatter: 'Nico', cuenta: 'Vicky' },
-  { chatter: 'Alfonso', cuenta: 'Carmen' },
-  { chatter: 'Alfonso', cuenta: 'Bellarey' },
-  { chatter: 'Yaye', cuenta: 'Lexi' },
-  { chatter: 'Yaye', cuenta: 'Lucy' },
-  { chatter: 'Diego', cuenta: 'Lexi' },
-  { chatter: 'Diego', cuenta: 'Lucy' },
+  { chatter: 'Kari', cuenta: 'Bellarey' },
   { chatter: 'Kari', cuenta: 'Vicky' },
-  { chatter: 'Emely', cuenta: 'Vicky' },
+  { chatter: 'Alfonso', cuenta: 'Bellarey' },
+  { chatter: 'Alfonso', cuenta: 'Vicky' },
+  { chatter: 'Yaye', cuenta: 'Lexi' },
+  { chatter: 'Yaye', cuenta: 'Carmen' },
+  { chatter: 'Yaye', cuenta: 'Lucy' },
+  { chatter: 'Emely', cuenta: 'Lexi' },
+  { chatter: 'Emely', cuenta: 'Carmen' },
+  { chatter: 'Emely', cuenta: 'Lucy' },
+  { chatter: 'Carlo', cuenta: 'Lexi' },
+  { chatter: 'Carlo', cuenta: 'Carmen' },
+  { chatter: 'Carlo', cuenta: 'Lucy' },
+  { chatter: 'Diego', cuenta: 'Nessa' },
+  { chatter: 'Diego', cuenta: 'Ariana' },
 ];
 
 export const VIP_ROWS = [
@@ -31,11 +37,13 @@ export const VIP_ROWS = [
   'Bellarey',
   'Vicky',
   'Lexi',
-  'Lucy'
+  'Lucy',
+  'Ariana',
+  'Nessa'
 ];
 
-export const CHATTERS = ['Nico', 'Alfonso', 'Yaye', 'Diego', 'Kari', 'Emely'];
-export const ACCOUNTS = ['Carmen', 'Bellarey', 'Vicky', 'Lexi', 'Lucy'];
+export const CHATTERS = ['Nico', 'Alfonso', 'Yaye', 'Diego', 'Kari', 'Emely', 'Carlo'];
+export const ACCOUNTS = ['Carmen', 'Bellarey', 'Vicky', 'Lexi', 'Lucy', 'Ariana', 'Nessa'];
 
 // Color Mappings for Dropdowns/Badges (Light & Dark compatible)
 export const CHATTER_COLORS: Record<string, string> = {
@@ -45,6 +53,7 @@ export const CHATTER_COLORS: Record<string, string> = {
   'Diego': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   'Kari': 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
   'Emely': 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
+  'Carlo': 'bg-lime-100 text-lime-800 dark:bg-lime-900 dark:text-lime-200',
   'default': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
 };
 
@@ -54,6 +63,8 @@ export const ACCOUNT_COLORS: Record<string, string> = {
   'Vicky': 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-900',
   'Lexi': 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-900',
   'Lucy': 'bg-cyan-50 text-cyan-700 border-cyan-100 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-900',
+  'Ariana': 'bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-900',
+  'Nessa': 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100 dark:bg-fuchsia-900/30 dark:text-fuchsia-300 dark:border-fuchsia-900',
   'default': 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-300'
 };
 

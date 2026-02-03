@@ -138,12 +138,27 @@ const App: React.FC = () => {
     );
 
     if (confirmWipe) {
+      // Limpiar TODOS los datos del mes
       localStorage.removeItem('checklist_mes_data');
       localStorage.removeItem('vip_daily_status'); // Keep 'vip_fans_list' (names)
       localStorage.removeItem('supervision_semanal_data');
-      localStorage.removeItem('registro_errores_data'); 
+      localStorage.removeItem('registro_errores_data');
       
-      window.location.reload();
+      // También limpiar datos del backend/API si existen
+      try {
+        // Limpiar indexedDB o cualquier otro storage
+        if (window.indexedDB) {
+          const deleteRequest = indexedDB.deleteDatabase('supervisionDB');
+          deleteRequest.onsuccess = () => console.log('DB limpiada');
+        }
+      } catch (e) {
+        console.warn('Error limpiando DB:', e);
+      }
+      
+      // Forzar limpieza completa
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     }
   };
 
