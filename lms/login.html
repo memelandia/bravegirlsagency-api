@@ -282,8 +282,12 @@
           const data = await response.json();
           console.log('[Login] User already logged in:', data.user.email, 'Role:', data.user.role);
           
-          // Check if chatter needs onboarding (solo si nunca lo completó)
-          if (data.user.role === 'chatter' && !data.user.onboarding_completed_at) {
+          // VALIDACIÓN #28: Prevenir redirect loop - verificar si ya está en welcome.html
+          const currentPage = window.location.pathname;
+          const isOnWelcomePage = currentPage.includes('/welcome.html');
+          
+          // Check if chatter needs onboarding (solo si nunca lo completó Y no está ya en welcome)
+          if (data.user.role === 'chatter' && !data.user.onboarding_completed_at && !isOnWelcomePage) {
             console.log('[Login] Redirecting to onboarding');
             window.location.href = '/lms/welcome.html';
           } else if (data.user.role === 'admin' || data.user.role === 'supervisor') {

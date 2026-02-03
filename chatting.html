@@ -1,0 +1,1121 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Guía para Chatters — BraveGirls Agency</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    :root {
+      --bg-dark: #0b1220;
+      --bg-darker: #060a12;
+      --card-bg: #1a1f2e;
+      --text-primary: #f9fafb;
+      --text-secondary: #d1d5db;
+      --text-muted: #9ca3af;
+      --accent-green: #22c55e;
+      --accent-green-light: #86efac;
+      --accent-blue: #3b82f6;
+      --border: #374151;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #0b1220 0%, #1a1f2e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+    
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2rem;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .logo-icon {
+      font-size: 2rem;
+    }
+    
+    .logo-text h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent-green);
+    }
+    
+    .logo-text p {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    
+    .search-box {
+      flex: 1;
+      max-width: 500px;
+      position: relative;
+    }
+    
+    .search-box input {
+      width: 100%;
+      padding: 0.75rem 1rem 0.75rem 2.5rem;
+      background: var(--bg-darker);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      transition: all 0.2s;
+    }
+    
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--accent-green);
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+    }
+    
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 2rem;
+      padding: 2rem;
+    }
+    
+    .sidebar {
+      position: sticky;
+      top: 100px;
+      height: fit-content;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    
+    .sidebar h3 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    
+    .nav-list {
+      list-style: none;
+    }
+    
+    .nav-item {
+      margin-bottom: 0.5rem;
+    }
+    
+    .nav-link {
+      display: block;
+      padding: 0.625rem 0.875rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+    }
+    
+    .nav-link:hover {
+      background: rgba(34, 197, 94, 0.1);
+      color: var(--accent-green);
+    }
+    
+    .nav-link.active {
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--accent-green);
+      font-weight: 600;
+    }
+    
+    .main-content {
+      min-width: 0;
+    }
+    
+    .section {
+      margin-bottom: 3rem;
+      scroll-margin-top: 120px;
+    }
+    
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .card-header {
+      margin-bottom: 1.5rem;
+    }
+    
+    .section-number {
+      display: inline-block;
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--accent-green);
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+    
+    .card h2 {
+      font-size: 1.75rem;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+    
+    .card h3 {
+      font-size: 1.25rem;
+      margin: 1.5rem 0 1rem;
+      color: var(--accent-green-light);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .card h4 {
+      font-size: 1rem;
+      margin: 1rem 0 0.5rem;
+      color: var(--text-secondary);
+    }
+    
+    .card p {
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      line-height: 1.7;
+    }
+    
+    .callout {
+      padding: 1.25rem;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      border-left: 4px solid;
+    }
+    
+    .callout-gold {
+      background: rgba(245, 158, 11, 0.1);
+      border-color: var(--warning);
+    }
+    
+    .callout-green {
+      background: rgba(34, 197, 94, 0.1);
+      border-color: var(--accent-green);
+    }
+    
+    .callout-blue {
+      background: rgba(59, 130, 246, 0.1);
+      border-color: var(--accent-blue);
+    }
+    
+    .callout-red {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: var(--danger);
+    }
+    
+    .callout-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .callout-gold .callout-title {
+      color: var(--warning);
+    }
+    
+    .callout-green .callout-title {
+      color: var(--accent-green);
+    }
+    
+    .callout-blue .callout-title {
+      color: var(--accent-blue);
+    }
+    
+    .callout-red .callout-title {
+      color: var(--danger);
+    }
+    
+    .callout p {
+      margin: 0;
+      color: var(--text-secondary);
+    }
+    
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin: 1.5rem 0;
+    }
+    
+    .comparison-card {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+    
+    .comparison-card.good {
+      border-color: var(--accent-green);
+    }
+    
+    .comparison-card.bad {
+      border-color: var(--danger);
+    }
+    
+    .comparison-title {
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .comparison-card.good .comparison-title {
+      color: var(--accent-green);
+    }
+    
+    .comparison-card.bad .comparison-title {
+      color: var(--danger);
+    }
+    
+    ul, ol {
+      margin: 1rem 0;
+      padding-left: 1.5rem;
+      color: var(--text-secondary);
+    }
+    
+    li {
+      margin-bottom: 0.5rem;
+    }
+    
+    .checklist {
+      list-style: none;
+      padding: 0;
+    }
+    
+    .checklist li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+    }
+    
+    .checklist-icon {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      background: var(--accent-green);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--bg-dark);
+      font-size: 0.875rem;
+    }
+    
+    .checklist-content strong {
+      color: var(--accent-green-light);
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    
+    .table-responsive {
+      overflow-x: auto;
+      margin: 1.5rem 0;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    th {
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--accent-green-light);
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+    
+    td {
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    
+    .example-box {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin: 1rem 0;
+    }
+    
+    .example-label {
+      font-weight: 700;
+      color: var(--accent-blue);
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+    
+    .quote {
+      font-style: italic;
+      color: var(--text-secondary);
+      border-left: 3px solid var(--accent-green);
+      padding-left: 1rem;
+      margin: 1rem 0;
+    }
+    
+    @media (max-width: 1024px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+      
+      .sidebar {
+        position: static;
+      }
+      
+      .comparison-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .search-box {
+        max-width: none;
+      }
+      
+      .container {
+        padding: 1rem;
+      }
+      
+      .card {
+        padding: 1.25rem;
+      }
+      
+      .card h2 {
+        font-size: 1.5rem;
+      }
+    }
+    
+    .footer {
+      background: var(--card-bg);
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      margin-top: 4rem;
+    }
+    
+    .footer p {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">
+        <span class="logo-icon">🎓</span>
+        <div class="logo-text">
+          <h1>Guía para Chatters</h1>
+          <p>BraveGirls Agency — Training Navidad 2025</p>
+        </div>
+      </div>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Buscar en el manual...">
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <aside class="sidebar">
+      <h3>Navegación</h3>
+      <ul class="nav-list">
+        <li class="nav-item"><a href="#intro" class="nav-link active">Introducción</a></li>
+        <li class="nav-item"><a href="#parte1" class="nav-link">Parte 1: Conversación</a></li>
+        <li class="nav-item"><a href="#parte2" class="nav-link">Parte 2: Vista de Pájaro</a></li>
+        <li class="nav-item"><a href="#parte3" class="nav-link">Parte 3: Juega al Ajedrez</a></li>
+        <li class="nav-item"><a href="#parte4" class="nav-link">Parte 4: Feedback</a></li>
+        <li class="nav-item"><a href="#parte5" class="nav-link">Parte 5: Liderazgo</a></li>
+        <li class="nav-item"><a href="#parte6" class="nav-link">Parte 6: Comunicación</a></li>
+        <li class="nav-item"><a href="#checklist" class="nav-link">Checklist Final</a></li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <!-- INTRODUCCIÓN -->
+      <section id="intro" class="section">
+        <div class="card">
+          <div class="card-header">
+            <span class="section-number">Introducción</span>
+            <h2>🧩 Fundamentos del Training</h2>
+          </div>
+          
+          <div class="callout callout-red">
+            <div class="callout-title">⚠️ INSTRUCCIÓN IMPORTANTE</div>
+            <p>Re-mira este contenido al menos dos veces y toma notas detalladas. Este material es el FUNDAMENTO de tu futuro como líder. Ahora tienes más responsabilidades, pero también más oportunidades para tu carrera. Tómatelo en serio y aprende estas bases.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PARTE 1: CONVERSACIÓN PERSONALIZADA -->
+      <section id="parte1" class="section">
+        <div class="card">
+          <div class="card-header">
+            <span class="section-number">Parte 1</span>
+            <h2>🧠 Conversación Personalizada</h2>
+          </div>
+
+          <h3>🔑 Principio #1: La Conversación Custom SIEMPRE Gana</h3>
+          
+          <div class="callout callout-gold">
+            <div class="callout-title">💎 REGLA DE ORO</div>
+            <p>La conversación personalizada SIEMPRE es mejor que los hotkeys automáticos.</p>
+          </div>
+
+          <h4>Por Qué Es Importante</h4>
+          <p>Hay MILES (si no millones) de creators en OnlyFans. El 90% usa:</p>
+          <ul>
+            <li>Los mismos follow-ups</li>
+            <li>Los mismos gestores de objeciones</li>
+            <li>Los mismos mensajes copy-pasta</li>
+          </ul>
+
+          <div class="callout callout-green">
+            <div class="callout-title">💡 INSIGHT CLAVE</div>
+            <p>Los suscriptores NO pagan solo por ver videos. Pueden ir a sitios porno gratis para eso. Pagan por ATENCIÓN PERSONALIZADA y una EXPERIENCIA ÚNICA.</p>
+          </div>
+
+          <h4>🍔⭐ La Analogía del Restaurante</h4>
+          <div class="comparison-grid">
+            <div class="comparison-card bad">
+              <div class="comparison-title">❌ McDonald's</div>
+              <ul>
+                <li>No te preguntan tu nombre</li>
+                <li>No personalizan nada</li>
+                <li>Pones orden → Te lo dan → Listo</li>
+                <li>Servicio básico, sin atención</li>
+              </ul>
+            </div>
+            <div class="comparison-card good">
+              <div class="comparison-title">✅ Restaurante 5 Estrellas</div>
+              <ul>
+                <li>Te preguntan tu nombre y reserva</li>
+                <li>¿Cómo te gusta el pollo?</li>
+                <li>¿Tienes deseos especiales?</li>
+                <li>Te cuidan en cada detalle</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="callout callout-blue">
+            <div class="callout-title">✅ APLICACIÓN</div>
+            <p>Así es como DEBES pensar mientras conversas. Trata a cada suscriptor como un cliente VIP en un restaurante de lujo.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>✍️ Principio #2: Usar Sus Palabras</h3>
+          <p>La lectura de mensajes anteriores ("read back") es ESENCIAL para entender la dinámica entre el fan y el creator.</p>
+
+          <h4>❌ EJEMPLO MALO</h4>
+          <div class="example-box">
+            <p><strong>Contexto:</strong> Estás en medio del script. Le preguntas: "¿Debería hacerlo en misionero o en perro?"</p>
+            <p><strong>Fan responde:</strong> "Misionero"</p>
+            <p><strong>Respuesta MALA (hotkey genérico):</strong> "Mira cómo jugué con mi coño y mis tetas 💦"</p>
+            <p style="color: var(--danger); margin-top: 1rem;"><strong>PROBLEMA:</strong> Se siente como mensaje automático. No personalizado.</p>
+          </div>
+
+          <h4>✅ EJEMPLO BUENO</h4>
+          <div class="example-box">
+            <p><strong>Respuesta BUENA (personalizada):</strong></p>
+            <p class="quote">"Lo hice en misionero como querías 😍 Dios mío, estaba imaginando cómo te ponías encima de mí y me mirabas fijamente a los ojos... Teníamos contacto visual todo el tiempo mientras me follabas 🔥"</p>
+            <div style="margin-top: 1rem;">
+              <p style="color: var(--accent-green);"><strong>POR QUÉ FUNCIONA:</strong></p>
+              <ol>
+                <li>Usas exactamente lo que él pidió ("misionero")</li>
+                <li>Creas una FANTASÍA visual detallada</li>
+                <li>Lo pones EN la escena ("te ponías encima de mí")</li>
+                <li>Describes cómo se vería (contacto visual, etc.)</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>🎬 Principio #3: Crear Fantasía</h3>
+          
+          <div class="callout callout-green">
+            <div class="callout-title">🎯 OBJETIVO</div>
+            <p>El suscriptor debe "VER" el video en su mente ANTES de comprarlo.</p>
+          </div>
+
+          <h4>Comparación de Captaciones</h4>
+          <div class="comparison-grid">
+            <div class="comparison-card bad">
+              <div class="comparison-title">❌ Opción 1 (MALA)</div>
+              <p>"Wow, estoy jugando con mi coño y mis tetas, soy tan sucia 💦"</p>
+            </div>
+            <div class="comparison-card good">
+              <div class="comparison-title">✅ Opción 2 (BUENA)</div>
+              <p>"Lo hice en misionero... Solo imagina cómo te pones encima de mí, mientras tenemos contacto visual todo el tiempo y mi coño está siendo follado 😍🔥"</p>
+            </div>
+          </div>
+
+          <div class="callout callout-green">
+            <div class="callout-title">💡 LA DIFERENCIA</div>
+            <p>La Opción 2 describe cómo SE VERÍA. Crea la fantasía visual completa. Le das una razón IRRESISTIBLE para comprar.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>🎯 Principio #4: Entender las Intenciones del Suscriptor</h3>
+          <p>No todos los suscriptores quieren conversaciones largas. Debes ADAPTAR tu estilo según el tipo de fan.</p>
+
+          <h4>Tipos de Suscriptores</h4>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fan Conversacional</th>
+                  <th>Fan Directo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <ul>
+                      <li>Envía mensajes largos</li>
+                      <li>Usa muchos emojis</li>
+                      <li>Hace cumplidos</li>
+                      <li>"¡Wow, eres tan hermosa!"</li>
+                    </ul>
+                  </td>
+                  <td>
+                    <ul>
+                      <li>Responde "Sí", "No", "Tal vez"</li>
+                      <li>Mensajes cortos</li>
+                      <li>Pocos o ningún emoji</li>
+                      <li>"Quiero ver tus tetas"</li>
+                    </ul>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="background: rgba(34, 197, 94, 0.1);">
+                    <strong>→ ACCIÓN:</strong> Sigue el script completo. Agrega 1-2 mensajes extra. Usa emojis.
+                  </td>
+                  <td style="background: rgba(59, 130, 246, 0.1);">
+                    <strong>→ ACCIÓN:</strong> Acorta el script. Salta 1-2 hotkeys. Envía el PPV directamente. Menos emojis.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout callout-blue">
+            <div class="callout-title">📌 REGLA</div>
+            <p>"Captura el vibe del suscriptor" - Refleja su energía y estilo de comunicación.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>🎭 Principio #5: Personalidad del Creator</h3>
+          
+          <div class="callout callout-red">
+            <div class="callout-title">⚠️ IMPORTANTE</div>
+            <p>Cada creator tiene una personalidad diferente. NO uses el mismo tono para todos.</p>
+          </div>
+
+          <h4>Ejemplos de Arquetipos</h4>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Olivia (19-20 años)</th>
+                  <th>Jasmine (30-40 años)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Arquetipo:</strong> "La chica adorable y coqueta de al lado"</td>
+                  <td><strong>Arquetipo:</strong> "La mujer madura y experimentada"</td>
+                </tr>
+                <tr>
+                  <td><strong>Tono:</strong> Juguetón, algo tímido, cultura meme, humor joven</td>
+                  <td><strong>Tono:</strong> Segura, directa, dominante, sabe lo que quiere</td>
+                </tr>
+                <tr>
+                  <td><strong>Mensajes:</strong> "Omg no soy experta 🙈 Quiero probar cosas nuevas contigo"</td>
+                  <td><strong>Mensajes:</strong> "Sé exactamente cómo darte placer... Déjame mostrarte 😏"</td>
+                </tr>
+                <tr>
+                  <td><strong>Emojis:</strong> Muchos, variados, expresivos</td>
+                  <td><strong>Emojis:</strong> Menos, más selectivos, más sensuales</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout callout-blue">
+            <div class="callout-title">✅ ACCIÓN REQUERIDA</div>
+            <p>Pide acceso al Instagram del creator para entender su personalidad y estilo. Pregunta a Andreas, Christoph o tu manager.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PARTE 2: VISTA DE PÁJARO -->
+      <section id="parte2" class="section">
+        <div class="card">
+          <div class="card-header">
+            <span class="section-number">Parte 2</span>
+            <h2>🦅 Vista de Pájaro (Bird's Eye View)</h2>
+          </div>
+
+          <p>Significa ver las cosas desde una perspectiva más amplia. No te quedes atascado en los detalles, piensa ESTRATÉGICAMENTE.</p>
+
+          <div class="callout callout-green">
+            <div class="callout-title">💡 CONCEPTO CLAVE</div>
+            <p>Te enseñamos conocimiento de conversación, pero NO tienes que hacer todo 1:1. Mantén las bases, pero PIENSA por ti mismo.</p>
+          </div>
+
+          <h4>Libertad Creativa</h4>
+          <p>Eres un "free spirit" ahora. Puedes:</p>
+          <ul>
+            <li>Proponer nuevas ideas de contenido</li>
+            <li>Sugerir diferentes enfoques (más dominante, más secretaria, etc.)</li>
+            <li>Adaptar scripts según el creator (30-40 años con tatuajes ≠ chica inocente)</li>
+            <li>NO iniciar un script cada vez si no tiene sentido</li>
+          </ul>
+
+          <div class="callout callout-blue">
+            <div class="callout-title">🎯 TU RESPONSABILIDAD</div>
+            <p>Estar en contacto cercano con tu equipo de chatters. Implementar cambios. Reportar a management.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PARTE 3: JUEGA AL AJEDREZ -->
+      <section id="parte3" class="section">
+        <div class="card">
+          <div class="card-header">
+            <span class="section-number">Parte 3</span>
+            <h2>♟️ Juega al Ajedrez</h2>
+          </div>
+
+          <p>Piensa 5 PASOS adelante en cada conversación. Como un jugador de ajedrez profesional.</p>
+
+          <h4>Pensamiento Estratégico</h4>
+          <p>Cuando un suscriptor dice algo, pregúntate:</p>
+          <ol>
+            <li>¿Qué me dijo?</li>
+            <li>¿Qué preguntas puedo hacerle?</li>
+            <li>¿Cuáles son las 2 respuestas posibles?</li>
+            <li>¿Qué mensaje enviaré para cada respuesta?</li>
+            <li>¿Cómo lo llevo hacia la venta?</li>
+          </ol>
+
+          <h4>Ejemplo de Script como Tablero de Ajedrez</h4>
+          <div class="example-box">
+            <p><strong>Pregunta:</strong> "¿Prefieres misionero o perro?"</p>
+            <p><strong>Escenario A:</strong> Responde "misionero" → Hotkey/PPV preparado para misionero</p>
+            <p><strong>Escenario B:</strong> Responde "perro" → Hotkey/PPV preparado para perro</p>
+          </div>
+
+          <div class="callout callout-green">
+            <div class="callout-title">✅ RESULTADO</div>
+            <p>No importa qué responda, tienes un mensaje adecuado en 70-80% de los casos.</p>
+          </div>
+
+          <h4>Preguntas Estratégicas</h4>
+          <p>Si detectas que el fan no tiene mucho dinero o no le gustan scripts largos:</p>
+          <ul>
+            <li>"¿Cuánto tienes disponible?"</li>
+            <li>"¿Qué te gustaría ver?"</li>
+            <li>Envía PPV directamente sin script completo</li>
+          </ul>
+
+          <div class="callout callout-gold">
+            <div class="callout-title">🎯 OBJETIVO FINAL</div>
+            <p>Hacer ventas. Las ventas pagan nuestro salario, renta, comida. PERO el camino a muchas ventas es conversación custom + leer mensajes anteriores + entender dinámicas.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PARTE 4: FEEDBACK -->
+      <section id="parte4" class="section">
+        <div class="card">
+          <div class="card-header">
+            <span class="section-number">Parte 4</span>
+            <h2>💬 Estructura de Feedback</h2>
+          </div>
+
+          <p>Cuando das feedback a tu equipo, SIEMPRE sigue esta estructura de 3 pasos:</p>
+
+          <div class="example-box">
+            <div style="margin-bottom: 1.5rem;">
+              <div class="example-label">1️⃣ PASO 1: Reconocer el Problema</div>
+              <p>Identifica EXACTAMENTE qué está mal. Sé específico.</p>
+              <div class="comparison-grid">
+                <div class="comparison-card bad">
+                  <div class="comparison-title">❌ MALO</div>
+                  <p>"Esto está mal, hazlo mejor la próxima vez"</p>
+                </div>
+                <div class="comparison-card good">
+                  <div class="comparison-title">✅ BUENO</div>
+                  <p>"El problema es que no respondiste a su mensaje. Le enviaste un PPV con una captación genérica que no se relaciona con lo que él dijo."</p>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+              <div class="example-label">2️⃣ PASO 2: Proponer una Solución</div>
+              <p>Explica QUÉ harías tú en su lugar.</p>
+              <p class="quote">"Yo habría leído los últimos 5 mensajes para entender qué quiere. Vi que fuimos muy rápido en el script. En lugar de un video de blowjob, le habría enviado un video de masturbación, que es lo que él mencionó antes."</p>
+            </div>
+
+            <div>
+              <div class="example-label">3️⃣ PASO 3: Crear un Plan de Acción</div>
+              <div class="callout callout-red">
+                <div class="callout-title">⚠️ ESTO ES LO MÁS IMPORTANTE</div>
+                <p>Dale al chatter pasos CONCRETOS que puede implementar AHORA.</p>
+              </div>
+              <p><strong>Ejemplos de Planes de Acción:</strong></p>
+              <ul>
+                <li>"De ahora en adelante, SIEMPRE lee los últimos 5 mensajes antes de responder"</li>
+                <li>"Antes de enviar un PPV, revisa la captación del hotkey y usa sus palabras"</li>
+                <li>"Si el fan responde con mensajes cortos, acorta el script y ve directo al punto"</li>
+                <li>"Siempre pregunta '¿Qué te gustaría ver?' si no está claro"</li>
+              </ul>
+            </div>
+          </div>
+
+          <h4>Comparte Tu Experiencia</h4>
+          <p>Puedes decir: "Mira, yo tuve el mismo problema hace unos meses. Hice esto y esto, y resolvió el problema." Esto hace el feedback más personal y creíble.</p>
+        </div>
+      </section>
+
+      <!-- PARTE 5: LIDERAZGO -->
+      <section id="parte5" class="section">
+        <div class="card">
+          <div class="card-header">
+            <span class="section-number">Parte 5</span>
+            <h2>👑 Eres el Jefe</h2>
+          </div>
+
+          <div class="callout callout-red">
+            <div class="callout-title">💡 REALIDAD</div>
+            <p>Estás en posición de management. Puede ser difícil al principio, pero ERES el jefe.</p>
+          </div>
+
+          <h4>🥕🪓 Zanahoria y Palo (Carrot & Stick)</h4>
+          <p>Usa ambas estrategias dependiendo de la situación.</p>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>🥕 LA ZANAHORIA (Recompensa)</th>
+                  <th>🪓 EL PALO (Consecuencia)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Cuándo usar:</strong> Cuando ves un buen chat, buena estrategia, buen resultado</td>
+                  <td><strong>Cuándo usar:</strong> Cuando hacen errores graves o repetitivos</td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Qué decir:</strong>
+                    <ul>
+                      <li>"Solo vi este chat, fue REALMENTE bueno"</li>
+                      <li>"Funcionó perfecto, buen approach"</li>
+                      <li>"Usa esto más frecuentemente"</li>
+                      <li>"Los demás pueden aprender de esto"</li>
+                    </ul>
+                  </td>
+                  <td>
+                    <strong>Qué decir:</strong>
+                    <ul>
+                      <li>"Mira, eso es una mierda. No está permitido"</li>
+                      <li>"Esto es inaceptable y necesita cambiar YA"</li>
+                      <li>Sé más serio y directo sobre la situación</li>
+                    </ul>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="background: rgba(34, 197, 94, 0.1);">
+                    <strong>Bonus:</strong> Si hacen trabajo excepcional, pregunta a management si puedes dar un bonus (primero pregunta, no prometas).
+                  </td>
+                  <td style="background: rgba(239, 68, 68, 0.1);">
+                    <strong>BALANCE:</strong> Usa ambos. No solo seas duro ni solo seas suave. Juega con las emociones de forma profesional.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PARTE 6: COMUNICACIÓN -->
+      <section id="parte6" class="section">
+        <div class="card">
+          <div class="card-header">
+            <span class="section-number">Parte 6</span>
+            <h2>❓ Preguntas y Comunicación</h2>
+          </div>
+
+          <div class="callout callout-red">
+            <div class="callout-title">⚠️ SÚPER IMPORTANTE</div>
+            <p>Si tienes preguntas sobre CUALQUIERA de estos puntos, PREGUNTA.</p>
+          </div>
+
+          <h4>No Hay Preguntas Malas</h4>
+          <p>Necesitas entender estos conceptos al 100%. Así que:</p>
+          <ul>
+            <li>No tengas miedo de preguntar</li>
+            <li>Incluso si ya te lo explicaron, pregunta de nuevo si no quedó claro</li>
+            <li>Preguntar muestra que estás pensando activamente</li>
+            <li>Es mejor preguntar ahora que cometer errores después</li>
+          </ul>
+
+          <div class="callout callout-gold">
+            <div class="callout-title">💡 POR QUÉ ES IMPORTANTE</div>
+            <p>Una gran parte de nuestra comunicación depende de que entiendas estos principios perfectamente. Tu éxito como supervisor depende de tu comprensión profunda.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHECKLIST FINAL -->
+      <section id="checklist" class="section">
+        <div class="card">
+          <div class="card-header">
+            <span class="section-number">Resumen</span>
+            <h2>✅ Checklist de Supervisor</h2>
+          </div>
+
+          <ul class="checklist">
+            <li>
+              <div class="checklist-icon">1</div>
+              <div class="checklist-content">
+                <strong>Conversación Custom Siempre Gana</strong>
+                <p>Personalización > Hotkeys automáticos. Trata a cada fan como VIP.</p>
+              </div>
+            </li>
+            <li>
+              <div class="checklist-icon">2</div>
+              <div class="checklist-content">
+                <strong>Usa Sus Palabras</strong>
+                <p>Lee mensajes anteriores. Refleja lo que él dice. Crea respuestas naturales.</p>
+              </div>
+            </li>
+            <li>
+              <div class="checklist-icon">3</div>
+              <div class="checklist-content">
+                <strong>Crea Fantasía</strong>
+                <p>Haz que "vea" el video antes de comprarlo. Describe la escena vívidamente.</p>
+              </div>
+            </li>
+            <li>
+              <div class="checklist-icon">4</div>
+              <div class="checklist-content">
+                <strong>Entiende Intenciones</strong>
+                <p>¿Conversacional o directo? Adapta tu estilo. Refleja su energía.</p>
+              </div>
+            </li>
+            <li>
+              <div class="checklist-icon">5</div>
+              <div class="checklist-content">
+                <strong>Conoce al Creator</strong>
+                <p>Cada personalidad es diferente. Ajusta tono, emojis, estilo de mensaje.</p>
+              </div>
+            </li>
+            <li>
+              <div class="checklist-icon">6</div>
+              <div class="checklist-content">
+                <strong>Vista de Pájaro</strong>
+                <p>Piensa estratégicamente. Sé creativo. Propón nuevas ideas.</p>
+              </div>
+            </li>
+            <li>
+              <div class="checklist-icon">7</div>
+              <div class="checklist-content">
+                <strong>Juega al Ajedrez</strong>
+                <p>Piensa 5 pasos adelante. Anticipa respuestas. Guía hacia ventas.</p>
+              </div>
+            </li>
+            <li>
+              <div class="checklist-icon">8</div>
+              <div class="checklist-content">
+                <strong>Feedback Estructurado</strong>
+                <p>Problema → Solución → Plan de Acción. Siempre en ese orden.</p>
+              </div>
+            </li>
+            <li>
+              <div class="checklist-icon">9</div>
+              <div class="checklist-content">
+                <strong>Eres el Jefe</strong>
+                <p>Usa zanahoria y palo. Recompensa buen trabajo. Corrige errores firmemente.</p>
+              </div>
+            </li>
+            <li>
+              <div class="checklist-icon">10</div>
+              <div class="checklist-content">
+                <strong>Pregunta Siempre</strong>
+                <p>No hay preguntas tontas. Entender al 100% es crucial para tu éxito.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>🧩 Notas Finales</h3>
+          
+          <div class="callout callout-green">
+            <div class="callout-title">💪 CONFIANZA</div>
+            <p>Estás viendo este contenido porque depositamos MUCHA confianza en ti. Sabemos que puedes pensar de forma estratégica, que no eres unidimensional, y que puedes resolver problemas creativamente.</p>
+          </div>
+
+          <div class="callout callout-blue">
+            <div class="callout-title">🚀 LIBERTAD CON RESPONSABILIDAD</div>
+            <p>Eres un "free spirit" ahora. No necesitas seguir cada script religiosamente. Pero CON esta libertad viene la responsabilidad de tomar buenas decisiones estratégicas.</p>
+          </div>
+
+          <div class="callout callout-gold">
+            <div class="callout-title">📚 APRENDIZAJE CONTINUO</div>
+            <p>Re-mira este contenido. Toma notas. Estudia los ejemplos. Aplica los principios. Mejora constantemente.</p>
+          </div>
+
+          <div class="callout callout-green">
+            <div class="callout-title">🎯 TU ÉXITO = NUESTRO ÉXITO</div>
+            <p>Cuando tú tienes éxito como supervisor, todo el equipo tiene éxito. Tus chatters mejoran, las ventas suben, y todos crecemos juntos.</p>
+          </div>
+
+          <div style="text-align: center; margin-top: 2rem; padding: 2rem; background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(59, 130, 246, 0.2)); border-radius: 12px;">
+            <h3 style="font-size: 2rem; margin-bottom: 0.5rem;">🎉 ¡AHORA ES TU MOMENTO DE BRILLAR!</h3>
+            <p style="color: var(--text-secondary);">Documento creado para tu éxito como supervisor — Training Navidad 2025</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>© 2025 BraveGirls Agency — Documento de Training Interno</p>
+  </footer>
+
+  <script>
+    // Navegación suave
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetId = link.getAttribute('href').substring(1);
+        const targetSection = document.getElementById(targetId);
+        
+        if (targetSection) {
+          targetSection.scrollIntoView({ behavior: 'smooth' });
+          
+          // Actualizar link activo
+          document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+          link.classList.add('active');
+        }
+      });
+    });
+
+    // Buscador simple
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', (e) => {
+      const searchTerm = e.target.value.toLowerCase();
+      const cards = document.querySelectorAll('.card');
+      
+      cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        if (text.includes(searchTerm) || searchTerm === '') {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
+
+    // Intersection Observer para actualizar navegación activa al hacer scroll
+    const observerOptions = {
+      root: null,
+      rootMargin: '-100px 0px -80% 0px',
+      threshold: 0
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.getAttribute('id');
+          document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === `#${id}`) {
+              link.classList.add('active');
+            }
+          });
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('.section').forEach(section => {
+      observer.observe(section);
+    });
+  </script>
+</body>
+</html>

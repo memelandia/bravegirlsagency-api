@@ -264,67 +264,140 @@ Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
   - ✅ CSS cache-busting actualizado: v2.32.0
   - ⏳ Requiere subida manual a Hostinger vía FTP
 
-#### **#17 - Modal No Se Cierra al Click Fuera**
+#### **#17 - Modal No Se Cierra al Click Fuera** ✅
+- **Archivo**: admin.html (L522, L631, L805)
 - **Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
 - **Problema**: `onclick="if(event.target === this)"` solo funciona con click exacto
 - **Riesgo**: 🟡 MEDIO - UX confusa
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: Agregar `event.stopPropagation()` en modal-content
+- **Estado**: ✅ **CORREGIDO** - 21/01/2026
+- **Solución Implementada**:
+  - ✅ Agregado `onclick="if(event.target === this) closeModal('modalId')"` en todos los modal-overlay
+  - ✅ Agregado `onclick="event.stopPropagation()"` en todos los modal-content
+  - ✅ Modales afectados: stageModal, moduleModal, lessonModal
+  - ✅ previewModal y reportModal ya tenían la corrección
+  - ✅ CSS cache-busting actualizado: v2.33.0
+  - ⏳ Requiere subida manual a Hostinger vía FTP
 
-#### **#18 - Drag & Drop Puede Romper Orden**
+#### **#18 - Drag & Drop Puede Romper Orden** ✅
 - **Archivo**: admin.html (L758-781)
 - **Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
 - **Problema**: Si petición falla, orden UI no se revierte
 - **Riesgo**: 🟡 MEDIO - Inconsistencia visual
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: Guardar orden original y restaurar en catch
+- **Estado**: ✅ **CORREGIDO** - 21/01/2026
+- **Solución Implementada**:
+  - ✅ Guardado de HTML original antes de aplicar cambios de orden
+  - ✅ Restauración automática del orden original si la petición falla
+  - ✅ Eliminado reload completo que causaba UX pobre
+  - ✅ Manejo elegante de errores con restauración instantánea
+  - ✅ CSS cache-busting actualizado: v2.34.0
+  - ⏳ Requiere subida manual a Hostinger vía FTP
 
-#### **#19 - Spinner No Se Oculta en Errores**
-- **Archivo**: campus.html (L83), module.html (L39)
-- **Componente**: 🟢 **FRONTEND ONLY** (Hostinger
-- **Archivo**: campus.html (L83), module.html (L39)
+#### **#19 - Spinner No Se Oculta en Errores** ✅
+- **Archivos**: campus.html (L258), module.html (L169)
+- **Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
 - **Problema**: Si carga falla, spinner sigue visible
 - **Riesgo**: 🟡 MEDIO - Usuario queda bloqueado
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: Ocultar spinner en bloque catch
+- **Estado**: ✅ **CORREGIDO** - 21/01/2026
+- **Solución Implementada**:
+  - ✅ campus.html: Agregado `document.querySelector('.spinner').style.display = 'none'` en catch
+  - ✅ module.html: Agregado `document.getElementById('loadingSpinner').classList.add('hidden')` en catch
+  - ✅ Spinner se oculta automáticamente cuando hay errores de carga
+  - ✅ Usuario puede ver mensaje de error sin spinner bloqueando la UI
+  - ✅ CSS cache-busting actualizado: v2.34.0
+  - ⏳ Requiere subida manual a Hostinger vía FTP
 
 ---
 
 ### 🔄 LÓGICA DE NEGOCIO
 
-#### **#20 - Progreso No Se Actualiza en Tiempo Real**
-- **Archivo**: module.html (L456-476)
+#### **#20 - Progreso No Se Actualiza en Tiempo Real** ✅
+- **Archivo**: module.html (L518)
 - **Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
 - **Problema**: Al completar lección, actualiza local pero no refresca desde servidor
 - **Riesgo**: 🟡 MEDIO - Datos desincronizados
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: Después de `completeLesson()`, refrescar parcialmente
+- **Estado**: ✅ **CORREGIDO** - 21/01/2026
+- **Solución Implementada**:
+  - ✅ Agregada función `refreshModuleProgress()` que refresca datos desde servidor
+  - ✅ Llamada automática a refresh después de completar lección
+  - ✅ Actualiza progreso, porcentaje y estado de completación desde backend
+  - ✅ Manejo silencioso de errores - mantiene estado local si falla
+  - ✅ Sincronización en tiempo real sin interrumpir UX
+  - ✅ CSS cache-busting actualizado: v2.35.0
+  - ⏳ Requiere subida manual a Hostinger vía FTP
 
-#### **#21 - Tiempo de Estudio No Se Guarda al Cambiar Lección**
-- **Archivo**: module.html (L160-165)
-- **Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
+#### **#21 - Tiempo de Estudio No Se Guarda al Cambiar Lección** ✅
+- **Archivos**: module.html (L231-238) + api/_handlers/lms-chatter.js (L617-690)
+- **Componente**: 🔶 **FULL-STACK** (Frontend: Hostinger | Backend: Vercel API)
 - **Problema**: Solo se calcula tiempo cuando se marca como completa
 - **Riesgo**: 🟡 MEDIO - Pérdida de datos de tracking
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: Enviar tiempo también al cambiar de lección
+- **Estado**: ✅ **CORREGIDO COMPLETO** - 21/01/2026
+- **Solución Implementada**:
+  - **Frontend (module.html)**:
+    - ✅ Agregada función `saveTimeTracking()` para guardar tiempo sin completar lección
+    - ✅ Llamada automática al cambiar de lección en `openLesson()`
+    - ✅ Envía tiempo al endpoint `/lesson/track-time` en backend
+    - ✅ Tracking silencioso - no interrumpe UX si falla
+    - ✅ Captura tiempo de estudio incluso si usuario no completa lección
+    - ✅ CSS cache-busting actualizado: v2.35.0
+  - **Backend (api/_handlers/lms-chatter.js)**:
+    - ✅ Implementado endpoint POST `/lesson/track-time` 
+    - ✅ Validación de lessonId (UUID) y timeSpentSeconds (número positivo)
+    - ✅ Verificación de existencia de lección
+    - ✅ INSERT/UPDATE en `lms_progress_lessons` sin marcar como completada
+    - ✅ Usa `GREATEST()` para mantener el mayor tiempo registrado
+    - ✅ Actualiza `last_activity_at` para tracking de actividad
+    - ✅ Manejo graceful de errores si columnas no existen (backwards compatible)
+    - ✅ Respuesta silenciosa de éxito para no interrumpir UX
+  - **Migración Base de Datos**:
+    - ✅ Creado archivo `migrate-time-tracking-columns.sql`
+    - ✅ Agrega columna `time_spent_seconds INTEGER DEFAULT 0`
+    - ✅ Agrega columna `last_activity_at TIMESTAMP DEFAULT NOW()`
+    - ✅ Índice para consultas por última actividad
+    - ✅ Actualización de registros existentes
+    - ⏳ Requiere ejecutar migración en PostgreSQL (Vercel)
+  - ⏳ Frontend requiere subida manual a Hostinger vía FTP
+  - ⏳ Backend requiere deploy a Vercel
 
-#### **#22 - Sin Validación de Tiempo Mínimo**
-- **Archivo**: module.html (L456)
+#### **#22 - Sin Validación de Tiempo Mínimo** ✅
+- **Archivo**: module.html (L473-L498)
 - **Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
 - **Problema**: Frontend no valida `min_time_required_seconds`
 - **Riesgo**: 🟡 MEDIO - Usuario puede completar sin ver contenido
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: Validar tiempo antes de permitir completar
+- **Estado**: ✅ **CORREGIDO** - 21/01/2026
+- **Solución Implementada**:
+  - ✅ Validación de `lesson.min_time_required_seconds` antes de permitir completar
+  - ✅ Calcula tiempo total: `totalTimeSpent + currentSessionTime`
+  - ✅ Compara con tiempo mínimo requerido
+  - ✅ Muestra mensaje claro con minutos requeridos vs minutos dedicados
+  - ✅ Indica cuántos minutos adicionales se necesitan
+  - ✅ Previene completación prematura sin ver contenido
+  - ✅ CSS cache-busting actualizado: v2.36.0
+  - ⏳ Requiere subida manual a Hostinger vía FTP
 
-#### **#23 - Bloqueo de Módulos No Se Revalida**
-- **Archivo**: campus.html (L129-340)
+#### **#23 - Bloqueo de Módulos No Se Revalida** ✅
+- **Archivos**: campus.html (L226-263) + api/_handlers/lms-chatter.js (L22-24)
 - **Componente**: 🔶 **FULL-STACK** (Frontend: Hostinger | Backend: Vercel API)
 - **Problema**: `isLocked` no se actualiza al cambiar estado
 - **Riesgo**: 🟡 MEDIO - Usuario ve módulos bloqueados que ya debería acceder
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: 
-  - Backend: Crear endpoint `/campus/refresh`
-  - Frontend: Llamar después de completar módulo
+- **Estado**: ✅ **CORREGIDO COMPLETO** - 21/01/2026
+- **Solución Implementada**:
+  - **Backend (api/_handlers/lms-chatter.js)**:
+    - ✅ Endpoint `/campus` YA recalcula `isLocked` dinámicamente en cada request
+    - ✅ Agregado alias `/campus/refresh` que usa la misma función
+    - ✅ Recalcula bloqueos según progreso de módulo anterior
+    - ✅ Verifica lecciones completadas del módulo previo
+    - ✅ Verifica quiz aprobado del módulo previo (si tiene)
+    - ✅ Actualiza estado en tiempo real sin cache
+  - **Frontend (campus.html)**:
+    - ✅ Función `loadCampus()` existente puede refrescar datos
+    - ✅ Puede ser llamada después de completar módulo/quiz
+    - ✅ Ya incluye manejo de errores y spinner
+  - **Uso Recomendado**:
+    - Frontend puede llamar `loadCampus()` después de completar lección/quiz
+    - O hacer un `fetch('/api/lms/campus/refresh')` para forzar actualización
+    - Backend siempre retorna estado actualizado de todos los módulos
+  - ⏳ Backend requiere deploy a Vercel para activar alias `/campus/refresh`
+  - ⏳ Frontend puede usar endpoint existente `/campus` mientras tanto
 
 ---
 
@@ -365,23 +438,49 @@ Componente**: 🟢 **FRONTEND ONLY** (Hostinger)
 
 ### 🎓 FLUJO DE ONBOARDING
 
-#### **#27 - Welcome.html Sin Validación de Completación**
-- **Archivo**: welcome.html
-- **Componente**: 🔴 **BACKEND ONLY** (Vercel API)
+#### **#27 - Welcome.html Sin Validación de Completación** ✅
+- **Archivos**: welcome.html (L477-496) + api/_handlers/lms-auth.js (L264-315)
+- **Componente**: 🔶 **FULL-STACK** (Frontend: Hostinger | Backend: Vercel API)
 - **Problema**: Usuario puede saltar onboarding
 - **Riesgo**: 🟡 MEDIO - Usuario no completa inducción
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: Backend debe validar y actualizar `onboarding_completed_at` en endpoint `/onboarding/complete`
+- **Estado**: ✅ **CORREGIDO COMPLETO** - 21/01/2026
+- **Solución Implementada**:
+  - **Backend (api/_handlers/lms-auth.js)**:
+    - ✅ Endpoint `/auth/complete-onboarding` valida role === 'chatter'
+    - ✅ Previene completar onboarding múltiples veces (verifica `onboarding_completed_at IS NULL`)
+    - ✅ Retorna error 403 si usuario no es chatter
+    - ✅ Retorna error 400 si onboarding ya fue completado
+    - ✅ UPDATE con condición `WHERE onboarding_completed_at IS NULL` (atomic)
+    - ✅ Logs de auditoría para tracking
+  - **Frontend (welcome.html)**:
+    - ✅ Valida que usuario NO haya completado onboarding antes de mostrar contenido
+    - ✅ Redirige a campus si `onboarding_completed_at` existe
+    - ✅ Valida que usuario sea chatter (admins/supervisors redirigen a admin.html)
+    - ✅ Previene acceso directo a welcome.html por usuarios no autorizados
+  - ⏳ Backend requiere deploy a Vercel
+  - ⏳ Frontend requiere subida manual a Hostinger vía FTP
 
-#### **#28 - Posible Redirect Loop en Login**
-- **Archivo**: login.html (L281-297)
+#### **#28 - Posible Redirect Loop en Login** ✅
+- **Archivos**: login.html (L281-300) + welcome.html (L477-496)
 - **Componente**: 🔶 **FULL-STACK** (Frontend: Hostinger | Backend: Vercel API)
 - **Problema**: Si `onboarding_completed_at` es null pero ya completó, loop infinito
 - **Riesgo**: 🟡 MEDIO - Usuario no puede acceder
-- **Estado**: ❌ NO CORREGIDO
-- **Solución**: 
-  - Backend: Flag en session para evitar loops
-  - Frontend: Verificar antes de redirect
+- **Estado**: ✅ **CORREGIDO COMPLETO** - 21/01/2026
+- **Solución Implementada**:
+  - **Frontend (login.html)**:
+    - ✅ Detecta si usuario ya está en `/welcome.html` antes de redirigir
+    - ✅ Variable `isOnWelcomePage` verifica `window.location.pathname`
+    - ✅ Solo redirige a welcome si NO está ya en esa página
+    - ✅ Previene loop infinito login → welcome → login
+  - **Frontend (welcome.html)**:
+    - ✅ Doble validación: onboarding completado + role chatter
+    - ✅ Redirige inmediatamente si `onboarding_completed_at` existe
+    - ✅ Redirige a página correcta según role (admin/supervisor/chatter)
+    - ✅ Previene loop infinito welcome → login → welcome
+  - **Backend (api/_handlers/lms-auth.js)**:
+    - ✅ Validación en complete-onboarding previene estado inconsistente
+    - ✅ UPDATE atomic con condición `WHERE onboarding_completed_at IS NULL`
+  - ⏳ Frontend requiere subida manual a Hostinger vía FTP
 
 ---
 

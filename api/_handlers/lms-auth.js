@@ -280,6 +280,27 @@ async function handleCompleteOnboarding(req, res, deps) {
     return res.status(401).json({ error: 'No autorizado' });
   }
 
+  // VALIDACIÓN #27: Solo chatters deben pasar por onboarding
+  if (user.role !== 'chatter') {
+    return res.status(403).json({ 
+      error: 'Solo usuarios con rol chatter requieren onboarding',
+      role: user.role 
+    });
+  }
+
+  // VALIDACIÓN #27: Prevenir completar onboarding múltiples veces
+  const userResult = await query(
+    'SELECT onboarding_completed_at FROM lms_users WHERE id = $1',
+    [user.id]
+  );
+
+  if (userResult.rows[0] && userResult.rows[0].onboarding_completed_at) {
+    return res.status(400).json({ 
+      error: 'El onboarding ya fue completado anteriormente',
+      completed_at: userResult.rows[0].onboarding_completed_at
+    });
+  }
+
   // Marcar onboarding como completado
   await query(
     `UPDATE lms_users 
@@ -287,12 +308,14 @@ async function handleCompleteOnboarding(req, res, deps) {
        first_login = false,
        onboarding_completed_at = NOW(),
        updated_at = NOW()
-     WHERE id = $1`,
+     WHERE id = $1 AND onboarding_completed_at IS NULL`,
     [user.id]
   );
 
+  console.log('[Complete Onboarding] User', user.email, 'completed onboarding');
+
   return res.status(200).json({
-    message: 'Onboarding completado',
+    message: 'Onboarding completado exitosamente',
     onboarding_completed_at: new Date().toISOString()
   });
 }

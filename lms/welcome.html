@@ -476,10 +476,21 @@
         currentUser = data.user;
         console.log('[Welcome] User authenticated:', currentUser.email, 'Onboarding completed:', !!currentUser.onboarding_completed_at);
         
-        // If onboarding already completed, redirect to campus
+        // VALIDACIÓN #28: Si usuario ya completó onboarding, redirigir a campus
         if (data.user && data.user.onboarding_completed_at) {
-          console.log('[Welcome] Onboarding already completed, redirecting to campus');
+          console.log('[Welcome] User already completed onboarding, redirecting to campus');
           window.location.href = '/lms/campus.html';
+          return;
+        }
+
+        // VALIDACIÓN #27: Solo chatters deben ver welcome
+        if (data.user.role !== 'chatter') {
+          console.log('[Welcome] Non-chatter user, redirecting to appropriate page');
+          if (data.user.role === 'admin' || data.user.role === 'supervisor') {
+            window.location.href = '/lms/admin.html';
+          } else {
+            window.location.href = '/lms/campus.html';
+          }
           return;
         }
 

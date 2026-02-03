@@ -144,21 +144,35 @@ const App: React.FC = () => {
       localStorage.removeItem('supervision_semanal_data');
       localStorage.removeItem('registro_errores_data');
       
-      // También limpiar datos del backend/API si existen
-      try {
-        // Limpiar indexedDB o cualquier otro storage
-        if (window.indexedDB) {
-          const deleteRequest = indexedDB.deleteDatabase('supervisionDB');
-          deleteRequest.onsuccess = () => console.log('DB limpiada');
+      // Limpiar datos del backend/API si existen
+      const clearBackend = async () => {
+        try {
+          await fetch('https://bravegirlsagency-api.vercel.app/api/supervision/clear', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+        } catch (e) {
+          console.warn('Error limpiando backend:', e);
         }
-      } catch (e) {
-        console.warn('Error limpiando DB:', e);
-      }
+        
+        // Limpiar indexedDB
+        try {
+          if (window.indexedDB) {
+            const deleteRequest = indexedDB.deleteDatabase('supervisionDB');
+            deleteRequest.onsuccess = () => console.log('DB limpiada');
+          }
+        } catch (e) {
+          console.warn('Error limpiando DB:', e);
+        }
+        
+        // Limpiar sessionStorage también
+        sessionStorage.clear();
+        
+        // Forzar recarga completa sin caché
+        window.location.href = window.location.href + '?nocache=' + Date.now();
+      };
       
-      // Forzar limpieza completa
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
+      clearBackend();
     }
   };
 

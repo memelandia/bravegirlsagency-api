@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Módulo - BraveGirls LMS</title>
-    <link rel="stylesheet" href="/lms/lms-styles.css?v=2.30.0&t=20260119223000">
+    <link rel="stylesheet" href="/lms/lms-styles.css?v=2.36.0&t=20260121000300">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="course-view">
@@ -163,6 +163,8 @@
         document.getElementById('moduleContainer').classList.remove('hidden');
         
       } catch (error) {
+        // Ocultar spinner en caso de error
+        document.getElementById('loadingSpinner').classList.add('hidden');
         showAlert(error.message);
         setTimeout(() => window.location.href = '/lms/campus.html', 3000);
       }
@@ -229,6 +231,11 @@
       if (lessonStartTime !== null && currentLessonIndex >= 0) {
         const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
         totalTimeSpent += timeSpent;
+        
+        // Enviar tiempo al servidor cuando se cambia de lección
+        if (timeSpent > 0) {
+          saveTimeTracking(moduleData.lessons[currentLessonIndex].id, timeSpent);
+        }
       }
       
       // Resetear timer para nueva lección
@@ -421,6 +428,48 @@
       `;
     }
 
+    // Helper function to save time tracking without completing lesson
+    async function saveTimeTracking(lessonId, timeSpentSeconds) {
+      try {
+        await fetchWithAuth(`${API_BASE}/lesson/track-time`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            lessonId,
+            timeSpentSeconds 
+          })
+        });
+        // Silent success - no need to alert user
+      } catch (error) {
+        // Silent fail - time tracking is non-critical
+        console.log('Time tracking error:', error.message);
+      }
+    }
+
+    // Helper function to refresh module progress from server
+    async function refreshModuleProgress() {
+      try {
+        const response = await fetchWithAuth(`${API_BASE}/module/${moduleId}`);
+        if (response.ok) {
+          const freshData = await response.json();
+          // Update only progress-related data to avoid disrupting UI
+          if (freshData.progress) {
+            moduleData.progress = freshData.progress;
+          }
+          // Update completion status for all lessons
+          moduleData.lessons.forEach((lesson, idx) => {
+            if (freshData.lessons[idx]) {
+              lesson.completed = freshData.lessons[idx].completed;
+            }
+          });
+          moduleData.allLessonsCompleted = freshData.allLessonsCompleted;
+        }
+      } catch (error) {
+        // Silent fail - we already have local state
+        console.log('Progress refresh error:', error.message);
+      }
+    }
+
     async function completeLesson(lessonId, index) {
       if (moduleData.lessons[index].completed) return; // Already done
 
@@ -428,6 +477,24 @@
         // Calcular tiempo total dedicado a esta lección
         const currentSessionTime = lessonStartTime ? Math.floor((Date.now() - lessonStartTime) / 1000) : 0;
         const timeSpentSeconds = totalTimeSpent + currentSessionTime;
+        
+        // Validar tiempo mínimo requerido
+        const lesson = moduleData.lessons[index];
+        const minTimeRequired = lesson.min_time_required_seconds || 0;
+        
+        if (minTimeRequired > 0 && timeSpentSeconds < minTimeRequired) {
+          const minutesRequired = Math.ceil(minTimeRequired / 60);
+          const minutesSpent = Math.floor(timeSpentSeconds / 60);
+          const remainingMinutes = Math.ceil((minTimeRequired - timeSpentSeconds) / 60);
+          
+          showAlert(
+            `Esta lección requiere al menos ${minutesRequired} minuto(s) de estudio. ` +
+            `Has dedicado ${minutesSpent} minuto(s). ` +
+            `Por favor, dedica al menos ${remainingMinutes} minuto(s) más antes de marcar como completada.`,
+            'error'
+          );
+          return;
+        }
 
         const response = await fetchWithAuth(`${API_BASE}/lesson/complete`, {
           method: 'POST',
@@ -459,6 +526,9 @@
         moduleData.allLessonsCompleted = allDone;
         
         showAlert('¡Lección completada!', 'success');
+        
+        // Refrescar datos desde el servidor para sincronizar progreso
+        await refreshModuleProgress();
         
         // Updates Sidebar visually
         renderSidebar();

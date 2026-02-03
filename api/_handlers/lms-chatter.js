@@ -20,12 +20,14 @@ module.exports = async (req, res, deps) => {
     console.log('[Chatter Handler] Path:', path, 'Method:', req.method, 'Query:', req.query);
 
     // Router interno
-    if (path === 'campus') {
+    if (path === 'campus' || path === 'campus/refresh') {
       return await handleCampus(req, res, user, deps);
     } else if (path.startsWith('module/')) {
       return await handleModule(req, res, user, deps);
     } else if (path === 'lesson/complete') {
       return await handleLessonComplete(req, res, user, deps);
+    } else if (path === 'lesson/track-time') {
+      return await handleTrackTime(req, res, user, deps);
     } else if (path.startsWith('quiz/')) {
       if (path.includes('/submit')) {
         return await handleQuizSubmit(req, res, user, deps);
@@ -609,6 +611,71 @@ async function handleLessonComplete(req, res, user, deps) {
       allCompleted: allLessonsCompleted
     }
   });
+}
+
+// ===================================================================
+// POST /lesson/track-time - Guardar tiempo dedicado sin completar
+// ===================================================================
+async function handleTrackTime(req, res, user, deps) {
+  const { query, isValidUUID, validateRequired } = deps;
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Método no permitido' });
+  }
+
+  const { lessonId, timeSpentSeconds } = req.body;
+
+  // Validar campos requeridos
+  const validation = validateRequired(req.body, ['lessonId', 'timeSpentSeconds']);
+  if (!validation.valid) {
+    return res.status(400).json({ error: 'Campos requeridos faltantes', missing: validation.missing });
+  }
+
+  if (!isValidUUID(lessonId)) {
+    return res.status(400).json({ error: 'ID de lección inválido' });
+  }
+
+  // Validar timeSpentSeconds
+  if (typeof timeSpentSeconds !== 'number' || timeSpentSeconds < 0) {
+    return res.status(400).json({ error: 'timeSpentSeconds debe ser un número positivo' });
+  }
+
+  // Verificar que la lección existe
+  const lessonResult = await query(
+    'SELECT id, module_id, title FROM lms_lessons WHERE id = $1',
+    [lessonId]
+  );
+
+  if (lessonResult.rows.length === 0) {
+    return res.status(404).json({ error: 'Lección no encontrada' });
+  }
+
+  // Actualizar tiempo dedicado (sin marcar como completada)
+  // Solo actualiza last_activity_at y time_spent_seconds
+  try {
+    await query(`
+      INSERT INTO lms_progress_lessons (user_id, lesson_id, time_spent_seconds, last_activity_at)
+      VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (user_id, lesson_id) DO UPDATE SET
+        time_spent_seconds = GREATEST(lms_progress_lessons.time_spent_seconds, $3),
+        last_activity_at = NOW()
+    `, [user.id, lessonId, timeSpentSeconds]);
+
+    return res.status(200).json({ 
+      success: true,
+      message: 'Tiempo de estudio guardado',
+      timeSpentSeconds 
+    });
+  } catch (error) {
+    console.error('Error guardando tiempo de estudio:', error);
+    // Si falla (columnas no existen), responder con éxito silencioso
+    // para no interrumpir la UX del frontend
+    return res.status(200).json({ 
+      success: true,
+      message: 'Tracking no disponible',
+      warning: 'Columnas de tracking no configuradas aún'
+    });
+  }
 }
 
 // ===================================================================

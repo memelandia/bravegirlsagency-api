@@ -39,3 +39,4 @@ INSTRUCCIONES-*.md
 
 # Vercel
 .vercel
+.env*.local

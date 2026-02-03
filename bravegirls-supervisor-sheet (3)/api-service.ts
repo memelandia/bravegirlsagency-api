@@ -6,6 +6,24 @@
 const API_BASE_URL = 'https://bravegirlsagency-api.vercel.app/api/supervision';
 
 export const supervisionAPI = {
+  // Clear all data (for month reset)
+  async clearAllData() {
+    try {
+      localStorage.removeItem('checklist_mes_data');
+      localStorage.removeItem('vip_daily_status');
+      localStorage.removeItem('supervision_semanal_data');
+      localStorage.removeItem('registro_errores_data');
+      
+      const response = await fetch(`${API_BASE_URL}/clear`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Error clearing data:', error);
+      return false;
+    }
+  },
   // Checklist Mes
   async getChecklist() {
     try {
