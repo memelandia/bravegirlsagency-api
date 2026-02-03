@@ -138,41 +138,63 @@ const App: React.FC = () => {
     );
 
     if (confirmWipe) {
-      // Limpiar TODOS los datos del mes
-      localStorage.removeItem('checklist_mes_data');
-      localStorage.removeItem('vip_daily_status'); // Keep 'vip_fans_list' (names)
-      localStorage.removeItem('supervision_semanal_data');
-      localStorage.removeItem('registro_errores_data');
-      
-      // Limpiar datos del backend/API si existen
-      const clearBackend = async () => {
+      // Función de limpieza agresiva
+      const limpiarTodo = async () => {
+        // 1. Limpiar localStorage - TODOS los items relacionados
+        const keysToRemove = [
+          'checklist_mes_data',
+          'vip_daily_status',
+          'supervision_semanal_data',
+          'registro_errores_data'
+        ];
+        
+        keysToRemove.forEach(key => {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        });
+        
+        console.log('✅ LocalStorage limpiado');
+        
+        // 2. Limpiar sessionStorage completo
+        sessionStorage.clear();
+        
+        // 3. Limpiar backend
         try {
-          await fetch('https://bravegirlsagency-api.vercel.app/api/supervision/clear', {
+          const response = await fetch('https://bravegirlsagency-api.vercel.app/api/supervision/clear', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
           });
+          console.log('✅ Backend limpiado:', response.ok);
         } catch (e) {
-          console.warn('Error limpiando backend:', e);
+          console.warn('⚠️ Error limpiando backend:', e);
         }
         
-        // Limpiar indexedDB
+        // 4. Limpiar IndexedDB
         try {
           if (window.indexedDB) {
-            const deleteRequest = indexedDB.deleteDatabase('supervisionDB');
-            deleteRequest.onsuccess = () => console.log('DB limpiada');
+            const dbs = ['supervisionDB', 'checklistDB', 'vipDB'];
+            dbs.forEach(dbName => {
+              indexedDB.deleteDatabase(dbName);
+            });
+            console.log('✅ IndexedDB limpiada');
           }
         } catch (e) {
-          console.warn('Error limpiando DB:', e);
+          console.warn('⚠️ Error limpiando IndexedDB:', e);
         }
         
-        // Limpiar sessionStorage también
-        sessionStorage.clear();
+        // 5. Limpiar todas las cookies (opcional)
+        document.cookie.split(';').forEach(c => {
+          document.cookie = c.replace(/^ +/, '').replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/');
+        });
         
-        // Forzar recarga completa sin caché
-        window.location.href = window.location.href + '?nocache=' + Date.now();
+        // 6. Forzar recarga SIN caché usando múltiples métodos
+        const timestamp = Date.now();
+        
+        // Método 1: Cambiar URL
+        window.location.replace(window.location.pathname + '?reset=' + timestamp);
       };
       
-      clearBackend();
+      limpiarTodo();
     }
   };
 

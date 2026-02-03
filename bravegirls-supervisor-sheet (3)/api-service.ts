@@ -27,12 +27,23 @@ export const supervisionAPI = {
   // Checklist Mes
   async getChecklist() {
     try {
+      // SIEMPRE consultar base de datos primero
       const response = await fetch(`${API_BASE_URL}/checklist`);
       const result = await response.json();
-      return result.success ? result.data : {};
+      
+      if (result.success && result.data) {
+        // Sincronizar localStorage con BD
+        localStorage.setItem('checklist_mes_data', JSON.stringify(result.data));
+        return result.data;
+      }
+      
+      // Si BD está vacía, verificar localStorage como fallback
+      const local = localStorage.getItem('checklist_mes_data');
+      return local ? JSON.parse(local) : {};
+      
     } catch (error) {
-      console.error('Error loading checklist:', error);
-      // Fallback a localStorage si API falla
+      console.error('Error loading checklist from API:', error);
+      // Solo usar localStorage si falla la conexión
       const local = localStorage.getItem('checklist_mes_data');
       return local ? JSON.parse(local) : {};
     }
@@ -63,7 +74,15 @@ export const supervisionAPI = {
     try {
       const response = await fetch(`${API_BASE_URL}/vip-repaso`);
       const result = await response.json();
-      return result.success ? result.data : {};
+      
+      if (result.success && result.data) {
+        localStorage.setItem('vip_repaso_data', JSON.stringify(result.data));
+        return result.data;
+      }
+      
+      const local = localStorage.getItem('vip_repaso_data');
+      return local ? JSON.parse(local) : {};
+      
     } catch (error) {
       console.error('Error loading VIP repaso:', error);
       const local = localStorage.getItem('vip_repaso_data');
@@ -94,7 +113,15 @@ export const supervisionAPI = {
     try {
       const response = await fetch(`${API_BASE_URL}/errores`);
       const result = await response.json();
-      return result.success ? result.data : [];
+      
+      if (result.success && result.data) {
+        localStorage.setItem('registro_errores_data', JSON.stringify(result.data));
+        return result.data;
+      }
+      
+      const local = localStorage.getItem('registro_errores_data');
+      return local ? JSON.parse(local) : [];
+      
     } catch (error) {
       console.error('Error loading errores:', error);
       const local = localStorage.getItem('registro_errores_data');
@@ -125,7 +152,15 @@ export const supervisionAPI = {
     try {
       const response = await fetch(`${API_BASE_URL}/semanal`);
       const result = await response.json();
-      return result.success ? result.data : [];
+      
+      if (result.success && result.data) {
+        localStorage.setItem('supervision_semanal_data', JSON.stringify(result.data));
+        return result.data;
+      }
+      
+      const local = localStorage.getItem('supervision_semanal_data');
+      return local ? JSON.parse(local) : [];
+      
     } catch (error) {
       console.error('Error loading supervision semanal:', error);
       const local = localStorage.getItem('supervision_semanal_data');
@@ -156,7 +191,15 @@ export const supervisionAPI = {
     try {
       const response = await fetch(`${API_BASE_URL}/vip-fans`);
       const result = await response.json();
-      return result.success ? result.data : [];
+      
+      if (result.success && result.data) {
+        localStorage.setItem('vip_fans_list', JSON.stringify(result.data));
+        return result.data;
+      }
+      
+      const local = localStorage.getItem('vip_fans_list');
+      return local ? JSON.parse(local) : [];
+      
     } catch (error) {
       console.error('Error loading VIP fans:', error);
       const local = localStorage.getItem('vip_fans_list');

@@ -27,7 +27,12 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
         setIsLoading(false);
       } else {
         const result = await supervisionAPI.getChecklist();
-        setData(result);
+        // Si result está vacío o es null, inicializar como objeto vacío
+        if (!result || Object.keys(result).length === 0) {
+          setData({});
+        } else {
+          setData(result);
+        }
         setIsLoading(false);
       }
       initialized.current = true;

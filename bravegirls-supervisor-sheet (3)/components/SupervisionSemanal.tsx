@@ -52,19 +52,25 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
           });
         });
         
-        try {
-          const result = await supervisionAPI.getSemanal();
-          if (result && result.length > 0) {
-            // If data exists in backend, use it
-            setRows(result);
-          } else {
-            // Use initial empty rows
-            setRows(initialRows);
-          }
-        } catch (error) {
-          console.error('Error loading from API, using localStorage or initial rows:', error);
-          const savedData = localStorage.getItem('supervision_semanal_data');
-          if (savedData) {
+        // Verificar si hay datos guardados
+        const savedData = localStorage.getItem('supervision_semanal_data');
+        
+        if (!savedData) {
+          // No hay datos guardados, usar filas vacías con nueva distribución
+          setRows(initialRows);
+          setIsLoading(false);
+        } else {
+          // Hay datos guardados, intentar cargarlos
+          try {
+            const result = await supervisionAPI.getSemanal();
+            if (result && result.length > 0) {
+              setRows(result);
+            } else {
+              const parsed = JSON.parse(savedData);
+              setRows(parsed.length > 0 ? parsed : initialRows);
+            }
+          } catch (error) {
+            console.error('Error loading from API:', error);
             try {
               const parsed = JSON.parse(savedData);
               setRows(parsed.length > 0 ? parsed : initialRows);
@@ -72,11 +78,9 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
               console.error("Failed to parse weekly data", e);
               setRows(initialRows);
             }
-          } else {
-            setRows(initialRows);
+          } finally {
+            setIsLoading(false);
           }
-        } finally {
-          setIsLoading(false);
         }
       }
       initialized.current = true;
