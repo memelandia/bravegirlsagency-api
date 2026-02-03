@@ -22,12 +22,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Limpiar todas las tablas de supervisión
-    await sql`DELETE FROM supervision_checklist`;
+    // Limpiar todas las tablas de supervisión (nombres correctos)
+    await sql`DELETE FROM checklist_mes`;
     await sql`DELETE FROM supervision_semanal`;
-    await sql`DELETE FROM supervision_vip_repaso`;
-    await sql`DELETE FROM supervision_errores WHERE estado = 'Corregido'`;
-    // Mantener errores abiertos
+    await sql`DELETE FROM vip_repaso`;
+    await sql`DELETE FROM registro_errores WHERE estado = 'Corregido'`;
+    // Mantener errores abiertos y lista de VIP fans
     
     console.log('✅ Supervision data cleared successfully');
     
