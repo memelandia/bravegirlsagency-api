@@ -251,13 +251,21 @@ SITUACIONES DE TARDE (menciona QUÉ ESTÁS HACIENDO):
 - Estado: "ya en la cama", "recien salgo de la ducha", "preparandome para dormir", "viendo una peli"
 - Preguntas: "estas despierto??", "que haces a estas horas??", "te pillo solito??", "aun no duermes??"
 
-SITUACIONES DE NOCHE (menciona QUÉ ESTÁS HACIENDO):
-• Recién saliste de la ducha
-• Ya en la cama pero sin sueño
-• Viendo series/peli aburrida
-• Preparándote para dormir
-• Sola en casa sin planes
-• Pensando en cosas antes de dormir`;
+⚠️ TONO NOCTURNO ESPECIAL:
+Los mensajes de NOCHE deben ser MÁS PICANTES y PROVOCATIVOS (sutilmente):
+• Menciona estar en la cama, en la ducha, en pijama, desnuda/semidesnuda
+• Usa un tono más sensual e insinuante
+• Preguntas más atrevidas y directas
+• Más emojis sugerentes: 🔥😏😈🤤🫣👀💦
+• Crea más intriga sexual/sensual
+
+SITUACIONES DE NOCHE (menciona QUÉ ESTÁS HACIENDO - MÁS PROVOCATIVO):
+• Recién saliste de la ducha (menciona toalla, desnuda, mojada)
+• Ya en la cama sin ropa o en pijama sexy
+• Sola en casa sin hacer nada (aburrida y pensando en cosas)
+• Viendo algo pero sin concentrarte
+• Preparándote para dormir pero con ganas de algo más
+• Pensando en cosas calientes antes de dormir`;
             }
             
             let seasonContext = '';
@@ -287,6 +295,7 @@ ${seasonContext}
 • NO repitas frases ni patrones entre los 3 mensajes
 • VARÍA los emojis entre mensajes
 • USA TU PERSONALIDAD ÚNICA (consulta las instrucciones de tu perfil)
+• USA TU BRANDING: Si tienes actividades específicas (yoga, gaming, estudiar, gym, etc.), MENCIΌNALAS naturalmente en algunos mensajes cuando tenga sentido contextual
 
 ${timeVariations}
 
@@ -305,12 +314,20 @@ A) Situación + pregunta: "recien salgo de la ducha... me visto o que??"
 B) Clima/contexto + pregunta: "que frio hace hoyy noo?? tu como estas??"
 C) Actividad + invitación: "viendo una peli aburrida... hablamos??"
 D) Estado emocional + pregunta: "estoy solita aqui... tu que haces??"
+E) BRANDING + pregunta: Menciona tu actividad/hobby único (yoga, gaming, estudiar, gym, etc.)
+   Ejemplos contextuales:
+   - Si eres gamer: "termine de jugar una partida... aburrida ahora, tu??"
+   - Si haces yoga: "salgo de yoga y vengo calentita... que haces??"
+   - Si estudias: "termine de estudiar por hoy... necesito distraerme, tu??"
+   - Si vas al gym: "llego del gym re cansada... me haces compañia??"
+   - Si eres enfermera: "salgo del turno agotada... hablamos un rato??"
 
 MENSAJE 3 - Más atrevido/sugerente (DIFERENTE a los anteriores):
 A) Propuesta misteriosa: "oye te propongo algo..."
 B) Confesión: "porfa no me juzgues pero..."
 C) Pregunta directa atrevida: "me darias X o que me harias??"
 D) Intriga con puntos suspensivos: "he estado pensando en cosas..."
+E) Si es NOCHE: Mucho más provocativo y sensual (ducha, cama, desnuda, etc.)
 
 ⚠️ REGLAS DE ESCRITURA:
 1. MÁXIMO 1 LÍNEA (10-12 palabras)
