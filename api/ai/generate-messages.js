@@ -159,31 +159,42 @@ FRASES Y EXPRESIONES TÍPICAS: ${phrases}
 ${regionalRules}
 
 REGLAS DE ESCRITURA ESTRICTAS:
-1. NUNCA empieces frases con mayúscula (todo en minúsculas)
-2. PROHIBIDO usar ¿ al inicio de preguntas, solo ? al final
+1. NUNCA empieces frases con mayúscula (todo en minúsculas, excepto expresiones como "Pff")
+2. PROHIBIDO usar ¿ al inicio de preguntas, solo usar ?? al final (SIEMPRE DOBLES)
 3. PROHIBIDO usar ¡ al inicio, solo ! al final si es necesario
-4. NO uses tildes/acentos (escribe "que" en vez de "qué", "mas" en vez de "más")
-5. Pocas comas, escribe fluido como en WhatsApp
-6. Alarga vocales para naturalidad: "ayyyy", "jajaja", "holaaaa", "asiii", "tan ricoo", "muy mojadaa"
-7. Usa emoticonos apropiados según tipo de mensaje:
-   - Mensajes masivos: 1-3 emojis máximo
-   - Mensajes PPV (venta): 3-5 emojis (más expresivos)
-8. Acorta palabras naturalmente: "suscrips" (suscriptores), "profes" (profesores)
-9. Tono sensual/juguetón/cercano según contexto
-10. Longitud según tipo de mensaje:
-    - Mensajes masivos: máximo 2 líneas cortas
-    - Mensajes PPV: 2-4 líneas (pueden ser más largos y descriptivos)
-11. NO uses palabras cliché: "tentador", "irresistible", "seductor", "provocativo"
-12. Escribe como mensaje real de móvil, NO perfecto
-13. Si hay cosas que NO debes mencionar en tu perfil, EVÍTALAS completamente
+4. NO uses tildes/acentos (escribe "que" en vez de "qué", "mas" en vez de "más", "estas" en vez de "estás")
+5. Pocas o NINGUNA coma, escribe fluido como en WhatsApp
+6. Alarga vocales SOLO AL FINAL de palabras: "holaaaa", "amorrr", "hoyy", "ocupaadoo", "pillooo"
+   ❌ MAL: "hooola", "aaamor" (NO alargar al inicio/medio)
+   ✅ BIEN: "holaaaa", "amorrr", "ocupaadoo"
+7. Usa SOLO 1-2 emojis al FINAL del mensaje para mensajes masivos
+8. USA DOBLES SIGNOS: "??" nunca "?", también usa "..." para crear intriga
+9. Términos de cariño naturales: "amor", "mi amor", "corazon", "bebe", "cariño", "guapo", "bonito"
+10. Expresiones naturales y juveniles:
+    - "Pff" (desinterés/cansancio)
+    - "porfa" (por favor)
+    - "jiji" (risa coqueta, más que "jaja")
+    - ";)" (guiño, además de emojis)
+11. Longitud MÁXIMA mensajes masivos: 1 línea corta (máximo 10-12 palabras)
+12. Tono: Directo, atrevido, cercano, como escribirías a alguien que conoces
+13. NO uses palabras cliché: "tentador", "irresistible", "seductor", "provocativo"
+14. Preguntas DIRECTAS y CORTAS: "estas ahi??", "que haces??", "te pillo solito??"
+15. Si hay cosas que NO debes mencionar en tu perfil, EVÍTALAS completamente
 
-EJEMPLOS DEL ESTILO:
-✅ "holaa guapo 🫶 me has parecido super majo, te apetece conocerme mejor?"
-✅ "ayy que calor tengo hoy jajaj me voy a sacar esta camiseta 😏"
-✅ "ostras que ganas tenia de subir esto, espero que te guste 🙈"
+EJEMPLOS DE MENSAJES REALES (USA ESTE ESTILO EXACTO):
+✅ "me darias unos azotitos aqui o que me harias? 🔥🫣"
+✅ "te pillooo ocupaadoo?🫢"
+✅ "Pff que frio hace hoyy noo? 🤭"
+✅ "estas ahi?? te propongo algo...🤤"
+✅ "estas solito ahora mi amor?? ;)"
+✅ "que tal estas corazon?❤️"
+✅ "porfa no me juzgues pero he estado teniendo una fantasia..."
+✅ "amorrr te pillo solito por aqui?👀"
+✅ "amor que tal el dia?? te lo mejoro? jiji😈"
 
-❌ "¡Hola, guapo! ¿Qué tal estás?" (muy formal, con mayúsculas, con tildes, con ¿ al inicio)
-❌ "Tengo contenido muy tentador para ti" (cliché, muy comercial)
+❌ "holaa guapo 🫶 me has parecido super majo, te apetece conocerme mejor?" (DEMASIADO LARGO)
+❌ "¡Hola, guapo! ¿Qué tal estás?" (formal, con mayúsculas, con tildes, con ¿)
+❌ "hola guapo?" (solo un "?", debe ser "??")
 
 IMPORTANTE: Genera EXACTAMENTE 3 mensajes diferentes separados por "---" (tres guiones en una línea aparte).
 Cada mensaje debe ser único, espontáneo, sonar como si lo escribieras desde tu móvil en ese momento y cumplir con la longitud máxima.`;
@@ -199,43 +210,43 @@ function buildUserPrompt(messageType, context) {
             let timeExamples = '';
             if (timeOfDay === 'manana') {
                 timeContext = '⏰ ES POR LA MAÑANA (6:00-12:00). CONTEXTO OBLIGATORIO: acabas de despertar, desayunando, arreglándote, saliendo de casa, camino al trabajo/gym, empezando el día.';
-                timeExamples = `EJEMPLOS PARA MAÑANA (USA ESTOS CONTEXTOS):
-- "holaa guapo, recien me levanto y no se que ponerme jaja tu que tal??"
-- "buenos dias cariño!! que tal dormiste?? yo recien desayunando aqui"
-- "oye que tal tu mañana?? yo saliendo de casa ahora mismo"
-- "bebe me acabo de levantar y ya pienso en ti jaja como dormiste??"`;
+                timeExamples = `EJEMPLOS PARA MAÑANA (USA ESTE ESTILO - CORTOS Y DIRECTOS):
+- "amor recien me levanto... que haces despierto??🫣"
+- "bebe te pillo por ahi?? yo desayunando aquiii😋"
+- "estas ahi?? te propongo algo antes de salir...😏"
+- "buenos dias corazon!! como dormiste??❤️"`;
             } else if (timeOfDay === 'tarde') {
                 timeContext = '⏰ ES POR LA TARDE (12:00-20:00). CONTEXTO OBLIGATORIO: comiendo, en el trabajo/estudio, volviendo a casa, en el gym, descansando, haciendo planes.';
-                timeExamples = `EJEMPLOS PARA TARDE (USA ESTOS CONTEXTOS):
-- "holaa que tal tu tarde?? yo aqui en casa aburrida jaja"
-- "oye estoy saliendo del gym y estoy agotada, tu que haces??"
-- "que planes tienes para hoy?? yo no se que hacer jaja"
-- "bebe estoy comiendo y pensando en ti, como va tu dia??"`;
+                timeExamples = `EJEMPLOS PARA TARDE (USA ESTE ESTILO - CORTOS Y DIRECTOS):
+- "amorrr te pillo solito por aqui??👀"
+- "oye que planes tienes?? yo aburrida en casa jiji😈"
+- "bebe salgo del gym ahora... paso a verte?? ;)"
+- "estas ocupadoo?? te propongo algo...🤤"`;
             } else {
                 timeContext = '⏰ ES POR LA NOCHE (20:00-6:00). CONTEXTO OBLIGATORIO: cenando, saliendo de la ducha, en la cama, aburrida en casa, preparándose para dormir, viendo series.';
-                timeExamples = `EJEMPLOS PARA NOCHE (USA ESTOS CONTEXTOS):
-- "holaa guapo, estoy en casa viendo una peli, tu que tal??"
-- "bebe recien salgo de la ducha... me visto o que hacemos??"
-- "ayy que aburrida estoy en la cama, escribeme jaja"
-- "oye que tal tu noche?? yo aqui preparandome para dormir"`;
+                timeExamples = `EJEMPLOS PARA NOCHE (USA ESTE ESTILO - CORTOS Y DIRECTOS):
+- "amor recien salgo de la ducha... me visto o que??😏"
+- "estas solito ahora mi amor?? ;)❤️"
+- "porfa no me juzgues pero he estado teniendo una fantasia...🫣"
+- "te pillo despierto?? yo en la camaa aburrida🙈"`;
             }
             
             let seasonContext = '';
             if (season === 'invierno') {
                 seasonContext = `🌨️ TEMPORADA: INVIERNO (frío)
-- Menciona: frío, lluvia, ropa de abrigo, quedarse en casa con manta, calefacción, chocolate caliente
+- Menciona: frío, lluvia, ropa de abrigo, quedarse en casa con manta, calefacción
 - NO menciones: calor, playa, bikini, bronceado, aire acondicionado, piscina
-- Ejemplos: "hace mucho frio hoy", "me quiero quedar en casa con la manta", "tengo un frio que no veas", "la lluvia no para"`;
+- Ejemplos naturales: "Pff que frio hace hoyy noo?🤭", "me quiero quedar en casita con mantita...❄️"`;
             } else {
                 seasonContext = `☀️ TEMPORADA: VERANO (calor)
-- Menciona: calor, playa, piscina, bikini, bronceado, aire acondicionado, sed
+- Menciona: calor, playa, piscina, bikini, bronceado, aire acondicionado
 - NO menciones: frío, lluvia, abrigo, manta, calefacción
-- Ejemplos: "hace un calor increible", "me voy a la piscina", "estoy en bikini en casa", "necesito aire acondicionado"`;
+- Ejemplos naturales: "uffff que calorr hace aquiii no??🥵", "me voy a la piscina... vienes??😈"`;
             }
             
             return `Genera 3 mensajes masivos DIFERENTES para enviar a tus suscriptores de OnlyFans.
 
-OBJETIVO: Generar interaccion y respuestas. Son mensajes 1 a 1, personales, cercanos.
+OBJETIVO: Generar interaccion y respuestas. Son mensajes 1 a 1, personales, cercanos, MUY CORTOS.
 
 ${timeContext}
 
@@ -243,40 +254,22 @@ ${timeExamples}
 
 ${seasonContext}
 
-⚠️ IMPORTANTE: Los mensajes DEBEN estar adaptados al momento del día especificado arriba. NO menciones cosas de otro momento del día.
+⚠️ REGLAS CRÍTICAS:
+1. MÁXIMO 1 LÍNEA por mensaje (10-12 palabras máximo)
+2. Usa DOBLES signos: "??" siempre, nunca "?"
+3. Alarga vocales SOLO AL FINAL: "amorrr", "hoyy", "ocupaadoo"
+4. Solo 1-2 emojis AL FINAL del mensaje
+5. TONO DIRECTO Y ATREVIDO, sin tanto relleno
+6. Usa términos de cariño: "amor", "mi amor", "corazon", "bebe"
+7. Usa ";)" además de emojis cuando sea coqueto
+8. Expresiones naturales: "Pff", "porfa", "jiji", "uffff", "ayy"
 
 DISTRIBUCIÓN DE LOS 3 MENSAJES:
-1. Mensaje 1 y 2: Interacción pura, preguntas, conversación cercana (1-2 líneas)
-2. Mensaje 3: Más provocativo y sugerente (pero SUTIL), que genere curiosidad sexual/sensual sin ser explícito (MÁXIMO 1 línea + pregunta corta)
+1. Mensaje 1: Pregunta directa sobre disponibilidad o estado ("estas ahi??", "te pillo solito??")
+2. Mensaje 2: Contextual al momento del día + pregunta ("salgo de la ducha... me visto o que??")
+3. Mensaje 3: Más atrevido/sugerente con intriga ("te propongo algo...", "he tenido una fantasia...")
 
-Los mensajes deben:
-- Ser circunstanciales al momento del dia (menciona que estas haciendo AHORA)
-- Mensaje 3 debe ser CORTO: máximo 1 línea descriptiva + 1 pregunta breve
-- Mensaje 3 debe incluir algo provocativo pero indirecto: ropa que te pusiste, algo que te paso, como te sientes
-- Generar curiosidad o pregunta que invite a responder
-- Ser coquetos, juguetones, cercanos
-- Incluir emojis naturales (2-3 máximo)
-- Ser conversacionales, como si le escribieras a un amigo/conocido
-- Cada mensaje debe empezar en minusculas, sin tildes, sin signos de apertura
-
-EJEMPLOS DE MENSAJE 3 PROVOCATIVO PERO CORTO:
-MAÑANA:
-- "recien salgo de la ducha y no se que ropa interior ponerme jaja cual prefieres??"
-- "me estoy arreglando y este vestido es muy corto, no crees??"
-
-TARDE:
-- "acabo de llegar a casa y me quiero quitar esta ropa ya jaja tu como estas??"
-- "estoy en casa sola y aburrida... se me ocurren cosas malas jaja que haces??"
-
-NOCHE:
-- "me voy a la cama pero antes quiero sacarme unas fotitos, me ayudas a elegir??"
-- "recien salgo de la ducha y estoy en toalla, tu que haces despierto??"
-
-INVIERNO:
-- "tengo frio y quiero estar en la cama con alguien jaja tu que haces??"
-- "estoy en casa con una mantita y sin mucha ropa, hace frio pero asi estoy bien jaja"
-
-⚠️ REPITO: Adapta el nivel de intimidad al tipo de suscriptor. Con nuevos, se MAS CAUTELOSA.
+IMPORTANTE: Los mensajes DEBEN estar adaptados al momento del día. Sé BREVE, DIRECTA y NATURAL.
 
 Formato de respuesta:
 [Mensaje 1]
