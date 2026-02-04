@@ -69,11 +69,12 @@ export default async function handler(req, res) {
                         content: uniqueContext + userPrompt  // Agregar contexto único
                     }
                 ],
-                temperature: 0.95, // Alta creatividad para mensajes únicos (aumentado de 0.9)
+                temperature: 0.92, // Balance creatividad/coherencia
                 max_tokens: 800,
+                top_p: 0.95, // Diversidad en selección de palabras
                 n: 1, // Solo 1 respuesta, pero con 3 mensajes dentro
-                presence_penalty: 0.6, // Penaliza repetición de temas
-                frequency_penalty: 0.5 // Penaliza repetición de palabras (aumentado para mayor diferenciación)
+                presence_penalty: 0.7, // Penaliza repetición de temas (aumentado)
+                frequency_penalty: 0.6 // Penaliza repetición de palabras (aumentado)
             })
         });
         
@@ -302,7 +303,16 @@ SITUACIONES DE NOCHE (menciona QUÉ ESTÁS HACIENDO - MÁS PROVOCATIVO):
 - NO menciones: frío, lluvia, abrigo, manta`;
             }
             
-            return `Genera 3 mensajes masivos COMPLETAMENTE DIFERENTES Y ÚNICOS para enviar a tus suscriptores de OnlyFans.
+            return `⚠️ INSTRUCCIÓN CRÍTICA: Los 3 mensajes NO pueden seguir el MISMO PATRÓN.
+
+❌ PROHIBIDO:
+- Mensaje 1: "holaa" + situación + "que haces??"
+- Mensaje 2: "Pff que calor/frio" + algo + pregunta
+- Mensaje 3: "recien llego/salgo" + actividad + "me haces compañia??"
+
+✅ OBLIGATORIO: Cada mensaje debe tener inicio, desarrollo y cierre TOTALMENTE DIFERENTES.
+
+Genera 3 mensajes masivos COMPLETAMENTE DIFERENTES Y ÚNICOS para enviar a tus suscriptores de OnlyFans.
 
 ${timeContext}
 ${seasonContext}
