@@ -35,8 +35,16 @@ export default async function handler(req, res) {
         const systemPrompt = buildSystemPrompt(modelName, instructions, emojis, phrases);
         const userPrompt = buildUserPrompt(messageType, context);
         
-        // Agregar variabilidad única por request
-        const uniqueContext = timestamp ? `[Request ID: ${timestamp}-${seed || 0}] ` : '';
+        // Agregar variabilidad única por request usando el seed
+        const varietyBoost = seed ? [
+            "Sé completamente original y evita frases cliché.",
+            "Innova en tu manera de preguntar y expresarte.",
+            "Usa un ángulo diferente al habitual.",
+            "Sorprende con tu creatividad y naturalidad.",
+            "Evita copiar patrones que ya hayas usado."
+        ][seed % 5] : "";
+        
+        const uniqueContext = timestamp ? `[${varietyBoost} ID:${timestamp}-${seed || 0}] ` : '';
         
         console.log('🤖 Llamando a OpenAI...');
         
@@ -207,69 +215,125 @@ function buildUserPrompt(messageType, context) {
             const season = context?.season || 'invierno';
             
             let timeContext = '';
-            let timeExamples = '';
+            let timeVariations = '';
             if (timeOfDay === 'manana') {
-                timeContext = '⏰ ES POR LA MAÑANA (6:00-12:00). CONTEXTO OBLIGATORIO: acabas de despertar, desayunando, arreglándote, saliendo de casa, camino al trabajo/gym, empezando el día.';
-                timeExamples = `EJEMPLOS PARA MAÑANA (USA ESTE ESTILO - CORTOS Y DIRECTOS):
-- "amor recien me levanto... que haces despierto??🫣"
-- "bebe te pillo por ahi?? yo desayunando aquiii😋"
-- "estas ahi?? te propongo algo antes de salir...😏"
-- "buenos dias corazon!! como dormiste??❤️"`;
+                timeContext = '⏰ ES POR LA MAÑANA (6:00-12:00)';
+                timeVariations = `OPCIONES DE INICIO (varía entre estas):
+- Saludos: "buen diaa", "hola guapo", "hey bb", "amor buenos dias"
+- Estado: "recien me levanto", "me estoy arreglando", "desayunando aqui", "saliendo de casa"
+- Preguntas: "que tal dormiste??", "ya estas despierto??", "como amaneciste??", "te pillo por ahi??"
+
+SITUACIONES DE MAÑANA (menciona QUÉ ESTÁS HACIENDO):
+• Acabas de despertar y no sabes qué ponerte
+• Estás desayunando y pensando en cosas
+• Te estás arreglando/maquillando
+• Saliendo al gym/trabajo
+• Tomando café en casa
+• Mirando el móvil en la cama aún`;
             } else if (timeOfDay === 'tarde') {
-                timeContext = '⏰ ES POR LA TARDE (12:00-20:00). CONTEXTO OBLIGATORIO: comiendo, en el trabajo/estudio, volviendo a casa, en el gym, descansando, haciendo planes.';
-                timeExamples = `EJEMPLOS PARA TARDE (USA ESTE ESTILO - CORTOS Y DIRECTOS):
-- "amorrr te pillo solito por aqui??👀"
-- "oye que planes tienes?? yo aburrida en casa jiji😈"
-- "bebe salgo del gym ahora... paso a verte?? ;)"
-- "estas ocupadoo?? te propongo algo...🤤"`;
+                timeContext = '⏰ ES POR LA TARDE (12:00-20:00)';
+                timeVariations = `OPCIONES DE INICIO (varía entre estas):
+- Saludos: "holaa", "oye guapo", "amor que tal", "hey bebe"
+- Estado: "aqui aburrida", "llegando a casa", "saliendo del gym", "descansando un rato"
+- Preguntas: "que planes tienes??", "como va tu tarde??", "estas libre??", "que haces ahora??"
+
+SITUACIONES DE TARDE (menciona QUÉ ESTÁS HACIENDO):
+• Aburrida en casa sin hacer nada
+• Llegando a casa del trabajo/estudio
+• Saliendo del gym cansada
+• Comiendo o merendando
+• Viendo series/tele
+• Haciendo planes para más tarde`;
             } else {
-                timeContext = '⏰ ES POR LA NOCHE (20:00-6:00). CONTEXTO OBLIGATORIO: cenando, saliendo de la ducha, en la cama, aburrida en casa, preparándose para dormir, viendo series.';
-                timeExamples = `EJEMPLOS PARA NOCHE (USA ESTE ESTILO - CORTOS Y DIRECTOS):
-- "amor recien salgo de la ducha... me visto o que??😏"
-- "estas solito ahora mi amor?? ;)❤️"
-- "porfa no me juzgues pero he estado teniendo una fantasia...🫣"
-- "te pillo despierto?? yo en la camaa aburrida🙈"`;
+                timeContext = '⏰ ES POR LA NOCHE (20:00-6:00)';
+                timeVariations = `OPCIONES DE INICIO (varía entre estas):
+- Saludos: "hey", "amor hola", "holaa guapo", "bebe que tal"
+- Estado: "ya en la cama", "recien salgo de la ducha", "preparandome para dormir", "viendo una peli"
+- Preguntas: "estas despierto??", "que haces a estas horas??", "te pillo solito??", "aun no duermes??"
+
+SITUACIONES DE NOCHE (menciona QUÉ ESTÁS HACIENDO):
+• Recién saliste de la ducha
+• Ya en la cama pero sin sueño
+• Viendo series/peli aburrida
+• Preparándote para dormir
+• Sola en casa sin planes
+• Pensando en cosas antes de dormir`;
             }
             
             let seasonContext = '';
+            let seasonExamples = '';
             if (season === 'invierno') {
-                seasonContext = `🌨️ TEMPORADA: INVIERNO (frío)
-- Menciona: frío, lluvia, ropa de abrigo, quedarse en casa con manta, calefacción
-- NO menciones: calor, playa, bikini, bronceado, aire acondicionado, piscina
-- Ejemplos naturales: "Pff que frio hace hoyy noo?🤭", "me quiero quedar en casita con mantita...❄️"`;
+                seasonContext = '🌨️ TEMPORADA: INVIERNO (frío)';
+                seasonExamples = `SI MENCIONAS CLIMA/TEMPERATURA:
+- "Pff que frio hace", "hace un frio que no veas", "ufff el frioo", "no aguanto este frio"
+- "me quiero quedar en casa", "no quiero salir con este frio", "necesito una manta"
+- NO menciones: calor, playa, bikini, bronceado, piscina`;
             } else {
-                seasonContext = `☀️ TEMPORADA: VERANO (calor)
-- Menciona: calor, playa, piscina, bikini, bronceado, aire acondicionado
-- NO menciones: frío, lluvia, abrigo, manta, calefacción
-- Ejemplos naturales: "uffff que calorr hace aquiii no??🥵", "me voy a la piscina... vienes??😈"`;
+                seasonContext = '☀️ TEMPORADA: VERANO (calor)';
+                seasonExamples = `SI MENCIONAS CLIMA/TEMPERATURA:
+- "ufff que calor", "hace un calor insoportable", "me derrito de calor", "no aguanto este calor"
+- "quiero ir a la piscina", "necesito el aire", "estoy en bikini en casa"
+- NO menciones: frío, lluvia, abrigo, manta`;
             }
             
-            return `Genera 3 mensajes masivos DIFERENTES para enviar a tus suscriptores de OnlyFans.
-
-OBJETIVO: Generar interaccion y respuestas. Son mensajes 1 a 1, personales, cercanos, MUY CORTOS.
+            return `Genera 3 mensajes masivos COMPLETAMENTE DIFERENTES Y ÚNICOS para enviar a tus suscriptores de OnlyFans.
 
 ${timeContext}
-
-${timeExamples}
-
 ${seasonContext}
 
-⚠️ REGLAS CRÍTICAS:
-1. MÁXIMO 1 LÍNEA por mensaje (10-12 palabras máximo)
-2. Usa DOBLES signos: "??" siempre, nunca "?"
-3. Alarga vocales SOLO AL FINAL: "amorrr", "hoyy", "ocupaadoo"
-4. Solo 1-2 emojis AL FINAL del mensaje
-5. TONO DIRECTO Y ATREVIDO, sin tanto relleno
-6. Usa términos de cariño: "amor", "mi amor", "corazon", "bebe"
-7. Usa ";)" además de emojis cuando sea coqueto
-8. Expresiones naturales: "Pff", "porfa", "jiji", "uffff", "ayy"
+⚠️ CRÍTICO - VARIABILIDAD OBLIGATORIA:
+• Cada mensaje debe tener ESTRUCTURA DIFERENTE
+• Cada mensaje debe usar PALABRAS DIFERENTES
+• NO repitas frases ni patrones entre los 3 mensajes
+• VARÍA los emojis entre mensajes
+• USA TU PERSONALIDAD ÚNICA (consulta las instrucciones de tu perfil)
 
-DISTRIBUCIÓN DE LOS 3 MENSAJES:
-1. Mensaje 1: Pregunta directa sobre disponibilidad o estado ("estas ahi??", "te pillo solito??")
-2. Mensaje 2: Contextual al momento del día + pregunta ("salgo de la ducha... me visto o que??")
-3. Mensaje 3: Más atrevido/sugerente con intriga ("te propongo algo...", "he tenido una fantasia...")
+${timeVariations}
 
-IMPORTANTE: Los mensajes DEBEN estar adaptados al momento del día. Sé BREVE, DIRECTA y NATURAL.
+${seasonExamples}
+
+📝 ESTRUCTURA DE LOS 3 MENSAJES (VARÍA EL TIPO):
+
+MENSAJE 1 - Elige UNO de estos tipos:
+A) Saludo + pregunta directa: "buen diaa!! estas por ahi??"
+B) Estado + pregunta abierta: "aqui aburrida en casa... que haces??"
+C) Pregunta sobre disponibilidad: "amor estas libre ahora??"
+D) Saludo contextual: "hey te pillo despierto/ocupado??"
+
+MENSAJE 2 - Elige UNO de estos tipos (DIFERENTE al mensaje 1):
+A) Situación + pregunta: "recien salgo de la ducha... me visto o que??"
+B) Clima/contexto + pregunta: "que frio hace hoyy noo?? tu como estas??"
+C) Actividad + invitación: "viendo una peli aburrida... hablamos??"
+D) Estado emocional + pregunta: "estoy solita aqui... tu que haces??"
+
+MENSAJE 3 - Más atrevido/sugerente (DIFERENTE a los anteriores):
+A) Propuesta misteriosa: "oye te propongo algo..."
+B) Confesión: "porfa no me juzgues pero..."
+C) Pregunta directa atrevida: "me darias X o que me harias??"
+D) Intriga con puntos suspensivos: "he estado pensando en cosas..."
+
+⚠️ REGLAS DE ESCRITURA:
+1. MÁXIMO 1 LÍNEA (10-12 palabras)
+2. Usa ?? siempre (nunca ?)
+3. Alarga vocales AL FINAL: "amorrr", "hoyy", "ocupaadoo"
+4. Solo 1-2 emojis AL FINAL
+5. Minúsculas, sin tildes, sin ¿ al inicio
+6. Términos de cariño: "amor", "mi amor", "corazon", "bebe", "guapo", "bb"
+7. Expresiones: "Pff", "porfa", "jiji", "uffff", "ayy", "oye", "hey"
+8. Usa ";)" para coqueteo además de emojis
+
+🚫 PROHIBIDO:
+- Copiar ejemplos literalmente
+- Repetir la misma estructura entre mensajes
+- Usar "he tenido una fantasia" en todos los mensajes 3
+- Mensajes genéricos que no mencionen el momento del día
+- Más de 1 línea por mensaje
+
+✅ OBLIGATORIO:
+- Menciona TU SITUACIÓN ACTUAL según la hora del día
+- Sé ESPECÍFICA sobre qué estás haciendo AHORA
+- Cada mensaje debe sonar ÚNICO y ESPONTÁNEO
+- Usa tu personalidad (revisa tus instrucciones)
 
 Formato de respuesta:
 [Mensaje 1]
