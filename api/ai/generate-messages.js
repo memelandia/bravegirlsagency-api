@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     }
     
     try {
-        const { modelName, instructions, emojis, phrases, messageType, context } = req.body;
+        const { modelName, instructions, emojis, phrases, messageType, context, timestamp, seed } = req.body;
         
         // Validar datos requeridos
         if (!modelName || !messageType) {
@@ -34,6 +34,9 @@ export default async function handler(req, res) {
         // Construir el prompt según el tipo de mensaje
         const systemPrompt = buildSystemPrompt(modelName, instructions, emojis, phrases);
         const userPrompt = buildUserPrompt(messageType, context);
+        
+        // Agregar variabilidad única por request
+        const uniqueContext = timestamp ? `[Request ID: ${timestamp}-${seed || 0}] ` : '';
         
         console.log('🤖 Llamando a OpenAI...');
         
@@ -53,12 +56,14 @@ export default async function handler(req, res) {
                     },
                     {
                         role: 'user',
-                        content: userPrompt
+                        content: uniqueContext + userPrompt  // Agregar contexto único
                     }
                 ],
-                temperature: 0.9, // Alta creatividad para mensajes únicos
+                temperature: 0.95, // Alta creatividad para mensajes únicos (aumentado de 0.9)
                 max_tokens: 800,
-                n: 1 // Solo 1 respuesta, pero con 3 mensajes dentro
+                n: 1, // Solo 1 respuesta, pero con 3 mensajes dentro
+                presence_penalty: 0.6, // Penaliza repetición de temas
+                frequency_penalty: 0.3 // Penaliza repetición de palabras
             })
         });
         
@@ -82,7 +87,7 @@ export default async function handler(req, res) {
         return res.status(200).json({
             success: true,
             messages: messages,
-            model: 'gpt-4o',
+            model: 'gpt-4o-mini',  // Modelo real utilizado
             tokens: data.usage.total_tokens
         });
         
