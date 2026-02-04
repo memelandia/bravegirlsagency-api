@@ -31,13 +31,14 @@ export const supervisionAPI = {
       const response = await fetch(`${API_BASE_URL}/checklist`);
       const result = await response.json();
       
-      if (result.success && result.data) {
-        // Sincronizar localStorage con BD
-        localStorage.setItem('checklist_mes_data', JSON.stringify(result.data));
-        return result.data;
+      if (result.success) {
+        // Si la BD respondió exitosamente, usar sus datos (aunque esté vacío)
+        const data = result.data || {};
+        localStorage.setItem('checklist_mes_data', JSON.stringify(data));
+        return data;
       }
       
-      // Si BD está vacía, verificar localStorage como fallback
+      // Solo si el API falla, usar localStorage
       const local = localStorage.getItem('checklist_mes_data');
       return local ? JSON.parse(local) : {};
       

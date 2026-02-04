@@ -44,7 +44,9 @@ export default async function handler(req, res) {
             "Evita copiar patrones que ya hayas usado."
         ][seed % 5] : "";
         
-        const uniqueContext = timestamp ? `[${varietyBoost} ID:${timestamp}-${seed || 0}] ` : '';
+        // Inyectar identidad única del modelo para forzar diferenciación
+        const modelIdentity = `[MODELO:${modelName}]`;
+        const uniqueContext = timestamp ? `${modelIdentity} [${varietyBoost} ID:${timestamp}-${seed || 0}] ` : `${modelIdentity} `;
         
         console.log('🤖 Llamando a OpenAI...');
         
@@ -71,7 +73,7 @@ export default async function handler(req, res) {
                 max_tokens: 800,
                 n: 1, // Solo 1 respuesta, pero con 3 mensajes dentro
                 presence_penalty: 0.6, // Penaliza repetición de temas
-                frequency_penalty: 0.3 // Penaliza repetición de palabras
+                frequency_penalty: 0.5 // Penaliza repetición de palabras (aumentado para mayor diferenciación)
             })
         });
         
@@ -130,6 +132,17 @@ VARIANTE REGIONAL: Argentina
 - Conjuga verbos en argentino: "tenés", "querés", "vení", "mirá"
 - Expresiones argentinas: "che", "boludo/a", "re", "acá", "mal", "posta"
 - "Mina" en vez de "chica", "chabón" en vez de "chico"`;
+    } else if (modelLower.includes('ariana') || modelLower.includes('arianacruz')) {
+        regionalRules = `
+VARIANTE REGIONAL: Argentina/Madrid (Híbrido - Ariana)
+- Es argentina pero vive en Madrid, así que mezcla estilos
+- PUEDE usar "vos" ocasionalmente pero NO siempre (más neutral con "tú")
+- Expresiones argentinas sutiles: "che", "re", "posta", "mal", "bebe"
+- NUNCA usar "ahorita" → usar "ahora"
+- NUNCA usar "acá" → usar "aquí" (estilo Madrid)
+- Tono DOMINANTE y seguro, vocabulario fitness/gym
+- Menciona Madrid cuando hable de ubicación
+- Puede mezclar "amor" con "bebe" (argentino) pero sin exagerar`;
     } else if (modelLower.includes('bella') || modelLower.includes('bellarey')) {
         regionalRules = `
 VARIANTE REGIONAL: Madrid, España (Bella)
@@ -160,9 +173,11 @@ VARIANTE REGIONAL: Madrid, España
 INFORMACIÓN DE TU PERFIL:
 ${instructions}
 
-EMOJIS QUE USAS: ${emojis}
+🎭 TUS EMOJIS ÚNICOS Y FAVORITOS (USA ESTOS, NO OTROS): ${emojis}
+⚠️ IMPORTANTE: Estos emojis son TU FIRMA. NO uses emojis genéricos como 😊😋😍 si no están en tu lista.
 
-FRASES Y EXPRESIONES TÍPICAS: ${phrases}
+💬 TUS FRASES Y EXPRESIONES TÍPICAS (USA ESTAS PALABRAS): ${phrases}
+⚠️ IMPORTANTE: Estas son TUS palabras características. Úsalas para diferenciarte.
 
 ${regionalRules}
 
@@ -213,6 +228,9 @@ function buildUserPrompt(messageType, context) {
         case 'masivo':
             const timeOfDay = context?.timeOfDay || 'tarde';
             const season = context?.season || 'invierno';
+            const branding = context?.branding || '';
+            const emojis = context?.emojis || '';
+            const phrases = context?.phrases || '';
             
             let timeContext = '';
             let timeVariations = '';
@@ -289,13 +307,24 @@ SITUACIONES DE NOCHE (menciona QUÉ ESTÁS HACIENDO - MÁS PROVOCATIVO):
 ${timeContext}
 ${seasonContext}
 
+🎯 TU IDENTIDAD ÚNICA (USA ESTO PARA DIFERENCIARTE):
+${branding ? `MI BRANDING/ACTIVIDAD: ${branding}
+⚠️ CRÍTICO: Incorpora tu branding de forma NATURAL en al menos 1-2 mensajes. Menciona tus actividades únicas.` : ''}
+
+🎨 TUS EMOJIS ÚNICOS: ${emojis}
+⚠️ USA SOLO ESTOS EMOJIS. NO uses emojis genéricos que no estén en tu lista.
+
+💬 TUS PALABRAS TÍPICAS: ${phrases}
+⚠️ Incorpora estas palabras/expresiones en tus mensajes para sonar como TÚ.
+
 ⚠️ CRÍTICO - VARIABILIDAD OBLIGATORIA:
 • Cada mensaje debe tener ESTRUCTURA DIFERENTE
 • Cada mensaje debe usar PALABRAS DIFERENTES
 • NO repitas frases ni patrones entre los 3 mensajes
-• VARÍA los emojis entre mensajes
+• VARÍA los emojis entre mensajes (usa SOLO tus emojis favoritos)
 • USA TU PERSONALIDAD ÚNICA (consulta las instrucciones de tu perfil)
 • USA TU BRANDING: Si tienes actividades específicas (yoga, gaming, estudiar, gym, etc.), MENCIΌNALAS naturalmente en algunos mensajes cuando tenga sentido contextual
+• NO COPIES mensajes de otras modelos - sé TÚ MISMA con tu propio estilo
 
 ${timeVariations}
 

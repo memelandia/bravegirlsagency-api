@@ -50,12 +50,8 @@ function loadModels() {
             id: key,
             name: data.nombre,
             username: data.username,
-            personalidad: data.personalidad,
-            descripcion: data.descripcion,
             emojis: data.emojis_favoritos,
-            palabras: data.palabras_tipicas,
-            intensidad: data.intensidad,
-            pais: data.pais
+            palabras: data.palabras_tipicas
         }));
     
     if (activeModels.length === 0) {
@@ -159,16 +155,33 @@ async function generateMessages() {
     if (messageType === 'masivo') {
         const timeOfDay = document.getElementById('time-of-day').value;
         const season = document.getElementById('season').value;
-        context = { timeOfDay, season };
+        const modelData = MODELOS_DATA[modelId];
+        context = { 
+            timeOfDay, 
+            season,
+            branding: modelData.branding || '',
+            emojis: modelData.emojis_favoritos || '',
+            phrases: modelData.palabras_tipicas || ''
+        };
         console.log('📝 Contexto masivo:', context);
         console.log('  - Hora del día:', timeOfDay);
         console.log('  - Temporada:', season);
     } else if (messageType === 'posteo') {
-        const photoDescription = document.getElementById('photo-description').value;
+        const photoDescription = document.getElementById('photo-description').value.trim();
+        if (!photoDescription) {
+            alert('⚠️ Debes describir la foto/video');
+            generateBtn.disabled = false;
+            return;
+        }
         context = photoDescription;
         console.log('📸 Contexto posteo:', context);
     } else if (messageType === 'venta') {
-        const packDescription = document.getElementById('pack-description').value;
+        const packDescription = document.getElementById('pack-description').value.trim();
+        if (!packDescription) {
+            alert('⚠️ Debes describir el contenido del pack');
+            generateBtn.disabled = false;
+            return;
+        }
         context = packDescription;
         console.log('💰 Contexto venta:', context);
     }
@@ -188,15 +201,33 @@ async function generateMessages() {
     
     try {
         const modelData = MODELOS_DATA[modelId];
-        const instructions = `Soy ${modelData.nombre}. ${modelData.descripcion || ''}`;
+        
+        // Construir instructions completas con toda la información del modelo
+        const instructions = `
+Soy ${modelData.nombre}.
+${modelData.descripcion || ''}
+
+PERSONALIDAD: ${modelData.personalidad || 'Dulce, cariñosa y atrevida'}
+INTENSIDAD: ${modelData.intensidad || 'Media'}
+${modelData.branding ? `MI BRANDING/ACTIVIDADES: ${modelData.branding}` : ''}
+${modelData.cosas_no_decir ? `NO MENCIONAR NUNCA: ${modelData.cosas_no_decir}` : ''}
+${modelData.tipo_chico_ideal ? `TIPO DE CLIENTE IDEAL: ${modelData.tipo_chico_ideal}` : ''}
+${modelData.notas ? `NOTAS ESTRATÉGICAS: ${modelData.notas}` : ''}
+        `.trim();
         
         const apiUrl = window.CONFIG?.onlyMonsterApiUrl || 'https://bravegirlsagency-api.vercel.app/api';
         
         console.log('🌐 Llamando API con:', {
+            modelId: modelId,
             modelName: model.name,
             messageType,
-            context
+            context,
+            instructionsLength: instructions.length
         });
+        
+        // Agregar timestamp y seed para forzar variabilidad entre requests
+        const timestamp = Date.now();
+        const randomSeed = Math.floor(Math.random() * 1000000);
         
         const response = await fetch(`${apiUrl}/ai/generate-messages`, {
             method: 'POST',
@@ -207,7 +238,9 @@ async function generateMessages() {
                 emojis: model.emojis || '💕😘🔥',
                 phrases: model.palabras || '',
                 messageType: messageType,
-                context: context
+                context: context,
+                timestamp: timestamp,  // Timestamp único para evitar cache
+                seed: randomSeed       // Seed aleatorio para variabilidad
             })
         });
         
@@ -430,7 +463,110 @@ window.copyMessage = function(message, button) {
 };
 
 window.regenerateMessage = async function(index) {
-    await generateMessages();
+    if (!window.currentGeneration) {
+        console.error('❌ No hay generación actual para regenerar');
+        return;
+    }
+    
+    const { modelId, messageType } = window.currentGeneration;
+    const model = window.availableModels.find(m => m.id === modelId);
+    
+    if (!model) {
+        console.error('❌ Modelo no encontrado');
+        return;
+    }
+    
+    // Obtener el contexto actual según el tipo de mensaje
+    let context = null;
+    if (messageType === 'masivo') {
+        const timeOfDay = document.getElementById('time-of-day').value;
+        const season = document.getElementById('season').value;
+        context = { timeOfDay, season };
+    } else if (messageType === 'posteo') {
+        context = document.getElementById('photo-description').value;
+    } else if (messageType === 'venta') {
+        context = document.getElementById('pack-description').value;
+    }
+    
+    const container = document.getElementById('messages-container');
+    const messageItems = container.querySelectorAll('.message-item');
+    
+    if (index < 0 || index >= messageItems.length) {
+        console.error('❌ Índice de mensaje inválido');
+        return;
+    }
+    
+    // Mostrar loading solo en el mensaje específico
+    const messageItem = messageItems[index];
+    const originalContent = messageItem.innerHTML;
+    messageItem.innerHTML = '<div style="text-align: center; padding: 1rem;"><div style="font-size: 1.5rem;">⏳</div><div style="color: #9CA3AF; margin-top: 0.5rem;">Regenerando...</div></div>';
+    
+    try {
+        const modelData = MODELOS_DATA[modelId];
+        
+        // Construir instructions completas
+        const instructions = `
+Soy ${modelData.nombre}.
+${modelData.descripcion || ''}
+
+PERSONALIDAD: ${modelData.personalidad || 'Dulce, cariñosa y atrevida'}
+INTENSIDAD: ${modelData.intensidad || 'Media'}
+${modelData.branding ? `MI BRANDING/ACTIVIDADES: ${modelData.branding}` : ''}
+${modelData.cosas_no_decir ? `NO MENCIONAR NUNCA: ${modelData.cosas_no_decir}` : ''}
+${modelData.tipo_chico_ideal ? `TIPO DE CLIENTE IDEAL: ${modelData.tipo_chico_ideal}` : ''}
+${modelData.notas ? `NOTAS ESTRATÉGICAS: ${modelData.notas}` : ''}
+        `.trim();
+        
+        const apiUrl = window.CONFIG?.onlyMonsterApiUrl || 'https://bravegirlsagency-api.vercel.app/api';
+        
+        // Agregar timestamp y seed para forzar variabilidad
+        const timestamp = Date.now();
+        const randomSeed = Math.floor(Math.random() * 1000000);
+        
+        const response = await fetch(`${apiUrl}/ai/generate-messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                modelName: model.name,
+                instructions: instructions,
+                emojis: model.emojis || '💕😘🔥',
+                phrases: model.palabras || '',
+                messageType: messageType,
+                context: context,
+                timestamp: timestamp,
+                seed: randomSeed
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al regenerar mensaje');
+        }
+        
+        const data = await response.json();
+        const newMessage = data.messages[0]; // Tomar solo el primero
+        
+        // Actualizar el mensaje en la UI
+        messageItem.innerHTML = `
+            <div style="padding-bottom: 0.5rem; white-space: pre-wrap;">${escapeHtml(newMessage)}</div>
+            <div class="message-actions">
+                <button onclick="window.copyMessage('${escapeForAttr(newMessage)}', this)">📋 Copiar</button>
+                <button onclick="window.addToFavorites('${modelId}', '${escapeForAttr(model.name)}', '${escapeForAttr(newMessage)}', '${messageType}')">⭐ Favorito</button>
+                <button onclick="window.regenerateMessage(${index})">↻ Regenerar</button>
+            </div>
+        `;
+        
+        // Actualizar en currentGeneration
+        window.currentGeneration.messages[index] = newMessage;
+        
+        // Guardar en historial
+        saveToHistory(modelId, model.name, newMessage, messageType);
+        renderHistory();
+        
+    } catch (error) {
+        console.error('❌ Error al regenerar:', error);
+        messageItem.innerHTML = originalContent;
+        alert('❌ Error al regenerar el mensaje. Intenta de nuevo.');
+    }
 };
 
 function escapeHtml(text) {
@@ -440,5 +576,11 @@ function escapeHtml(text) {
 }
 
 function escapeForAttr(text) {
-    return text.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n');
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/'/g, '&#39;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '\\n');
 }
