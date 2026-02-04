@@ -318,6 +318,7 @@ ${branding ? `MI BRANDING/ACTIVIDAD: ${branding}
 ⚠️ Incorpora estas palabras/expresiones en tus mensajes para sonar como TÚ.
 
 ⚠️ CRÍTICO - VARIABILIDAD OBLIGATORIA:
+• Los 3 mensajes NO pueden seguir el mismo patrón (ej: saludo → situación → confesión)
 • Cada mensaje debe tener ESTRUCTURA DIFERENTE
 • Cada mensaje debe usar PALABRAS DIFERENTES
 • NO repitas frases ni patrones entre los 3 mensajes
@@ -325,38 +326,52 @@ ${branding ? `MI BRANDING/ACTIVIDAD: ${branding}
 • USA TU PERSONALIDAD ÚNICA (consulta las instrucciones de tu perfil)
 • USA TU BRANDING: Si tienes actividades específicas (yoga, gaming, estudiar, gym, etc.), MENCIΌNALAS naturalmente en algunos mensajes cuando tenga sentido contextual
 • NO COPIES mensajes de otras modelos - sé TÚ MISMA con tu propio estilo
+• MEZCLA los tipos de inicio/tema/cierre de forma ALEATORIA
+• Evita que todos los mensajes empiecen igual (ej: todos con "hola" o todos con pregunta)
 
 ${timeVariations}
 
 ${seasonExamples}
 
-📝 ESTRUCTURA DE LOS 3 MENSAJES (VARÍA EL TIPO):
+⚠️ IMPORTANTE: Los 3 mensajes deben ser COMPLETAMENTE DIFERENTES en estructura, tono e inicio.
 
-MENSAJE 1 - Elige UNO de estos tipos:
-A) Saludo + pregunta directa: "buen diaa!! estas por ahi??"
-B) Estado + pregunta abierta: "aqui aburrida en casa... que haces??"
-C) Pregunta sobre disponibilidad: "amor estas libre ahora??"
-D) Saludo contextual: "hey te pillo despierto/ocupado??"
+📝 IDEAS VARIADAS PARA MENSAJES (USA COMBINACIONES DIFERENTES, NO SIGAS ORDEN):
 
-MENSAJE 2 - Elige UNO de estos tipos (DIFERENTE al mensaje 1):
-A) Situación + pregunta: "recien salgo de la ducha... me visto o que??"
-B) Clima/contexto + pregunta: "que frio hace hoyy noo?? tu como estas??"
-C) Actividad + invitación: "viendo una peli aburrida... hablamos??"
-D) Estado emocional + pregunta: "estoy solita aqui... tu que haces??"
-E) BRANDING + pregunta: Menciona tu actividad/hobby único (yoga, gaming, estudiar, gym, etc.)
-   Ejemplos contextuales:
-   - Si eres gamer: "termine de jugar una partida... aburrida ahora, tu??"
-   - Si haces yoga: "salgo de yoga y vengo calentita... que haces??"
-   - Si estudias: "termine de estudiar por hoy... necesito distraerme, tu??"
-   - Si vas al gym: "llego del gym re cansada... me haces compañia??"
-   - Si eres enfermera: "salgo del turno agotada... hablamos un rato??"
+TIPOS DE INICIO (varía entre todos):
+• Saludo directo: "holaa", "heyy", "oye guapo", "amor"
+• Pregunta directa: "estas ahi??", "que haces??", "libre ahora??"
+• Estado/situación: "aqui aburrida", "recien llego", "salgo del [actividad]"
+• Exclamación: "Pff que [clima/situacion]", "ufff", "ayy"
+• Sin saludo (directo al punto): "te propongo algo", "necesito que me ayudes con algo"
 
-MENSAJE 3 - Más atrevido/sugerente (DIFERENTE a los anteriores):
-A) Propuesta misteriosa: "oye te propongo algo..."
-B) Confesión: "porfa no me juzgues pero..."
-C) Pregunta directa atrevida: "me darias X o que me harias??"
-D) Intriga con puntos suspensivos: "he estado pensando en cosas..."
-E) Si es NOCHE: Mucho más provocativo y sensual (ducha, cama, desnuda, etc.)
+TEMAS/SITUACIONES (mezcla, no uses todos):
+• Aburrimiento: "no se que hacer", "estoy sin planes", "necesito entretencion"
+• Actividad recién terminada: "salgo de [gym/ducha/clase/trabajo]", "termine de [actividad]"
+• Clima/temperatura: menciona frío o calor según temporada
+• Soledad: "estoy solita", "no hay nadie en casa", "me siento sola"
+• Estado físico: "cansada", "con energía", "relajada", "inquieta"
+• Branding (si aplica): menciona tu actividad única (gym, yoga, gaming, estudiar)
+• Ropa/apariencia: "no se que ponerme", "en pijama", "recien me cambio"
+• Planes: "quiero hacer algo", "tengo ganas de [actividad]"
+• Pensamiento/fantasía: "he estado pensando en cosas", "se me ocurrio algo"
+• Propuesta misteriosa: "tengo una idea", "te propongo algo"
+• Confesión: "porfa no me juzgues pero", "te voy a confesar algo"
+
+CIERRES/FINALES (varía):
+• Pregunta abierta: "tu que haces??", "como estas??"
+• Pregunta sobre disponibilidad: "estas libre??", "me haces compañia??"
+• Invitación: "hablamos??", "me cuentas??"
+• Intriga: "...", "te lo cuento??"
+• Propuesta directa: "quieres que [acción]??"
+• Sin pregunta (afirmación): "escribeme", "avisame"
+
+🎲 ESTRATEGIA DE GENERACIÓN:
+• Mensaje 1: Elige UN inicio + UN tema + UN cierre (combina libremente)
+• Mensaje 2: Elige inicio DIFERENTE + tema DIFERENTE + cierre DIFERENTE
+• Mensaje 3: Elige inicio DIFERENTE + tema DIFERENTE + cierre DIFERENTE
+
+NO SIGAS PATRONES FIJOS. Cada mensaje debe sentirse espontáneo y único.
+Si es NOCHE, al menos 1-2 mensajes deben ser más provocativos/sensuales.
 
 ⚠️ REGLAS DE ESCRITURA:
 1. MÁXIMO 1 LÍNEA (10-12 palabras)
@@ -368,10 +383,10 @@ E) Si es NOCHE: Mucho más provocativo y sensual (ducha, cama, desnuda, etc.)
 7. Expresiones: "Pff", "porfa", "jiji", "uffff", "ayy", "oye", "hey"
 8. Usa ";)" para coqueteo además de emojis
 
-🚫 PROHIBIDO:
+🚫 EVITA:
 - Copiar ejemplos literalmente
-- Repetir la misma estructura entre mensajes
-- Usar "he tenido una fantasia" en todos los mensajes 3
+- Repetir la misma estructura entre los 3 mensajes
+- Usar el mismo tipo de inicio en todos los mensajes
 - Mensajes genéricos que no mencionen el momento del día
 - Más de 1 línea por mensaje
 
