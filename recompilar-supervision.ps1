@@ -40,3 +40,4 @@ Write-Host "   3. Acceder a: https://bravegirlsagency.com/supervision/" -Foregro
 Write-Host ""
 Write-Host "📖 Ver instrucciones completas en:" -ForegroundColor Cyan
 Write-Host "   INSTRUCCIONES-SUPERVISION.md" -ForegroundColor White
+Write-Host ""
