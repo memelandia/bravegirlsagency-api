@@ -84,29 +84,56 @@ module.exports = async function handler(req, res) {
 
       // Map to snake_case for DB
       const mappedData = data.map(toSnake);
-      const jsonPayload = JSON.stringify(mappedData);
       
       console.log('🔄 Mapped data length:', mappedData.length);
       console.log('📝 First record sample:', mappedData[0] ? JSON.stringify(mappedData[0]) : 'empty');
 
-      // Transaction: Delete all and Bulk Insert using jsonb_populate_recordset
-      // This is extremely efficient and atomic
+      // NUEVO MÉTODO: UPSERT individual para cada registro (como checklist y vip-repaso)
       await sql`BEGIN`;
       try {
-        console.log('🗑️ Deleting old records...');
-        await sql`DELETE FROM supervision_semanal`;
+        console.log('💾 Upserting records...');
         
-        if (mappedData.length > 0) {
-          console.log('💾 Inserting new records...');
+        for (const row of mappedData) {
           await sql`
-            INSERT INTO supervision_semanal 
-            SELECT * FROM jsonb_populate_recordset(null::supervision_semanal, ${jsonPayload}::jsonb)
+            INSERT INTO supervision_semanal (
+              id, mes, semana, week_index, chatter, cuenta,
+              facturacion, nuevos_fans, meta_semanal, meta_mensual,
+              meta_facturacion, facturacion_mensual_objetivo,
+              posteos, historias, pendientes, resueltos,
+              impacto, tiempo_respuesta, estado_objetivo, updated_at
+            ) VALUES (
+              ${row.id}, ${row.mes}, ${row.semana}, ${row.week_index},
+              ${row.chatter}, ${row.cuenta}, ${row.facturacion}, ${row.nuevos_fans},
+              ${row.meta_semanal}, ${row.meta_mensual}, ${row.meta_facturacion},
+              ${row.facturacion_mensual_objetivo}, ${row.posteos}, ${row.historias},
+              ${row.pendientes}, ${row.resueltos}, ${row.impacto},
+              ${row.tiempo_respuesta}, ${row.estado_objetivo}, CURRENT_TIMESTAMP
+            )
+            ON CONFLICT (id) DO UPDATE SET
+              mes = EXCLUDED.mes,
+              semana = EXCLUDED.semana,
+              week_index = EXCLUDED.week_index,
+              chatter = EXCLUDED.chatter,
+              cuenta = EXCLUDED.cuenta,
+              facturacion = EXCLUDED.facturacion,
+              nuevos_fans = EXCLUDED.nuevos_fans,
+              meta_semanal = EXCLUDED.meta_semanal,
+              meta_mensual = EXCLUDED.meta_mensual,
+              meta_facturacion = EXCLUDED.meta_facturacion,
+              facturacion_mensual_objetivo = EXCLUDED.facturacion_mensual_objetivo,
+              posteos = EXCLUDED.posteos,
+              historias = EXCLUDED.historias,
+              pendientes = EXCLUDED.pendientes,
+              resueltos = EXCLUDED.resueltos,
+              impacto = EXCLUDED.impacto,
+              tiempo_respuesta = EXCLUDED.tiempo_respuesta,
+              estado_objetivo = EXCLUDED.estado_objetivo,
+              updated_at = CURRENT_TIMESTAMP
           `;
-          console.log('✅ Insert successful');
         }
         
         await sql`COMMIT`;
-        console.log('✅ Transaction committed');
+        console.log('✅ Transaction committed - ', mappedData.length, 'records');
       } catch (err) {
         console.error('❌ Transaction error:', err);
         await sql`ROLLBACK`;
