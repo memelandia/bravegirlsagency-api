@@ -19,6 +19,13 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Modo inspector: ?mode=inspect
+  const mode = req.query.mode;
+  
+  if (mode === 'inspect') {
+    return await inspectData(req, res);
+  }
+
   const results = {
     tablesChecked: [],
     tablesCreated: [],
@@ -179,3 +186,29 @@ module.exports = async function handler(req, res) {
     });
   }
 };
+
+// Función auxiliar para inspeccionar datos
+async function inspectData(req, res) {
+  try {
+    const data = {
+      checklist_mes: await sql`SELECT * FROM checklist_mes LIMIT 10`,
+      vip_repaso: await sql`SELECT * FROM vip_repaso LIMIT 10`,
+      vip_fans: await sql`SELECT * FROM vip_fans`,
+      supervision_semanal: await sql`SELECT * FROM supervision_semanal ORDER BY week_index, chatter`,
+      registro_errores: await sql`SELECT * FROM registro_errores`
+    };
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        checklist_mes: { total: data.checklist_mes.rows.length, muestra: data.checklist_mes.rows },
+        vip_repaso: { total: data.vip_repaso.rows.length, muestra: data.vip_repaso.rows },
+        vip_fans: { total: data.vip_fans.rows.length, datos: data.vip_fans.rows },
+        supervision_semanal: { total: data.supervision_semanal.rows.length, datos: data.supervision_semanal.rows },
+        registro_errores: { total: data.registro_errores.rows.length, datos: data.registro_errores.rows }
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+}
