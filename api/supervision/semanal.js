@@ -74,34 +74,47 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST') {
       const { data } = req.body;
 
+      console.log('📥 Received POST request to /semanal');
+      console.log('📦 Data length:', data ? data.length : 'undefined');
+
       if (!Array.isArray(data)) {
-        return res.status(400).json({ error: 'Data must be an array' });
+        console.error('❌ Data is not an array:', typeof data);
+        return res.status(400).json({ error: 'Data must be an array', received: typeof data });
       }
 
       // Map to snake_case for DB
       const mappedData = data.map(toSnake);
       const jsonPayload = JSON.stringify(mappedData);
+      
+      console.log('🔄 Mapped data length:', mappedData.length);
+      console.log('📝 First record sample:', mappedData[0] ? JSON.stringify(mappedData[0]) : 'empty');
 
       // Transaction: Delete all and Bulk Insert using jsonb_populate_recordset
       // This is extremely efficient and atomic
       await sql`BEGIN`;
       try {
+        console.log('🗑️ Deleting old records...');
         await sql`DELETE FROM supervision_semanal`;
         
         if (mappedData.length > 0) {
+          console.log('💾 Inserting new records...');
           await sql`
             INSERT INTO supervision_semanal 
             SELECT * FROM jsonb_populate_recordset(null::supervision_semanal, ${jsonPayload}::jsonb)
           `;
+          console.log('✅ Insert successful');
         }
         
         await sql`COMMIT`;
+        console.log('✅ Transaction committed');
       } catch (err) {
+        console.error('❌ Transaction error:', err);
         await sql`ROLLBACK`;
+        console.log('🔄 Transaction rolled back');
         throw err;
       }
 
-      return res.status(200).json({ success: true, message: 'Data saved successfully' });
+      return res.status(200).json({ success: true, message: 'Data saved successfully', count: mappedData.length });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

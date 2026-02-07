@@ -93,17 +93,42 @@ export const supervisionAPI = {
 
   async saveVipRepaso(data: Record<string, string>) {
     try {
+      console.log('📤 [VIP-REPASO] Iniciando guardado. Keys:', Object.keys(data).length);
+      console.log('📤 [VIP-REPASO] URL:', `${API_BASE_URL}/vip-repaso`);
+      console.log('📤 [VIP-REPASO] Sample data:', Object.entries(data).slice(0, 3));
+      
       const response = await fetch(`${API_BASE_URL}/vip-repaso`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data })
       });
-      const result = await response.json();
+      
+      console.log('📡 [VIP-REPASO] Response status:', response.status, response.statusText);
+      
+      const responseText = await response.text();
+      console.log('📡 [VIP-REPASO] Response text:', responseText);
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.error('❌ [VIP-REPASO] Failed to parse response:', responseText);
+        throw new Error('Invalid JSON response');
+      }
+      
+      console.log('📡 [VIP-REPASO] Parsed result:', result);
+      
+      if (!response.ok) {
+        console.error('❌ [VIP-REPASO] HTTP error:', result);
+        localStorage.setItem('vip_repaso_data', JSON.stringify(data));
+        return false;
+      }
       
       localStorage.setItem('vip_repaso_data', JSON.stringify(data));
+      console.log('✅ [VIP-REPASO] Guardado exitoso');
       return result.success;
     } catch (error) {
-      console.error('Error saving VIP repaso:', error);
+      console.error('❌ [VIP-REPASO] Error saving VIP repaso:', error);
       localStorage.setItem('vip_repaso_data', JSON.stringify(data));
       return false;
     }
@@ -171,17 +196,42 @@ export const supervisionAPI = {
 
   async saveSemanal(data: any[]) {
     try {
+      console.log('📤 [SEMANAL] Iniciando guardado. Registros:', data.length);
+      console.log('📤 [SEMANAL] URL:', `${API_BASE_URL}/semanal`);
+      console.log('📤 [SEMANAL] Sample data:', data.slice(0, 2));
+      
       const response = await fetch(`${API_BASE_URL}/semanal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data })
       });
-      const result = await response.json();
+      
+      console.log('📡 [SEMANAL] Response status:', response.status, response.statusText);
+      
+      const responseText = await response.text();
+      console.log('📡 [SEMANAL] Response text:', responseText);
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.error('❌ [SEMANAL] Failed to parse response:', responseText);
+        throw new Error('Invalid JSON response');
+      }
+      
+      console.log('📡 [SEMANAL] Parsed result:', result);
+      
+      if (!response.ok) {
+        console.error('❌ [SEMANAL] HTTP error:', result);
+        localStorage.setItem('supervision_semanal_data', JSON.stringify(data));
+        return false;
+      }
       
       localStorage.setItem('supervision_semanal_data', JSON.stringify(data));
+      console.log('✅ [SEMANAL] Guardado exitoso');
       return result.success;
     } catch (error) {
-      console.error('Error saving supervision semanal:', error);
+      console.error('❌ [SEMANAL] Error saving supervision semanal:', error);
       localStorage.setItem('supervision_semanal_data', JSON.stringify(data));
       return false;
     }
