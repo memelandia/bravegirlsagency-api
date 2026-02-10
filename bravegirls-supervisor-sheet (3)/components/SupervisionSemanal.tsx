@@ -24,7 +24,7 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
         setRows(archivedData.weekly);
         setIsLoading(false);
       } else {
-        // Initialize empty rows first (before API call)
+        // Initialize empty rows (fallback if API fails)
         const initialRows: WeeklySupervisionRow[] = [];
         WEEKS.forEach((weekName, index) => {
           CHECKLIST_ROWS.forEach(pair => {
@@ -52,35 +52,43 @@ const SupervisionSemanal: React.FC<Props> = ({ archivedData, isReadOnly = false,
           });
         });
         
-        // Verificar si hay datos guardados
-        const savedData = localStorage.getItem('supervision_semanal_data');
-        
-        if (!savedData) {
-          // No hay datos guardados, usar filas vacías con nueva distribución
-          setRows(initialRows);
-          setIsLoading(false);
-        } else {
-          // Hay datos guardados, intentar cargarlos
-          try {
-            const result = await supervisionAPI.getSemanal();
-            if (result && result.length > 0) {
-              setRows(result);
-            } else {
+        // SIEMPRE intentar cargar desde el API primero
+        try {
+          const result = await supervisionAPI.getSemanal();
+          if (result && result.length > 0) {
+            console.log('✅ Datos cargados desde API:', result.length, 'registros');
+            setRows(result);
+          } else {
+            // Si el API no devuelve datos, intentar localStorage como fallback
+            const savedData = localStorage.getItem('supervision_semanal_data');
+            if (savedData) {
               const parsed = JSON.parse(savedData);
+              console.log('📦 Datos cargados desde localStorage:', parsed.length, 'registros');
               setRows(parsed.length > 0 ? parsed : initialRows);
+            } else {
+              console.log('📝 Usando filas vacías iniciales');
+              setRows(initialRows);
             }
-          } catch (error) {
-            console.error('Error loading from API:', error);
+          }
+        } catch (error) {
+          console.error('❌ Error loading from API:', error);
+          // Si falla el API, intentar localStorage
+          const savedData = localStorage.getItem('supervision_semanal_data');
+          if (savedData) {
             try {
               const parsed = JSON.parse(savedData);
+              console.log('📦 Fallback a localStorage:', parsed.length, 'registros');
               setRows(parsed.length > 0 ? parsed : initialRows);
             } catch (e) {
               console.error("Failed to parse weekly data", e);
               setRows(initialRows);
             }
-          } finally {
-            setIsLoading(false);
+          } else {
+            console.log('📝 Fallback a filas vacías');
+            setRows(initialRows);
           }
+        } finally {
+          setIsLoading(false);
         }
       }
       initialized.current = true;
