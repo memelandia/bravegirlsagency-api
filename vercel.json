@@ -1,8 +1,7 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/api/lms/:path*", "destination": "/api/lms?path=:path*" },
-    { "source": "/api/accounts/:path*", "destination": "/api/accounts?path=:path*" }
+    { "source": "/api/lms/:path*", "destination": "/api/lms?path=:path*" }
   ],
   "headers": [
     {
