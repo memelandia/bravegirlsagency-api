@@ -18,17 +18,12 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // With Vercel rewrites, /api/accounts/123/transactions becomes
-        // /api/accounts?path=123/transactions
-        // So we check both req.query.path and the original URL
-        const pathParam = req.query.path || '';
-        const url = req.url.split('?')[0];
+        // Route: if accountId query param is present, fetch transactions
+        // Otherwise, list all accounts
+        const { accountId } = req.query;
         
-        // Determine route from the path query param or URL
-        const isTransactions = pathParam.includes('transactions') || url.includes('/transactions');
-        
-        if (isTransactions) {
-            return await handleTransactions(req, res, pathParam);
+        if (accountId) {
+            return await handleTransactions(req, res, accountId);
         } else {
             return await handleListAccounts(req, res);
         }
@@ -71,19 +66,7 @@ async function handleListAccounts(req, res) {
 }
 
 // Get account transactions with pagination support
-async function handleTransactions(req, res, pathParam) {
-    // Extract accountId from path param: "85825874/transactions"
-    let accountId;
-    if (pathParam) {
-        const pathParts = pathParam.split('/').filter(Boolean);
-        accountId = pathParts[0]; // First segment is the accountId
-    } else {
-        // Fallback: extract from URL
-        const parts = req.url.split('/').filter(Boolean);
-        const accountsIndex = parts.indexOf('accounts');
-        accountId = parts[accountsIndex + 1];
-    }
-    
+async function handleTransactions(req, res, accountId) {
     const { start, end, cursor } = req.query;
     
     console.log(`📊 Fetching transactions for account ${accountId}`);
