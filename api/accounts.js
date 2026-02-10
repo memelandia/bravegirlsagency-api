@@ -18,15 +18,18 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // Parse URL to determine which action
+        // With Vercel rewrites, /api/accounts/123/transactions becomes
+        // /api/accounts?path=123/transactions
+        // So we check both req.query.path and the original URL
+        const pathParam = req.query.path || '';
         const url = req.url.split('?')[0];
-        const parts = url.split('/').filter(Boolean);
         
-        // If URL contains 'transactions', it's a transaction request
-        if (url.includes('/transactions')) {
-            return await handleTransactions(req, res);
+        // Determine route from the path query param or URL
+        const isTransactions = pathParam.includes('transactions') || url.includes('/transactions');
+        
+        if (isTransactions) {
+            return await handleTransactions(req, res, pathParam);
         } else {
-            // Otherwise, list accounts
             return await handleListAccounts(req, res);
         }
     } catch (error) {
@@ -67,20 +70,31 @@ async function handleListAccounts(req, res) {
     return res.status(200).json(data);
 }
 
-// Get account transactions
-async function handleTransactions(req, res) {
-    // Extract accountId from URL path
-    const parts = req.url.split('/').filter(Boolean);
-    const accountsIndex = parts.indexOf('accounts');
-    const accountId = parts[accountsIndex + 1];
+// Get account transactions with pagination support
+async function handleTransactions(req, res, pathParam) {
+    // Extract accountId from path param: "85825874/transactions"
+    let accountId;
+    if (pathParam) {
+        const pathParts = pathParam.split('/').filter(Boolean);
+        accountId = pathParts[0]; // First segment is the accountId
+    } else {
+        // Fallback: extract from URL
+        const parts = req.url.split('/').filter(Boolean);
+        const accountsIndex = parts.indexOf('accounts');
+        accountId = parts[accountsIndex + 1];
+    }
     
-    const { start, end } = req.query;
+    const { start, end, cursor } = req.query;
     
     console.log(`📊 Fetching transactions for account ${accountId}`);
     
-    const url = `${ONLYMONSTER_BASE_URL}/api/v0/platforms/onlyfans/accounts/${accountId}/transactions?start=${start}&end=${end}&limit=1000`;
+    // Build URL with optional cursor for pagination
+    let apiUrl = `${ONLYMONSTER_BASE_URL}/api/v0/platforms/onlyfans/accounts/${accountId}/transactions?start=${start}&end=${end}&limit=1000`;
+    if (cursor) {
+        apiUrl += `&cursor=${cursor}`;
+    }
     
-    const response = await fetch(url, {
+    const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
             'x-om-auth-token': ONLYMONSTER_API_KEY,
@@ -99,6 +113,6 @@ async function handleTransactions(req, res) {
     }
     
     const data = await response.json();
-    console.log('✅ Data fetched successfully');
+    console.log(`✅ Data fetched: ${data.items?.length || 0} transactions${data.cursor ? ' (has more pages)' : ''}`);
     return res.status(200).json(data);
 }
