@@ -48,10 +48,42 @@ interface Props {
 // UTILIDADES DE FECHA
 // ═══════════════════════════════════════════
 
-function getDateRange(period: TimePeriod): { start: string; end: string } {
+function calculateDaysDifference(start: string, end: string): number {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+}
+
+function formatDateRange(start: string, end: string): string {
+  const startDate = new Date(start + 'T00:00:00');
+  const endDate = new Date(end + 'T00:00:00');
+  const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  if (start === end) {
+    return startDate.toLocaleDateString('es-ES', { ...options, year: 'numeric' });
+  }
+  const startStr = startDate.toLocaleDateString('es-ES', options);
+  const endStr = endDate.toLocaleDateString('es-ES', { ...options, year: 'numeric' });
+  return `${startStr} - ${endStr}`;
+}
+
+function getDateRange(
+  period: TimePeriod,
+  customStart?: string,
+  customEnd?: string
+): { start: string; end: string } {
   const now = new Date();
   const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   const fmt = (d: Date) => d.toISOString().split('T')[0];
+
+  if (period === TimePeriod.CUSTOM) {
+    if (customStart && customEnd) {
+      return { start: customStart, end: customEnd };
+    }
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return { start: fmt(thirtyDaysAgo), end: fmt(today) };
+  }
 
   switch (period) {
     case TimePeriod.TODAY:
@@ -83,7 +115,8 @@ const PERIOD_LABELS: Record<TimePeriod, string> = {
   [TimePeriod.YESTERDAY]: 'Ayer',
   [TimePeriod.LAST_7_DAYS]: 'Últimos 7 días',
   [TimePeriod.THIS_WEEK]: 'Esta Semana',
-  [TimePeriod.THIS_MONTH]: 'Este Mes'
+  [TimePeriod.THIS_MONTH]: 'Este Mes',
+  [TimePeriod.CUSTOM]: 'Personalizado'
 };
 
 // ═══════════════════════════════════════════
@@ -141,15 +174,47 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
   const [filterModel, setFilterModel] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('revenue');
 
+  // Custom date range
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+
   // Modal
   const [selectedChatter, setSelectedChatter] = useState<string | null>(null);
+
+  // Quick range helper
+  const setQuickRange = (days: number) => {
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - days);
+    setCustomStartDate(startDate.toISOString().split('T')[0]);
+    setCustomEndDate(today.toISOString().split('T')[0]);
+  };
+
+  // Load saved custom dates
+  useEffect(() => {
+    const savedStart = localStorage.getItem('chatters_customStartDate');
+    const savedEnd = localStorage.getItem('chatters_customEndDate');
+    if (savedStart && savedEnd) {
+      setCustomStartDate(savedStart);
+      setCustomEndDate(savedEnd);
+    }
+  }, []);
+
+  // Save custom dates
+  useEffect(() => {
+    if (customStartDate && customEndDate) {
+      localStorage.setItem('chatters_customStartDate', customStartDate);
+      localStorage.setItem('chatters_customEndDate', customEndDate);
+    }
+  }, [customStartDate, customEndDate]);
 
   // ─── DATA LOADING ───
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const { start, end } = getDateRange(period);
+      const { start, end } = getDateRange(period, customStartDate, customEndDate);
       const data = await chatterMetricsAPI.getAllChatterMetrics(start, end);
 
       if (data && Array.isArray(data)) {
@@ -164,7 +229,7 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
       console.error('Load error:', e);
     }
     setIsLoading(false);
-  }, [period]);
+  }, [period, customStartDate, customEndDate]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -234,6 +299,16 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Última act: {lastUpdate.toLocaleTimeString('es-ES')} · Auto-refresh 5 min · Datos reales de OnlyMonster /users/metrics · Revenue NET (-20% OF)
               </p>
+              {period === TimePeriod.CUSTOM && customStartDate && customEndDate && (
+                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700 rounded-full">
+                  <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
+                    📅 {formatDateRange(customStartDate, customEndDate)}
+                  </span>
+                  <span className="text-xs text-purple-600 dark:text-purple-400">
+                    ({calculateDaysDifference(customStartDate, customEndDate)} días)
+                  </span>
+                </div>
+              )}
             </div>
             <button
               onClick={loadData}
@@ -255,12 +330,83 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div>
               <label className="block text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold mb-1">Período</label>
-              <select value={period} onChange={e => setPeriod(e.target.value as TimePeriod)}
+              <select value={period} onChange={e => {
+                const newPeriod = e.target.value as TimePeriod;
+                setPeriod(newPeriod);
+                if (newPeriod === TimePeriod.CUSTOM) {
+                  setShowCustomDatePicker(true);
+                  if (!customStartDate || !customEndDate) {
+                    const today = new Date();
+                    const weekAgo = new Date(today);
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    setCustomEndDate(today.toISOString().split('T')[0]);
+                    setCustomStartDate(weekAgo.toISOString().split('T')[0]);
+                  }
+                } else {
+                  setShowCustomDatePicker(false);
+                }
+              }}
                 className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
                 {Object.entries(PERIOD_LABELS).map(([val, label]) => (
                   <option key={val} value={val}>{label}</option>
                 ))}
               </select>
+
+              {/* Custom Date Picker */}
+              {showCustomDatePicker && (
+                <div className="mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold mb-1 text-purple-700 dark:text-purple-300 uppercase tracking-wide">Fecha Inicio</label>
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={e => setCustomStartDate(e.target.value)}
+                      max={customEndDate || undefined}
+                      className="w-full px-3 py-2 text-sm border border-purple-300 dark:border-purple-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold mb-1 text-purple-700 dark:text-purple-300 uppercase tracking-wide">Fecha Fin</label>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={e => setCustomEndDate(e.target.value)}
+                      min={customStartDate || undefined}
+                      max={new Date().toISOString().split('T')[0]}
+                      className="w-full px-3 py-2 text-sm border border-purple-300 dark:border-purple-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  {customStartDate && customEndDate && (
+                    <div className="text-xs text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 px-2 py-1.5 rounded">
+                      📊 {calculateDaysDifference(customStartDate, customEndDate)} días seleccionados
+                    </div>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (customStartDate && customEndDate) {
+                        loadData();
+                      } else {
+                        alert('⚠️ Selecciona fechas de inicio y fin');
+                      }
+                    }}
+                    disabled={!customStartDate || !customEndDate}
+                    className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-colors"
+                  >
+                    ✅ Aplicar Rango
+                  </button>
+                  <div className="pt-2 border-t border-purple-200 dark:border-purple-800">
+                    <p className="text-[10px] font-semibold text-purple-700 dark:text-purple-300 mb-2 uppercase tracking-wide">⚡ Atajos:</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[{l:'7 días',d:7},{l:'15 días',d:15},{l:'30 días',d:30},{l:'90 días',d:90}].map(p => (
+                        <button key={p.d} onClick={() => setQuickRange(p.d)}
+                          className="px-2 py-1.5 text-[11px] bg-white dark:bg-gray-800 hover:bg-purple-100 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-700 rounded text-purple-700 dark:text-purple-300 transition-colors">
+                          📅 Últimos {p.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold mb-1">Chatter</label>

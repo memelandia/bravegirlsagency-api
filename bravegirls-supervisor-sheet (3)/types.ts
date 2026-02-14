@@ -166,3 +166,137 @@ export const GOAL_COLORS = {
   [GoalStatus.FALLIDO]: 'bg-[#FEE2E2] text-red-900 border-red-200 dark:bg-red-900 dark:text-red-100 dark:border-red-800',
   [GoalStatus.EMPTY]: 'bg-white text-gray-900 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600'
 };
+
+// ═══════════════════════════════════════════
+// TIPOS PARA DASHBOARD DE MODELOS
+// ═══════════════════════════════════════════
+
+export interface ModelStats {
+  id: string;
+  name: string;
+  onlyFansUsername: string;
+  onlyMonsterId: string;
+
+  // Métricas actuales
+  totalSubscribers: number;
+  activeSubscribers: number;
+  newSubscribersToday: number;
+  newSubscribersThisWeek: number;
+  newSubscribersThisMonth: number;
+
+  // Facturación (NET después del 20% OF)
+  earningsToday: number;
+  earningsThisWeek: number;
+  earningsThisMonth: number;
+  earningsTotal: number;
+  projection: number;
+
+  // Desglose
+  subscriptionRevenue: number;
+  ppvRevenue: number;
+  tipRevenue: number;
+
+  // Engagement
+  messagesReceived: number;
+  messagesSent: number;
+  responseRate: number;
+  averageResponseTime: number;
+  avgMessagePrice: number;
+
+  // Contenido
+  postsThisMonth: number;
+  storiesThisMonth: number;
+
+  // Transacciones
+  transactionCount: number;
+
+  // Metadata
+  lastUpdated: string;
+  isPlaceholder?: boolean;
+}
+
+export interface DailyBilling {
+  date: string;
+  earnings: number;
+  newSubs: number;
+  activeSubs: number;
+}
+
+// ==========================================
+// CHATTER PERFORMANCE TYPES (Real /users/metrics data)
+// ==========================================
+
+export interface ChatterRevenue {
+  total_net: number;            // (sold_messages + tips + sold_posts) × 0.8
+  sold_messages_gross: number;  // sold_messages_price_sum
+  tips_gross: number;           // tips_amount_sum
+  sold_posts_gross: number;     // sold_posts_price_sum
+  paid_messages_price: number;  // paid_messages_price_sum (total price of paid msgs sent)
+  impact_percentage: number;    // % of team total
+}
+
+export interface ChatterMessages {
+  total: number;             // messages_count
+  ai_generated: number;      // ai_generated_messages_count
+  copied: number;            // copied_messages_count
+  media: number;             // media_messages_count
+  paid_sent: number;         // paid_messages_count
+  sold: number;              // sold_messages_count
+  unsent: number;            // unsent_messages_count
+  templates_used: number;    // internal_templates_count
+  words_count: number;       // words_count_sum
+}
+
+export interface ChatterPerformance {
+  reply_time_avg_seconds: number;
+  reply_time_avg_minutes: number;
+  purchase_interval_avg_seconds: number;
+  purchase_interval_avg_minutes: number;
+  revenue_per_message: number;    // total_net / messages_count
+  conversion_rate: number;        // sold / paid_sent × 100
+}
+
+export interface ChatterChargebacks {
+  tips: number;
+  messages_price: number;
+  messages_count: number;
+  posts_price: number;
+  posts_count: number;
+}
+
+export interface ChatterMetrics {
+  user_id: string;
+  user_name: string;
+  accounts: string[];
+  period: { start: string; end: string };
+  revenue: ChatterRevenue;
+  messages: ChatterMessages;
+  performance: ChatterPerformance;
+  fans_count: number;
+  posts_count: number;
+  deleted_posts_count: number;
+  chargebacks: ChatterChargebacks;
+  lastUpdated: string;
+}
+
+export interface ChatterWithKPIs extends ChatterMetrics {
+  rank: number;
+  performance_rating: 1 | 2 | 3 | 4 | 5;
+}
+
+export enum TimePeriod {
+  TODAY = 'today',
+  YESTERDAY = 'yesterday',
+  LAST_7_DAYS = 'last_7_days',
+  THIS_WEEK = 'this_week',
+  THIS_MONTH = 'this_month',
+  CUSTOM = 'custom'
+}
+
+export const RATING_COLORS: Record<number, string> = {
+  5: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300',
+  4: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300',
+  3: 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300',
+  2: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300',
+  1: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300'
+};
