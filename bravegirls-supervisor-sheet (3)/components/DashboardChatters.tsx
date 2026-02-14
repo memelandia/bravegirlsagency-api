@@ -215,7 +215,10 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
     setError(null);
     try {
       const { start, end } = getDateRange(period, customStartDate, customEndDate);
-      const data = await chatterMetricsAPI.getAllChatterMetrics(start, end);
+      
+      // ✅ Pasar account_id cuando hay filtro de modelo
+      const accountId = filterModel !== 'all' ? filterModel : undefined;
+      const data = await chatterMetricsAPI.getAllChatterMetrics(start, end, accountId);
 
       if (data && Array.isArray(data)) {
         const withKPIs = calculateKPIs(data);
@@ -229,7 +232,7 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
       console.error('Load error:', e);
     }
     setIsLoading(false);
-  }, [period, customStartDate, customEndDate]);
+  }, [period, customStartDate, customEndDate, filterModel]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -247,8 +250,12 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
       result = result.filter(c => c.user_id === filterChatter);
     }
 
+    // ✅ Fallback: si la API no filtró por account, filtrar por nombre
     if (filterModel !== 'all') {
-      result = result.filter(c => c.accounts.includes(filterModel));
+      const accountName = ACCOUNTS_CONFIG.find(a => a.id === filterModel)?.name;
+      if (accountName && result.some(c => Array.isArray(c.accounts) && typeof c.accounts[0] === 'string')) {
+        result = result.filter(c => c.accounts.includes(accountName));
+      }
     }
 
     result.sort((a, b) => {
@@ -256,7 +263,6 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
         case 'revenue': return b.revenue.total_net - a.revenue.total_net;
         case 'messages': return b.messages.total - a.messages.total;
         case 'reply_time':
-          // Lowest reply time first (best), 0 = no data goes last
           const aTime = a.performance.reply_time_avg_seconds || Infinity;
           const bTime = b.performance.reply_time_avg_seconds || Infinity;
           return aTime - bTime;
@@ -421,7 +427,7 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
               <select value={filterModel} onChange={e => setFilterModel(e.target.value)}
                 className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
                 <option value="all">Todas</option>
-                {ACCOUNTS_CONFIG.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
+                {ACCOUNTS_CONFIG.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </div>
             <div>
@@ -437,52 +443,64 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
             </div>
           </div>
 
-          {/* ═══ FILTRO ACTIVO INDICATOR ═══ */}
-          {(filterModel !== 'all' || filterChatter !== 'all') && (
-            <div className="mb-3 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <p className="text-sm text-blue-800 dark:text-blue-200 flex items-center flex-wrap gap-1">
-                <span>📊 Mostrando métricas filtradas</span>
+          {/* ═══ FILTROS ACTIVOS INDICATOR ═══ */}
+          {(filterModel !== 'all' || filterChatter !== 'all' || period === TimePeriod.CUSTOM) && (
+            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                  🔍 Filtros activos:
+                </span>
                 {filterModel !== 'all' && (
-                  <span>para: <span className="font-bold">{filterModel}</span></span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 dark:bg-purple-900/40 border border-purple-300 dark:border-purple-700 rounded-full text-xs font-medium text-purple-800 dark:text-purple-200">
+                    📊 {ACCOUNTS_CONFIG.find(a => a.id === filterModel)?.name || 'Modelo'}
+                    <button onClick={() => setFilterModel('all')} className="hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors">✕</button>
+                  </span>
                 )}
                 {filterChatter !== 'all' && (
-                  <span>
-                    {filterModel !== 'all' ? ' • ' : 'para: '}
-                    <span className="font-bold">
-                      {CHATTERS_CONFIG.find(c => c.id === filterChatter)?.name || 'Chatter'}
-                    </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700 rounded-full text-xs font-medium text-green-800 dark:text-green-200">
+                    💬 {CHATTERS_CONFIG.find(c => c.id === filterChatter)?.name || 'Chatter'}
+                    <button onClick={() => setFilterChatter('all')} className="hover:bg-green-200 dark:hover:bg-green-800 rounded-full p-0.5 transition-colors">✕</button>
+                  </span>
+                )}
+                {period === TimePeriod.CUSTOM && customStartDate && customEndDate && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-100 dark:bg-orange-900/40 border border-orange-300 dark:border-orange-700 rounded-full text-xs font-medium text-orange-800 dark:text-orange-200">
+                    📅 {formatDateRange(customStartDate, customEndDate)}
+                    <button onClick={() => { setPeriod(TimePeriod.THIS_MONTH); setShowCustomDatePicker(false); }} className="hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full p-0.5 transition-colors">✕</button>
                   </span>
                 )}
                 <button
-                  onClick={() => {
-                    setFilterModel('all');
-                    setFilterChatter('all');
-                  }}
-                  className="ml-3 text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                  onClick={() => { setFilterModel('all'); setFilterChatter('all'); setPeriod(TimePeriod.THIS_MONTH); setShowCustomDatePicker(false); }}
+                  className="ml-auto px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-full font-medium transition-colors"
                 >
-                  ✕ Limpiar Filtros
+                  🗑️ Limpiar todos
                 </button>
-              </p>
+              </div>
             </div>
           )}
 
           {/* ═══ STAT CARDS ═══ */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <StatCard
-              title={filterModel !== 'all' ? 'Revenue (Filtrado)' : 'Revenue NET'}
+              title={filterModel !== 'all' || filterChatter !== 'all' ? 'Revenue (Filtrado)' : 'Revenue NET'}
               value={fmtMoney(totals.totalRevenue)}
               icon="💰"
               color="green"
-              subtitle={filterModel !== 'all' ? `Solo ${filterModel}` : undefined}
+              subtitle={filterModel !== 'all' ? `Solo ${ACCOUNTS_CONFIG.find(a => a.id === filterModel)?.name}` : undefined}
             />
             <StatCard
-              title={filterModel !== 'all' ? 'Mensajes (Filtrado)' : 'Mensajes'}
+              title={filterModel !== 'all' || filterChatter !== 'all' ? 'Mensajes (Filtrado)' : 'Mensajes'}
               value={fmtNum(totals.totalMessages)}
               icon="💬"
               color="blue"
-              subtitle={filterModel !== 'all' ? `Solo ${filterModel}` : undefined}
+              subtitle={filterModel !== 'all' ? `Solo ${ACCOUNTS_CONFIG.find(a => a.id === filterModel)?.name}` : undefined}
             />
-            <StatCard title="Fans" value={fmtNum(totals.totalFans)} icon="👥" color="purple" />
+            <StatCard
+              title={filterModel !== 'all' || filterChatter !== 'all' ? 'Fans (Filtrado)' : 'Fans'}
+              value={fmtNum(totals.totalFans)}
+              icon="👥"
+              color="purple"
+              subtitle={filterModel !== 'all' ? `Solo ${ACCOUNTS_CONFIG.find(a => a.id === filterModel)?.name}` : undefined}
+            />
             <StatCard title="Avg Reply Time" value={fmtTime(totals.avgReplyTime)} icon="⏱️" color="orange" />
             <StatCard title="PPV Vendidos" value={fmtNum(totals.totalSold)} icon="📩" color="pink" />
             <StatCard title="Chatters Activos" value={`${totals.activeChatters}/${displayData.length > 0 ? displayData.length : CHATTERS_CONFIG.length}`} icon="🟢" color="yellow" />

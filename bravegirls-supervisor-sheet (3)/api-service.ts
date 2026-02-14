@@ -284,3 +284,158 @@ export const supervisionAPI = {
     }
   }
 };
+
+// ═══════════════════════════════════════════
+// OnlyMonster API Service (Dashboard Modelos)
+// ═══════════════════════════════════════════
+
+const ONLYMONSTER_ENDPOINT = 'https://bravegirlsagency-api.vercel.app/api/onlymonster/models-stats';
+
+export const onlyMonsterAPI = {
+  // Obtener stats de todas las modelos
+  async getAllModelsStats() {
+    try {
+      const response = await fetch(ONLYMONSTER_ENDPOINT, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        // Cache en localStorage
+        localStorage.setItem('models_stats_cache', JSON.stringify(result.data));
+        localStorage.setItem('models_stats_timestamp', new Date().toISOString());
+        return result.data;
+      }
+      
+      // Fallback a cache
+      const cached = localStorage.getItem('models_stats_cache');
+      return cached ? JSON.parse(cached) : null;
+    } catch (error) {
+      console.error('Error fetching models stats:', error);
+      // Fallback a cache si hay error de red
+      const cached = localStorage.getItem('models_stats_cache');
+      return cached ? JSON.parse(cached) : null;
+    }
+  },
+
+  // Obtener detalles de una modelo específica
+  async getModelDetails(modelId: string) {
+    try {
+      const response = await fetch(`${ONLYMONSTER_ENDPOINT}?modelId=${modelId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await response.json();
+      return result.success ? result.data : null;
+    } catch (error) {
+      console.error(`Error fetching model ${modelId}:`, error);
+      return null;
+    }
+  },
+
+  // Obtener histórico de facturación
+  async getModelBillingHistory(modelId: string, days: number = 30) {
+    try {
+      const response = await fetch(
+        `${ONLYMONSTER_ENDPOINT}?modelId=${modelId}&billing=true&days=${days}`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+      const result = await response.json();
+      return result.success ? result.data : null;
+    } catch (error) {
+      console.error(`Error fetching billing for ${modelId}:`, error);
+      return null;
+    }
+  }
+};
+
+// ═══════════════════════════════════════════
+// Chatter Metrics API Service (Dashboard Chatters)
+// ═══════════════════════════════════════════
+
+const CHATTER_METRICS_ENDPOINT = 'https://bravegirlsagency-api.vercel.app/api/onlymonster/chatter-metrics';
+
+export const chatterMetricsAPI = {
+  /**
+   * Obtener métricas de todos los chatters para un período
+   * @param startDate - Fecha inicio YYYY-MM-DD
+   * @param endDate - Fecha fin YYYY-MM-DD
+   * @param accountId - (Opcional) ID de cuenta para filtrar métricas por modelo
+   */
+  async getAllChatterMetrics(startDate: string, endDate: string, accountId?: string) {
+    try {
+      let url = `${CHATTER_METRICS_ENDPOINT}?start_date=${startDate}&end_date=${endDate}`;
+      if (accountId) url += `&account_id=${accountId}`;
+      console.log('📊 [CHATTERS] Fetching metrics:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        localStorage.setItem('chatter_metrics_cache', JSON.stringify(result.data));
+        localStorage.setItem('chatter_metrics_timestamp', new Date().toISOString());
+        return result.data;
+      }
+
+      console.warn('⚠️ [CHATTERS] API returned error:', result.error);
+      const cached = localStorage.getItem('chatter_metrics_cache');
+      return cached ? JSON.parse(cached) : null;
+    } catch (error) {
+      console.error('❌ [CHATTERS] Error fetching chatter metrics:', error);
+      const cached = localStorage.getItem('chatter_metrics_cache');
+      return cached ? JSON.parse(cached) : null;
+    }
+  },
+
+  /**
+   * Obtener métricas de un chatter específico
+   * @param userId - OnlyMonster user ID del chatter
+   * @param startDate - Fecha inicio YYYY-MM-DD
+   * @param endDate - Fecha fin YYYY-MM-DD
+   */
+  async getChatterDetail(userId: string, startDate: string, endDate: string) {
+    try {
+      const url = `${CHATTER_METRICS_ENDPOINT}?user_id=${userId}&start_date=${startDate}&end_date=${endDate}`;
+      console.log('📊 [CHATTERS] Fetching detail for:', userId);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await response.json();
+      return result.success ? result.data : null;
+    } catch (error) {
+      console.error(`❌ [CHATTERS] Error fetching chatter ${userId}:`, error);
+      return null;
+    }
+  },
+
+  /**
+   * Obtener historial diario de un chatter
+   * @param userId - OnlyMonster user ID del chatter
+   * @param days - Número de días de historia (default 30)
+   */
+  async getChatterHistory(userId: string, days: number = 30) {
+    try {
+      const url = `${CHATTER_METRICS_ENDPOINT}?user_id=${userId}&history=true&days=${days}`;
+      console.log('📊 [CHATTERS] Fetching history for:', userId, 'days:', days);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await response.json();
+      return result.success ? result.data : null;
+    } catch (error) {
+      console.error(`❌ [CHATTERS] Error fetching history for ${userId}:`, error);
+      return null;
+    }
+  }
+};
