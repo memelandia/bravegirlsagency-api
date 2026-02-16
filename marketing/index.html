@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marketing Pipeline — BraveGirls Agency</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- LOADING OVERLAY -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-logo">Brave<span>Girls</span></div>
+      <div class="loading-spinner">
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+      </div>
+      <p class="loading-text">Consultando Notion y Drive...</p>
+      <div class="loading-bar-track">
+        <div class="loading-bar-fill"></div>
+      </div>
+      <p class="loading-subtext">Esto puede tardar entre 30–60 segundos</p>
+    </div>
+  </div>
+
+  <!-- ERROR OVERLAY -->
+  <div id="error-overlay" class="error-overlay hidden">
+    <div class="error-content">
+      <div class="error-icon">⚠️</div>
+      <h2 class="error-title">Error de conexión</h2>
+      <p id="error-message" class="error-message"></p>
+      <button id="error-retry-btn" class="btn-primary">Reintentar</button>
+    </div>
+  </div>
+
+  <!-- MAIN DASHBOARD (hidden until data loads) -->
+  <div id="dashboard" class="dashboard hidden">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-left">
+        <h1 class="header-logo">Brave<span>Girls</span></h1>
+        <span class="header-separator">|</span>
+        <span class="header-subtitle">Marketing Pipeline</span>
+      </div>
+      <div class="header-right">
+        <div class="header-meta">
+          <span id="connection-status" class="status-dot status-ok" title="Conectado"></span>
+          <span id="last-update" class="header-timestamp"></span>
+        </div>
+        <div id="cache-info" class="header-cache"></div>
+        <button id="refresh-btn" class="btn-refresh" title="Actualizar datos">
+          <svg class="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+          <span>Actualizar</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ALERTS -->
+    <section id="alerts-section" class="alerts-section"></section>
+
+    <!-- KPIs -->
+    <section id="kpis-section" class="kpis-section">
+      <div class="kpi-card" id="kpi-stock">
+        <div class="kpi-number" id="kpi-stock-num">—</div>
+        <div class="kpi-label">reels listos para publicar</div>
+      </div>
+      <div class="kpi-card" id="kpi-pipeline">
+        <div class="kpi-number" id="kpi-pipeline-num">—</div>
+        <div class="kpi-label">en pipeline de producción</div>
+      </div>
+      <div class="kpi-card" id="kpi-dias">
+        <div class="kpi-number" id="kpi-dias-num">—</div>
+        <div class="kpi-label">días promedio por modelo</div>
+      </div>
+      <div class="kpi-card" id="kpi-estado">
+        <div class="kpi-estado-row">
+          <span class="estado-dot estado-critico"></span>
+          <span class="kpi-estado-num" id="kpi-criticos">—</span>
+          <span class="kpi-estado-label">críticos</span>
+        </div>
+        <div class="kpi-estado-row">
+          <span class="estado-dot estado-bajo"></span>
+          <span class="kpi-estado-num" id="kpi-bajos">—</span>
+          <span class="kpi-estado-label">bajos</span>
+        </div>
+        <div class="kpi-estado-row">
+          <span class="estado-dot estado-ok"></span>
+          <span class="kpi-estado-num" id="kpi-ok">—</span>
+          <span class="kpi-estado-label">ok</span>
+        </div>
+        <div class="kpi-label" id="kpi-inactivos-label"></div>
+      </div>
+    </section>
+
+    <!-- MODEL GRID -->
+    <section class="section-header">
+      <h2>Stock por Modelo</h2>
+    </section>
+    <section id="models-grid" class="models-grid"></section>
+
+    <!-- MI ACTIVIDAD -->
+    <section class="section-header mi-actividad-header" id="mi-actividad-toggle">
+      <h2>Mi Actividad <span class="toggle-hint">(Director Creativo)</span></h2>
+      <svg class="toggle-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </section>
+    <section id="mi-actividad" class="mi-actividad">
+      <div class="actividad-table-wrapper">
+        <table class="actividad-table" id="actividad-table">
+          <thead>
+            <tr>
+              <th>Modelo</th>
+              <th>Último ejemplo enviado</th>
+              <th>Hace cuántos días</th>
+              <th>En preparación</th>
+            </tr>
+          </thead>
+          <tbody id="actividad-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <span>BraveGirls Agency — Marketing Pipeline Dashboard</span>
+    </footer>
+  </div>
+
+  <!-- MODAL DE DETALLE -->
+  <div id="model-modal" class="modal-overlay hidden">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2 id="modal-title" class="modal-title"></h2>
+        <button id="modal-close" class="modal-close" title="Cerrar">&times;</button>
+      </div>
+      <div class="modal-tabs">
+        <button class="modal-tab active" data-tab="stock">Stock disponible</button>
+        <button class="modal-tab" data-tab="pipeline">Pipeline</button>
+        <button class="modal-tab" data-tab="drive">Actividad Drive</button>
+      </div>
+      <div class="modal-body">
+        <div id="tab-stock" class="tab-content active"></div>
+        <div id="tab-pipeline" class="tab-content"></div>
+        <div id="tab-drive" class="tab-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
