@@ -233,7 +233,8 @@ async function fetchModelStats(model, dateRange) {
     let dailyRevenue = {};
 
     transactions.forEach(tx => {
-      if (tx.status !== 'done' && tx.status !== 'loading') return;
+      // Incluir done, loading y pending_return para coincidir con OF
+      if (tx.status === 'failed' || tx.status === 'rejected') return;
 
       const netAmount = tx.amount * 0.8; // Después del 20% de OF
       totalRevenue += netAmount;
@@ -362,7 +363,8 @@ async function fetchDailyBilling(modelId, days) {
     const dailyFans = {};
 
     transactions.forEach(tx => {
-      if (tx.status !== 'done' && tx.status !== 'loading') return;
+      // Incluir done, loading y pending_return para coincidir con OF
+      if (tx.status === 'failed' || tx.status === 'rejected') return;
 
       const netAmount = tx.amount * 0.8;
       const txDate = new Date(tx.timestamp);
