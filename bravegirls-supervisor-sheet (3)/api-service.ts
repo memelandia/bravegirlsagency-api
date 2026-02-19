@@ -292,10 +292,20 @@ export const supervisionAPI = {
 const ONLYMONSTER_ENDPOINT = 'https://bravegirlsagency-api.vercel.app/api/onlymonster/models-stats';
 
 export const onlyMonsterAPI = {
-  // Obtener stats de todas las modelos
-  async getAllModelsStats() {
+  /**
+   * Obtener stats de todas las modelos
+   * @param startDate - (Opcional) Fecha inicio YYYY-MM-DD
+   * @param endDate - (Opcional) Fecha fin YYYY-MM-DD
+   */
+  async getAllModelsStats(startDate?: string, endDate?: string) {
     try {
-      const response = await fetch(ONLYMONSTER_ENDPOINT, {
+      let url = ONLYMONSTER_ENDPOINT;
+      if (startDate && endDate) {
+        url += `?start_date=${startDate}&end_date=${endDate}`;
+      }
+      console.log('💎 [MODELOS] Fetching stats:', url);
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -308,11 +318,12 @@ export const onlyMonsterAPI = {
         return result.data;
       }
       
+      console.warn('⚠️ [MODELOS] API returned error:', result.error);
       // Fallback a cache
       const cached = localStorage.getItem('models_stats_cache');
       return cached ? JSON.parse(cached) : null;
     } catch (error) {
-      console.error('Error fetching models stats:', error);
+      console.error('❌ [MODELOS] Error fetching models stats:', error);
       // Fallback a cache si hay error de red
       const cached = localStorage.getItem('models_stats_cache');
       return cached ? JSON.parse(cached) : null;
