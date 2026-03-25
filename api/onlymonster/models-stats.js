@@ -121,8 +121,7 @@ const MODELS = [
   { id: '296183678', name: 'Bellarey', username: '@bellarey1' },
   { id: '326911669', name: 'Lexi', username: '@lexiflix' },
   { id: '436482929', name: 'Vicky', username: '@xvickyluna' },
-  { id: '489272079', name: 'Ariana', username: '@arianacruzz' },
-  { id: '412328657', name: 'Nessa', username: '@nessaplay' }
+  { id: '489272079', name: 'Ariana', username: '@arianacruzz' }
 ];
 
 // ═══════════════════════════════════════════

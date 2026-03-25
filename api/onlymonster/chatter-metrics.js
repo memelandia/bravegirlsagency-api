@@ -23,10 +23,10 @@ const CHATTERS = [
   { id: '25140', name: 'Nico', accountNames: ['Bellarey', 'Vicky'], assignedAccounts: ['296183678', '436482929'] },
   { id: '66986', name: 'Alfonso', accountNames: ['Bellarey', 'Vicky'], assignedAccounts: ['296183678', '436482929'] },
   { id: '125226', name: 'Yaye', accountNames: ['Carmen', 'Lucy', 'Lexi'], assignedAccounts: ['85825874', '314027187', '326911669'] },
-  { id: '121434', name: 'Diego', accountNames: ['Nessa', 'Ariana'], assignedAccounts: ['412328657', '489272079'] },
   { id: '124700', name: 'Kari', accountNames: ['Bellarey', 'Vicky'], assignedAccounts: ['296183678', '436482929'] },
-  { id: '139826', name: 'Emely', accountNames: ['Carmen', 'Lucy', 'Lexi'], assignedAccounts: ['85825874', '314027187', '326911669'] },
-  { id: '145754', name: 'Carlo', accountNames: ['Carmen', 'Lucy', 'Lexi'], assignedAccounts: ['85825874', '314027187', '326911669'] }
+  { id: '145754', name: 'Carlo', accountNames: ['Carmen', 'Lucy', 'Lexi'], assignedAccounts: ['85825874', '314027187', '326911669'] },
+  { id: '164901', name: 'Leo', accountNames: ['Carmen', 'Lucy', 'Bellarey', 'Lexi', 'Vicky', 'Ariana'], assignedAccounts: ['85825874', '314027187', '296183678', '326911669', '436482929', '489272079'] },
+  { id: '166534', name: 'Genesys', accountNames: ['Carmen', 'Lucy', 'Lexi'], assignedAccounts: ['85825874', '314027187', '326911669'] }
 ];
 
 const ACCOUNTS = [
@@ -35,8 +35,7 @@ const ACCOUNTS = [
   { id: '296183678', name: 'Bellarey' },
   { id: '326911669', name: 'Lexi' },
   { id: '436482929', name: 'Vicky' },
-  { id: '489272079', name: 'Ariana' },
-  { id: '412328657', name: 'Nessa' }
+  { id: '489272079', name: 'Ariana' }
 ];
 
 const round2 = (n) => Math.round(n * 100) / 100;
