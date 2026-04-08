@@ -1,15 +1,13 @@
 /* ============================================
    Inspo Vault — BraveGirls Agency
-   Frontend logic
+   Frontend logic — Redesign v2
    ============================================ */
 
 (function () {
   'use strict';
 
   // --- CONFIG ---
-  const API_BASE = window.location.hostname === 'localhost'
-    ? 'http://localhost:3000/api'
-    : '/api';
+  const API_BASE = 'https://bravegirlsagency-api.vercel.app/api';
 
   // --- STATE ---
   let allEntries = [];
@@ -26,29 +24,33 @@
     loadingOverlay: $('#loading-overlay'),
     loadingStatus: $('#loading-status'),
     dashboard: $('#dashboard'),
+    headerStats: $('#header-stats'),
     btnReview: $('#btn-review'),
     reviewCount: $('#review-count'),
     btnAdd: $('#btn-add'),
     filterSearch: $('#filter-search'),
-    filterMercado: $('#filter-mercado'),
     filterVertical: $('#filter-vertical'),
     filterModelo: $('#filter-modelo'),
     filterBranding: $('#filter-branding'),
     filterViral: $('#filter-viral'),
-    btnClearFilters: $('#btn-clear-filters'),
+    activeFiltersRow: $('#active-filters-row'),
     galleryCount: $('#gallery-count'),
     galleryGrid: $('#gallery-grid'),
     modalOverlay: $('#modal-overlay'),
     modalTitle: $('#modal-title'),
     modalBody: $('#modal-body'),
+    modalAvatar: $('#modal-avatar'),
     modalClose: $('#modal-close'),
     modalCancel: $('#modal-cancel'),
     modalSave: $('#modal-save'),
     reviewOverlay: $('#review-overlay'),
+    reviewProgressBar: $('#review-progress-bar'),
     reviewCurrent: $('#review-current'),
     reviewTotal: $('#review-total'),
-    reviewCard: $('#review-card'),
+    reviewPreview: $('#review-preview'),
+    reviewForm: $('#review-form'),
     reviewExit: $('#review-exit'),
+    reviewPrev: $('#review-prev'),
     reviewSkip: $('#review-skip'),
     reviewSave: $('#review-save'),
     toastContainer: $('#toast-container')
@@ -74,7 +76,25 @@
            (!entry.elementoViral || entry.elementoViral.length === 0);
   }
 
-  // --- API ---
+  function extractUsername(link) {
+    if (!link) return null;
+    const m = link.match(/instagram\.com\/([^/?#]+)/);
+    return m ? m[1] : null;
+  }
+
+  function getAvatarUrl(link) {
+    const username = extractUsername(link);
+    return username ? `https://unavatar.io/instagram/${username}` : null;
+  }
+
+  function getInitials(name) {
+    if (!name) return '📷';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return parts[0].substring(0, 2).toUpperCase();
+  }
+
+  // --- API (unchanged) ---
   async function apiGet(path) {
     const res = await fetch(`${API_BASE}/${path}`);
     if (!res.ok) {
@@ -110,12 +130,27 @@
     return res.json();
   }
 
+  // --- HEADER STATS ---
+  function updateHeaderStats() {
+    const total = allEntries.filter(e => e.estado !== 'FRANCO EDICION').length;
+    const incomplete = allEntries.filter(e => e.estado !== 'FRANCO EDICION' && isIncomplete(e)).length;
+    const modelos = new Set();
+    allEntries.forEach(e => {
+      if (e.paraModelo) e.paraModelo.forEach(m => modelos.add(m));
+    });
+    dom.headerStats.innerHTML = `
+      <span class="header-stat"><strong>${total}</strong> perfiles</span>
+      <span class="header-stat"><strong>${incomplete}</strong> sin etiquetar</span>
+      <span class="header-stat"><strong>${modelos.size}</strong> modelos</span>
+    `;
+  }
+
   // --- MULTI-SELECT FILTER COMPONENT ---
-  function createMultiSelect(container, options, filterKey, onChange) {
+  function createMultiSelect(container, options, filterKey, label, onChange) {
     container.innerHTML = '';
     const trigger = document.createElement('div');
     trigger.className = 'filter-ms-trigger';
-    trigger.innerHTML = `<span class="label">Todos</span><span class="arrow">▼</span>`;
+    trigger.innerHTML = `<span class="ms-label">${esc(label)}</span><span class="arrow">▼</span>`;
 
     const dropdown = document.createElement('div');
     dropdown.className = 'filter-ms-dropdown';
@@ -128,11 +163,9 @@
       item.addEventListener('click', (e) => {
         e.stopPropagation();
         item.classList.toggle('selected');
-        const selected = Array.from(dropdown.querySelectorAll('.selected')).map(
-          el => el.dataset.value
-        );
+        const selected = Array.from(dropdown.querySelectorAll('.selected')).map(el => el.dataset.value);
         activeFilters[filterKey] = selected;
-        updateTriggerLabel(trigger, selected);
+        updateTriggerLabel(trigger, label, selected);
         onChange();
       });
       dropdown.appendChild(item);
@@ -140,7 +173,6 @@
 
     trigger.addEventListener('click', (e) => {
       e.stopPropagation();
-      // Close all other dropdowns first
       document.querySelectorAll('.filter-ms-dropdown.open').forEach(d => {
         if (d !== dropdown) { d.classList.remove('open'); d.previousElementSibling.classList.remove('active'); }
       });
@@ -152,12 +184,63 @@
     container.appendChild(dropdown);
   }
 
-  function updateTriggerLabel(trigger, selected) {
+  function updateTriggerLabel(trigger, label, selected) {
     if (selected.length === 0) {
-      trigger.innerHTML = `<span class="label">Todos</span><span class="arrow">▼</span>`;
+      trigger.innerHTML = `<span class="ms-label">${esc(label)}</span><span class="arrow">▼</span>`;
     } else {
-      trigger.innerHTML = `<span class="label">${esc(selected[0])}${selected.length > 1 ? '...' : ''}</span><span class="count">${selected.length}</span><span class="arrow">▼</span>`;
+      trigger.innerHTML = `<span class="ms-label">${esc(label)} </span><span class="count">${selected.length}</span><span class="arrow">▼</span>`;
     }
+  }
+
+  // --- ACTIVE FILTER CHIPS ---
+  function renderActiveFilters() {
+    const row = dom.activeFiltersRow;
+    const chips = [];
+
+    if (activeFilters.mercado) {
+      const labels = { '🇪🇸': '🇪🇸 España', '🇺🇲': '🇺🇲 USA', '🇧🇷': '🇧🇷 Brasil' };
+      chips.push({ label: labels[activeFilters.mercado] || activeFilters.mercado, key: 'mercado', value: activeFilters.mercado });
+    }
+    activeFilters.vertical.forEach(v => chips.push({ label: v, key: 'vertical', value: v }));
+    activeFilters.modelo.forEach(v => chips.push({ label: v, key: 'modelo', value: v }));
+    activeFilters.branding.forEach(v => chips.push({ label: v, key: 'branding', value: v }));
+    activeFilters.viral.forEach(v => chips.push({ label: v, key: 'viral', value: v }));
+
+    if (chips.length === 0) {
+      row.classList.add('hidden');
+      return;
+    }
+
+    row.classList.remove('hidden');
+    row.innerHTML = chips.map((c, i) =>
+      `<span class="active-filter-chip" data-idx="${i}">${esc(c.label)} <span class="x">×</span></span>`
+    ).join('') + `<span class="active-filter-clear">Limpiar todo</span>`;
+
+    row.querySelectorAll('.active-filter-chip').forEach((el, i) => {
+      el.addEventListener('click', () => {
+        const c = chips[i];
+        if (c.key === 'mercado') {
+          activeFilters.mercado = '';
+          document.querySelectorAll('.mercado-pill').forEach(p => p.classList.remove('active'));
+          document.querySelector('.mercado-pill[data-mercado=""]').classList.add('active');
+        } else {
+          activeFilters[c.key] = activeFilters[c.key].filter(v => v !== c.value);
+          // Uncheck in dropdown
+          const container = c.key === 'vertical' ? dom.filterVertical
+            : c.key === 'modelo' ? dom.filterModelo
+            : c.key === 'branding' ? dom.filterBranding
+            : dom.filterViral;
+          const opt = container.querySelector(`.filter-ms-option[data-value="${CSS.escape(c.value)}"]`);
+          if (opt) opt.classList.remove('selected');
+          const trigger = container.querySelector('.filter-ms-trigger');
+          const labelMap = { vertical: 'Vertical', modelo: 'Para Modelo', branding: 'Branding', viral: 'Elemento Viral' };
+          updateTriggerLabel(trigger, labelMap[c.key], activeFilters[c.key]);
+        }
+        applyFilters();
+      });
+    });
+
+    row.querySelector('.active-filter-clear').addEventListener('click', clearFilters);
   }
 
   // --- RENDERING ---
@@ -165,21 +248,27 @@
     const grid = dom.galleryGrid;
     grid.innerHTML = '';
 
+    const total = allEntries.filter(e => e.estado !== 'FRANCO EDICION').length;
+
     if (filteredEntries.length === 0) {
       grid.innerHTML = `
         <div class="gallery-empty">
           <div class="gallery-empty-icon">🔍</div>
           <p>No se encontraron perfiles con estos filtros</p>
         </div>`;
-      dom.galleryCount.textContent = '0 perfiles';
+      dom.galleryCount.textContent = `Mostrando 0 de ${total} perfiles`;
       return;
     }
 
-    dom.galleryCount.textContent = `${filteredEntries.length} perfiles`;
+    dom.galleryCount.textContent = filteredEntries.length === total
+      ? `${total} perfiles`
+      : `Mostrando ${filteredEntries.length} de ${total} perfiles`;
 
     filteredEntries.forEach(entry => {
       grid.appendChild(createCard(entry));
     });
+
+    renderActiveFilters();
   }
 
   function createCard(entry) {
@@ -187,29 +276,57 @@
     card.className = 'card';
     card.dataset.id = entry.id;
 
+    const incomplete = isIncomplete(entry);
+    const hasModelo = entry.paraModelo && entry.paraModelo.length > 0;
+    if (hasModelo) card.classList.add('card-has-modelo');
+    else if (incomplete) card.classList.add('card-incomplete');
+
+    const username = extractUsername(entry.link);
+    const avatarUrl = getAvatarUrl(entry.link);
     const mercadoFlag = entry.mercado || '';
+
     const linkHtml = entry.link
-      ? `<a href="${esc(entry.link)}" target="_blank" rel="noopener" class="card-link">🔗 Ver perfil</a>`
+      ? `<div class="card-link-row"><a href="${esc(entry.link)}" target="_blank" rel="noopener" class="card-link">🔗 Ver perfil</a></div>`
       : '';
 
-    const verticalChips = renderChipList(entry.vertical, 'vertical', 3);
-    const brandingChips = renderChipList(entry.branding, 'branding', 3);
-    const viralChips = renderChipList(entry.elementoViral, 'viral', 3);
-    const modeloChips = renderChipList(entry.paraModelo, 'modelo', 2);
+    const usernameHtml = username
+      ? `<div class="card-username">@${esc(username)} ${mercadoFlag ? '· ' + mercadoFlag : ''}</div>`
+      : (mercadoFlag ? `<div class="card-username">${mercadoFlag}</div>` : '');
 
-    const incomplete = isIncomplete(entry)
-      ? `<span class="card-incomplete">⚠ Faltan tags</span>`
+    // Chips by category
+    const verticalChips = renderChipRow(entry.vertical, 'vertical', 3);
+    const brandingChips = renderChipRow(entry.branding, 'branding', 3);
+    const viralChips = renderChipRow(entry.elementoViral, 'viral', 3);
+    const modeloChips = renderChipRow(entry.paraModelo, 'modelo', 2);
+
+    const chipsHtml = (verticalChips || brandingChips || viralChips || modeloChips)
+      ? `<div class="card-chips">${verticalChips}${brandingChips}${viralChips}${modeloChips}</div>`
       : '';
+
+    const footerBadge = incomplete
+      ? `<span class="card-incomplete-badge">⚠ Faltan tags</span>`
+      : `<span></span>`;
+
+    // Avatar
+    let avatarHtml;
+    if (avatarUrl) {
+      avatarHtml = `<img class="card-avatar" src="${esc(avatarUrl)}" alt="" onerror="this.outerHTML='<span class=\\'card-avatar-placeholder\\'>${esc(getInitials(entry.idea))}</span>'">`;
+    } else {
+      avatarHtml = `<span class="card-avatar-placeholder">${esc(getInitials(entry.idea))}</span>`;
+    }
 
     card.innerHTML = `
-      <div class="card-header">
-        <div class="card-idea">${esc(entry.idea)}</div>
-        <span class="card-mercado">${mercadoFlag}</span>
+      <div class="card-top">
+        ${avatarHtml}
+        <div class="card-info">
+          <div class="card-name">${esc(entry.idea)}</div>
+          ${usernameHtml}
+        </div>
       </div>
       ${linkHtml}
-      <div class="card-chips">${verticalChips}${brandingChips}${viralChips}${modeloChips}</div>
+      ${chipsHtml}
       <div class="card-footer">
-        ${incomplete}
+        ${footerBadge}
         <button class="btn-icon" data-edit="${entry.id}" title="Editar">✏️</button>
       </div>
     `;
@@ -221,31 +338,31 @@
     return card;
   }
 
-  function renderChipList(items, type, max) {
+  function renderChipRow(items, type, max) {
     if (!items || items.length === 0) return '';
     const visible = items.slice(0, max);
     const extra = items.length - max;
     let html = visible.map(i => `<span class="chip chip-${type}">${esc(i)}</span>`).join('');
     if (extra > 0) html += `<span class="chip chip-more">+${extra}</span>`;
-    return html;
+    return `<div class="card-chip-row">${html}</div>`;
   }
 
   // --- FILTERING ---
   function applyFilters() {
     filteredEntries = allEntries.filter(entry => {
-      // Exclude internal states
       if (entry.estado === 'FRANCO EDICION') return false;
 
-      // Text search
       if (activeFilters.search) {
         const q = activeFilters.search.toLowerCase();
-        if (!entry.idea.toLowerCase().includes(q)) return false;
+        const searchable = [
+          entry.idea,
+          extractUsername(entry.link) || ''
+        ].join(' ').toLowerCase();
+        if (!searchable.includes(q)) return false;
       }
 
-      // Mercado
       if (activeFilters.mercado && entry.mercado !== activeFilters.mercado) return false;
 
-      // Multi-select filters: entry must have ALL selected filter values
       if (activeFilters.vertical.length > 0) {
         if (!activeFilters.vertical.some(v => (entry.vertical || []).includes(v))) return false;
       }
@@ -268,10 +385,15 @@
   function clearFilters() {
     activeFilters = { search: '', mercado: '', vertical: [], modelo: [], branding: [], viral: [] };
     dom.filterSearch.value = '';
-    dom.filterMercado.value = '';
+    document.querySelectorAll('.mercado-pill').forEach(p => p.classList.remove('active'));
+    document.querySelector('.mercado-pill[data-mercado=""]').classList.add('active');
     document.querySelectorAll('.filter-ms-option.selected').forEach(el => el.classList.remove('selected'));
     document.querySelectorAll('.filter-ms-trigger').forEach(t => {
-      t.innerHTML = `<span class="label">Todos</span><span class="arrow">▼</span>`;
+      const label = t.closest('#filter-vertical') ? 'Vertical'
+        : t.closest('#filter-modelo') ? 'Para Modelo'
+        : t.closest('#filter-branding') ? 'Branding'
+        : 'Elemento Viral';
+      t.innerHTML = `<span class="ms-label">${label}</span><span class="arrow">▼</span>`;
     });
     applyFilters();
   }
@@ -291,6 +413,8 @@
   function openAddModal() {
     editingId = null;
     dom.modalTitle.textContent = 'Añadir Perfil';
+    dom.modalAvatar.classList.remove('visible');
+    dom.modalAvatar.innerHTML = '';
     renderModalForm({});
     dom.modalOverlay.classList.add('active');
   }
@@ -300,6 +424,17 @@
     if (!entry) return;
     editingId = id;
     dom.modalTitle.textContent = 'Editar Perfil';
+
+    // Show avatar in modal header if available
+    const avatarUrl = getAvatarUrl(entry.link);
+    if (avatarUrl) {
+      dom.modalAvatar.classList.add('visible');
+      dom.modalAvatar.innerHTML = `<img src="${esc(avatarUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.classList.remove('visible')">`;
+    } else {
+      dom.modalAvatar.classList.remove('visible');
+      dom.modalAvatar.innerHTML = '';
+    }
+
     renderModalForm(entry);
     dom.modalOverlay.classList.add('active');
   }
@@ -361,7 +496,6 @@
   }
 
   function attachFormEvents(container, prefix) {
-    // Mercado buttons
     container.querySelectorAll('.form-mercado-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         container.querySelectorAll('.form-mercado-btn').forEach(b => b.classList.remove('selected'));
@@ -369,7 +503,6 @@
       });
     });
 
-    // Chip toggle for vertical, branding, viral, modelo
     const chipTypes = [
       { id: `${prefix}-vertical`, cls: 'selected-vertical' },
       { id: `${prefix}-branding`, cls: 'selected-branding' },
@@ -385,17 +518,14 @@
       });
     });
 
-    // Add new tag buttons
     container.querySelectorAll('[data-addnew]').forEach(addBtn => {
       addBtn.addEventListener('click', () => {
-        const type = addBtn.dataset.addnew;
-        handleAddNewTag(container, prefix, type, addBtn);
+        handleAddNewTag(container, prefix, addBtn.dataset.addnew, addBtn);
       });
     });
   }
 
   function handleAddNewTag(container, prefix, type, addBtn) {
-    // Don't add if there's already an input
     if (addBtn.parentElement.querySelector('.new-tag-row')) return;
 
     const row = document.createElement('span');
@@ -420,12 +550,10 @@
       try {
         await apiPost('inspo-vault?action=options', { property: notionProp, value: val });
 
-        // Add to local options
         if (!dbOptions[notionProp].includes(val)) {
           dbOptions[notionProp].push(val);
         }
 
-        // Create chip in the form
         const chip = document.createElement('span');
         chip.className = `form-chip ${chipClass}`;
         chip.dataset.value = val;
@@ -481,7 +609,6 @@
     try {
       if (editingId) {
         const result = await apiPatch(`inspo-vault?action=update&id=${editingId}`, data);
-        // Update local entry
         const idx = allEntries.findIndex(e => e.id === editingId);
         if (idx !== -1) allEntries[idx] = result.entry;
         toast('Perfil actualizado');
@@ -493,6 +620,7 @@
 
       closeModal();
       updateReviewCount();
+      updateHeaderStats();
       applyFilters();
     } catch (err) {
       toast(`Error: ${err.message}`, 'error');
@@ -518,6 +646,7 @@
   function exitReview() {
     dom.reviewOverlay.classList.remove('active');
     updateReviewCount();
+    updateHeaderStats();
     applyFilters();
   }
 
@@ -531,22 +660,44 @@
     const entry = reviewQueue[reviewIndex];
     dom.reviewCurrent.textContent = reviewIndex + 1;
 
-    const linkHtml = entry.link
-      ? `<a href="${esc(entry.link)}" target="_blank" rel="noopener" class="review-link">📷 Abrir Instagram</a>`
-      : `<p style="color:var(--text-muted);margin-bottom:1rem;">Sin link</p>`;
+    // Progress bar
+    const pct = ((reviewIndex + 1) / reviewQueue.length) * 100;
+    dom.reviewProgressBar.style.width = pct + '%';
 
-    dom.reviewCard.innerHTML = `
-      <div class="review-idea">${esc(entry.idea)}</div>
-      ${linkHtml}
-      ${buildFormHTML(entry, 'review')}
+    // Previous button state
+    dom.reviewPrev.disabled = reviewIndex === 0;
+
+    // --- Left panel: Profile preview ---
+    const username = extractUsername(entry.link);
+    const avatarUrl = getAvatarUrl(entry.link);
+
+    let avatarHtml;
+    if (avatarUrl) {
+      avatarHtml = `<img class="review-avatar" src="${esc(avatarUrl)}" alt="" onerror="this.outerHTML='<span class=\\'review-avatar-placeholder\\'>${esc(getInitials(entry.idea))}</span>'">`;
+    } else {
+      avatarHtml = `<span class="review-avatar-placeholder">${esc(getInitials(entry.idea))}</span>`;
+    }
+
+    const usernameHtml = username ? `<div class="review-username">@${esc(username)}</div>` : '';
+    const igBtn = entry.link
+      ? `<a href="${esc(entry.link)}" target="_blank" rel="noopener" class="review-ig-btn">📷 Abrir Instagram</a>`
+      : `<p class="review-no-link">Sin link de Instagram</p>`;
+
+    dom.reviewPreview.innerHTML = `
+      ${avatarHtml}
+      <div class="review-name">${esc(entry.idea)}</div>
+      ${usernameHtml}
+      ${igBtn}
     `;
 
-    attachFormEvents(dom.reviewCard, 'review');
+    // --- Right panel: Form ---
+    dom.reviewForm.innerHTML = buildFormHTML(entry, 'review');
+    attachFormEvents(dom.reviewForm, 'review');
   }
 
   async function handleReviewSave() {
     const entry = reviewQueue[reviewIndex];
-    const data = getFormData(dom.reviewCard, 'review');
+    const data = getFormData(dom.reviewForm, 'review');
 
     dom.reviewSave.disabled = true;
     dom.reviewSave.textContent = 'Guardando...';
@@ -571,6 +722,13 @@
     renderReviewItem();
   }
 
+  function handleReviewPrev() {
+    if (reviewIndex > 0) {
+      reviewIndex--;
+      renderReviewItem();
+    }
+  }
+
   // --- INIT ---
   async function init() {
     try {
@@ -582,18 +740,19 @@
       const listRes = await apiGet('inspo-vault?action=list');
       allEntries = listRes.entries;
 
-      // Build filter dropdowns
-      createMultiSelect(dom.filterVertical, dbOptions.Vertical || [], 'vertical', applyFilters);
-      createMultiSelect(dom.filterModelo, dbOptions['Para Modelo'] || [], 'modelo', applyFilters);
-      createMultiSelect(dom.filterBranding, dbOptions.Branding || [], 'branding', applyFilters);
-      createMultiSelect(dom.filterViral, dbOptions['Elemento Viral'] || [], 'viral', applyFilters);
+      // Build filter dropdowns with labels
+      createMultiSelect(dom.filterVertical, dbOptions.Vertical || [], 'vertical', 'Vertical', applyFilters);
+      createMultiSelect(dom.filterModelo, dbOptions['Para Modelo'] || [], 'modelo', 'Para Modelo', applyFilters);
+      createMultiSelect(dom.filterBranding, dbOptions.Branding || [], 'branding', 'Branding', applyFilters);
+      createMultiSelect(dom.filterViral, dbOptions['Elemento Viral'] || [], 'viral', 'Elemento Viral', applyFilters);
 
       updateReviewCount();
+      updateHeaderStats();
       applyFilters();
 
       // Show dashboard
       dom.loadingOverlay.classList.add('fade-out');
-      setTimeout(() => { dom.loadingOverlay.style.display = 'none'; }, 300);
+      setTimeout(() => { dom.loadingOverlay.style.display = 'none'; }, 400);
       dom.dashboard.classList.remove('hidden');
 
     } catch (err) {
@@ -613,12 +772,16 @@
     }, 200);
   });
 
-  dom.filterMercado.addEventListener('change', () => {
-    activeFilters.mercado = dom.filterMercado.value;
-    applyFilters();
+  // Mercado pills
+  document.querySelectorAll('.mercado-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.mercado-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      activeFilters.mercado = pill.dataset.mercado;
+      applyFilters();
+    });
   });
 
-  dom.btnClearFilters.addEventListener('click', clearFilters);
   dom.btnAdd.addEventListener('click', openAddModal);
   dom.modalClose.addEventListener('click', closeModal);
   dom.modalCancel.addEventListener('click', closeModal);
@@ -627,13 +790,12 @@
   dom.reviewExit.addEventListener('click', exitReview);
   dom.reviewSave.addEventListener('click', handleReviewSave);
   dom.reviewSkip.addEventListener('click', handleReviewSkip);
+  dom.reviewPrev.addEventListener('click', handleReviewPrev);
 
-  // Close modal on backdrop click
   dom.modalOverlay.addEventListener('click', (e) => {
     if (e.target === dom.modalOverlay) closeModal();
   });
 
-  // Close dropdowns on click outside
   document.addEventListener('click', () => {
     document.querySelectorAll('.filter-ms-dropdown.open').forEach(d => {
       d.classList.remove('open');
@@ -641,7 +803,6 @@
     });
   });
 
-  // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (dom.reviewOverlay.classList.contains('active')) exitReview();

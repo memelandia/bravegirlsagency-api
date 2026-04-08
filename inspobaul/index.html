@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inspo Vault — BraveGirls Agency</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💡</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="inspo-vault.css?v=20260408b">
+</head>
+<body>
+
+  <!-- LOADING OVERLAY with skeleton cards -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-logo">Brave<span>Girls</span></div>
+      <p class="loading-text" id="loading-status">Cargando Inspo Vault...</p>
+      <div class="skeleton-grid">
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><div class="sk-chip"></div><div class="sk-chip"></div><div class="sk-chip"></div></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><div class="sk-chip"></div><div class="sk-chip"></div></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><div class="sk-chip"></div><div class="sk-chip"></div><div class="sk-chip"></div></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><div class="sk-chip"></div><div class="sk-chip"></div></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><div class="sk-chip"></div><div class="sk-chip"></div><div class="sk-chip"></div></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><div class="sk-chip"></div><div class="sk-chip"></div></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><div class="sk-chip"></div><div class="sk-chip"></div><div class="sk-chip"></div></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><div class="sk-chip"></div><div class="sk-chip"></div></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><div class="sk-chip"></div><div class="sk-chip"></div><div class="sk-chip"></div></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><div class="sk-chip"></div><div class="sk-chip"></div></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><div class="sk-chip"></div><div class="sk-chip"></div><div class="sk-chip"></div></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><div class="sk-chip"></div><div class="sk-chip"></div></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN DASHBOARD -->
+  <div id="dashboard" class="hidden">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-inner">
+        <div class="header-left">
+          <h1 class="header-logo">Brave<span>Girls</span></h1>
+          <span class="header-separator">|</span>
+          <span class="header-subtitle">Inspo Vault</span>
+          <div class="header-stats" id="header-stats"></div>
+        </div>
+        <div class="header-right">
+          <button id="btn-review" class="btn btn-review hidden" title="Revisión Rápida">
+            <span class="review-pulse"></span>
+            ⚡ Revisión Rápida <span class="review-badge" id="review-count">0</span>
+          </button>
+          <button id="btn-add" class="btn btn-primary">+ Añadir Perfil</button>
+          <a href="/marketing/" class="btn btn-ghost" title="Marketing Pipeline">📊 Marketing</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- FILTERS -->
+    <div class="filters-bar">
+      <div class="filter-search-row">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="filter-search" class="filter-search-input" placeholder="Buscar perfil, idea, username...">
+        </div>
+      </div>
+      <div class="filter-mercado-row">
+        <button class="mercado-pill active" data-mercado="">Todos</button>
+        <button class="mercado-pill" data-mercado="🇪🇸">🇪🇸 España</button>
+        <button class="mercado-pill" data-mercado="🇺🇲">🇺🇲 USA</button>
+        <button class="mercado-pill" data-mercado="🇧🇷">🇧🇷 Brasil</button>
+      </div>
+      <div class="filter-dropdowns-row">
+        <div class="filter-multiselect" id="filter-vertical"></div>
+        <div class="filter-multiselect" id="filter-modelo"></div>
+        <div class="filter-multiselect" id="filter-branding"></div>
+        <div class="filter-multiselect" id="filter-viral"></div>
+      </div>
+      <div class="active-filters-row hidden" id="active-filters-row"></div>
+      <div class="filter-results-row">
+        <span id="gallery-count"></span>
+      </div>
+    </div>
+
+    <!-- GALLERY -->
+    <div class="gallery-wrap">
+      <div class="gallery-grid" id="gallery-grid"></div>
+    </div>
+  </div>
+
+  <!-- MODAL (Add / Edit) -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-header-left">
+          <div class="modal-avatar" id="modal-avatar"></div>
+          <h2 class="modal-title" id="modal-title">Añadir Perfil</h2>
+        </div>
+        <button class="modal-close" id="modal-close">×</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
+        <button class="btn btn-primary" id="modal-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK REVIEW OVERLAY -->
+  <div id="review-overlay" class="review-overlay">
+    <div class="review-header">
+      <div class="review-header-left">
+        <div class="review-progress-bar-wrap">
+          <div class="review-progress-bar" id="review-progress-bar"></div>
+        </div>
+        <span class="review-progress-text"><strong id="review-current">1</strong> de <strong id="review-total">0</strong> sin etiquetar</span>
+      </div>
+      <button class="btn btn-ghost" id="review-exit">✕ Salir</button>
+    </div>
+    <div class="review-body">
+      <div class="review-split" id="review-split">
+        <div class="review-preview" id="review-preview"></div>
+        <div class="review-form" id="review-form"></div>
+      </div>
+    </div>
+    <div class="review-footer">
+      <button class="btn btn-secondary" id="review-prev" disabled>← Anterior</button>
+      <button class="btn btn-secondary" id="review-skip">Saltar →</button>
+      <button class="btn btn-primary btn-lg" id="review-save">Guardar y Siguiente →</button>
+    </div>
+  </div>
+
+  <!-- TOASTS -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="inspo-vault.js?v=20260408b"></script>
+</body>
+</html>
