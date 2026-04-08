@@ -119,7 +119,7 @@ async function handleList(req, res) {
 
 // ─── CREATE ───────────────────────────────────────────
 async function handleCreate(req, res, body) {
-    const { idea, mercado, link, vertical, paraModelo, branding, elementoViral } = body;
+    const { idea, mercado, link, vertical, paraModelo, branding, elementoViral, favorito } = body;
 
     if (!idea || !idea.trim()) {
         return res.status(400).json({ error: 'El campo "idea" es obligatorio' });
@@ -135,6 +135,7 @@ async function handleCreate(req, res, body) {
     if (paraModelo && paraModelo.length) properties['Para Modelo'] = { multi_select: paraModelo.map(m => ({ name: m })) };
     if (branding && branding.length) properties['Branding'] = { multi_select: branding.map(b => ({ name: b })) };
     if (elementoViral && elementoViral.length) properties['Elemento Viral'] = { multi_select: elementoViral.map(e => ({ name: e })) };
+    if (favorito !== undefined) properties['Favorito'] = { checkbox: !!favorito };
 
     const response = await notionFetch('https://api.notion.com/v1/pages', 'POST', {
         parent: { database_id: DATABASE_ID },
@@ -159,7 +160,7 @@ async function handleUpdate(req, res, body) {
         return res.status(400).json({ error: 'Invalid page id format' });
     }
 
-    const { idea, mercado, link, vertical, paraModelo, branding, elementoViral } = body;
+    const { idea, mercado, link, vertical, paraModelo, branding, elementoViral, favorito } = body;
     const properties = {};
 
     if (idea !== undefined) properties['Idea'] = { title: [{ text: { content: idea.trim() } }] };
@@ -169,6 +170,7 @@ async function handleUpdate(req, res, body) {
     if (paraModelo !== undefined) properties['Para Modelo'] = { multi_select: (paraModelo || []).map(m => ({ name: m })) };
     if (branding !== undefined) properties['Branding'] = { multi_select: (branding || []).map(b => ({ name: b })) };
     if (elementoViral !== undefined) properties['Elemento Viral'] = { multi_select: (elementoViral || []).map(e => ({ name: e })) };
+    if (favorito !== undefined) properties['Favorito'] = { checkbox: !!favorito };
 
     if (Object.keys(properties).length === 0) {
         return res.status(400).json({ error: 'No fields to update' });
@@ -466,6 +468,7 @@ function parseNotionPage(page) {
         estado: getSelect(p['Estado']),
         contextoBranding: getRichText(p['Contexto de Branding']),
         elementosVirales: getRichText(p['Elementos Virales']),
+        favorito: getCheckbox(p['Favorito']),
         createdTime: page.created_time
     };
 }
@@ -489,4 +492,8 @@ function getUrl(prop) {
 function getRichText(prop) {
     if (!prop || !prop.rich_text || !prop.rich_text.length) return '';
     return prop.rich_text.map(t => t.plain_text).join('');
+}
+function getCheckbox(prop) {
+    if (!prop || prop.checkbox === undefined) return false;
+    return !!prop.checkbox;
 }

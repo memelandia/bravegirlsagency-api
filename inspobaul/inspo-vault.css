@@ -298,6 +298,16 @@ body {
   font-size: 0.7rem; font-weight: 600; white-space: nowrap;
 }
 
+/* Favorite star button */
+.card-fav-btn {
+  width: 28px; height: 28px; border: none; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  font-size: 1.1rem; display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition); flex-shrink: 0; opacity: 0.4;
+}
+.card-fav-btn:hover { opacity: 1; color: #f59e0b; transform: scale(1.15); }
+.card-fav-btn.active { color: #f59e0b; opacity: 1; }
+
 /* Card menu (three dots) */
 .card-menu-wrap { position: relative; flex-shrink: 0; }
 .card-menu-btn {

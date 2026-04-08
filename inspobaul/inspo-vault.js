@@ -171,6 +171,18 @@
     return u ? `https://unavatar.io/instagram/${u}` : null;
   }
 
+  // ─── LAZY AVATAR OBSERVER (unavatar.io free = 50 req/day limit) ───
+  const avatarObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        const src = img.dataset.src;
+        if (src) { img.src = src; img.removeAttribute('data-src'); }
+        avatarObserver.unobserve(img);
+      }
+    });
+  }, { rootMargin: '200px' });
+
   function getInitials(name) {
     if (!name) return '📷';
     const p = name.trim().split(/\s+/);
@@ -225,11 +237,13 @@
   function updateHeaderStats() {
     const visible = allEntries.filter(e => e.estado !== 'FRANCO EDICION');
     const incomplete = visible.filter(e => isIncomplete(e)).length;
+    const favCount = visible.filter(e => e.favorito).length;
     const modelos = new Set();
     allEntries.forEach(e => { if (e.paraModelo) e.paraModelo.forEach(m => modelos.add(m)); });
     dom.headerStats.innerHTML = `
       <span class="header-stat"><strong>${visible.length}</strong> perfiles</span>
       <span class="header-stat"><strong>${incomplete}</strong> sin etiquetar</span>
+      <span class="header-stat"><strong>${favCount}</strong> ⭐</span>
       <span class="header-stat"><strong>${modelos.size}</strong> modelos</span>
     `;
   }
@@ -394,13 +408,17 @@
     const username = extractUsername(entry.link);
     const avatarUrl = getAvatarUrl(entry.link);
 
-    // Avatar
+    // Avatar (lazy-loaded to avoid unavatar.io rate limit)
     let avatarHtml;
     if (avatarUrl) {
-      avatarHtml = `<img class="card-avatar" src="${esc(avatarUrl)}" alt="" onerror="this.outerHTML='<span class=\\'card-avatar-placeholder\\'>${esc(getInitials(entry.idea))}</span>'">`;
+      avatarHtml = `<img class="card-avatar" data-src="${esc(avatarUrl)}" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onerror="this.outerHTML='<span class=\\'card-avatar-placeholder\\'>${esc(getInitials(entry.idea))}</span>'">`;
     } else {
       avatarHtml = `<span class="card-avatar-placeholder">${esc(getInitials(entry.idea))}</span>`;
     }
+
+    // Favorite star
+    const favClass = entry.favorito ? ' active' : '';
+    const favHtml = `<button class="card-fav-btn${favClass}" title="Favorito" data-fav="${entry.id}">★</button>`;
 
     // Meta row: @username · 🇪🇸 · [MODELO]
     let metaParts = [];
@@ -431,6 +449,7 @@
           <div class="card-name">${esc(entry.idea)}</div>
           ${metaHtml}
         </div>
+        ${favHtml}
         <div class="card-menu-wrap">
           <button class="card-menu-btn" title="Opciones">⋯</button>
           <div class="card-menu-dropdown">
@@ -444,6 +463,17 @@
       ${chipsHtml}
       <div class="card-footer">${footerBadge}</div>
     `;
+
+    // Lazy-load avatar
+    const lazyImg = card.querySelector('.card-avatar[data-src]');
+    if (lazyImg) avatarObserver.observe(lazyImg);
+
+    // Fav toggle
+    const favBtn = card.querySelector('.card-fav-btn');
+    favBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleFavorite(entry.id, favBtn);
+    });
 
     // Menu events
     const menuBtn = card.querySelector('.card-menu-btn');
@@ -488,6 +518,23 @@
     });
 
     return card;
+  }
+
+  // ─── TOGGLE FAVORITE ───
+  async function toggleFavorite(id, btn) {
+    const entry = allEntries.find(e => e.id === id);
+    if (!entry) return;
+    const newVal = !entry.favorito;
+    btn.classList.toggle('active', newVal);
+    try {
+      await apiPatch(`inspo-vault?action=update&id=${id}`, { favorito: newVal });
+      entry.favorito = newVal;
+      toast(newVal ? '⭐ Añadido a favoritos' : 'Eliminado de favoritos');
+      applyFilters(); // re-sort
+    } catch (err) {
+      btn.classList.toggle('active', !newVal);
+      toast(`Error: ${err.message}`, 'error');
+    }
   }
 
   function buildCardChips(entry) {
@@ -536,6 +583,8 @@
       if (activeFilters.viral.length && !activeFilters.viral.some(v => (entry.elementoViral || []).includes(v))) return false;
       return true;
     });
+    // Sort: favorites first, then by creation date (already sorted from Notion)
+    filteredEntries.sort((a, b) => (b.favorito ? 1 : 0) - (a.favorito ? 1 : 0));
     renderGallery();
   }
 
