@@ -9,12 +9,12 @@
 </head>
 <body>
 
-  <!-- Loading overlay -->
+  <!-- Loading overlay with skeleton -->
   <div id="loading-overlay" class="loading-overlay">
     <div class="loading-content">
       <div class="loading-logo">Brave<span>Girls</span></div>
       <p id="loading-status" class="loading-text">Conectando...</p>
-      <div id="skeleton-grid" class="skeleton-grid">
+      <div class="skeleton-grid">
         <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><span class="sk-chip"></span><span class="sk-chip"></span></div></div></div>
         <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><span class="sk-chip"></span><span class="sk-chip"></span></div></div></div>
         <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><span class="sk-chip"></span><span class="sk-chip"></span></div></div></div>
@@ -27,6 +27,7 @@
 
   <!-- Dashboard -->
   <div id="dashboard" class="dashboard hidden">
+
     <!-- Header -->
     <header class="header">
       <div class="header-inner">
@@ -39,7 +40,7 @@
             <span class="review-pulse"></span>
             ⚡ Etiquetar <span id="review-count" class="review-badge">0</span>
           </button>
-          <button id="btn-verify" class="btn btn-verify">🔍 Verificar perfiles</button>
+          <button id="btn-verify" class="btn btn-verify">🔍 Verificar</button>
           <button id="btn-add" class="btn btn-primary">+ Añadir</button>
         </div>
       </div>
@@ -47,26 +48,27 @@
 
     <!-- Filters -->
     <div class="filters-bar">
-      <div class="filter-search-row">
-        <div class="search-input-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="filter-search" class="filter-search-input" placeholder="Buscar perfil o username...">
+      <div class="filter-row-top">
+        <div class="filter-search-wrap">
+          <span class="filter-search-icon">🔍</span>
+          <input type="text" id="filter-search" class="filter-search" placeholder="Buscar perfil o username...">
         </div>
-      </div>
-      <div class="filter-mercado-row">
-        <button class="mercado-pill active" data-mercado="">Todos</button>
-        <button class="mercado-pill" data-mercado="🇪🇸">🇪🇸</button>
-        <button class="mercado-pill" data-mercado="🇺🇸">🇺🇸</button>
-        <button class="mercado-pill" data-mercado="🇧🇷">🇧🇷</button>
-      </div>
-      <div class="filter-dropdowns-row">
-        <div class="filter-multiselect" id="filter-vertical"></div>
-        <div class="filter-multiselect" id="filter-modelo"></div>
-        <div class="filter-multiselect" id="filter-branding"></div>
-        <div class="filter-multiselect" id="filter-viral"></div>
+        <div class="mercado-pills">
+          <button class="mercado-pill active" data-mercado="">Todos</button>
+          <button class="mercado-pill" data-mercado="🇪🇸">🇪🇸</button>
+          <button class="mercado-pill" data-mercado="🇺🇸">🇺🇸</button>
+          <button class="mercado-pill" data-mercado="🇧🇷">🇧🇷</button>
+        </div>
+        <div class="filter-dropdowns">
+          <div class="filter-multiselect" id="filter-vertical"></div>
+          <div class="filter-multiselect" id="filter-modelo"></div>
+          <div class="filter-multiselect" id="filter-branding"></div>
+          <div class="filter-multiselect" id="filter-viral"></div>
+        </div>
+        <button id="filter-clear" class="filter-clear-btn hidden">✕ Limpiar</button>
       </div>
       <div id="active-filters-row" class="active-filters-row hidden"></div>
-      <div class="filter-results-row"><span id="gallery-count" class="gallery-count"></span></div>
+      <div class="filter-results-row"><span id="gallery-count"></span></div>
     </div>
 
     <!-- Gallery -->
@@ -108,12 +110,13 @@
   <div id="review-overlay" class="review-overlay">
     <div class="review-header">
       <button id="review-exit" class="btn btn-ghost">✕ Salir</button>
-      <div class="review-header-left">
+      <div class="review-progress-wrap">
         <div class="review-progress-bar-wrap">
           <div id="review-progress-bar" class="review-progress-bar"></div>
         </div>
         <span class="review-progress-text"><strong><span id="review-current">0</span></strong> / <span id="review-total">0</span></span>
       </div>
+      <div></div>
     </div>
     <div class="review-body">
       <div class="review-split">
@@ -130,7 +133,7 @@
     </div>
   </div>
 
-  <!-- Toast container -->
+  <!-- Toast -->
   <div id="toast-container" class="toast-container"></div>
 
   <script src="inspo-vault.js"></script>

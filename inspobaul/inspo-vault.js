@@ -1,15 +1,14 @@
 /* ============================================
    Inspo Vault — BraveGirls Agency
-   Frontend logic — v3 with emojis, colors, verifier
+   Full rewrite v4 — All bugs fixed
    ============================================ */
 
 (function () {
   'use strict';
 
-  // --- CONFIG ---
   const API_BASE = 'https://bravegirlsagency-api.vercel.app/api';
 
-  // --- EMOJI MAPS (display only — values saved to Notion without emoji) ---
+  // ─── EMOJI MAPS (display only — Notion values stay clean) ───
   const VERTICAL_EMOJIS = {
     'Humor': '😂', 'Texto en pantalla': '📝', 'Captions': '💬', 'Q&A': '❓',
     'Sexy Casual': '🔥', 'Twerk': '💃', 'Outfit Reveal': '👗', 'Sonido Viral': '🎵',
@@ -20,7 +19,6 @@
     'Asiatica': '🌸', 'Retos': '🏆', 'Yoga': '🧘', 'GYM': '🏋️',
     'Factos': '📊', 'MODELO IA': '🤖', 'MEDICA': '🩺'
   };
-
   const BRANDING_EMOJIS = {
     'Oficina': '🏢', 'Profesión': '💼', 'Humor': '😂', 'Pareja': '💑',
     'Público': '🌆', 'Fitness': '💪', 'MILF': '👩', 'Teen': '🎀',
@@ -28,7 +26,6 @@
     'Secretaria': '💼', 'Médica': '🩺', 'Gamer': '🎮', 'Asiática': '🌸',
     'Motorista': '🏍️', 'Femdom': '👠', 'Streamer': '📺', 'Yoga': '🧘'
   };
-
   const VIRAL_EMOJIS = {
     'Mirada directa': '👀', 'Outfit hook': '👗', 'Reacción': '😱',
     'Storytime': '📖', 'Doble sentido': '😏', 'Caption fuerte': '💬',
@@ -37,7 +34,7 @@
     'Baile': '💃', 'TTS': '🔊', 'Espejo': '🪞', 'Primer plano cara': '😍'
   };
 
-  // --- COLOR MAPS ---
+  // ─── COLOR MAPS ───
   const VERTICAL_COLORS = {
     'Humor': '#f97316', 'Skit': '#f97316', 'VIDEOREACCION': '#f97316',
     'Trends/Bailes': '#f97316', 'Retos': '#f97316',
@@ -51,32 +48,32 @@
     'Asiatica': '#10b981', 'Teen': '#10b981', 'Milf': '#10b981',
     'Sonido Viral': '#f59e0b', 'Perfil Instagram': '#f59e0b'
   };
-
   const MODELO_COLORS = {
     'VICKYLUNAA': '#8b5cf6', 'ARIANACRUZZ': '#ef4444', 'LEXIFLIX': '#f97316',
     'LUCY GARCIA': '#f59e0b', 'LILY MONTERO': '#ec4899', 'CARMENCITAX': '#06b6d4',
     'BELLAREY': '#10b981', 'NESSAPLAYY': '#6366f1', 'MODELO IA': '#6b7280'
   };
-
-  // --- MERCADO MAP (fix 🇺🇲 → 🇺🇸) ---
-  const MERCADO_MAP = {
-    '🇪🇸': { flag: '🇪🇸', label: 'España' },
-    '🇺🇲': { flag: '🇺🇸', label: 'USA' },
-    '🇺🇸': { flag: '🇺🇸', label: 'USA' },
-    '🇧🇷': { flag: '🇧🇷', label: 'Brasil' }
+  const MERCADO_LABELS = {
+    '🇪🇸': 'España', '🇺🇸': 'USA', '🇧🇷': 'Brasil'
   };
 
-  function displayFlag(mercado) {
-    const m = MERCADO_MAP[mercado];
-    return m ? m.flag : mercado;
+  function getVerticalColor(n) { return VERTICAL_COLORS[n] || '#8b5cf6'; }
+  function getModeloColor(n) { return MODELO_COLORS[n] || '#10b981'; }
+  function chipEmoji(name, type) {
+    if (type === 'vertical') return VERTICAL_EMOJIS[name] || '';
+    if (type === 'branding') return BRANDING_EMOJIS[name] || '';
+    if (type === 'viral') return VIRAL_EMOJIS[name] || '';
+    return '';
   }
 
-  function displayFlagLabel(mercado) {
-    const m = MERCADO_MAP[mercado];
-    return m ? `${m.flag} ${m.label}` : mercado;
+  // ─── ENTRY NORMALIZER (BUG 1 fix — normalize mercado on load) ───
+  function parseEntry(raw) {
+    const e = { ...raw };
+    if (e.mercado === '🇺🇲') e.mercado = '🇺🇸';
+    return e;
   }
 
-  // --- STATE ---
+  // ─── STATE ───
   let allEntries = [];
   let filteredEntries = [];
   let dbOptions = { Vertical: [], 'Para Modelo': [], Branding: [], 'Elemento Viral': [] };
@@ -84,10 +81,9 @@
   let reviewQueue = [];
   let reviewIndex = 0;
   let editingId = null;
-  let deletedProfiles = new Set(); // IDs marked as deleted by verifier
 
-  // --- DOM ---
-  const $ = (sel) => document.querySelector(sel);
+  // ─── DOM ───
+  const $ = s => document.querySelector(s);
   const dom = {
     loadingOverlay: $('#loading-overlay'),
     loadingStatus: $('#loading-status'),
@@ -98,6 +94,7 @@
     btnAdd: $('#btn-add'),
     btnVerify: $('#btn-verify'),
     filterSearch: $('#filter-search'),
+    filterClear: $('#filter-clear'),
     filterVertical: $('#filter-vertical'),
     filterModelo: $('#filter-modelo'),
     filterBranding: $('#filter-branding'),
@@ -128,7 +125,7 @@
     toastContainer: $('#toast-container')
   };
 
-  // --- HELPERS ---
+  // ─── HELPERS ───
   function esc(text) {
     const d = document.createElement('div');
     d.textContent = text;
@@ -140,7 +137,7 @@
     el.className = `toast toast-${type}`;
     el.textContent = msg;
     dom.toastContainer.appendChild(el);
-    setTimeout(() => { el.remove(); }, 3500);
+    setTimeout(() => el.remove(), 3500);
   }
 
   function isIncomplete(entry) {
@@ -155,79 +152,74 @@
   }
 
   function getAvatarUrl(link) {
-    const username = extractUsername(link);
-    return username ? `https://unavatar.io/instagram/${username}` : null;
+    const u = extractUsername(link);
+    return u ? `https://unavatar.io/instagram/${u}` : null;
   }
 
   function getInitials(name) {
     if (!name) return '📷';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return parts[0].substring(0, 2).toUpperCase();
+    const p = name.trim().split(/\s+/);
+    return p.length >= 2 ? (p[0][0] + p[1][0]).toUpperCase() : p[0].substring(0, 2).toUpperCase();
   }
 
-  function getVerticalColor(name) { return VERTICAL_COLORS[name] || '#8b5cf6'; }
-  function getModeloColor(name) { return MODELO_COLORS[name] || '#10b981'; }
-
-  function chipEmoji(name, type) {
-    if (type === 'vertical') return VERTICAL_EMOJIS[name] || '';
-    if (type === 'branding') return BRANDING_EMOJIS[name] || '';
-    if (type === 'viral') return VIRAL_EMOJIS[name] || '';
-    return '';
-  }
-
-  // --- API ---
+  // ─── API ───
   async function apiGet(path) {
     const res = await fetch(`${API_BASE}/${path}`);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${res.status}`);
-    }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`); }
     return res.json();
   }
-
   async function apiPost(path, body) {
     const res = await fetch(`${API_BASE}/${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${res.status}`);
-    }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`); }
     return res.json();
   }
-
   async function apiPatch(path, body) {
     const res = await fetch(`${API_BASE}/${path}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${res.status}`);
-    }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`); }
     return res.json();
   }
 
-  // --- HEADER STATS ---
-  function updateHeaderStats() {
-    const total = allEntries.filter(e => e.estado !== 'FRANCO EDICION').length;
-    const incomplete = allEntries.filter(e => e.estado !== 'FRANCO EDICION' && isIncomplete(e)).length;
-    const modelos = new Set();
-    allEntries.forEach(e => {
-      if (e.paraModelo) e.paraModelo.forEach(m => modelos.add(m));
+  // ─── CONFIRM DIALOG ───
+  function showConfirm(title, text, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-box">
+        <div class="confirm-title">${esc(title)}</div>
+        <div class="confirm-text">${text}</div>
+        <div class="confirm-btns">
+          <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+          <button class="btn btn-danger" data-action="confirm">Confirmar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector('[data-action="cancel"]').addEventListener('click', () => overlay.remove());
+    overlay.querySelector('[data-action="confirm"]').addEventListener('click', () => {
+      overlay.remove();
+      onConfirm();
     });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  }
+
+  // ─── HEADER STATS ───
+  function updateHeaderStats() {
+    const visible = allEntries.filter(e => e.estado !== 'FRANCO EDICION');
+    const incomplete = visible.filter(e => isIncomplete(e)).length;
+    const modelos = new Set();
+    allEntries.forEach(e => { if (e.paraModelo) e.paraModelo.forEach(m => modelos.add(m)); });
     dom.headerStats.innerHTML = `
-      <span class="header-stat"><strong>${total}</strong> perfiles</span>
+      <span class="header-stat"><strong>${visible.length}</strong> perfiles</span>
       <span class="header-stat"><strong>${incomplete}</strong> sin etiquetar</span>
       <span class="header-stat"><strong>${modelos.size}</strong> modelos</span>
     `;
   }
 
-  // --- MULTI-SELECT FILTER COMPONENT ---
+  // ─── MULTI-SELECT FILTER (BUG 4 fix — modelo dots) ───
   function createMultiSelect(container, options, filterKey, label, emojiMap, onChange) {
     container.innerHTML = '';
     const trigger = document.createElement('div');
@@ -238,18 +230,28 @@
     dropdown.className = 'filter-ms-dropdown';
 
     options.forEach(opt => {
-      const emoji = emojiMap ? (emojiMap[opt] || '') : '';
-      const displayText = emoji ? `${emoji} ${opt}` : opt;
       const item = document.createElement('div');
       item.className = 'filter-ms-option';
       item.dataset.value = opt;
-      item.innerHTML = `<span class="check"></span><span>${esc(displayText)}</span>`;
+
+      let displayHtml;
+      if (filterKey === 'modelo') {
+        const color = getModeloColor(opt);
+        displayHtml = `<span class="check"></span><span class="modelo-dot" style="background:${color}"></span><span>${esc(opt)}</span>`;
+      } else {
+        const emoji = emojiMap ? (emojiMap[opt] || '') : '';
+        const text = emoji ? `${emoji} ${opt}` : opt;
+        displayHtml = `<span class="check"></span><span>${esc(text)}</span>`;
+      }
+      item.innerHTML = displayHtml;
+
       item.addEventListener('click', (e) => {
         e.stopPropagation();
         item.classList.toggle('selected');
         const selected = Array.from(dropdown.querySelectorAll('.selected')).map(el => el.dataset.value);
         activeFilters[filterKey] = selected;
         updateTriggerLabel(trigger, label, selected);
+        updateClearButton();
         onChange();
       });
       dropdown.appendChild(item);
@@ -276,13 +278,21 @@
     }
   }
 
-  // --- ACTIVE FILTER CHIPS ---
+  function updateClearButton() {
+    const hasFilters = activeFilters.search || activeFilters.mercado ||
+      activeFilters.vertical.length || activeFilters.modelo.length ||
+      activeFilters.branding.length || activeFilters.viral.length;
+    dom.filterClear.classList.toggle('hidden', !hasFilters);
+  }
+
+  // ─── ACTIVE FILTER CHIPS ───
   function renderActiveFilters() {
     const row = dom.activeFiltersRow;
     const chips = [];
 
     if (activeFilters.mercado) {
-      chips.push({ label: displayFlagLabel(activeFilters.mercado), key: 'mercado', value: activeFilters.mercado });
+      const lbl = `${activeFilters.mercado} ${MERCADO_LABELS[activeFilters.mercado] || ''}`;
+      chips.push({ label: lbl, key: 'mercado', value: activeFilters.mercado });
     }
     activeFilters.vertical.forEach(v => {
       const e = VERTICAL_EMOJIS[v] || '';
@@ -298,15 +308,12 @@
       chips.push({ label: e ? `${e} ${v}` : v, key: 'viral', value: v });
     });
 
-    if (chips.length === 0) {
-      row.classList.add('hidden');
-      return;
-    }
+    if (chips.length === 0) { row.classList.add('hidden'); return; }
 
     row.classList.remove('hidden');
     row.innerHTML = chips.map((c, i) =>
       `<span class="active-filter-chip" data-idx="${i}">${esc(c.label)} <span class="x">×</span></span>`
-    ).join('') + `<span class="active-filter-clear">Limpiar todo</span>`;
+    ).join('');
 
     row.querySelectorAll('.active-filter-chip').forEach((el, i) => {
       el.addEventListener('click', () => {
@@ -317,48 +324,45 @@
           document.querySelector('.mercado-pill[data-mercado=""]').classList.add('active');
         } else {
           activeFilters[c.key] = activeFilters[c.key].filter(v => v !== c.value);
-          const container = c.key === 'vertical' ? dom.filterVertical
-            : c.key === 'modelo' ? dom.filterModelo
-            : c.key === 'branding' ? dom.filterBranding
-            : dom.filterViral;
-          const opt = container.querySelector(`.filter-ms-option[data-value="${CSS.escape(c.value)}"]`);
-          if (opt) opt.classList.remove('selected');
-          const trigger = container.querySelector('.filter-ms-trigger');
-          const labelMap = { vertical: 'Vertical', modelo: 'Para Modelo', branding: 'Branding', viral: 'Elemento Viral' };
-          updateTriggerLabel(trigger, labelMap[c.key], activeFilters[c.key]);
+          syncDropdownSelection(c.key);
         }
+        updateClearButton();
         applyFilters();
       });
     });
-
-    row.querySelector('.active-filter-clear').addEventListener('click', clearFilters);
   }
 
-  // --- RENDERING ---
+  function syncDropdownSelection(key) {
+    const containerMap = {
+      vertical: dom.filterVertical, modelo: dom.filterModelo,
+      branding: dom.filterBranding, viral: dom.filterViral
+    };
+    const labelMap = { vertical: 'Vertical', modelo: 'Para Modelo', branding: 'Branding', viral: 'Elemento Viral' };
+    const container = containerMap[key];
+    if (!container) return;
+    container.querySelectorAll('.filter-ms-option').forEach(el => {
+      el.classList.toggle('selected', activeFilters[key].includes(el.dataset.value));
+    });
+    const trigger = container.querySelector('.filter-ms-trigger');
+    updateTriggerLabel(trigger, labelMap[key], activeFilters[key]);
+  }
+
+  // ─── GALLERY ───
   function renderGallery() {
     const grid = dom.galleryGrid;
     grid.innerHTML = '';
-
     const total = allEntries.filter(e => e.estado !== 'FRANCO EDICION').length;
 
     if (filteredEntries.length === 0) {
-      grid.innerHTML = `
-        <div class="gallery-empty">
-          <div class="gallery-empty-icon">🔍</div>
-          <p>No se encontraron perfiles con estos filtros</p>
-        </div>`;
+      grid.innerHTML = `<div class="gallery-empty"><div class="gallery-empty-icon">🔍</div><p>No se encontraron perfiles con estos filtros</p></div>`;
       dom.galleryCount.textContent = `Mostrando 0 de ${total} perfiles`;
       return;
     }
 
     dom.galleryCount.textContent = filteredEntries.length === total
-      ? `${total} perfiles`
-      : `Mostrando ${filteredEntries.length} de ${total} perfiles`;
+      ? `${total} perfiles` : `Mostrando ${filteredEntries.length} de ${total} perfiles`;
 
-    filteredEntries.forEach(entry => {
-      grid.appendChild(createCard(entry));
-    });
-
+    filteredEntries.forEach(entry => grid.appendChild(createCard(entry)));
     renderActiveFilters();
   }
 
@@ -369,38 +373,11 @@
 
     const incomplete = isIncomplete(entry);
     const hasModelo = entry.paraModelo && entry.paraModelo.length > 0;
-    const isDeleted = deletedProfiles.has(entry.id);
-
-    if (isDeleted) card.classList.add('card-deleted');
-    else if (hasModelo) card.classList.add('card-has-modelo');
-    else if (incomplete) card.classList.add('card-incomplete');
+    if (incomplete) card.classList.add('card-incomplete');
+    if (hasModelo) card.classList.add('card-has-modelo');
 
     const username = extractUsername(entry.link);
     const avatarUrl = getAvatarUrl(entry.link);
-    const mercadoFlag = entry.mercado ? displayFlag(entry.mercado) : '';
-
-    const linkHtml = entry.link
-      ? `<div class="card-link-row"><a href="${esc(entry.link)}" target="_blank" rel="noopener" class="card-link">🔗 Ver perfil</a></div>`
-      : '';
-
-    const usernameHtml = username
-      ? `<div class="card-username">@${esc(username)}</div>`
-      : '';
-
-    // Chips by category with emojis and colors
-    const verticalChips = renderChipRow(entry.vertical, 'vertical', 3);
-    const brandingChips = renderChipRow(entry.branding, 'branding', 3);
-    const viralChips = renderChipRow(entry.elementoViral, 'viral', 3);
-    const modeloChips = renderChipRow(entry.paraModelo, 'modelo', 2);
-
-    const chipsHtml = (verticalChips || brandingChips || viralChips || modeloChips)
-      ? `<div class="card-chips">${verticalChips}${brandingChips}${viralChips}${modeloChips}</div>`
-      : '';
-
-    let footerBadge;
-    if (isDeleted) footerBadge = `<span class="card-deleted-badge">❌ Cuenta eliminada</span>`;
-    else if (incomplete) footerBadge = `<span class="card-incomplete-badge">⚠ Faltan tags</span>`;
-    else footerBadge = `<span></span>`;
 
     // Avatar
     let avatarHtml;
@@ -410,78 +387,140 @@
       avatarHtml = `<span class="card-avatar-placeholder">${esc(getInitials(entry.idea))}</span>`;
     }
 
+    // Meta row: @username · 🇪🇸 · [MODELO]
+    let metaParts = [];
+    if (username) metaParts.push(`<span class="card-username">@${esc(username)}</span>`);
+    if (entry.mercado) metaParts.push(`<span>${entry.mercado}</span>`);
+    if (hasModelo) {
+      const m = entry.paraModelo[0];
+      const mc = getModeloColor(m);
+      metaParts.push(`<span class="card-modelo-badge" style="--chip-color:${mc};background:color-mix(in srgb, ${mc} 15%, transparent);color:${mc}">${esc(m)}</span>`);
+    }
+    const metaHtml = metaParts.length
+      ? `<div class="card-meta">${metaParts.join('<span class="meta-sep">·</span>')}</div>` : '';
+
+    // Link
+    const linkHtml = entry.link
+      ? `<div class="card-link-row"><a href="${esc(entry.link)}" target="_blank" rel="noopener" class="card-link">🔗 ${esc(username || 'Ver perfil')}</a></div>` : '';
+
+    // Chips with section labels
+    const chipsHtml = buildCardChips(entry);
+
+    // Footer
+    const footerBadge = incomplete ? `<span class="card-incomplete-badge">⚠ Faltan tags</span>` : `<span></span>`;
+
     card.innerHTML = `
       <div class="card-top">
         ${avatarHtml}
         <div class="card-info">
           <div class="card-name">${esc(entry.idea)}</div>
-          ${usernameHtml}
+          ${metaHtml}
         </div>
-        ${mercadoFlag ? `<span class="card-mercado" title="${esc(displayFlagLabel(entry.mercado))}">${mercadoFlag}</span>` : ''}
+        <div class="card-menu-wrap">
+          <button class="card-menu-btn" title="Opciones">⋯</button>
+          <div class="card-menu-dropdown">
+            <button class="card-menu-item" data-action="edit">✎ Editar</button>
+            ${entry.link ? `<button class="card-menu-item" data-action="open">🔗 Abrir Instagram</button>` : ''}
+            <button class="card-menu-item danger" data-action="archive">❌ Archivar en Notion</button>
+          </div>
+        </div>
       </div>
       ${linkHtml}
       ${chipsHtml}
-      <div class="card-footer">
-        ${footerBadge}
-        <button class="btn-icon" data-edit="${entry.id}" title="Editar">✏️</button>
-      </div>
+      <div class="card-footer">${footerBadge}</div>
     `;
 
-    card.querySelector(`[data-edit="${entry.id}"]`).addEventListener('click', () => {
+    // Menu events
+    const menuBtn = card.querySelector('.card-menu-btn');
+    const menuDrop = card.querySelector('.card-menu-dropdown');
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.card-menu-dropdown.open').forEach(d => { if (d !== menuDrop) d.classList.remove('open'); });
+      menuDrop.classList.toggle('open');
+    });
+
+    card.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
+      e.stopPropagation(); menuDrop.classList.remove('open');
       openEditModal(entry.id);
+    });
+
+    const openBtn = card.querySelector('[data-action="open"]');
+    if (openBtn) {
+      openBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); menuDrop.classList.remove('open');
+        window.open(entry.link, '_blank');
+      });
+    }
+
+    card.querySelector('[data-action="archive"]').addEventListener('click', (e) => {
+      e.stopPropagation(); menuDrop.classList.remove('open');
+      showConfirm(
+        '¿Archivar perfil?',
+        `<strong>${esc(entry.idea)}</strong><br>No aparecerá más en el Inspo Vault.`,
+        async () => {
+          try {
+            await apiPost('inspo-vault?action=delete', { id: entry.id });
+            allEntries = allEntries.filter(en => en.id !== entry.id);
+            updateHeaderStats();
+            updateReviewCount();
+            applyFilters();
+            toast('Perfil archivado en Notion');
+          } catch (err) {
+            toast(`Error: ${err.message}`, 'error');
+          }
+        }
+      );
     });
 
     return card;
   }
 
-  function renderChipRow(items, type, max) {
-    if (!items || items.length === 0) return '';
-    const visible = items.slice(0, max);
-    const extra = items.length - max;
-    let html = visible.map(i => {
-      const emoji = chipEmoji(i, type);
-      const display = emoji ? `${emoji} ${i}` : i;
-      let styleAttr = '';
-      if (type === 'vertical') styleAttr = ` style="--chip-color:${getVerticalColor(i)}"`;
-      else if (type === 'modelo') styleAttr = ` style="--chip-color:${getModeloColor(i)}"`;
-      return `<span class="chip chip-${type}"${styleAttr}>${esc(display)}</span>`;
-    }).join('');
-    if (extra > 0) html += `<span class="chip chip-more">+${extra}</span>`;
-    return `<div class="card-chip-row">${html}</div>`;
+  function buildCardChips(entry) {
+    const sections = [];
+    if (entry.vertical && entry.vertical.length) {
+      sections.push(chipSection('Verticales', entry.vertical, 'vertical', 4));
+    }
+    if (entry.branding && entry.branding.length) {
+      sections.push(chipSection('Branding', entry.branding, 'branding', 3));
+    }
+    if (entry.elementoViral && entry.elementoViral.length) {
+      sections.push(chipSection('Viral', entry.elementoViral, 'viral', 3));
+    }
+    if (!sections.length) return '';
+    return `<div class="card-chips">${sections.join('')}</div>`;
   }
 
-  // --- FILTERING ---
+  function chipSection(label, items, type, max) {
+    const visible = items.slice(0, max);
+    const extra = items.length - max;
+    let chips = visible.map(i => {
+      const emoji = chipEmoji(i, type);
+      const display = emoji ? `${emoji} ${i}` : i;
+      let style = '';
+      if (type === 'vertical') style = `--chip-color:${getVerticalColor(i)}`;
+      else if (type === 'modelo') style = `--chip-color:${getModeloColor(i)}`;
+      return `<span class="chip chip-${type}"${style ? ` style="${style}"` : ''}>${esc(display)}</span>`;
+    }).join('');
+    if (extra > 0) chips += `<span class="chip chip-more">+${extra}</span>`;
+    return `<div class="card-chip-section"><div class="card-chip-label">${esc(label)}</div><div class="card-chip-row">${chips}</div></div>`;
+  }
+
+  // ─── FILTERING (BUG 1 fix — mercado already normalized via parseEntry) ───
   function applyFilters() {
     filteredEntries = allEntries.filter(entry => {
       if (entry.estado === 'FRANCO EDICION') return false;
-
       if (activeFilters.search) {
         const q = activeFilters.search.toLowerCase();
-        const searchable = [
-          entry.idea,
-          extractUsername(entry.link) || ''
-        ].join(' ').toLowerCase();
-        if (!searchable.includes(q)) return false;
+        const s = [entry.idea, extractUsername(entry.link) || ''].join(' ').toLowerCase();
+        if (!s.includes(q)) return false;
       }
-
       if (activeFilters.mercado && entry.mercado !== activeFilters.mercado) return false;
-
-      if (activeFilters.vertical.length > 0) {
-        if (!activeFilters.vertical.some(v => (entry.vertical || []).includes(v))) return false;
-      }
-      if (activeFilters.modelo.length > 0) {
-        if (!activeFilters.modelo.some(m => (entry.paraModelo || []).includes(m))) return false;
-      }
-      if (activeFilters.branding.length > 0) {
-        if (!activeFilters.branding.some(b => (entry.branding || []).includes(b))) return false;
-      }
-      if (activeFilters.viral.length > 0) {
-        if (!activeFilters.viral.some(v => (entry.elementoViral || []).includes(v))) return false;
-      }
-
+      if (activeFilters.vertical.length && !activeFilters.vertical.some(v => (entry.vertical || []).includes(v))) return false;
+      if (activeFilters.modelo.length && !activeFilters.modelo.some(m => (entry.paraModelo || []).includes(m))) return false;
+      if (activeFilters.branding.length && !activeFilters.branding.some(b => (entry.branding || []).includes(b))) return false;
+      if (activeFilters.viral.length && !activeFilters.viral.some(v => (entry.elementoViral || []).includes(v))) return false;
       return true;
     });
-
     renderGallery();
   }
 
@@ -490,29 +529,19 @@
     dom.filterSearch.value = '';
     document.querySelectorAll('.mercado-pill').forEach(p => p.classList.remove('active'));
     document.querySelector('.mercado-pill[data-mercado=""]').classList.add('active');
-    document.querySelectorAll('.filter-ms-option.selected').forEach(el => el.classList.remove('selected'));
-    document.querySelectorAll('.filter-ms-trigger').forEach(t => {
-      const label = t.closest('#filter-vertical') ? 'Vertical'
-        : t.closest('#filter-modelo') ? 'Para Modelo'
-        : t.closest('#filter-branding') ? 'Branding'
-        : 'Elemento Viral';
-      t.innerHTML = `<span class="ms-label">${label}</span><span class="arrow">▼</span>`;
-    });
+    ['vertical', 'modelo', 'branding', 'viral'].forEach(k => syncDropdownSelection(k));
+    updateClearButton();
     applyFilters();
   }
 
-  // --- REVIEW COUNT ---
+  // ─── REVIEW COUNT ───
   function updateReviewCount() {
     const count = allEntries.filter(e => e.estado !== 'FRANCO EDICION' && isIncomplete(e)).length;
     dom.reviewCount.textContent = count;
-    if (count > 0) {
-      dom.btnReview.classList.remove('hidden');
-    } else {
-      dom.btnReview.classList.add('hidden');
-    }
+    dom.btnReview.classList.toggle('hidden', count === 0);
   }
 
-  // --- MODAL (Add / Edit) ---
+  // ─── MODAL (Add / Edit) ───
   function openAddModal() {
     editingId = null;
     dom.modalTitle.textContent = 'Añadir Perfil';
@@ -527,7 +556,6 @@
     if (!entry) return;
     editingId = id;
     dom.modalTitle.textContent = 'Editar Perfil';
-
     const avatarUrl = getAvatarUrl(entry.link);
     if (avatarUrl) {
       dom.modalAvatar.classList.add('visible');
@@ -536,15 +564,11 @@
       dom.modalAvatar.classList.remove('visible');
       dom.modalAvatar.innerHTML = '';
     }
-
     renderModalForm(entry);
     dom.modalOverlay.classList.add('active');
   }
 
-  function closeModal() {
-    dom.modalOverlay.classList.remove('active');
-    editingId = null;
-  }
+  function closeModal() { dom.modalOverlay.classList.remove('active'); editingId = null; }
 
   function renderModalForm(entry) {
     dom.modalBody.innerHTML = buildFormHTML(entry, 'modal');
@@ -552,15 +576,14 @@
   }
 
   function buildFormHTML(entry, prefix) {
-    const mercados = ['🇪🇸', '🇺🇸', '🇧🇷'];
-    const mercadoMatch = (m) => {
-      if (entry.mercado === m) return true;
-      // Match old 🇺🇲 to new 🇺🇸
-      if (m === '🇺🇸' && entry.mercado === '🇺🇲') return true;
-      return false;
-    };
+    const mercados = [
+      { val: '🇪🇸', label: '🇪🇸 España' },
+      { val: '🇺🇸', label: '🇺🇸 USA' },
+      { val: '🇧🇷', label: '🇧🇷 Brasil' }
+    ];
 
     return `
+      <div class="form-section-label">Información básica</div>
       <div class="form-group">
         <label class="form-label">Idea / Descripción</label>
         <input type="text" class="form-input" id="${prefix}-idea" value="${esc(entry.idea || '')}" placeholder="Ej: CHICA TEEN CAPTIONS">
@@ -572,54 +595,50 @@
       <div class="form-group">
         <label class="form-label">Mercado</label>
         <div class="form-mercado-btns">
-          ${mercados.map(m => `<button type="button" class="form-mercado-btn${mercadoMatch(m) ? ' selected' : ''}" data-mercado="${m}">${m}</button>`).join('')}
+          ${mercados.map(m => `<button type="button" class="form-mercado-btn${entry.mercado === m.val ? ' selected' : ''}" data-mercado="${m.val}">${m.label}</button>`).join('')}
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Vertical</label>
-        <div class="form-chips" id="${prefix}-vertical">
-          ${(dbOptions.Vertical || []).map(v => {
-            const emoji = VERTICAL_EMOJIS[v] || '';
-            const display = emoji ? `${emoji} ${v}` : v;
-            const color = getVerticalColor(v);
-            const sel = (entry.vertical || []).includes(v) ? ' selected-vertical' : '';
-            return `<span class="form-chip${sel}" data-value="${esc(v)}" style="--chip-color:${color}">${esc(display)}</span>`;
-          }).join('')}
-        </div>
+
+      <div class="form-section-label">Verticales</div>
+      <div class="form-chips" id="${prefix}-vertical">
+        ${(dbOptions.Vertical || []).map(v => {
+          const emoji = VERTICAL_EMOJIS[v] || '';
+          const display = emoji ? `${emoji} ${v}` : v;
+          const color = getVerticalColor(v);
+          const sel = (entry.vertical || []).includes(v) ? ' selected-vertical' : '';
+          return `<span class="form-chip${sel}" data-value="${esc(v)}" style="--chip-color:${color}">${esc(display)}</span>`;
+        }).join('')}
       </div>
-      <div class="form-group">
-        <label class="form-label">Branding</label>
-        <div class="form-chips" id="${prefix}-branding">
-          ${(dbOptions.Branding || []).map(v => {
-            const emoji = BRANDING_EMOJIS[v] || '';
-            const display = emoji ? `${emoji} ${v}` : v;
-            const sel = (entry.branding || []).includes(v) ? ' selected-branding' : '';
-            return `<span class="form-chip${sel}" data-value="${esc(v)}">${esc(display)}</span>`;
-          }).join('')}
-          <span class="form-chip form-chip-add" data-addnew="branding">+ Nueva</span>
-        </div>
+
+      <div class="form-section-label">Branding</div>
+      <div class="form-chips" id="${prefix}-branding">
+        ${(dbOptions.Branding || []).map(v => {
+          const emoji = BRANDING_EMOJIS[v] || '';
+          const display = emoji ? `${emoji} ${v}` : v;
+          const sel = (entry.branding || []).includes(v) ? ' selected-branding' : '';
+          return `<span class="form-chip${sel}" data-value="${esc(v)}">${esc(display)}</span>`;
+        }).join('')}
+        <span class="form-chip form-chip-add" data-addnew="branding">+ Nueva</span>
       </div>
-      <div class="form-group">
-        <label class="form-label">Elemento Viral</label>
-        <div class="form-chips" id="${prefix}-viral">
-          ${(dbOptions['Elemento Viral'] || []).map(v => {
-            const emoji = VIRAL_EMOJIS[v] || '';
-            const display = emoji ? `${emoji} ${v}` : v;
-            const sel = (entry.elementoViral || []).includes(v) ? ' selected-viral' : '';
-            return `<span class="form-chip${sel}" data-value="${esc(v)}">${esc(display)}</span>`;
-          }).join('')}
-          <span class="form-chip form-chip-add" data-addnew="viral">+ Nueva</span>
-        </div>
+
+      <div class="form-section-label">Elemento Viral</div>
+      <div class="form-chips" id="${prefix}-viral">
+        ${(dbOptions['Elemento Viral'] || []).map(v => {
+          const emoji = VIRAL_EMOJIS[v] || '';
+          const display = emoji ? `${emoji} ${v}` : v;
+          const sel = (entry.elementoViral || []).includes(v) ? ' selected-viral' : '';
+          return `<span class="form-chip${sel}" data-value="${esc(v)}">${esc(display)}</span>`;
+        }).join('')}
+        <span class="form-chip form-chip-add" data-addnew="viral">+ Nueva</span>
       </div>
-      <div class="form-group">
-        <label class="form-label">Para Modelo</label>
-        <div class="form-chips" id="${prefix}-modelo">
-          ${(dbOptions['Para Modelo'] || []).map(v => {
-            const color = getModeloColor(v);
-            const sel = (entry.paraModelo || []).includes(v) ? ' selected-modelo' : '';
-            return `<span class="form-chip${sel}" data-value="${esc(v)}" style="--chip-color:${color}">${esc(v)}</span>`;
-          }).join('')}
-        </div>
+
+      <div class="form-section-label">Para Modelo</div>
+      <div class="form-chips" id="${prefix}-modelo">
+        ${(dbOptions['Para Modelo'] || []).map(v => {
+          const color = getModeloColor(v);
+          const sel = (entry.paraModelo || []).includes(v) ? ' selected-modelo' : '';
+          return `<span class="form-chip${sel}" data-value="${esc(v)}" style="--chip-color:${color}">${esc(v)}</span>`;
+        }).join('')}
       </div>
     `;
   }
@@ -631,32 +650,25 @@
         btn.classList.add('selected');
       });
     });
-
-    const chipTypes = [
+    [
       { id: `${prefix}-vertical`, cls: 'selected-vertical' },
       { id: `${prefix}-branding`, cls: 'selected-branding' },
       { id: `${prefix}-viral`, cls: 'selected-viral' },
       { id: `${prefix}-modelo`, cls: 'selected-modelo' }
-    ];
-
-    chipTypes.forEach(({ id, cls }) => {
+    ].forEach(({ id, cls }) => {
       const wrap = container.querySelector(`#${id}`);
       if (!wrap) return;
       wrap.querySelectorAll('.form-chip:not(.form-chip-add)').forEach(chip => {
         chip.addEventListener('click', () => chip.classList.toggle(cls));
       });
     });
-
     container.querySelectorAll('[data-addnew]').forEach(addBtn => {
-      addBtn.addEventListener('click', () => {
-        handleAddNewTag(container, prefix, addBtn.dataset.addnew, addBtn);
-      });
+      addBtn.addEventListener('click', () => handleAddNewTag(container, prefix, addBtn.dataset.addnew, addBtn));
     });
   }
 
   function handleAddNewTag(container, prefix, type, addBtn) {
     if (addBtn.parentElement.querySelector('.new-tag-row')) return;
-
     const row = document.createElement('span');
     row.className = 'new-tag-row';
     row.innerHTML = `
@@ -664,7 +676,6 @@
       <button class="new-tag-confirm" type="button">✓</button>
       <button class="new-tag-cancel" type="button">✕</button>
     `;
-
     addBtn.before(row);
     const input = row.querySelector('input');
     input.focus();
@@ -675,26 +686,18 @@
     async function confirm() {
       const val = input.value.trim();
       if (!val) { row.remove(); return; }
-
       try {
         await apiPost('inspo-vault?action=options', { property: notionProp, value: val });
-
-        if (!dbOptions[notionProp].includes(val)) {
-          dbOptions[notionProp].push(val);
-        }
-
+        if (!dbOptions[notionProp].includes(val)) dbOptions[notionProp].push(val);
         const chip = document.createElement('span');
         chip.className = `form-chip ${chipClass}`;
         chip.dataset.value = val;
         chip.textContent = val;
         chip.addEventListener('click', () => chip.classList.toggle(chipClass));
         addBtn.before(chip);
-
         row.remove();
         toast(`Etiqueta "${val}" añadida`);
-      } catch (err) {
-        toast(`Error: ${err.message}`, 'error');
-      }
+      } catch (err) { toast(`Error: ${err.message}`, 'error'); }
     }
 
     row.querySelector('.new-tag-confirm').addEventListener('click', confirm);
@@ -710,62 +713,48 @@
     const link = container.querySelector(`#${prefix}-link`).value.trim();
     const mercadoBtn = container.querySelector('.form-mercado-btn.selected');
     const mercado = mercadoBtn ? mercadoBtn.dataset.mercado : '';
-
-    const vertical = getSelectedChips(container, `#${prefix}-vertical`, 'selected-vertical');
-    const branding = getSelectedChips(container, `#${prefix}-branding`, 'selected-branding');
-    const elementoViral = getSelectedChips(container, `#${prefix}-viral`, 'selected-viral');
-    const paraModelo = getSelectedChips(container, `#${prefix}-modelo`, 'selected-modelo');
-
-    return { idea, link, mercado, vertical, branding, elementoViral, paraModelo };
+    return {
+      idea, link, mercado,
+      vertical: getSelectedChips(container, `#${prefix}-vertical`, 'selected-vertical'),
+      branding: getSelectedChips(container, `#${prefix}-branding`, 'selected-branding'),
+      elementoViral: getSelectedChips(container, `#${prefix}-viral`, 'selected-viral'),
+      paraModelo: getSelectedChips(container, `#${prefix}-modelo`, 'selected-modelo')
+    };
   }
 
   function getSelectedChips(container, selector, cls) {
     const wrap = container.querySelector(selector);
-    if (!wrap) return [];
-    return Array.from(wrap.querySelectorAll(`.${cls}`)).map(c => c.dataset.value);
+    return wrap ? Array.from(wrap.querySelectorAll(`.${cls}`)).map(c => c.dataset.value) : [];
   }
 
   async function handleModalSave() {
     const data = getFormData(dom.modalBody, 'modal');
-    if (!data.idea) {
-      toast('El campo Idea es obligatorio', 'error');
-      return;
-    }
-
+    if (!data.idea) { toast('El campo Idea es obligatorio', 'error'); return; }
     dom.modalSave.disabled = true;
     dom.modalSave.textContent = 'Guardando...';
-
     try {
       if (editingId) {
         const result = await apiPatch(`inspo-vault?action=update&id=${editingId}`, data);
         const idx = allEntries.findIndex(e => e.id === editingId);
-        if (idx !== -1) allEntries[idx] = result.entry;
+        if (idx !== -1) allEntries[idx] = parseEntry(result.entry);
         toast('Perfil actualizado');
       } else {
         const result = await apiPost('inspo-vault?action=create', data);
-        allEntries.unshift(result.entry);
+        allEntries.unshift(parseEntry(result.entry));
         toast('Perfil creado');
       }
-
       closeModal();
       updateReviewCount();
       updateHeaderStats();
       applyFilters();
-    } catch (err) {
-      toast(`Error: ${err.message}`, 'error');
-    } finally {
-      dom.modalSave.disabled = false;
-      dom.modalSave.textContent = 'Guardar';
-    }
+    } catch (err) { toast(`Error: ${err.message}`, 'error'); }
+    finally { dom.modalSave.disabled = false; dom.modalSave.textContent = 'Guardar'; }
   }
 
-  // --- QUICK REVIEW ---
+  // ─── QUICK REVIEW (BUG 5 fix — proper overflow/layout) ───
   function startReview() {
     reviewQueue = allEntries.filter(e => e.estado !== 'FRANCO EDICION' && isIncomplete(e));
-    if (reviewQueue.length === 0) {
-      toast('¡Todos los perfiles están etiquetados!');
-      return;
-    }
+    if (reviewQueue.length === 0) { toast('¡Todos los perfiles están etiquetados!'); return; }
     reviewIndex = 0;
     dom.reviewTotal.textContent = reviewQueue.length;
     renderReviewItem();
@@ -774,48 +763,30 @@
 
   function exitReview() {
     dom.reviewOverlay.classList.remove('active');
-    updateReviewCount();
-    updateHeaderStats();
-    applyFilters();
+    updateReviewCount(); updateHeaderStats(); applyFilters();
   }
 
   function renderReviewItem() {
-    if (reviewIndex >= reviewQueue.length) {
-      toast('¡Revisión completada!');
-      exitReview();
-      return;
-    }
-
+    if (reviewIndex >= reviewQueue.length) { toast('¡Revisión completada!'); exitReview(); return; }
     const entry = reviewQueue[reviewIndex];
     dom.reviewCurrent.textContent = reviewIndex + 1;
-
-    const pct = ((reviewIndex + 1) / reviewQueue.length) * 100;
-    dom.reviewProgressBar.style.width = pct + '%';
-
+    dom.reviewProgressBar.style.width = (((reviewIndex + 1) / reviewQueue.length) * 100) + '%';
     dom.reviewPrev.disabled = reviewIndex === 0;
 
     const username = extractUsername(entry.link);
     const avatarUrl = getAvatarUrl(entry.link);
-
     let avatarHtml;
     if (avatarUrl) {
       avatarHtml = `<img class="review-avatar" src="${esc(avatarUrl)}" alt="" onerror="this.outerHTML='<span class=\\'review-avatar-placeholder\\'>${esc(getInitials(entry.idea))}</span>'">`;
     } else {
       avatarHtml = `<span class="review-avatar-placeholder">${esc(getInitials(entry.idea))}</span>`;
     }
-
     const usernameHtml = username ? `<div class="review-username">@${esc(username)}</div>` : '';
     const igBtn = entry.link
       ? `<a href="${esc(entry.link)}" target="_blank" rel="noopener" class="review-ig-btn">📷 Abrir Instagram</a>`
       : `<p class="review-no-link">Sin link de Instagram</p>`;
 
-    dom.reviewPreview.innerHTML = `
-      ${avatarHtml}
-      <div class="review-name">${esc(entry.idea)}</div>
-      ${usernameHtml}
-      ${igBtn}
-    `;
-
+    dom.reviewPreview.innerHTML = `${avatarHtml}<div class="review-name">${esc(entry.idea)}</div>${usernameHtml}${igBtn}`;
     dom.reviewForm.innerHTML = buildFormHTML(entry, 'review');
     attachFormEvents(dom.reviewForm, 'review');
   }
@@ -823,42 +794,24 @@
   async function handleReviewSave() {
     const entry = reviewQueue[reviewIndex];
     const data = getFormData(dom.reviewForm, 'review');
-
     dom.reviewSave.disabled = true;
     dom.reviewSave.textContent = 'Guardando...';
-
     try {
       const result = await apiPatch(`inspo-vault?action=update&id=${entry.id}`, data);
       const idx = allEntries.findIndex(e => e.id === entry.id);
-      if (idx !== -1) allEntries[idx] = result.entry;
+      if (idx !== -1) allEntries[idx] = parseEntry(result.entry);
       toast('Guardado ✓');
       reviewIndex++;
       renderReviewItem();
-    } catch (err) {
-      toast(`Error: ${err.message}`, 'error');
-    } finally {
-      dom.reviewSave.disabled = false;
-      dom.reviewSave.textContent = 'Guardar y Siguiente →';
-    }
+    } catch (err) { toast(`Error: ${err.message}`, 'error'); }
+    finally { dom.reviewSave.disabled = false; dom.reviewSave.textContent = 'Guardar y Siguiente →'; }
   }
 
-  function handleReviewSkip() {
-    reviewIndex++;
-    renderReviewItem();
-  }
-
-  function handleReviewPrev() {
-    if (reviewIndex > 0) {
-      reviewIndex--;
-      renderReviewItem();
-    }
-  }
-
-  // --- PROFILE VERIFIER ---
+  // ─── VERIFIER (BUG 3 fix — handle all-errors gracefully) ───
   function openVerifyModal() {
-    const total = allEntries.filter(e => e.estado !== 'FRANCO EDICION').length;
-    const withLink = allEntries.filter(e => e.estado !== 'FRANCO EDICION' && e.link).length;
-    const noLink = total - withLink;
+    const visible = allEntries.filter(e => e.estado !== 'FRANCO EDICION');
+    const withLink = visible.filter(e => e.link).length;
+    const noLink = visible.length - withLink;
 
     dom.verifyBody.innerHTML = `
       <p class="verify-confirm-text">
@@ -867,24 +820,21 @@
         <small style="color:var(--text-muted)">Esto puede tardar 1-2 minutos.</small>
       </p>
       <div class="verify-btns">
-        <button class="btn btn-secondary" id="verify-only-links">🔍 Verificar solo con link (${withLink})</button>
-        <button class="btn btn-primary" id="verify-all">🔍 Verificar todos (${total})</button>
+        <button class="btn btn-secondary" id="verify-only-links">🔍 Verificar con link (${withLink})</button>
+        <button class="btn btn-primary" id="verify-all">🔍 Verificar todos (${visible.length})</button>
       </div>
     `;
-
     dom.verifyOverlay.classList.add('active');
 
     dom.verifyBody.querySelector('#verify-only-links').addEventListener('click', () => {
-      runVerification(allEntries.filter(e => e.estado !== 'FRANCO EDICION' && e.link));
+      runVerification(visible.filter(e => e.link));
     });
     dom.verifyBody.querySelector('#verify-all').addEventListener('click', () => {
-      runVerification(allEntries.filter(e => e.estado !== 'FRANCO EDICION'));
+      runVerification(visible);
     });
   }
 
-  function closeVerifyModal() {
-    dom.verifyOverlay.classList.remove('active');
-  }
+  function closeVerifyModal() { dom.verifyOverlay.classList.remove('active'); }
 
   async function runVerification(entries) {
     const BATCH = 10;
@@ -900,7 +850,6 @@
         <div class="verify-progress-text" id="vp-text">Verificando 0 de ${profiles.length}...</div>
       </div>
     `;
-
     const bar = dom.verifyBody.querySelector('#vp-bar');
     const text = dom.verifyBody.querySelector('#vp-text');
 
@@ -916,7 +865,6 @@
       bar.style.width = ((processed / profiles.length) * 100) + '%';
       text.textContent = `Verificando ${processed} de ${profiles.length}...`;
     }
-
     showVerifyResults(allResults);
   }
 
@@ -925,28 +873,43 @@
     const deleted = results.filter(r => r.status === 'ELIMINADO');
     const errors = results.filter(r => r.status === 'ERROR');
 
-    // Mark deleted in state
-    deleted.forEach(r => deletedProfiles.add(r.id));
-    applyFilters();
+    // BUG 3: If all results are errors, Instagram is blocking
+    const allErrors = errors.length === results.length && results.length > 0;
 
-    dom.verifyBody.innerHTML = `
-      <div class="verify-results">
-        <div class="verify-stat verify-stat-active">✅ ${active.length} activos</div>
-        <div class="verify-stat verify-stat-deleted" id="vr-show-deleted">
-          ❌ ${deleted.length} eliminados ${deleted.length > 0 ? '→ Ver lista' : ''}
+    let html = `<div class="verify-results">
+      <div class="verify-stat verify-stat-active">✅ ${active.length} activos</div>
+      <div class="verify-stat verify-stat-deleted" id="vr-show-deleted">❌ ${deleted.length} eliminados${deleted.length > 0 ? ' → Ver lista' : ''}</div>
+      <div class="verify-stat verify-stat-error">⚠️ ${errors.length} con error</div>
+    </div>`;
+
+    if (allErrors) {
+      html += `
+        <div class="verify-note">
+          ⚠️ Instagram bloquea la verificación automática desde servidor.<br>
+          Usa "<strong>Abrir todos en pestañas</strong>" para verificar manualmente.
         </div>
-        <div class="verify-stat verify-stat-error">⚠️ ${errors.length} con error (no verificados)</div>
-      </div>
-      <div class="verify-deleted-list hidden" id="vr-deleted-list"></div>
-    `;
+        <div style="margin-top:1rem;display:flex;gap:0.5rem">
+          <button class="btn btn-secondary" id="vr-open-all">🔗 Abrir todos en pestañas</button>
+        </div>
+      `;
+    }
+
+    html += `<div class="verify-deleted-list hidden" id="vr-deleted-list"></div>`;
+    dom.verifyBody.innerHTML = html;
+
+    if (allErrors) {
+      dom.verifyBody.querySelector('#vr-open-all').addEventListener('click', () => {
+        const withLink = results.filter(r => r.url).slice(0, 20); // max 20 tabs
+        withLink.forEach((r, i) => setTimeout(() => window.open(r.url, '_blank'), i * 300));
+        toast(`Abriendo ${withLink.length} perfiles...`);
+      });
+    }
 
     if (deleted.length > 0) {
       const showBtn = dom.verifyBody.querySelector('#vr-show-deleted');
       const listEl = dom.verifyBody.querySelector('#vr-deleted-list');
-
-      showBtn.addEventListener('click', () => {
-        listEl.classList.toggle('hidden');
-      });
+      showBtn.style.cursor = 'pointer';
+      showBtn.addEventListener('click', () => listEl.classList.toggle('hidden'));
 
       listEl.innerHTML = deleted.map(r => {
         const entry = allEntries.find(e => e.id === r.id);
@@ -958,8 +921,8 @@
               <div class="verify-deleted-url">${esc(r.url)}</div>
             </div>
             <div class="verify-deleted-actions">
-              <button class="btn btn-danger btn-sm" data-archive="${r.id}" title="Archivar en Notion">🗑 Eliminar</button>
-              <button class="btn btn-ghost btn-sm" data-ignore="${r.id}" title="Ignorar">Ignorar</button>
+              <button class="btn btn-danger btn-sm" data-archive="${r.id}">🗑 Archivar</button>
+              <button class="btn btn-ghost btn-sm" data-ignore="${r.id}">Ignorar</button>
             </div>
           </div>
         `;
@@ -968,36 +931,26 @@
       listEl.querySelectorAll('[data-archive]').forEach(btn => {
         btn.addEventListener('click', async () => {
           const id = btn.dataset.archive;
-          btn.disabled = true;
-          btn.textContent = '...';
+          btn.disabled = true; btn.textContent = '...';
           try {
             await apiPost('inspo-vault?action=delete', { id });
             allEntries = allEntries.filter(e => e.id !== id);
-            deletedProfiles.delete(id);
             btn.closest('.verify-deleted-item').remove();
-            updateHeaderStats();
-            applyFilters();
-            toast('Perfil archivado en Notion');
+            updateHeaderStats(); applyFilters();
+            toast('Perfil archivado');
           } catch (err) {
             toast(`Error: ${err.message}`, 'error');
-            btn.disabled = false;
-            btn.textContent = '🗑 Eliminar';
+            btn.disabled = false; btn.textContent = '🗑 Archivar';
           }
         });
       });
-
       listEl.querySelectorAll('[data-ignore]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = btn.dataset.ignore;
-          deletedProfiles.delete(id);
-          btn.closest('.verify-deleted-item').remove();
-          applyFilters();
-        });
+        btn.addEventListener('click', () => { btn.closest('.verify-deleted-item').remove(); });
       });
     }
   }
 
-  // --- INIT ---
+  // ─── INIT ───
   async function init() {
     try {
       dom.loadingStatus.textContent = 'Cargando opciones...';
@@ -1006,7 +959,8 @@
 
       dom.loadingStatus.textContent = 'Cargando perfiles...';
       const listRes = await apiGet('inspo-vault?action=list');
-      allEntries = listRes.entries;
+      // BUG 1 fix: normalize mercado on ALL entries at load time
+      allEntries = listRes.entries.map(parseEntry);
 
       createMultiSelect(dom.filterVertical, dbOptions.Vertical || [], 'vertical', 'Vertical', VERTICAL_EMOJIS, applyFilters);
       createMultiSelect(dom.filterModelo, dbOptions['Para Modelo'] || [], 'modelo', 'Para Modelo', null, applyFilters);
@@ -1020,7 +974,6 @@
       dom.loadingOverlay.classList.add('fade-out');
       setTimeout(() => { dom.loadingOverlay.style.display = 'none'; }, 400);
       dom.dashboard.classList.remove('hidden');
-
     } catch (err) {
       dom.loadingStatus.textContent = `Error: ${err.message}`;
       dom.loadingStatus.style.color = '#f87171';
@@ -1028,12 +981,13 @@
     }
   }
 
-  // --- EVENT LISTENERS ---
+  // ─── EVENT LISTENERS ───
   let searchDebounce;
   dom.filterSearch.addEventListener('input', () => {
     clearTimeout(searchDebounce);
     searchDebounce = setTimeout(() => {
       activeFilters.search = dom.filterSearch.value;
+      updateClearButton();
       applyFilters();
     }, 200);
   });
@@ -1043,10 +997,12 @@
       document.querySelectorAll('.mercado-pill').forEach(p => p.classList.remove('active'));
       pill.classList.add('active');
       activeFilters.mercado = pill.dataset.mercado;
+      updateClearButton();
       applyFilters();
     });
   });
 
+  dom.filterClear.addEventListener('click', clearFilters);
   dom.btnAdd.addEventListener('click', openAddModal);
   dom.btnVerify.addEventListener('click', openVerifyModal);
   dom.modalClose.addEventListener('click', closeModal);
@@ -1056,24 +1012,22 @@
   dom.btnReview.addEventListener('click', startReview);
   dom.reviewExit.addEventListener('click', exitReview);
   dom.reviewSave.addEventListener('click', handleReviewSave);
-  dom.reviewSkip.addEventListener('click', handleReviewSkip);
-  dom.reviewPrev.addEventListener('click', handleReviewPrev);
+  dom.reviewSkip.addEventListener('click', () => { reviewIndex++; renderReviewItem(); });
+  dom.reviewPrev.addEventListener('click', () => { if (reviewIndex > 0) { reviewIndex--; renderReviewItem(); } });
 
-  dom.modalOverlay.addEventListener('click', (e) => {
-    if (e.target === dom.modalOverlay) closeModal();
-  });
-  dom.verifyOverlay.addEventListener('click', (e) => {
-    if (e.target === dom.verifyOverlay) closeVerifyModal();
-  });
+  dom.modalOverlay.addEventListener('click', e => { if (e.target === dom.modalOverlay) closeModal(); });
+  dom.verifyOverlay.addEventListener('click', e => { if (e.target === dom.verifyOverlay) closeVerifyModal(); });
 
+  // Close dropdowns on outside click
   document.addEventListener('click', () => {
     document.querySelectorAll('.filter-ms-dropdown.open').forEach(d => {
       d.classList.remove('open');
       d.previousElementSibling.classList.remove('active');
     });
+    document.querySelectorAll('.card-menu-dropdown.open').forEach(d => d.classList.remove('open'));
   });
 
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       if (dom.reviewOverlay.classList.contains('active')) exitReview();
       else if (dom.verifyOverlay.classList.contains('active')) closeVerifyModal();
@@ -1081,7 +1035,5 @@
     }
   });
 
-  // --- GO ---
   init();
-
 })();
