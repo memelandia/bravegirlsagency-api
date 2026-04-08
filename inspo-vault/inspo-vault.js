@@ -418,7 +418,7 @@
       if (!val) { row.remove(); return; }
 
       try {
-        await apiPost('inspo-vault-options', { property: notionProp, value: val });
+        await apiPost('inspo-vault?action=options', { property: notionProp, value: val });
 
         // Add to local options
         if (!dbOptions[notionProp].includes(val)) {
@@ -480,13 +480,13 @@
 
     try {
       if (editingId) {
-        const result = await apiPatch(`inspo-vault-update?id=${editingId}`, data);
+        const result = await apiPatch(`inspo-vault?action=update&id=${editingId}`, data);
         // Update local entry
         const idx = allEntries.findIndex(e => e.id === editingId);
         if (idx !== -1) allEntries[idx] = result.entry;
         toast('Perfil actualizado');
       } else {
-        const result = await apiPost('inspo-vault-create', data);
+        const result = await apiPost('inspo-vault?action=create', data);
         allEntries.unshift(result.entry);
         toast('Perfil creado');
       }
@@ -552,7 +552,7 @@
     dom.reviewSave.textContent = 'Guardando...';
 
     try {
-      const result = await apiPatch(`inspo-vault-update?id=${entry.id}`, data);
+      const result = await apiPatch(`inspo-vault?action=update&id=${entry.id}`, data);
       const idx = allEntries.findIndex(e => e.id === entry.id);
       if (idx !== -1) allEntries[idx] = result.entry;
       toast('Guardado ✓');
@@ -575,11 +575,11 @@
   async function init() {
     try {
       dom.loadingStatus.textContent = 'Cargando opciones...';
-      const optionsRes = await apiGet('inspo-vault-options');
+      const optionsRes = await apiGet('inspo-vault?action=options');
       dbOptions = optionsRes.options;
 
       dom.loadingStatus.textContent = 'Cargando perfiles...';
-      const listRes = await apiGet('inspo-vault-list');
+      const listRes = await apiGet('inspo-vault?action=list');
       allEntries = listRes.entries;
 
       // Build filter dropdowns

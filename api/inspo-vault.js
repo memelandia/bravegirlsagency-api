@@ -1,0 +1,343 @@
+// api/inspo-vault.js - Consolidated Inspo Vault router
+// Routes via ?action= query param:
+//   GET  ?action=list    → list all entries
+//   GET  ?action=options → get multi_select options from DB schema
+//   POST ?action=create  → create new entry
+//   POST ?action=options → add new option to Branding/Elemento Viral
+//   POST ?action=setup   → one-time: create Branding & Elemento Viral properties
+//   PATCH ?action=update&id=<page_id> → update entry
+
+const NOTION_TOKEN = process.env.NOTION_TOKEN;
+const DATABASE_ID = 'c2623a10218442198f206f75792bc251';
+const NOTION_VERSION = '2022-06-28';
+const ALLOWED_PROPERTIES = ['Branding', 'Elemento Viral'];
+
+module.exports = async (req, res) => {
+    // CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') return res.status(200).end();
+
+    if (!NOTION_TOKEN) {
+        return res.status(500).json({ error: 'NOTION_TOKEN not configured' });
+    }
+
+    const action = req.query.action || '';
+
+    try {
+        // Parse body for POST/PATCH
+        let body = {};
+        if (['POST', 'PATCH'].includes(req.method) && req.body) {
+            body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        }
+
+        switch (action) {
+            case 'list':
+                if (req.method !== 'GET') return res.status(405).json({ error: 'Use GET for list' });
+                return await handleList(req, res);
+
+            case 'create':
+                if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST for create' });
+                return await handleCreate(req, res, body);
+
+            case 'update':
+                if (req.method !== 'PATCH') return res.status(405).json({ error: 'Use PATCH for update' });
+                return await handleUpdate(req, res, body);
+
+            case 'options':
+                if (req.method === 'GET') return await handleGetOptions(req, res);
+                if (req.method === 'POST') return await handleAddOption(req, res, body);
+                return res.status(405).json({ error: 'Use GET or POST for options' });
+
+            case 'setup':
+                if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST for setup' });
+                return await handleSetup(req, res);
+
+            default:
+                return res.status(400).json({
+                    error: 'Missing or invalid action parameter',
+                    valid: ['list', 'create', 'update', 'options', 'setup']
+                });
+        }
+    } catch (error) {
+        console.error('inspo-vault error:', error);
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+// ─── LIST ─────────────────────────────────────────────
+async function handleList(req, res) {
+    const allResults = [];
+    let hasMore = true;
+    let startCursor = undefined;
+
+    while (hasMore) {
+        const body = {
+            page_size: 100,
+            sorts: [{ timestamp: 'created_time', direction: 'descending' }]
+        };
+        if (startCursor) body.start_cursor = startCursor;
+
+        const response = await notionFetch(
+            `https://api.notion.com/v1/databases/${DATABASE_ID}/query`,
+            'POST', body
+        );
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            return res.status(response.status).json({ error: err.message || 'Error querying Notion' });
+        }
+
+        const data = await response.json();
+        allResults.push(...data.results);
+        hasMore = data.has_more;
+        startCursor = data.next_cursor;
+    }
+
+    return res.status(200).json({
+        success: true,
+        count: allResults.length,
+        entries: allResults.map(parseNotionPage)
+    });
+}
+
+// ─── CREATE ───────────────────────────────────────────
+async function handleCreate(req, res, body) {
+    const { idea, mercado, link, vertical, paraModelo, branding, elementoViral } = body;
+
+    if (!idea || !idea.trim()) {
+        return res.status(400).json({ error: 'El campo "idea" es obligatorio' });
+    }
+
+    const properties = {
+        'Idea': { title: [{ text: { content: idea.trim() } }] }
+    };
+
+    if (mercado) properties['Mercado'] = { select: { name: mercado } };
+    if (link) properties['Link del reel'] = { url: link };
+    if (vertical && vertical.length) properties['Vertical'] = { multi_select: vertical.map(v => ({ name: v })) };
+    if (paraModelo && paraModelo.length) properties['Para Modelo'] = { multi_select: paraModelo.map(m => ({ name: m })) };
+    if (branding && branding.length) properties['Branding'] = { multi_select: branding.map(b => ({ name: b })) };
+    if (elementoViral && elementoViral.length) properties['Elemento Viral'] = { multi_select: elementoViral.map(e => ({ name: e })) };
+
+    const response = await notionFetch('https://api.notion.com/v1/pages', 'POST', {
+        parent: { database_id: DATABASE_ID },
+        properties
+    });
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        return res.status(response.status).json({ error: err.message || 'Error creating page' });
+    }
+
+    const page = await response.json();
+    return res.status(201).json({ success: true, entry: parseNotionPage(page) });
+}
+
+// ─── UPDATE ───────────────────────────────────────────
+async function handleUpdate(req, res, body) {
+    const pageId = req.query.id;
+    if (!pageId) return res.status(400).json({ error: 'Missing page id' });
+
+    if (!/^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i.test(pageId)) {
+        return res.status(400).json({ error: 'Invalid page id format' });
+    }
+
+    const { idea, mercado, link, vertical, paraModelo, branding, elementoViral } = body;
+    const properties = {};
+
+    if (idea !== undefined) properties['Idea'] = { title: [{ text: { content: idea.trim() } }] };
+    if (mercado !== undefined) properties['Mercado'] = mercado ? { select: { name: mercado } } : { select: null };
+    if (link !== undefined) properties['Link del reel'] = { url: link || null };
+    if (vertical !== undefined) properties['Vertical'] = { multi_select: (vertical || []).map(v => ({ name: v })) };
+    if (paraModelo !== undefined) properties['Para Modelo'] = { multi_select: (paraModelo || []).map(m => ({ name: m })) };
+    if (branding !== undefined) properties['Branding'] = { multi_select: (branding || []).map(b => ({ name: b })) };
+    if (elementoViral !== undefined) properties['Elemento Viral'] = { multi_select: (elementoViral || []).map(e => ({ name: e })) };
+
+    if (Object.keys(properties).length === 0) {
+        return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    const response = await notionFetch(`https://api.notion.com/v1/pages/${pageId}`, 'PATCH', { properties });
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        return res.status(response.status).json({ error: err.message || 'Error updating page' });
+    }
+
+    const page = await response.json();
+    return res.status(200).json({ success: true, entry: parseNotionPage(page) });
+}
+
+// ─── GET OPTIONS ──────────────────────────────────────
+async function handleGetOptions(req, res) {
+    const response = await notionFetch(
+        `https://api.notion.com/v1/databases/${DATABASE_ID}`, 'GET'
+    );
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        return res.status(response.status).json({ error: err.message || 'Error fetching schema' });
+    }
+
+    const db = await response.json();
+    const props = db.properties;
+    const options = {};
+
+    for (const name of [...ALLOWED_PROPERTIES, 'Vertical', 'Para Modelo']) {
+        if (props[name] && props[name].multi_select) {
+            options[name] = props[name].multi_select.options.map(o => o.name);
+        } else {
+            options[name] = [];
+        }
+    }
+
+    return res.status(200).json({ success: true, options });
+}
+
+// ─── ADD OPTION ───────────────────────────────────────
+async function handleAddOption(req, res, body) {
+    const { property, value } = body;
+
+    if (!property || !value) return res.status(400).json({ error: 'Missing property or value' });
+    if (!ALLOWED_PROPERTIES.includes(property)) {
+        return res.status(400).json({ error: `Property must be one of: ${ALLOWED_PROPERTIES.join(', ')}` });
+    }
+
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return res.status(400).json({ error: 'Value cannot be empty' });
+
+    // Get current options
+    const getResponse = await notionFetch(
+        `https://api.notion.com/v1/databases/${DATABASE_ID}`, 'GET'
+    );
+    if (!getResponse.ok) {
+        const err = await getResponse.json().catch(() => ({}));
+        return res.status(getResponse.status).json({ error: err.message || 'Error fetching database' });
+    }
+
+    const db = await getResponse.json();
+    const existingOptions = db.properties[property]?.multi_select?.options || [];
+
+    if (existingOptions.some(o => o.name.toLowerCase() === trimmedValue.toLowerCase())) {
+        return res.status(200).json({
+            success: true, message: 'Option already exists',
+            options: existingOptions.map(o => o.name)
+        });
+    }
+
+    const newOptions = [...existingOptions.map(o => ({ name: o.name })), { name: trimmedValue }];
+
+    const patchResponse = await notionFetch(
+        `https://api.notion.com/v1/databases/${DATABASE_ID}`, 'PATCH',
+        { properties: { [property]: { multi_select: { options: newOptions } } } }
+    );
+
+    if (!patchResponse.ok) {
+        const err = await patchResponse.json().catch(() => ({}));
+        return res.status(patchResponse.status).json({ error: err.message || 'Error adding option' });
+    }
+
+    const updated = await patchResponse.json();
+    const updatedOptions = updated.properties[property]?.multi_select?.options || [];
+
+    return res.status(200).json({
+        success: true, message: 'Option added',
+        options: updatedOptions.map(o => o.name)
+    });
+}
+
+// ─── SETUP (one-time) ────────────────────────────────
+async function handleSetup(req, res) {
+    const brandingOptions = [
+        'Oficina', 'Profesión', 'Humor', 'Pareja', 'Público', 'Fitness',
+        'MILF', 'Teen', 'Inocente', 'Niñera', 'Psicóloga', 'Becaria',
+        'Secretaria', 'Médica', 'Gamer', 'Asiática', 'Motorista', 'Femdom',
+        'Streamer', 'Yoga'
+    ];
+
+    const elementoViralOptions = [
+        'Mirada directa', 'Outfit hook', 'Reacción', 'Storytime',
+        'Doble sentido', 'Caption fuerte', 'Gesto sugerente', 'Primer plano',
+        'Agitación', 'Tendencia', 'Humor', 'Silencio', 'Baile', 'TTS',
+        'Espejo', 'Primer plano cara'
+    ];
+
+    const response = await notionFetch(
+        `https://api.notion.com/v1/databases/${DATABASE_ID}`, 'PATCH',
+        {
+            properties: {
+                'Branding': { multi_select: { options: brandingOptions.map(name => ({ name })) } },
+                'Elemento Viral': { multi_select: { options: elementoViralOptions.map(name => ({ name })) } }
+            }
+        }
+    );
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        return res.status(response.status).json({ error: err.message || 'Error updating schema', details: err });
+    }
+
+    const db = await response.json();
+    return res.status(200).json({
+        success: true,
+        message: 'Database properties created successfully',
+        branding_options: db.properties['Branding']?.multi_select?.options?.length || 0,
+        elemento_viral_options: db.properties['Elemento Viral']?.multi_select?.options?.length || 0
+    });
+}
+
+// ─── SHARED HELPERS ───────────────────────────────────
+function notionFetch(url, method, body) {
+    const opts = {
+        method,
+        headers: {
+            'Authorization': `Bearer ${NOTION_TOKEN}`,
+            'Notion-Version': NOTION_VERSION,
+            'Content-Type': 'application/json'
+        }
+    };
+    if (body) opts.body = JSON.stringify(body);
+    return fetch(url, opts);
+}
+
+function parseNotionPage(page) {
+    const p = page.properties;
+    return {
+        id: page.id,
+        idea: getTitle(p['Idea']),
+        mercado: getSelect(p['Mercado']),
+        link: getUrl(p['Link del reel']),
+        vertical: getMultiSelect(p['Vertical']),
+        paraModelo: getMultiSelect(p['Para Modelo']),
+        branding: getMultiSelect(p['Branding']),
+        elementoViral: getMultiSelect(p['Elemento Viral']),
+        estado: getSelect(p['Estado']),
+        contextoBranding: getRichText(p['Contexto de Branding']),
+        elementosVirales: getRichText(p['Elementos Virales']),
+        createdTime: page.created_time
+    };
+}
+
+function getTitle(prop) {
+    if (!prop || !prop.title || !prop.title.length) return '';
+    return prop.title.map(t => t.plain_text).join('');
+}
+function getSelect(prop) {
+    if (!prop || !prop.select) return '';
+    return prop.select.name || '';
+}
+function getMultiSelect(prop) {
+    if (!prop || !prop.multi_select) return [];
+    return prop.multi_select.map(s => s.name);
+}
+function getUrl(prop) {
+    if (!prop || !prop.url) return '';
+    return prop.url;
+}
+function getRichText(prop) {
+    if (!prop || !prop.rich_text || !prop.rich_text.length) return '';
+    return prop.rich_text.map(t => t.plain_text).join('');
+}
