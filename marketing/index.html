@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20260216c">
 </head>
 <body>
 
@@ -21,11 +21,15 @@
         <div class="spinner-ring"></div>
         <div class="spinner-ring"></div>
       </div>
-      <p class="loading-text">Consultando Notion y Drive...</p>
+      <p class="loading-text">Consultando datos en paralelo...</p>
+      <p id="loading-status" class="loading-step">Conectando con stock, pipeline, drive y alertas...</p>
+      <div class="loading-timer-wrapper">
+        <span class="loading-timer">0s</span>
+      </div>
       <div class="loading-bar-track">
         <div class="loading-bar-fill"></div>
       </div>
-      <p class="loading-subtext">Esto puede tardar entre 30–60 segundos</p>
+      <p class="loading-subtext">Cada endpoint tarda ~30-60s. Se cargan los 4 en paralelo.</p>
     </div>
   </div>
 
@@ -55,6 +59,7 @@
           <span id="last-update" class="header-timestamp"></span>
         </div>
         <div id="cache-info" class="header-cache"></div>
+        <a href="/inspo-vault/" style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:6px;background:rgba(255,31,142,0.12);color:#FF1F8E;font-size:0.8rem;font-weight:600;text-decoration:none;border:1px solid rgba(255,31,142,0.2);transition:all 0.2s" onmouseover="this.style.background='rgba(255,31,142,0.2)'" onmouseout="this.style.background='rgba(255,31,142,0.12)'">💡 Inspo Vault</a>
         <button id="refresh-btn" class="btn-refresh" title="Actualizar datos">
           <svg class="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           <span>Actualizar</span>
@@ -62,68 +67,26 @@
       </div>
     </header>
 
-    <!-- ALERTS -->
+    <!-- ALERTS BANNER -->
     <section id="alerts-section" class="alerts-section"></section>
 
-    <!-- KPIs -->
-    <section id="kpis-section" class="kpis-section">
-      <div class="kpi-card" id="kpi-stock">
-        <div class="kpi-number" id="kpi-stock-num">—</div>
-        <div class="kpi-label">reels listos para publicar</div>
-      </div>
-      <div class="kpi-card" id="kpi-pipeline">
-        <div class="kpi-number" id="kpi-pipeline-num">—</div>
-        <div class="kpi-label">en pipeline de producción</div>
-      </div>
-      <div class="kpi-card" id="kpi-dias">
-        <div class="kpi-number" id="kpi-dias-num">—</div>
-        <div class="kpi-label">días promedio por modelo</div>
-      </div>
-      <div class="kpi-card" id="kpi-estado">
-        <div class="kpi-estado-row">
-          <span class="estado-dot estado-critico"></span>
-          <span class="kpi-estado-num" id="kpi-criticos">—</span>
-          <span class="kpi-estado-label">críticos</span>
-        </div>
-        <div class="kpi-estado-row">
-          <span class="estado-dot estado-bajo"></span>
-          <span class="kpi-estado-num" id="kpi-bajos">—</span>
-          <span class="kpi-estado-label">bajos</span>
-        </div>
-        <div class="kpi-estado-row">
-          <span class="estado-dot estado-ok"></span>
-          <span class="kpi-estado-num" id="kpi-ok">—</span>
-          <span class="kpi-estado-label">ok</span>
-        </div>
-        <div class="kpi-label" id="kpi-inactivos-label"></div>
-      </div>
-    </section>
+    <!-- SUMMARY BAR -->
+    <section id="summary-bar" class="summary-bar"></section>
 
-    <!-- MODEL GRID -->
-    <section class="section-header">
-      <h2>Stock por Modelo</h2>
-    </section>
-    <section id="models-grid" class="models-grid"></section>
-
-    <!-- MI ACTIVIDAD -->
-    <section class="section-header mi-actividad-header" id="mi-actividad-toggle">
-      <h2>Mi Actividad <span class="toggle-hint">(Director Creativo)</span></h2>
-      <svg class="toggle-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-    </section>
-    <section id="mi-actividad" class="mi-actividad">
-      <div class="actividad-table-wrapper">
-        <table class="actividad-table" id="actividad-table">
-          <thead>
-            <tr>
-              <th>Modelo</th>
-              <th>Último ejemplo enviado</th>
-              <th>Hace cuántos días</th>
-              <th>En preparación</th>
-            </tr>
-          </thead>
-          <tbody id="actividad-tbody"></tbody>
-        </table>
-      </div>
+    <!-- MODELS TABLE -->
+    <section class="models-table-wrap">
+      <table id="models-table" class="models-table">
+        <thead>
+          <tr>
+            <th>Modelo</th>
+            <th>Stock</th>
+            <th>Drive</th>
+            <th>Ejemplos</th>
+            <th>Hoy</th>
+          </tr>
+        </thead>
+        <tbody id="models-tbody"></tbody>
+      </table>
     </section>
 
     <!-- FOOTER -->
@@ -139,19 +102,10 @@
         <h2 id="modal-title" class="modal-title"></h2>
         <button id="modal-close" class="modal-close" title="Cerrar">&times;</button>
       </div>
-      <div class="modal-tabs">
-        <button class="modal-tab active" data-tab="stock">Stock disponible</button>
-        <button class="modal-tab" data-tab="pipeline">Pipeline</button>
-        <button class="modal-tab" data-tab="drive">Actividad Drive</button>
-      </div>
-      <div class="modal-body">
-        <div id="tab-stock" class="tab-content active"></div>
-        <div id="tab-pipeline" class="tab-content"></div>
-        <div id="tab-drive" class="tab-content"></div>
-      </div>
+      <div id="modal-content" class="modal-body"></div>
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20260216c"></script>
 </body>
 </html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inspo Vault — BraveGirls Agency</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💡</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="inspo-vault.css?v=20260408">
+</head>
+<body>
+
+  <!-- LOADING OVERLAY -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-logo">Brave<span>Girls</span></div>
+      <div class="loading-spinner"></div>
+      <p class="loading-text" id="loading-status">Cargando Inspo Vault...</p>
+    </div>
+  </div>
+
+  <!-- MAIN DASHBOARD -->
+  <div id="dashboard" class="hidden">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-inner">
+        <div class="header-left">
+          <h1 class="header-logo">Brave<span>Girls</span></h1>
+          <span class="header-separator">|</span>
+          <span class="header-subtitle">Inspo Vault</span>
+        </div>
+        <div class="header-right">
+          <button id="btn-review" class="btn btn-review hidden" title="Revisión Rápida">
+            ⚡ Revisión Rápida (<span id="review-count">0</span>)
+          </button>
+          <button id="btn-add" class="btn btn-primary">+ Añadir Perfil</button>
+          <a href="/marketing/" class="btn btn-ghost" title="Marketing Pipeline">📊 Marketing</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- FILTERS -->
+    <div class="filters-bar">
+      <div class="filters-grid">
+        <div class="filter-group">
+          <span class="filter-label">Buscar</span>
+          <input type="text" id="filter-search" class="filter-input" placeholder="Buscar idea...">
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Mercado</span>
+          <select id="filter-mercado" class="filter-input">
+            <option value="">Todos</option>
+            <option value="🇪🇸">🇪🇸 España</option>
+            <option value="🇺🇲">🇺🇲 USA</option>
+            <option value="🇧🇷">🇧🇷 Brasil</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Vertical</span>
+          <div class="filter-multiselect" id="filter-vertical"></div>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Para Modelo</span>
+          <div class="filter-multiselect" id="filter-modelo"></div>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Branding</span>
+          <div class="filter-multiselect" id="filter-branding"></div>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Elemento Viral</span>
+          <div class="filter-multiselect" id="filter-viral"></div>
+        </div>
+        <div class="filter-group" style="align-self:flex-end">
+          <button id="btn-clear-filters" class="btn btn-ghost">✕ Limpiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GALLERY -->
+    <div class="gallery-wrap">
+      <div class="gallery-info">
+        <span id="gallery-count"></span>
+      </div>
+      <div class="gallery-grid" id="gallery-grid"></div>
+    </div>
+  </div>
+
+  <!-- MODAL (Add / Edit) -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-title">Añadir Perfil</h2>
+        <button class="modal-close" id="modal-close">×</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
+        <button class="btn btn-primary" id="modal-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK REVIEW OVERLAY -->
+  <div id="review-overlay" class="review-overlay">
+    <div class="review-header">
+      <div class="review-progress">
+        <strong id="review-current">1</strong> de <strong id="review-total">0</strong> sin etiquetar
+      </div>
+      <div style="display:flex;gap:0.5rem">
+        <button class="btn btn-ghost" id="review-exit">✕ Salir</button>
+      </div>
+    </div>
+    <div class="review-body">
+      <div class="review-card" id="review-card"></div>
+    </div>
+    <div class="review-footer">
+      <button class="btn btn-secondary" id="review-skip">Saltar →</button>
+      <button class="btn btn-primary" id="review-save">Guardar y Siguiente →</button>
+    </div>
+  </div>
+
+  <!-- TOASTS -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="inspo-vault.js?v=20260408"></script>
+</body>
+</html>
