@@ -93,6 +93,7 @@
     reviewCount: $('#review-count'),
     btnAdd: $('#btn-add'),
     btnVerify: $('#btn-verify'),
+    btnDuplicates: $('#btn-duplicates'),
     filterSearch: $('#filter-search'),
     filterClear: $('#filter-clear'),
     filterVertical: $('#filter-vertical'),
@@ -148,7 +149,16 @@
   function extractUsername(link) {
     if (!link) return null;
     const m = link.match(/instagram\.com\/([^/?#]+)/);
-    return m ? m[1] : null;
+    return m ? m[1].toLowerCase() : null;
+  }
+
+  function findDuplicateByUsername(username, excludeId) {
+    if (!username) return null;
+    return allEntries.find(e => {
+      if (excludeId && e.id === excludeId) return false;
+      const u = extractUsername(e.link);
+      return u === username;
+    });
   }
 
   function getAvatarUrl(link) {
@@ -573,6 +583,7 @@
   function renderModalForm(entry) {
     dom.modalBody.innerHTML = buildFormHTML(entry, 'modal');
     attachFormEvents(dom.modalBody, 'modal');
+    attachDuplicateCheck(dom.modalBody, 'modal');
   }
 
   function buildFormHTML(entry, prefix) {
@@ -730,6 +741,17 @@
   async function handleModalSave() {
     const data = getFormData(dom.modalBody, 'modal');
     if (!data.idea) { toast('El campo Idea es obligatorio', 'error'); return; }
+
+    // Duplicate guard on create
+    if (!editingId && data.link) {
+      const username = extractUsername(data.link);
+      const dup = findDuplicateByUsername(username, null);
+      if (dup) {
+        toast(`Ya existe @${username} → "${dup.idea}". Usa Editar en su card.`, 'error');
+        return;
+      }
+    }
+
     dom.modalSave.disabled = true;
     dom.modalSave.textContent = 'Guardando...';
     try {
@@ -950,6 +972,150 @@
     }
   }
 
+  // ─── DUPLICATE CHECK ON LINK INPUT ───
+  function attachDuplicateCheck(container, prefix) {
+    const linkInput = container.querySelector(`#${prefix}-link`);
+    if (!linkInput) return;
+    linkInput.addEventListener('blur', () => {
+      const existing = container.querySelector('.dup-alert');
+      if (existing) existing.remove();
+      if (editingId) return; // skip when editing
+      const val = linkInput.value.trim();
+      const username = extractUsername(val);
+      if (!username) return;
+      const dup = findDuplicateByUsername(username, null);
+      if (!dup) return;
+      const avatarUrl = getAvatarUrl(dup.link);
+      const alert = document.createElement('div');
+      alert.className = 'dup-alert';
+      alert.innerHTML = `
+        <div class="dup-alert-icon">⚠️</div>
+        <div class="dup-alert-body">
+          <div class="dup-alert-title">@${esc(username)} ya existe en el Vault</div>
+          <div class="dup-alert-card">
+            ${avatarUrl ? `<img class="dup-alert-avatar" src="${esc(avatarUrl)}" alt="" onerror="this.style.display='none'">` : ''}
+            <div class="dup-alert-info">
+              <strong>${esc(dup.idea)}</strong>
+              <span class="dup-alert-meta">${dup.mercado || ''} ${(dup.paraModelo || []).join(', ')}</span>
+            </div>
+          </div>
+          <div class="dup-alert-actions">
+            <button class="btn btn-primary btn-sm" data-dup-edit="${dup.id}">✎ Editar existente</button>
+            <button class="btn btn-ghost btn-sm" data-dup-dismiss>Ignorar</button>
+          </div>
+        </div>
+      `;
+      linkInput.parentElement.after(alert);
+      alert.querySelector('[data-dup-edit]').addEventListener('click', () => {
+        closeModal();
+        openEditModal(dup.id);
+      });
+      alert.querySelector('[data-dup-dismiss]').addEventListener('click', () => alert.remove());
+    });
+    linkInput.addEventListener('input', () => {
+      const existing = container.querySelector('.dup-alert');
+      if (existing) existing.remove();
+    });
+  }
+
+  // ─── DETECT ALL DUPLICATES SCAN ───
+  function scanDuplicates() {
+    const usernameMap = {};
+    allEntries.forEach(e => {
+      if (e.estado === 'FRANCO EDICION') return;
+      const u = extractUsername(e.link);
+      if (!u) return;
+      if (!usernameMap[u]) usernameMap[u] = [];
+      usernameMap[u].push(e);
+    });
+    const groups = Object.entries(usernameMap).filter(([, entries]) => entries.length > 1);
+
+    dom.verifyBody.innerHTML = '';
+    if (groups.length === 0) {
+      dom.verifyBody.innerHTML = `
+        <div style="text-align:center;padding:2rem">
+          <div style="font-size:3rem;margin-bottom:1rem">✅</div>
+          <p style="font-size:1rem;font-weight:600">No hay duplicados</p>
+          <p style="color:var(--text-muted);font-size:0.9rem;margin-top:0.5rem">Todos los usernames de Instagram son únicos.</p>
+        </div>
+      `;
+      dom.verifyOverlay.classList.add('active');
+      return;
+    }
+
+    let totalDups = groups.reduce((sum, [, e]) => sum + e.length, 0);
+    let html = `<div class="dup-scan-header">
+      <div class="dup-scan-stat">⚠️ <strong>${groups.length}</strong> usernames duplicados · <strong>${totalDups}</strong> perfiles afectados</div>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin-top:0.5rem">Archiva los duplicados que sobren. El perfil con más tags se marca como recomendado.</p>
+    </div>`;
+
+    groups.forEach(([username, entries]) => {
+      entries.sort((a, b) => {
+        const tagsA = (a.vertical||[]).length + (a.branding||[]).length + (a.elementoViral||[]).length;
+        const tagsB = (b.vertical||[]).length + (b.branding||[]).length + (b.elementoViral||[]).length;
+        return tagsB - tagsA;
+      });
+      html += `<div class="dup-group">
+        <div class="dup-group-header">@${esc(username)} <span class="dup-group-count">${entries.length} perfiles</span></div>
+        <div class="dup-group-entries">`;
+      entries.forEach((e, i) => {
+        const tagsCount = (e.vertical||[]).length + (e.branding||[]).length + (e.elementoViral||[]).length;
+        const best = i === 0 ? ' dup-entry-best' : '';
+        const avatarUrl = getAvatarUrl(e.link);
+        html += `
+          <div class="dup-entry${best}" data-id="${e.id}">
+            <div class="dup-entry-left">
+              ${avatarUrl ? `<img class="dup-entry-avatar" src="${esc(avatarUrl)}" alt="" onerror="this.style.display='none'">` : '<span class="dup-entry-avatar-ph">📷</span>'}
+              <div>
+                <div class="dup-entry-name">${esc(e.idea)}</div>
+                <div class="dup-entry-meta">${e.mercado || ''} · ${tagsCount} tags · ${(e.paraModelo||[]).join(', ') || 'sin modelo'}</div>
+              </div>
+            </div>
+            <div class="dup-entry-actions">
+              ${i === 0 ? '<span class="dup-best-badge">★ Más completo</span>' : ''}
+              <button class="btn btn-ghost btn-sm" data-dup-view="${e.id}">👁 Ver</button>
+              <button class="btn btn-danger btn-sm" data-dup-archive="${e.id}">🗑 Archivar</button>
+            </div>
+          </div>`;
+      });
+      html += `</div></div>`;
+    });
+
+    dom.verifyBody.innerHTML = html;
+    dom.verifyOverlay.classList.add('active');
+
+    dom.verifyBody.querySelectorAll('[data-dup-archive]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.dupArchive;
+        btn.disabled = true; btn.textContent = '...';
+        try {
+          await apiPost('inspo-vault?action=delete', { id });
+          allEntries = allEntries.filter(e => e.id !== id);
+          btn.closest('.dup-entry').remove();
+          updateHeaderStats(); applyFilters();
+          toast('Perfil archivado');
+          // Remove group if only 1 left
+          dom.verifyBody.querySelectorAll('.dup-group').forEach(g => {
+            if (g.querySelectorAll('.dup-entry').length <= 1) g.remove();
+          });
+          if (!dom.verifyBody.querySelector('.dup-group')) {
+            dom.verifyBody.innerHTML = '<div style="text-align:center;padding:2rem"><div style="font-size:3rem;margin-bottom:1rem">✅</div><p style="font-size:1rem;font-weight:600">Todos los duplicados limpiados</p></div>';
+          }
+        } catch (err) {
+          toast(`Error: ${err.message}`, 'error');
+          btn.disabled = false; btn.textContent = '🗑 Archivar';
+        }
+      });
+    });
+
+    dom.verifyBody.querySelectorAll('[data-dup-view]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        closeVerifyModal();
+        openEditModal(btn.dataset.dupView);
+      });
+    });
+  }
+
   // ─── INIT ───
   async function init() {
     try {
@@ -1005,6 +1171,7 @@
   dom.filterClear.addEventListener('click', clearFilters);
   dom.btnAdd.addEventListener('click', openAddModal);
   dom.btnVerify.addEventListener('click', openVerifyModal);
+  dom.btnDuplicates.addEventListener('click', scanDuplicates);
   dom.modalClose.addEventListener('click', closeModal);
   dom.modalCancel.addEventListener('click', closeModal);
   dom.modalSave.addEventListener('click', handleModalSave);
