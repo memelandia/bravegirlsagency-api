@@ -69,10 +69,14 @@ module.exports = async (req, res) => {
                 if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST for manage-options' });
                 return await handleManageOptions(req, res, body);
 
+            case 'avatar':
+                if (req.method !== 'GET') return res.status(405).json({ error: 'Use GET for avatar' });
+                return await handleAvatar(req, res);
+
             default:
                 return res.status(400).json({
                     error: 'Missing or invalid action parameter',
-                    valid: ['list', 'create', 'update', 'options', 'setup', 'check', 'delete', 'manage-options']
+                    valid: ['list', 'create', 'update', 'options', 'setup', 'check', 'delete', 'manage-options', 'avatar']
                 });
         }
     } catch (error) {
@@ -438,6 +442,33 @@ async function handleManageOptions(req, res, body) {
         message: optAction === 'rename' ? `Renamed "${oldName}" to "${newName}"` : `Deleted "${name}"`,
         options: updatedOptions.map(o => o.name)
     });
+}
+
+// ─── AVATAR PROXY (unavatar.io PRO via x-api-key header) ──
+const UNAVATAR_KEY = process.env.UNAVATAR_KEY;
+
+async function handleAvatar(req, res) {
+    const username = req.query.u;
+    if (!username || !/^[a-zA-Z0-9_.]+$/.test(username)) {
+        return res.status(400).json({ error: 'Invalid username' });
+    }
+    if (!UNAVATAR_KEY) {
+        return res.status(500).json({ error: 'UNAVATAR_KEY not configured' });
+    }
+    try {
+        const url = `https://unavatar.io/instagram/${username}?ttl=7d`;
+        const response = await fetch(url, {
+            headers: { 'x-api-key': UNAVATAR_KEY }
+        });
+        if (!response.ok) return res.status(response.status).end();
+        const contentType = response.headers.get('content-type') || 'image/png';
+        const buffer = await response.arrayBuffer();
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=604800');
+        return res.status(200).send(Buffer.from(buffer));
+    } catch (err) {
+        return res.status(502).json({ error: 'Avatar fetch failed' });
+    }
 }
 
 // ─── SHARED HELPERS ───────────────────────────────────

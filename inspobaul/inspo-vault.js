@@ -168,7 +168,7 @@
 
   function getAvatarUrl(link) {
     const u = extractUsername(link);
-    return u ? `${API_BASE}/avatar?u=${u}` : null;
+    return u ? `${API_BASE}/inspo-vault?action=avatar&u=${u}` : null;
   }
 
   // ─── LAZY AVATAR OBSERVER (unavatar.io free = 50 req/day limit) ───
