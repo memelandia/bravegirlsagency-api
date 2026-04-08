@@ -7,7 +7,6 @@
   'use strict';
 
   const API_BASE = 'https://bravegirlsagency-api.vercel.app/api';
-  const UNAVATAR_KEY = 'YtFdys9shypd8oyorxVgjf'; // unavatar.io PRO key
 
   // ─── EMOJI MAPS (display only — Notion values stay clean) ───
   const VERTICAL_EMOJIS = {
@@ -169,9 +168,7 @@
 
   function getAvatarUrl(link) {
     const u = extractUsername(link);
-    if (!u) return null;
-    const key = UNAVATAR_KEY ? `&apiKey=${UNAVATAR_KEY}` : '';
-    return `https://unavatar.io/instagram/${u}?ttl=7d${key}`;
+    return u ? `${API_BASE}/avatar?u=${u}` : null;
   }
 
   // ─── LAZY AVATAR OBSERVER (unavatar.io free = 50 req/day limit) ───
