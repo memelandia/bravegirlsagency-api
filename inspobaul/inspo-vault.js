@@ -112,6 +112,7 @@
     modalSave: $('#modal-save'),
     verifyOverlay: $('#verify-overlay'),
     verifyBody: $('#verify-body'),
+    verifyTitle: $('#verify-title'),
     verifyClose: $('#verify-close'),
     reviewOverlay: $('#review-overlay'),
     reviewProgressBar: $('#review-progress-bar'),
@@ -831,6 +832,7 @@
 
   // ─── VERIFIER (BUG 3 fix — handle all-errors gracefully) ───
   function openVerifyModal() {
+    dom.verifyTitle.textContent = '🔍 Verificar Perfiles';
     const visible = allEntries.filter(e => e.estado !== 'FRANCO EDICION');
     const withLink = visible.filter(e => e.link).length;
     const noLink = visible.length - withLink;
@@ -1020,6 +1022,7 @@
 
   // ─── DETECT ALL DUPLICATES SCAN ───
   function scanDuplicates() {
+    dom.verifyTitle.textContent = '🔀 Detectar Duplicados';
     const usernameMap = {};
     allEntries.forEach(e => {
       if (e.estado === 'FRANCO EDICION') return;
