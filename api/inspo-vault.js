@@ -6,6 +6,8 @@
 //   POST ?action=options → add new option to Branding/Elemento Viral
 //   POST ?action=setup   → one-time: create Branding & Elemento Viral properties
 //   PATCH ?action=update&id=<page_id> → update entry
+//   POST ?action=check   → verify Instagram profile URLs
+//   POST ?action=delete  → archive a Notion page
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const DATABASE_ID = 'c2623a10218442198f206f75792bc251';
@@ -29,7 +31,7 @@ module.exports = async (req, res) => {
     try {
         // Parse body for POST/PATCH
         let body = {};
-        if (['POST', 'PATCH'].includes(req.method) && req.body) {
+        if (['POST', 'PATCH', 'DELETE'].includes(req.method) && req.body) {
             body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
         }
 
@@ -55,10 +57,18 @@ module.exports = async (req, res) => {
                 if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST for setup' });
                 return await handleSetup(req, res);
 
+            case 'check':
+                if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST for check' });
+                return await handleCheck(req, res, body);
+
+            case 'delete':
+                if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST for delete' });
+                return await handleDelete(req, res, body);
+
             default:
                 return res.status(400).json({
                     error: 'Missing or invalid action parameter',
-                    valid: ['list', 'create', 'update', 'options', 'setup']
+                    valid: ['list', 'create', 'update', 'options', 'setup', 'check', 'delete']
                 });
         }
     } catch (error) {
@@ -287,6 +297,83 @@ async function handleSetup(req, res) {
         branding_options: db.properties['Branding']?.multi_select?.options?.length || 0,
         elemento_viral_options: db.properties['Elemento Viral']?.multi_select?.options?.length || 0
     });
+}
+
+// ─── CHECK (verify Instagram URLs) ────────────────────
+async function handleCheck(req, res, body) {
+    const { profiles } = body;
+    if (!Array.isArray(profiles) || profiles.length === 0) {
+        return res.status(400).json({ error: 'profiles array is required' });
+    }
+
+    if (profiles.length > 50) {
+        return res.status(400).json({ error: 'Max 50 profiles per request' });
+    }
+
+    const BATCH_SIZE = 10;
+    const results = [];
+
+    for (let i = 0; i < profiles.length; i += BATCH_SIZE) {
+        const batch = profiles.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(batch.map(async (p) => {
+            if (!p.url) return { id: p.id, url: p.url, status: 'ERROR', reason: 'No URL' };
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 5000);
+                const resp = await fetch(p.url, {
+                    method: 'GET',
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)',
+                        'Accept': 'text/html'
+                    },
+                    signal: controller.signal,
+                    redirect: 'follow'
+                });
+                clearTimeout(timeout);
+
+                if (resp.status === 404) {
+                    return { id: p.id, url: p.url, status: 'ELIMINADO' };
+                }
+
+                if (resp.ok) {
+                    const html = await resp.text();
+                    if (html.includes("Sorry, this page isn't available") ||
+                        html.includes('Esta página no está disponible')) {
+                        return { id: p.id, url: p.url, status: 'ELIMINADO' };
+                    }
+                    return { id: p.id, url: p.url, status: 'ACTIVO' };
+                }
+
+                return { id: p.id, url: p.url, status: 'ERROR', reason: `HTTP ${resp.status}` };
+            } catch (err) {
+                return { id: p.id, url: p.url, status: 'ERROR', reason: err.name === 'AbortError' ? 'Timeout' : err.message };
+            }
+        }));
+        results.push(...batchResults);
+    }
+
+    return res.status(200).json({ success: true, results });
+}
+
+// ─── DELETE (archive page) ────────────────────────────
+async function handleDelete(req, res, body) {
+    const { id } = body;
+    if (!id) return res.status(400).json({ error: 'Missing page id' });
+
+    if (!/^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i.test(id)) {
+        return res.status(400).json({ error: 'Invalid page id format' });
+    }
+
+    const response = await notionFetch(`https://api.notion.com/v1/pages/${id}`, 'PATCH', {
+        archived: true
+    });
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        return res.status(response.status).json({ error: err.message || 'Error archiving page' });
+    }
+
+    return res.status(200).json({ success: true, message: 'Page archived' });
 }
 
 // ─── SHARED HELPERS ───────────────────────────────────
