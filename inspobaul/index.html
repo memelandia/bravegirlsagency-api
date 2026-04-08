@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inspo Vault — BraveGirls Agency</title>
-  <link rel="stylesheet" href="inspo-vault.css?v=4.1">
+  <link rel="stylesheet" href="inspo-vault.css?v=4.2">
   <link rel="icon" type="image/png" href="/assets/img/logo-bg.png">
 </head>
 <body>
@@ -42,6 +42,7 @@
           </button>
           <button id="btn-verify" class="btn btn-verify">🔍 Verificar</button>
           <button id="btn-duplicates" class="btn btn-verify">🔀 Duplicados</button>
+          <button id="btn-tags" class="btn btn-verify">🏷️ Etiquetas</button>
           <button id="btn-add" class="btn btn-primary">+ Añadir</button>
         </div>
       </div>
@@ -134,9 +135,26 @@
     </div>
   </div>
 
+  <!-- Tags Manager Modal -->
+  <div id="tags-overlay" class="modal-overlay">
+    <div class="modal-container tags-modal">
+      <div class="modal-header">
+        <h2 class="modal-title">🏷️ Gestionar Etiquetas</h2>
+        <button id="tags-close" class="modal-close">✕</button>
+      </div>
+      <div class="tags-tabs">
+        <button class="tags-tab active" data-tab="Vertical">Verticales</button>
+        <button class="tags-tab" data-tab="Para Modelo">Modelos</button>
+        <button class="tags-tab" data-tab="Branding">Branding</button>
+        <button class="tags-tab" data-tab="Elemento Viral">Viral</button>
+      </div>
+      <div id="tags-body" class="tags-body"></div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div id="toast-container" class="toast-container"></div>
 
-  <script src="inspo-vault.js?v=4.1"></script>
+  <script src="inspo-vault.js?v=4.2"></script>
 </body>
 </html>

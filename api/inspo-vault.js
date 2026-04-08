@@ -12,7 +12,7 @@
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const DATABASE_ID = 'c2623a10218442198f206f75792bc251';
 const NOTION_VERSION = '2022-06-28';
-const ALLOWED_PROPERTIES = ['Branding', 'Elemento Viral'];
+const ALLOWED_PROPERTIES = ['Branding', 'Elemento Viral', 'Vertical', 'Para Modelo'];
 
 module.exports = async (req, res) => {
     // CORS
@@ -65,10 +65,14 @@ module.exports = async (req, res) => {
                 if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST for delete' });
                 return await handleDelete(req, res, body);
 
+            case 'manage-options':
+                if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST for manage-options' });
+                return await handleManageOptions(req, res, body);
+
             default:
                 return res.status(400).json({
                     error: 'Missing or invalid action parameter',
-                    valid: ['list', 'create', 'update', 'options', 'setup', 'check', 'delete']
+                    valid: ['list', 'create', 'update', 'options', 'setup', 'check', 'delete', 'manage-options']
                 });
         }
     } catch (error) {
@@ -374,6 +378,64 @@ async function handleDelete(req, res, body) {
     }
 
     return res.status(200).json({ success: true, message: 'Page archived' });
+}
+
+// ─── MANAGE OPTIONS (rename / delete from schema) ─────
+async function handleManageOptions(req, res, body) {
+    const { property, action: optAction, oldName, newName, name } = body;
+
+    if (!property) return res.status(400).json({ error: 'Missing property' });
+    if (!ALLOWED_PROPERTIES.includes(property)) {
+        return res.status(400).json({ error: `Property must be one of: ${ALLOWED_PROPERTIES.join(', ')}` });
+    }
+    if (!optAction || !['rename', 'delete'].includes(optAction)) {
+        return res.status(400).json({ error: 'action must be rename or delete' });
+    }
+
+    const getResponse = await notionFetch(
+        `https://api.notion.com/v1/databases/${DATABASE_ID}`, 'GET'
+    );
+    if (!getResponse.ok) {
+        const err = await getResponse.json().catch(() => ({}));
+        return res.status(getResponse.status).json({ error: err.message || 'Error fetching database' });
+    }
+
+    const db = await getResponse.json();
+    const existingOptions = db.properties[property]?.multi_select?.options || [];
+
+    let newOptions;
+    if (optAction === 'rename') {
+        if (!oldName || !newName) return res.status(400).json({ error: 'Missing oldName or newName' });
+        const trimmed = newName.trim();
+        if (!trimmed) return res.status(400).json({ error: 'newName cannot be empty' });
+        const idx = existingOptions.findIndex(o => o.name === oldName);
+        if (idx === -1) return res.status(404).json({ error: `Option "${oldName}" not found` });
+        newOptions = existingOptions.map(o => o.name === oldName ? { name: trimmed } : { name: o.name });
+    } else {
+        if (!name) return res.status(400).json({ error: 'Missing name to delete' });
+        const idx = existingOptions.findIndex(o => o.name === name);
+        if (idx === -1) return res.status(404).json({ error: `Option "${name}" not found` });
+        newOptions = existingOptions.filter(o => o.name !== name).map(o => ({ name: o.name }));
+    }
+
+    const patchResponse = await notionFetch(
+        `https://api.notion.com/v1/databases/${DATABASE_ID}`, 'PATCH',
+        { properties: { [property]: { multi_select: { options: newOptions } } } }
+    );
+
+    if (!patchResponse.ok) {
+        const err = await patchResponse.json().catch(() => ({}));
+        return res.status(patchResponse.status).json({ error: err.message || 'Error updating options' });
+    }
+
+    const updated = await patchResponse.json();
+    const updatedOptions = updated.properties[property]?.multi_select?.options || [];
+
+    return res.status(200).json({
+        success: true,
+        message: optAction === 'rename' ? `Renamed "${oldName}" to "${newName}"` : `Deleted "${name}"`,
+        options: updatedOptions.map(o => o.name)
+    });
 }
 
 // ─── SHARED HELPERS ───────────────────────────────────

@@ -94,6 +94,10 @@
     btnAdd: $('#btn-add'),
     btnVerify: $('#btn-verify'),
     btnDuplicates: $('#btn-duplicates'),
+    btnTags: $('#btn-tags'),
+    tagsOverlay: $('#tags-overlay'),
+    tagsBody: $('#tags-body'),
+    tagsClose: $('#tags-close'),
     filterSearch: $('#filter-search'),
     filterClear: $('#filter-clear'),
     filterVertical: $('#filter-vertical'),
@@ -1119,6 +1123,172 @@
     });
   }
 
+  // ─── TAGS MANAGER ───
+  let currentTagsTab = 'Vertical';
+
+  function openTagsManager() {
+    currentTagsTab = 'Vertical';
+    document.querySelectorAll('.tags-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'Vertical'));
+    renderTagsList('Vertical');
+    dom.tagsOverlay.classList.add('active');
+  }
+
+  function closeTagsManager() {
+    dom.tagsOverlay.classList.remove('active');
+  }
+
+  function getEmojiForTag(name, property) {
+    if (property === 'Vertical') return VERTICAL_EMOJIS[name] || '';
+    if (property === 'Branding') return BRANDING_EMOJIS[name] || '';
+    if (property === 'Elemento Viral') return VIRAL_EMOJIS[name] || '';
+    return '';
+  }
+
+  function getColorForTag(name, property) {
+    if (property === 'Vertical') return getVerticalColor(name);
+    if (property === 'Para Modelo') return getModeloColor(name);
+    return null;
+  }
+
+  function countUsage(tagName, property) {
+    const key = property === 'Vertical' ? 'vertical' :
+                property === 'Para Modelo' ? 'paraModelo' :
+                property === 'Branding' ? 'branding' : 'elementoViral';
+    return allEntries.filter(e => (e[key] || []).includes(tagName)).length;
+  }
+
+  function renderTagsList(property) {
+    currentTagsTab = property;
+    const options = dbOptions[property] || [];
+    const sorted = [...options].sort((a, b) => a.localeCompare(b, 'es'));
+
+    let html = `<div class="tags-toolbar">
+      <div class="tags-count">${sorted.length} etiquetas</div>
+      <button class="btn btn-primary btn-sm" id="tags-add-btn">+ Añadir</button>
+    </div>`;
+
+    if (sorted.length === 0) {
+      html += `<div class="tags-empty">No hay etiquetas en esta categoría</div>`;
+    } else {
+      html += `<div class="tags-list">`;
+      sorted.forEach(name => {
+        const emoji = getEmojiForTag(name, property);
+        const color = getColorForTag(name, property);
+        const usage = countUsage(name, property);
+        const colorDot = color ? `<span class="tags-color-dot" style="background:${color}"></span>` : '';
+        const displayName = emoji ? `${emoji} ${name}` : name;
+        html += `
+          <div class="tags-item" data-name="${esc(name)}">
+            <div class="tags-item-left">
+              ${colorDot}
+              <span class="tags-item-name">${esc(displayName)}</span>
+              <span class="tags-item-usage">${usage} perfil${usage !== 1 ? 'es' : ''}</span>
+            </div>
+            <div class="tags-item-actions">
+              <button class="btn btn-ghost btn-sm" data-tag-rename="${esc(name)}" title="Renombrar">✎</button>
+              <button class="btn btn-ghost btn-sm tags-item-delete" data-tag-delete="${esc(name)}" title="Eliminar">✕</button>
+            </div>
+          </div>`;
+      });
+      html += `</div>`;
+    }
+
+    dom.tagsBody.innerHTML = html;
+
+    // Add new tag
+    dom.tagsBody.querySelector('#tags-add-btn').addEventListener('click', () => {
+      const existing = dom.tagsBody.querySelector('.tags-add-row');
+      if (existing) { existing.querySelector('input').focus(); return; }
+      const row = document.createElement('div');
+      row.className = 'tags-add-row';
+      row.innerHTML = `
+        <input type="text" class="form-input" placeholder="Nueva etiqueta..." maxlength="60" autofocus>
+        <button class="btn btn-primary btn-sm">✓</button>
+        <button class="btn btn-ghost btn-sm">✕</button>
+      `;
+      dom.tagsBody.querySelector('.tags-toolbar').after(row);
+      const input = row.querySelector('input');
+      input.focus();
+
+      async function addTag() {
+        const val = input.value.trim();
+        if (!val) { row.remove(); return; }
+        try {
+          const res = await apiPost('inspo-vault?action=options', { property, value: val });
+          dbOptions[property] = res.options;
+          toast(`"${val}" añadida`);
+          renderTagsList(property);
+        } catch (err) { toast(`Error: ${err.message}`, 'error'); }
+      }
+
+      row.querySelectorAll('button')[0].addEventListener('click', addTag);
+      row.querySelectorAll('button')[1].addEventListener('click', () => row.remove());
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); addTag(); }
+        if (e.key === 'Escape') row.remove();
+      });
+    });
+
+    // Rename
+    dom.tagsBody.querySelectorAll('[data-tag-rename]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const oldName = btn.dataset.tagRename;
+        const item = btn.closest('.tags-item');
+        const nameEl = item.querySelector('.tags-item-name');
+        const original = nameEl.textContent;
+        nameEl.innerHTML = `<input type="text" class="tags-rename-input" value="${esc(oldName)}" maxlength="60">`;
+        const input = nameEl.querySelector('input');
+        input.focus();
+        input.select();
+
+        async function doRename() {
+          const newName = input.value.trim();
+          if (!newName || newName === oldName) { nameEl.textContent = original; return; }
+          try {
+            const res = await apiPost('inspo-vault?action=manage-options', {
+              property, action: 'rename', oldName, newName
+            });
+            dbOptions[property] = res.options;
+            toast(`"${oldName}" → "${newName}"`);
+            renderTagsList(property);
+          } catch (err) {
+            toast(`Error: ${err.message}`, 'error');
+            nameEl.textContent = original;
+          }
+        }
+
+        input.addEventListener('blur', doRename);
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+          if (e.key === 'Escape') { input.value = oldName; input.blur(); }
+        });
+      });
+    });
+
+    // Delete
+    dom.tagsBody.querySelectorAll('[data-tag-delete]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const name = btn.dataset.tagDelete;
+        const usage = countUsage(name, property);
+        const warning = usage > 0 ? `<br><strong>${usage} perfil${usage !== 1 ? 'es' : ''}</strong> usan esta etiqueta — se quitará de sus tags.` : '';
+        showConfirm(
+          '¿Eliminar etiqueta?',
+          `<strong>${esc(name)}</strong>${warning}`,
+          async () => {
+            try {
+              const res = await apiPost('inspo-vault?action=manage-options', {
+                property, action: 'delete', name
+              });
+              dbOptions[property] = res.options;
+              toast(`"${name}" eliminada`);
+              renderTagsList(property);
+            } catch (err) { toast(`Error: ${err.message}`, 'error'); }
+          }
+        );
+      });
+    });
+  }
+
   // ─── INIT ───
   async function init() {
     try {
@@ -1175,6 +1345,16 @@
   dom.btnAdd.addEventListener('click', openAddModal);
   dom.btnVerify.addEventListener('click', openVerifyModal);
   dom.btnDuplicates.addEventListener('click', scanDuplicates);
+  dom.btnTags.addEventListener('click', openTagsManager);
+  dom.tagsClose.addEventListener('click', closeTagsManager);
+  dom.tagsOverlay.addEventListener('click', e => { if (e.target === dom.tagsOverlay) closeTagsManager(); });
+  document.querySelectorAll('.tags-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tags-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      renderTagsList(tab.dataset.tab);
+    });
+  });
   dom.modalClose.addEventListener('click', closeModal);
   dom.modalCancel.addEventListener('click', closeModal);
   dom.modalSave.addEventListener('click', handleModalSave);
