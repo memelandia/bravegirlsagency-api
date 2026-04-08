@@ -11,72 +11,78 @@
 
   <!-- Loading overlay -->
   <div id="loading-overlay" class="loading-overlay">
-    <div class="loading-spinner"></div>
-    <p id="loading-status" class="loading-text">Conectando...</p>
-  </div>
-
-  <!-- Skeleton grid (shown during load) -->
-  <div id="skeleton-grid" class="skeleton-grid">
-    <div class="skeleton-card"><div class="skeleton-avatar"></div><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div><div class="skeleton-chips"><span class="skeleton-chip"></span><span class="skeleton-chip"></span></div></div>
-    <div class="skeleton-card"><div class="skeleton-avatar"></div><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div><div class="skeleton-chips"><span class="skeleton-chip"></span><span class="skeleton-chip"></span></div></div>
-    <div class="skeleton-card"><div class="skeleton-avatar"></div><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div><div class="skeleton-chips"><span class="skeleton-chip"></span><span class="skeleton-chip"></span></div></div>
-    <div class="skeleton-card"><div class="skeleton-avatar"></div><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div><div class="skeleton-chips"><span class="skeleton-chip"></span><span class="skeleton-chip"></span></div></div>
-    <div class="skeleton-card"><div class="skeleton-avatar"></div><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div><div class="skeleton-chips"><span class="skeleton-chip"></span><span class="skeleton-chip"></span></div></div>
-    <div class="skeleton-card"><div class="skeleton-avatar"></div><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div><div class="skeleton-chips"><span class="skeleton-chip"></span><span class="skeleton-chip"></span></div></div>
+    <div class="loading-content">
+      <div class="loading-logo">Brave<span>Girls</span></div>
+      <p id="loading-status" class="loading-text">Conectando...</p>
+      <div id="skeleton-grid" class="skeleton-grid">
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><span class="sk-chip"></span><span class="sk-chip"></span></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><span class="sk-chip"></span><span class="sk-chip"></span></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><span class="sk-chip"></span><span class="sk-chip"></span></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><span class="sk-chip"></span><span class="sk-chip"></span></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><span class="sk-chip"></span><span class="sk-chip"></span></div></div></div>
+        <div class="skeleton-card"><div class="sk-avatar"></div><div class="sk-lines"><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-chips"><span class="sk-chip"></span><span class="sk-chip"></span></div></div></div>
+      </div>
+    </div>
   </div>
 
   <!-- Dashboard -->
   <div id="dashboard" class="dashboard hidden">
     <!-- Header -->
     <header class="header">
-      <div class="header-top">
-        <div class="header-brand">
-          <h1 class="header-title">💡 Inspo Vault</h1>
+      <div class="header-inner">
+        <div class="header-left">
+          <span class="header-logo">💡 Inspo <span>Vault</span></span>
           <div id="header-stats" class="header-stats"></div>
         </div>
-        <div class="header-actions">
+        <div class="header-right">
           <button id="btn-review" class="btn btn-review hidden">
+            <span class="review-pulse"></span>
             ⚡ Etiquetar <span id="review-count" class="review-badge">0</span>
           </button>
           <button id="btn-verify" class="btn btn-verify">🔍 Verificar perfiles</button>
           <button id="btn-add" class="btn btn-primary">+ Añadir</button>
         </div>
       </div>
-
-      <!-- Filters -->
-      <div class="filter-bar">
-        <div class="filter-row">
-          <input type="text" id="filter-search" class="filter-search" placeholder="🔍 Buscar perfil o username...">
-          <div class="mercado-pills">
-            <button class="mercado-pill active" data-mercado="">Todos</button>
-            <button class="mercado-pill" data-mercado="🇪🇸">🇪🇸</button>
-            <button class="mercado-pill" data-mercado="🇺🇸">🇺🇸</button>
-            <button class="mercado-pill" data-mercado="🇧🇷">🇧🇷</button>
-          </div>
-        </div>
-        <div class="filter-row filter-dropdowns">
-          <div class="filter-ms" id="filter-vertical"></div>
-          <div class="filter-ms" id="filter-modelo"></div>
-          <div class="filter-ms" id="filter-branding"></div>
-          <div class="filter-ms" id="filter-viral"></div>
-        </div>
-        <div id="active-filters-row" class="active-filters-row hidden"></div>
-      </div>
     </header>
 
-    <!-- Gallery -->
-    <div class="gallery-header">
-      <span id="gallery-count" class="gallery-count"></span>
+    <!-- Filters -->
+    <div class="filters-bar">
+      <div class="filter-search-row">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="filter-search" class="filter-search-input" placeholder="Buscar perfil o username...">
+        </div>
+      </div>
+      <div class="filter-mercado-row">
+        <button class="mercado-pill active" data-mercado="">Todos</button>
+        <button class="mercado-pill" data-mercado="🇪🇸">🇪🇸</button>
+        <button class="mercado-pill" data-mercado="🇺🇸">🇺🇸</button>
+        <button class="mercado-pill" data-mercado="🇧🇷">🇧🇷</button>
+      </div>
+      <div class="filter-dropdowns-row">
+        <div class="filter-multiselect" id="filter-vertical"></div>
+        <div class="filter-multiselect" id="filter-modelo"></div>
+        <div class="filter-multiselect" id="filter-branding"></div>
+        <div class="filter-multiselect" id="filter-viral"></div>
+      </div>
+      <div id="active-filters-row" class="active-filters-row hidden"></div>
+      <div class="filter-results-row"><span id="gallery-count" class="gallery-count"></span></div>
     </div>
-    <div id="gallery-grid" class="gallery-grid"></div>
+
+    <!-- Gallery -->
+    <div class="gallery-wrap">
+      <div id="gallery-grid" class="gallery-grid"></div>
+    </div>
   </div>
 
   <!-- Modal (Add / Edit) -->
   <div id="modal-overlay" class="modal-overlay">
-    <div class="modal">
+    <div class="modal-container">
       <div class="modal-header">
-        <div id="modal-avatar" class="modal-avatar"></div>
-        <h2 id="modal-title" class="modal-title">Añadir Perfil</h2>
+        <div class="modal-header-left">
+          <div id="modal-avatar" class="modal-avatar"></div>
+          <h2 id="modal-title" class="modal-title">Añadir Perfil</h2>
+        </div>
         <button id="modal-close" class="modal-close">✕</button>
       </div>
       <div id="modal-body" class="modal-body"></div>
@@ -89,7 +95,7 @@
 
   <!-- Verify Modal -->
   <div id="verify-overlay" class="modal-overlay">
-    <div class="modal verify-modal">
+    <div class="modal-container verify-modal">
       <div class="modal-header">
         <h2 class="modal-title">🔍 Verificar Perfiles</h2>
         <button id="verify-close" class="modal-close">✕</button>
@@ -102,25 +108,25 @@
   <div id="review-overlay" class="review-overlay">
     <div class="review-header">
       <button id="review-exit" class="btn btn-ghost">✕ Salir</button>
-      <div class="review-progress">
+      <div class="review-header-left">
         <div class="review-progress-bar-wrap">
           <div id="review-progress-bar" class="review-progress-bar"></div>
         </div>
-        <span class="review-progress-text"><span id="review-current">0</span> / <span id="review-total">0</span></span>
+        <span class="review-progress-text"><strong><span id="review-current">0</span></strong> / <span id="review-total">0</span></span>
       </div>
     </div>
-    <div class="review-split">
-      <div class="review-left">
+    <div class="review-body">
+      <div class="review-split">
         <div id="review-preview" class="review-preview"></div>
-      </div>
-      <div class="review-right">
-        <div id="review-form" class="review-form"></div>
-        <div class="review-actions">
-          <button id="review-prev" class="btn btn-secondary">← Anterior</button>
-          <button id="review-skip" class="btn btn-ghost">Omitir →</button>
-          <button id="review-save" class="btn btn-primary">Guardar y Siguiente →</button>
+        <div class="review-right">
+          <div id="review-form" class="review-form"></div>
         </div>
       </div>
+    </div>
+    <div class="review-footer">
+      <button id="review-prev" class="btn btn-secondary">← Anterior</button>
+      <button id="review-skip" class="btn btn-ghost">Omitir →</button>
+      <button id="review-save" class="btn btn-primary">Guardar y Siguiente →</button>
     </div>
   </div>
 
