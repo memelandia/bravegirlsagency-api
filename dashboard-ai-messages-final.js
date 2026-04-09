@@ -476,12 +476,19 @@ window.regenerateMessage = async function(index) {
         return;
     }
     
-    // Obtener el contexto actual según el tipo de mensaje
+    // Obtener el contexto actual según el tipo de mensaje (completo, igual que generateMessages)
     let context = null;
+    const modelData = MODELOS_DATA[modelId];
     if (messageType === 'masivo') {
         const timeOfDay = document.getElementById('time-of-day').value;
         const season = document.getElementById('season').value;
-        context = { timeOfDay, season };
+        context = { 
+            timeOfDay, 
+            season,
+            branding: modelData?.branding || '',
+            emojis: modelData?.emojis_favoritos || '',
+            phrases: modelData?.palabras_tipicas || ''
+        };
     } else if (messageType === 'posteo') {
         context = document.getElementById('photo-description').value;
     } else if (messageType === 'venta') {

@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[TÍTULO DEL ARTÍCULO] | BraveGirls Agency</title>
+    <meta name="description" content="[META DESCRIPTION]">
+    <meta name="keywords" content="[KEYWORDS]">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://bravegirlsagency.com/blog/[SLUG]/">
+
+    <!-- Robots directives -->
+    <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+
+    <!-- Hreflang -->
+    <link rel="alternate" hreflang="es-ES" href="https://bravegirlsagency.com/blog/[SLUG]/">
+    <link rel="alternate" hreflang="es-419" href="https://bravegirlsagency.com/blog/[SLUG]/">
+    <link rel="alternate" hreflang="x-default" href="https://bravegirlsagency.com/blog/[SLUG]/">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="https://bravegirlsagency.com/assets/favicon.ico">
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="[OG TITLE]">
+    <meta property="og:description" content="[META DESCRIPTION]">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://bravegirlsagency.com/blog/[SLUG]/">
+    <meta property="og:image" content="https://bravegirlsagency.com/og-image.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="es_ES">
+    <meta property="og:site_name" content="BraveGirls Agency">
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="[OG TITLE]">
+    <meta name="twitter:description" content="[META DESCRIPTION]">
+    <meta name="twitter:image" content="https://bravegirlsagency.com/og-image.jpg">
+
+    <!-- Additional SEO Meta Tags -->
+    <meta name="author" content="BraveGirls Agency">
+    <meta name="theme-color" content="#FF6BB3">
+
+    <!-- Google Fonts - Optimized (non-blocking) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet"></noscript>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="https://bravegirlsagency.com/styles.css">
+    <link rel="stylesheet" href="https://bravegirlsagency.com/tailwind_min.css">
+
+    <!-- Schema.org JSON-LD: Article -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "[TÍTULO DEL ARTÍCULO]",
+        "author": {
+            "@type": "Organization",
+            "name": "BraveGirls Agency"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "BraveGirls Agency",
+            "url": "https://bravegirlsagency.com",
+            "logo": "https://bravegirlsagency.com/assets/logo-bravegirls.png"
+        },
+        "datePublished": "[YYYY-MM-DD]",
+        "dateModified": "[YYYY-MM-DD]",
+        "url": "https://bravegirlsagency.com/blog/[SLUG]/"
+    }
+    </script>
+
+    <!-- Article-specific styles -->
+    <style>
+        .prose-custom h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 1.75rem;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid rgba(255, 45, 120, 0.2);
+        }
+        .prose-custom h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+        }
+        .prose-custom p {
+            color: #d1d5db;
+            line-height: 1.8;
+            margin-bottom: 1.25rem;
+        }
+        .prose-custom ul, .prose-custom ol {
+            margin-bottom: 1.25rem;
+            padding-left: 0;
+            list-style: none;
+        }
+        .prose-custom li {
+            color: #d1d5db;
+            padding: 0.35rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        .tip-box {
+            border-left: 4px solid #ff2d78;
+        }
+        .warning-box {
+            border-left: 4px solid #ffd700;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        .comparison-table th,
+        .comparison-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .comparison-table th {
+            color: #ff2d78;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .comparison-table td {
+            color: #d1d5db;
+        }
+        @media (max-width: 768px) {
+            .comparison-table-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .comparison-table {
+                min-width: 500px;
+            }
+        }
+        /* Mobile TOC accordion */
+        .toc-mobile {
+            display: none;
+        }
+        @media (max-width: 1023px) {
+            .toc-mobile {
+                display: block;
+            }
+            .toc-desktop {
+                display: none;
+            }
+        }
+        @media (min-width: 1024px) {
+            .toc-mobile {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="font-sans antialiased text-white bg-dark-0">
+
+    <!-- Skip to content -->
+    <a href="#article-content" class="skip-to-content">Saltar al contenido principal</a>
+
+    <!-- Reading Progress Bar -->
+    <div class="reading-progress"></div>
+
+    <!-- Sticky Header Glass -->
+    <header id="header" class="nav-glass fixed top-0 left-0 right-0 z-50 transition-all duration-500">
+        <div class="container-custom">
+            <div class="flex justify-between items-center py-4 md:py-5">
+                <!-- Logo -->
+                <div class="flex items-center">
+                    <a href="/" class="flex items-center gap-2" aria-label="BraveGirls Agency - Ir a inicio">
+                        <img src="https://bravegirlsagency.com/assets/logo-bravegirls.png" alt="Agencia OnlyFans España - BraveGirls Agency Logo" class="h-10 md:h-12 w-auto" loading="eager" fetchpriority="high" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <span class="logo-text hidden">
+                        </span></a></div><!-- Desktop Navigation -->
+                <nav id="nav-menu" class="hidden lg:flex items-center gap-4 xl:gap-6 text-sm font-medium" role="navigation" aria-label="Navegación principal">
+                    <a href="/#servicios" class="nav-link hover:text-brand-pink transition-colors whitespace-nowrap">Servicios</a>
+                    <a href="/#proceso" class="nav-link hover:text-brand-pink transition-colors whitespace-nowrap">Proceso</a>
+                    <a href="/#resultados" class="nav-link hover:text-brand-pink transition-colors whitespace-nowrap">Resultados</a>
+                    <a href="/#nosotros" class="nav-link hover:text-brand-pink transition-colors whitespace-nowrap">Nosotros</a>
+                    <a href="/#faq" class="nav-link hover:text-brand-pink transition-colors whitespace-nowrap">FAQ</a>
+                    <a href="/#empleados" class="nav-link hover:text-brand-pink transition-colors whitespace-nowrap">Empleo</a>
+                    <a href="/blog/" class="nav-link hover:text-brand-pink transition-colors whitespace-nowrap font-semibold text-brand-pink">Blog</a>
+                    <a href="/login.html" class="nav-link hover:text-brand-gold transition-colors whitespace-nowrap flex items-center gap-1">
+                        <span>🔐</span> Panel
+                    </a>
+                </nav>
+
+                <!-- CTA Button -->
+                <a href="https://airtable.com/appqKAyLgcoWqKyna/shrl0WrS8O2UPmzL2" target="_blank" rel="noopener noreferrer" class="btn-primary shine-effect ml-2 xl:ml-4">
+                    Aplica ahora
+                </a>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobile-menu-btn" class="lg:hidden text-white p-2 hover:text-brand-pink transition-colors" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="mobile-nav">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Mobile Navigation -->
+            <nav id="mobile-nav" class="lg:hidden hidden pb-4 mobile-menu-slide" role="navigation" aria-label="Navegación móvil">
+                <div class="flex flex-col gap-3">
+                    <a href="/#servicios" class="nav-link py-3 hover:text-brand-pink transition-colors mobile-nav-item">Servicios</a>
+                    <a href="/#proceso" class="nav-link py-3 hover:text-brand-pink transition-colors mobile-nav-item">Proceso</a>
+                    <a href="/#resultados" class="nav-link py-3 hover:text-brand-pink transition-colors mobile-nav-item">Resultados</a>
+                    <a href="/#nosotros" class="nav-link py-3 hover:text-brand-pink transition-colors mobile-nav-item">Nosotros</a>
+                    <a href="/#faq" class="nav-link py-3 hover:text-brand-pink transition-colors mobile-nav-item">FAQ</a>
+                    <a href="/#empleados" class="nav-link py-3 hover:text-brand-pink transition-colors mobile-nav-item">Empleo</a>
+                    <a href="/blog/" class="nav-link py-3 hover:text-brand-pink transition-colors mobile-nav-item font-semibold text-brand-pink">Blog</a>
+                    <a href="/login.html" class="nav-link py-3 hover:text-brand-gold transition-colors mobile-nav-item flex items-center gap-2">
+                        <span>🔐</span> Panel de Acceso
+                    </a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main id="contenido-principal" role="main">
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- HERO DEL ARTÍCULO -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="section-bg-hero pt-32 pb-12">
+        <div class="container-custom max-w-4xl mx-auto">
+            <span class="inline-block text-xs font-bold px-4 py-1.5 rounded-full border border-brand-pink/50 text-brand-pink bg-brand-pink/5 backdrop-blur-sm uppercase tracking-wider">[EMOJI] [CATEGORÍA]</span>
+            <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-bold mt-4 mb-6 leading-tight">
+                [TÍTULO DEL ARTÍCULO]
+            </h1>
+            <div class="flex flex-wrap gap-4 text-gray-400 text-sm mb-8">
+                <span>⏱ X min de lectura</span>
+                <span>📅 Marzo 2026</span>
+                <span>✍️ BraveGirls Agency</span>
+            </div>
+            <p class="text-xl text-gray-300 leading-relaxed border-l-4 border-brand-pink pl-6">
+                [PÁRRAFO INTRODUCTORIO — resumen de lo que van a aprender]
+            </p>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- MOBILE TOC (accordion) -->
+    <!-- ════════════════════════════════════════ -->
+    <div class="toc-mobile section-bg-1 py-4">
+        <div class="container-custom max-w-4xl mx-auto">
+            <details class="card-glass p-4">
+                <summary class="font-display font-bold text-brand-pink cursor-pointer">📋 En este artículo</summary>
+                <nav class="flex flex-col gap-2 text-sm mt-3">
+                    <a href="#seccion-1" class="text-gray-300 hover:text-brand-pink transition-colors">→ [Título sección 1]</a>
+                    <!-- [resto de links] -->
+                </nav>
+            </details>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- CONTENIDO + SIDEBAR -->
+    <!-- ════════════════════════════════════════ -->
+    <section id="article-content" class="section-bg-1 py-16">
+        <div class="container-custom max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+
+                <!-- Columna principal: artículo -->
+                <div class="lg:col-span-2 prose-custom">
+                    <!-- [CONTENIDO DEL ARTÍCULO] -->
+                    <!-- H2 para secciones principales -->
+                    <!-- H3 para subsecciones -->
+                    <!-- Cajas destacadas: <div class="card-glass p-6 my-8 tip-box"> -->
+                    <!-- Cajas advertencia: <div class="card-glass p-6 my-8 warning-box"> -->
+                </div>
+
+                <!-- Sidebar sticky -->
+                <div class="lg:col-span-1 toc-desktop">
+                    <div class="sticky top-28 flex flex-col gap-6">
+
+                        <!-- Índice del artículo -->
+                        <div class="card-glass p-6">
+                            <h3 class="font-display font-bold text-brand-pink mb-4">📋 En este artículo</h3>
+                            <nav class="flex flex-col gap-2 text-sm">
+                                <a href="#seccion-1" class="text-gray-300 hover:text-brand-pink transition-colors">→ [Título sección 1]</a>
+                                <!-- [resto de links] -->
+                            </nav>
+                        </div>
+
+                        <!-- CTA sidebar -->
+                        <div class="card-glass p-6 border border-brand-pink/30">
+                            <p class="text-brand-pink font-bold text-sm uppercase tracking-wide mb-2">¿Lista para escalar?</p>
+                            <h3 class="font-display font-bold text-lg mb-3">BraveGirls Agency gestiona tu cuenta</h3>
+                            <p class="text-gray-300 text-sm mb-4">Chatting 24/7, crecimiento en Instagram y TikTok, y estrategia personalizada para tu perfil.</p>
+                            <a href="https://airtable.com/appqKAyLgcoWqKyna/shrl0WrS8O2UPmzL2" target="_blank" rel="noopener noreferrer" class="btn-primary shine-effect w-full text-center block text-sm">🚀 Aplicar ahora</a>
+                            <p class="text-gray-500 text-xs text-center mt-2">Sin costo · Respuesta en 24-48h</p>
+                        </div>
+
+                        <!-- Artículos relacionados -->
+                        <div class="card-glass p-6">
+                            <h3 class="font-display font-bold mb-4 text-sm uppercase tracking-wide text-gray-400">📚 También te puede interesar</h3>
+                            <div class="flex flex-col gap-3">
+                                <!-- [3 links a artículos relacionados] -->
+                                <a href="/blog/[SLUG]/" class="text-sm text-gray-300 hover:text-brand-pink transition-colors">→ [Título artículo relacionado 1]</a>
+                                <a href="/blog/[SLUG]/" class="text-sm text-gray-300 hover:text-brand-pink transition-colors">→ [Título artículo relacionado 2]</a>
+                                <a href="/blog/[SLUG]/" class="text-sm text-gray-300 hover:text-brand-pink transition-colors">→ [Título artículo relacionado 3]</a>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- CTA FINAL -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="section-bg-apply py-16">
+        <div class="container-custom text-center max-w-3xl mx-auto">
+            <h2 class="font-display text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 leading-tight">¿Lista para dejar de hacerlo <span class="text-gradient-primary">sola</span>?</h2>
+            <p class="text-gray-300 mt-4 text-lg">BraveGirls Agency se encarga de la gestión, el chatting y el crecimiento en redes para que vos te enfoques en crear contenido.</p>
+            <p class="inline-block text-sm font-semibold px-5 py-2 rounded-full border border-brand-gold/50 text-brand-gold bg-brand-gold/5 backdrop-blur-sm mt-6">⚡ Solo 2 cupos disponibles este mes</p>
+            <div class="mt-6">
+                <a href="https://airtable.com/appqKAyLgcoWqKyna/shrl0WrS8O2UPmzL2" target="_blank" rel="noopener noreferrer" class="btn-primary btn-lg shine-effect inline-flex items-center gap-2">🚀 Aplicar a BraveGirls Agency</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- NAVEGACIÓN ENTRE ARTÍCULOS -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="section-bg-2 py-10">
+        <div class="container-custom max-w-4xl mx-auto">
+            <div class="flex justify-between items-center gap-4">
+                <a href="/blog/" class="card-glass px-6 py-3 text-sm hover:border-brand-pink transition-colors">← Volver al Blog</a>
+                <a href="/blog/[SIGUIENTE-SLUG]/" class="card-glass px-6 py-3 text-sm hover:border-brand-pink transition-colors text-right">Siguiente artículo →<br><span class="text-brand-pink text-xs">[Título siguiente]</span></a>
+            </div>
+        </div>
+    </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="section-bg-footer border-t border-gray-800 pt-8" role="contentinfo" aria-label="Pie de página">
+        <div class="container-custom py-12 md:py-16">
+            <!-- Main Footer Content -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mb-8">
+                <!-- Brand Column -->
+                <div class="fade-in-up">
+                    <div class="flex items-center gap-2 mb-4">
+                        <img src="https://bravegirlsagency.com/assets/logo-bravegirls.png" alt="BraveGirls Agency Logo" class="h-10 w-auto" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <h3 class="font-display text-xl font-bold" style="display:none;">
+                            <span class="text-brand-pink">Brave</span><span class="text-white">Girls</span>
+                        </h3>
+                    </div>
+                    <p class="text-gray-300 text-sm leading-relaxed mb-4">
+                        Agencia profesional de gestión y marketing de OnlyFans en España.
+                    </p>
+                    <p class="text-gray-500 text-xs">
+                        <strong class="text-brand-gold">BraveGirlsAgency LLC</strong><br>
+                        Empresa registrada y legal
+                    </p>
+                </div>
+
+                <!-- Quick Links -->
+                <div class="fade-in-up">
+                    <h4 class="font-display font-bold mb-4 text-base text-brand-gold">Enlaces útiles</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="/#servicios" class="text-gray-300 hover:text-brand-pink transition-colors">Servicios</a></li>
+                        <li><a href="/#proceso" class="text-gray-300 hover:text-brand-pink transition-colors">Proceso</a></li>
+                        <li><a href="/#nosotros" class="text-gray-300 hover:text-brand-pink transition-colors">Nosotros</a></li>
+                        <li><a href="/#faq" class="text-gray-300 hover:text-brand-pink transition-colors">FAQ</a></li>
+                        <li><a href="https://airtable.com/appqKAyLgcoWqKyna/shrl0WrS8O2UPmzL2" target="_blank" rel="noopener noreferrer" class="text-gray-300 hover:text-brand-pink transition-colors">Aplicar</a></li>
+                    </ul>
+                </div>
+
+                <!-- Contact -->
+                <div class="fade-in-up">
+                    <h4 class="font-display font-bold mb-4 text-base text-brand-gold">Contacto</h4>
+                    <ul class="space-y-3 text-sm mb-6">
+                        <li class="flex items-center gap-2 text-gray-300">
+                            <span class="text-xl">📱</span>
+                            <a href="https://wa.me/34675328074" target="_blank" rel="noopener noreferrer" class="hover:text-brand-pink transition-colors">+34 675 32 80 74</a>
+                        </li>
+                        <li class="flex items-center gap-2 text-gray-300">
+                            <span class="text-xl">📧</span>
+                            <a href="mailto:contacto@bravegirlsagency.com" class="hover:text-brand-pink transition-colors">contacto@bravegirlsagency.com</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Footer Bottom -->
+            <div class="border-t border-gray-800 pt-6 text-center">
+                <p class="text-xs text-gray-500">
+                    &copy; 2026 <span class="text-brand-gold font-semibold">BraveGirlsAgency LLC</span>. Todos los derechos reservados.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://bravegirlsagency.com/script.js"></script>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-DJCT0HHBQC"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-DJCT0HHBQC');
+    </script>
+</body>
+</html>

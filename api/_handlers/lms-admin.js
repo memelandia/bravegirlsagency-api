@@ -42,6 +42,8 @@ module.exports = async (req, res, deps) => {
         return await handleReports(req, res, user, deps);
       case 'completions':
         return await handleCompletions(req, res, user, deps);
+      case 'quiz-attempts':
+        return await handleQuizAttempts(req, res, user, deps);
       case 'analytics':
         return await handleAnalytics(req, res, user, deps);
       default:
@@ -668,7 +670,7 @@ async function handleQuestions(req, res, user, deps) {
     }
     
     // Validar requeridos (quizId ya debería estar seteado)
-    if (!quizId || !prompt || !options || correctOptionIndex === undefined || orderIndex === undefined) {
+    if (!quizId || !prompt || !options || correctOptionIndex === undefined) {
       return res.status(400).json({ error: 'Campos requeridos faltantes (quizId/moduleId, prompt, options...)' });
     }
     
@@ -679,12 +681,22 @@ async function handleQuestions(req, res, user, deps) {
     if (correctOptionIndex < 0 || correctOptionIndex >= options.length) {
       return res.status(400).json({ error: 'correctOptionIndex fuera de rango' });
     }
+
+    // Auto-calcular orderIndex: siguiente disponible para este quiz
+    let finalOrderIndex = orderIndex;
+    if (finalOrderIndex === undefined || finalOrderIndex === null || finalOrderIndex === 0) {
+      const maxOrderResult = await query(
+        'SELECT COALESCE(MAX(order_index), -1) + 1 as next_order FROM lms_questions WHERE quiz_id = $1',
+        [quizId]
+      );
+      finalOrderIndex = maxOrderResult.rows[0].next_order;
+    }
     
     const result = await query(`
       INSERT INTO lms_questions (quiz_id, prompt, options, correct_option_index, order_index)
       VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `, [quizId, prompt, JSON.stringify(options), correctOptionIndex, orderIndex]);
+    `, [quizId, prompt, JSON.stringify(options), correctOptionIndex, finalOrderIndex]);
     
     return res.status(201).json({ question: result.rows[0] });
   }
@@ -1093,6 +1105,58 @@ async function handleStages(req, res, user, deps) {
     await query('DELETE FROM lms_stages WHERE id = $1', [id]);
     
     return res.status(200).json({ message: 'Etapa eliminada exitosamente' });
+  }
+
+  return res.status(405).json({ error: 'Método no permitido' });
+}
+
+// ===================================================================
+// QUIZ-ATTEMPTS - Resetear intentos de quiz de un usuario
+// ===================================================================
+async function handleQuizAttempts(req, res, user, deps) {
+  const { query, isValidUUID } = deps;
+
+  if (!['admin', 'supervisor'].includes(user.role)) {
+    return res.status(403).json({ error: 'Acceso denegado' });
+  }
+
+  // DELETE: Resetear intentos de quiz para un usuario en un módulo específico
+  if (req.method === 'DELETE') {
+    const { userId, moduleId } = req.query;
+
+    if (!userId || !isValidUUID(userId)) {
+      return res.status(400).json({ error: 'userId inválido' });
+    }
+    if (!moduleId || !isValidUUID(moduleId)) {
+      return res.status(400).json({ error: 'moduleId inválido' });
+    }
+
+    // Obtener quiz_id del módulo
+    const quizResult = await query(
+      'SELECT id FROM lms_quizzes WHERE module_id = $1',
+      [moduleId]
+    );
+
+    if (quizResult.rows.length === 0) {
+      return res.status(404).json({ error: 'No se encontró quiz para este módulo' });
+    }
+
+    const quizId = quizResult.rows[0].id;
+
+    // Eliminar todos los intentos del usuario para este quiz
+    const deleteResult = await query(
+      'DELETE FROM lms_quiz_attempts WHERE quiz_id = $1 AND user_id = $2 RETURNING id',
+      [quizId, userId]
+    );
+
+    const deletedCount = deleteResult.rows.length;
+
+    console.log(`[Admin] Reset quiz attempts: ${deletedCount} attempts deleted for user ${userId} on module ${moduleId}`);
+
+    return res.status(200).json({
+      message: `${deletedCount} intento(s) eliminados exitosamente`,
+      deletedCount
+    });
   }
 
   return res.status(405).json({ error: 'Método no permitido' });

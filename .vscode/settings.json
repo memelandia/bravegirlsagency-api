@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^Get-Content \\.\\\\vercel\\.json -Raw \\| ConvertFrom-Json \\| Out-Null; if\\(\\$\\?\\)\\{'vercel\\.json OK'\\}$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

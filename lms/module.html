@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -7,20 +7,29 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Módulo - BraveGirls LMS</title>
-    <link rel="stylesheet" href="/lms/lms-styles.css?v=2.36.0&t=20260121000300">
+    <link rel="stylesheet" href="/lms/lms-styles.css?v=4.1.0&t=20260215150000">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="course-view">
   <header class="lms-header">
-    <div class="container-fluid lms-nav container-fluid-pad">
-      <div class="flex-center">
-        <a href="/lms/campus.html" class="btn btn-sm btn-outline"><i class="fas fa-arrow-left"></i> Campus</a>
-        <div class="lms-logo">🎓 BraveGirls LMS</div>
-      </div>
-      <div class="user-info">
-        <span id="userName">Cargando...</span>
-        <button class="btn btn-sm btn-outline" id="logoutBtn">Salir</button>
-      </div>
+    <div class="container-fluid container-fluid-pad">
+      <nav class="lms-nav">
+        <div class="flex-row">
+          <a href="/lms/campus.html" class="btn btn-sm btn-outline">
+            <i class="fas fa-arrow-left"></i> Campus
+          </a>
+          <div class="lms-logo">
+            <i class="fas fa-graduation-cap"></i>
+            BraveGirls LMS
+          </div>
+        </div>
+        <div class="user-info">
+          <span id="userName">Cargando...</span>
+          <button class="btn btn-sm btn-outline" id="logoutBtn">
+            <i class="fas fa-sign-out-alt"></i> Salir
+          </button>
+        </div>
+      </nav>
     </div>
   </header>
 
@@ -49,7 +58,7 @@
       <!-- Sidebar -->
       <aside class="course-sidebar">
         <div class="sidebar-header">
-          <div class="course-title-small" id="stageName">Etapa</div>
+          <div class="stage-label" id="stageName">Etapa</div>
           <div class="module-title-sidebar" id="moduleName">Nombre del Módulo</div>
         </div>
         <ul class="lesson-list" id="lessonList">
@@ -75,6 +84,159 @@
     // URL base del API en Vercel
     const API_BASE = 'https://bravegirlsagency-api.vercel.app/api/lms';
     
+    // ====== Lightweight Markdown Parser ======
+    function parseMarkdown(text) {
+      if (!text) return '';
+      
+      // Escape HTML to prevent XSS
+      let html = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      
+      // Split into lines for block-level processing
+      const lines = html.split('\n');
+      let result = [];
+      let inList = false;
+      let inOrderedList = false;
+      let inTable = false;
+      let tableRows = [];
+      
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        
+        // Table rows (| col | col |)
+        if (line.trim().match(/^\|(.+)\|$/)) {
+          if (!inTable) {
+            inTable = true;
+            tableRows = [];
+          }
+          // Skip separator rows (|---|---|)
+          if (line.trim().match(/^\|[\s\-:]+\|$/)) continue;
+          tableRows.push(line.trim());
+          // Check if next line is NOT a table row
+          if (i === lines.length - 1 || !lines[i+1].trim().match(/^\|(.+)\|$/)) {
+            // Render table
+            let tableHtml = '<table class="md-table"><thead><tr>';
+            const headerCells = tableRows[0].split('|').filter(c => c.trim());
+            headerCells.forEach(cell => {
+              tableHtml += `<th>${applyInline(cell.trim())}</th>`;
+            });
+            tableHtml += '</tr></thead><tbody>';
+            for (let r = 1; r < tableRows.length; r++) {
+              tableHtml += '<tr>';
+              const cells = tableRows[r].split('|').filter(c => c.trim());
+              cells.forEach(cell => {
+                tableHtml += `<td>${applyInline(cell.trim())}</td>`;
+              });
+              tableHtml += '</tr>';
+            }
+            tableHtml += '</tbody></table>';
+            result.push(tableHtml);
+            inTable = false;
+            tableRows = [];
+          }
+          continue;
+        }
+        
+        // Close lists if we hit a non-list line
+        if (inList && !line.match(/^[\s]*[-*•]\s/)) {
+          result.push('</ul>');
+          inList = false;
+        }
+        if (inOrderedList && !line.match(/^[\s]*\d+[.)]\s/)) {
+          result.push('</ol>');
+          inOrderedList = false;
+        }
+        
+        // Headings
+        if (line.match(/^####\s+(.+)/)) {
+          result.push(`<h4>${applyInline(line.replace(/^####\s+/, ''))}</h4>`);
+          continue;
+        }
+        if (line.match(/^###\s+(.+)/)) {
+          result.push(`<h3>${applyInline(line.replace(/^###\s+/, ''))}</h3>`);
+          continue;
+        }
+        if (line.match(/^##\s+(.+)/)) {
+          result.push(`<h2>${applyInline(line.replace(/^##\s+/, ''))}</h2>`);
+          continue;
+        }
+        if (line.match(/^#\s+(.+)/)) {
+          result.push(`<h1>${applyInline(line.replace(/^#\s+/, ''))}</h1>`);
+          continue;
+        }
+        
+        // Horizontal rule
+        if (line.match(/^[\s]*([-*_]){3,}[\s]*$/)) {
+          result.push('<hr>');
+          continue;
+        }
+
+        // Blockquote
+        if (line.match(/^&gt;\s?(.*)$/)) {
+          const quoteText = line.replace(/^&gt;\s?/, '');
+          result.push(`<blockquote>${applyInline(quoteText)}</blockquote>`);
+          continue;
+        }
+        
+        // Unordered list
+        if (line.match(/^[\s]*[-*•]\s+(.+)/)) {
+          if (!inList) {
+            result.push('<ul>');
+            inList = true;
+          }
+          const content = line.replace(/^[\s]*[-*•]\s+/, '');
+          result.push(`<li>${applyInline(content)}</li>`);
+          continue;
+        }
+        
+        // Ordered list
+        if (line.match(/^[\s]*\d+[.)]\s+(.+)/)) {
+          if (!inOrderedList) {
+            result.push('<ol>');
+            inOrderedList = true;
+          }
+          const content = line.replace(/^[\s]*\d+[.)]\s+/, '');
+          result.push(`<li>${applyInline(content)}</li>`);
+          continue;
+        }
+        
+        // Empty line = paragraph break
+        if (line.trim() === '') {
+          result.push('<br>');
+          continue;
+        }
+        
+        // Normal paragraph
+        result.push(`<p>${applyInline(line)}</p>`);
+      }
+      
+      // Close any open lists
+      if (inList) result.push('</ul>');
+      if (inOrderedList) result.push('</ol>');
+      
+      return result.join('\n');
+    }
+    
+    // Apply inline formatting (bold, italic, code, links, emoji-like icons)
+    function applyInline(text) {
+      if (!text) return '';
+      return text
+        // Bold + Italic
+        .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+        // Bold
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        // Italic
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        // Inline code
+        .replace(/`(.+?)`/g, '<code>$1</code>')
+        // Links [text](url)
+        .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+        // Strikethrough
+        .replace(/~~(.+?)~~/g, '<del>$1</del>');
+    }
+
     // Helper function to make authenticated fetch requests
     async function fetchWithAuth(url, options = {}) {
       const sessionToken = localStorage.getItem('lms_session');
@@ -84,6 +246,7 @@
       }
       if (!options.headers) options.headers = {};
       options.headers['Authorization'] = `Bearer ${sessionToken}`;
+      options.credentials = 'include';
       return fetch(url, options);
     }
     
@@ -269,10 +432,10 @@
            `;
       }
 
-      // Text content
+      // Text content (with Markdown support)
       if (lesson.content.textContent) {
-        const formattedText = lesson.content.textContent.replace(/\n/g, '<br>');
-        contentHtml += `<div class="lesson-body text-content">${formattedText}</div>`;
+        const renderedHtml = parseMarkdown(lesson.content.textContent);
+        contentHtml += `<div class="lesson-body text-content markdown-content">${renderedHtml}</div>`;
       } else {
         // If content is only video but uses space
         contentHtml += `<div class="lesson-body"></div>`;
@@ -333,18 +496,18 @@
                  <h2 style="margin-top:0;">Resumen de la Evaluación</h2>
                </div>
                
-               <div class="grid-cards" style="margin: 30px auto; max-width: 600px; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                  <div style="padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border);">
-                     <div style="font-weight:bold; font-size: 1.5rem; color: var(--primary);">${quiz.totalQuestions}</div>
-                     <div style="font-size: 0.9rem; color: var(--text-secondary);">Preguntas</div>
+               <div class="quiz-info-grid">
+                  <div class="quiz-info-stat">
+                     <div class="quiz-info-stat__value">${quiz.totalQuestions}</div>
+                     <div class="quiz-info-stat__label">Preguntas</div>
                   </div>
-                  <div style="padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border);">
-                     <div style="font-weight:bold; font-size: 1.5rem; color: var(--primary);">${quiz.passingScore}%</div>
-                     <div style="font-size: 0.9rem; color: var(--text-secondary);">Para aprobar</div>
+                  <div class="quiz-info-stat">
+                     <div class="quiz-info-stat__value">${quiz.passingScore}%</div>
+                     <div class="quiz-info-stat__label">Para aprobar</div>
                   </div>
-                  <div style="padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border);">
-                     <div style="font-weight:bold; font-size: 1.5rem; color: var(--primary);">${quiz.attemptsRemaining}</div>
-                     <div style="font-size: 0.9rem; color: var(--text-secondary);">Intentos restantes</div>
+                  <div class="quiz-info-stat">
+                     <div class="quiz-info-stat__value">${quiz.attemptsRemaining}</div>
+                     <div class="quiz-info-stat__label">Intentos restantes</div>
                   </div>
                </div>
  
@@ -576,7 +739,10 @@
     }
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await fetchWithAuth(`${API_BASE}/auth/logout`, { method: 'POST' });
+      try {
+        await fetchWithAuth(`${API_BASE}/auth/logout`, { method: 'POST' });
+      } catch (e) { /* ignore logout errors */ }
+      localStorage.removeItem('lms_session');
       window.location.href = '/lms/login.html';
     });
 
@@ -586,14 +752,26 @@
         const currentSessionTime = Math.floor((Date.now() - lessonStartTime) / 1000);
         const timeSpentSeconds = totalTimeSpent + currentSessionTime;
         
-        // Use sendBeacon for reliable sending on page unload
-        if (navigator.sendBeacon) {
-          const lesson = moduleData.lessons[currentLessonIndex];
-          const data = new Blob([JSON.stringify({ 
-            lessonId: lesson.id, 
-            timeSpentSeconds 
-          })], { type: 'application/json' });
-          navigator.sendBeacon(`${API_BASE}/lesson/track-time`, data);
+        const lesson = moduleData.lessons[currentLessonIndex];
+        const sessionToken = localStorage.getItem('lms_session');
+        
+        // Use fetch with keepalive instead of sendBeacon to include auth headers
+        try {
+          fetch(`${API_BASE}/lesson/track-time`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${sessionToken}`
+            },
+            credentials: 'include',
+            keepalive: true,
+            body: JSON.stringify({ 
+              lessonId: lesson.id, 
+              timeSpentSeconds 
+            })
+          });
+        } catch (e) {
+          // Silent fail - time tracking on unload is best-effort
         }
       }
     });

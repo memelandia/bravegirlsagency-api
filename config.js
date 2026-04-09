@@ -24,12 +24,12 @@ window.CONFIG = {
         spreadsheetId: '1sO09-I21ileGD7SoIAsgnCOhc-mzzKcCa6pOIFVwTgY',
         chatters: {
             'chatter1': { name: 'Yaye Sanchez', gid: '145015741' },
-            'chatter2': { name: 'Diego Salcedo', gid: '712917426' },
             'chatter3': { name: 'Alfonso Silva', gid: '1408176673' },
             'chatter4': { name: 'Nicolas Viganotti', gid: '1989454215' },
             'chatter5': { name: 'Kari Narvaez', gid: '1023806221' },
-            'chatter6': { name: 'Emely', gid: '1931030491' },
-            'chatter7': { name: 'Carlo', gid: '1922350290' }
+            'chatter7': { name: 'Carlo', gid: '1922350290' },
+            'chatter8': { name: 'Leo', gid: '1346980441' },
+            'chatter9': { name: 'Genesys', gid: '524118032' }
         }
     },
     
@@ -84,15 +84,7 @@ window.CONFIG = {
                 onlyFansUsername: '@xvickyluna',
                 onlyMonsterId: '436482929' // Platform Account ID correcto
             },
-            {
-                id: 'model6',
-                username: 'vanessa',
-                password: 'vanessa2025',
-                name: 'Vanessa 🌸',
-                type: 'model',
-                onlyFansUsername: '@vanessa',
-                onlyMonsterId: 'PENDING' // Actualizar con ID real de OnlyMonster
-            }
+
         ],
         
         // ═══════════════════════════════════════════════════════════
@@ -108,15 +100,7 @@ window.CONFIG = {
                 onlyMonsterId: '125226',
                 assignedModels: ['model2', 'model4'] // Lucy, Lexi
             },
-            {
-                id: 'chatter2',
-                username: 'diego',
-                password: 'diego2025',
-                name: 'Diego Salcedo',
-                type: 'chatter',
-                onlyMonsterId: '121434',
-                assignedModels: ['model2', 'model4'] // Lucy, Lexi
-            },
+
             {
                 id: 'chatter3',
                 username: 'alfonso',
@@ -144,15 +128,7 @@ window.CONFIG = {
                 onlyMonsterId: '124700',
                 assignedModels: ['model1', 'model3', 'model5'] // Carmen, Bellarey, Vicky
             },
-            {
-                id: 'chatter6',
-                username: 'emely',
-                password: 'emely2025',
-                name: 'Emely',
-                type: 'chatter',
-                onlyMonsterId: '139826',
-                assignedModels: ['model5'] // Vicky Luna por defecto
-            },
+
             {
                 id: 'chatter7',
                 username: 'carlo',
@@ -161,6 +137,24 @@ window.CONFIG = {
                 type: 'chatter',
                 onlyMonsterId: 'PENDING',
                 assignedModels: [] // Configurar según modelos asignados
+            },
+            {
+                id: 'chatter8',
+                username: 'leo',
+                password: 'leo2025',
+                name: 'Leo',
+                type: 'chatter',
+                onlyMonsterId: '164901',
+                assignedModels: ['model1', 'model2', 'model3', 'model4', 'model5'] // Cubrefrancos - todas las cuentas
+            },
+            {
+                id: 'chatter9',
+                username: 'genesys',
+                password: 'genesys2025',
+                name: 'Genesys',
+                type: 'chatter',
+                onlyMonsterId: '166534',
+                assignedModels: ['model1', 'model2', 'model4'] // Carmen, Lucy, Lexi (reemplaza a Emely)
             }
         ]
     },

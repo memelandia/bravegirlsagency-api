@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -15,15 +15,15 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shepherd.js@11.2.0/dist/css/shepherd.css">
   
   <!-- LMS Styles -->
-<link rel="stylesheet" href="/lms/lms-styles.css?v=2.29.0&t=20260119215500">
+<link rel="stylesheet" href="/lms/lms-styles.css?v=4.0.0&t=20260215120000">
   
   <style>
     body {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: var(--secondary);
       min-height: 100vh;
       margin: 0;
       padding: 20px;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     .welcome-container {
@@ -33,10 +33,10 @@
       border-radius: 24px;
       box-shadow: var(--shadow-2xl);
       overflow: hidden;
-      animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      animation: welcomeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    @keyframes slideUp {
+    @keyframes welcomeSlideUp {
       from {
         opacity: 0;
         transform: translateY(30px);
@@ -48,7 +48,7 @@
     }
 
     .welcome-header {
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       color: white;
       padding: 32px 24px;
       text-align: center;
@@ -75,7 +75,7 @@
     }
 
     .section h2 {
-      color: var(--text-primary);
+      color: var(--text-main);
       font-size: 20px;
       font-weight: 700;
       margin-bottom: 16px;
@@ -89,17 +89,17 @@
       font-size: 24px;
     }
 
-    .video-container {
+    .welcome-video-container {
       position: relative;
       padding-bottom: 56.25%; /* 16:9 aspect ratio */
       height: 0;
       overflow: hidden;
-      border-radius: 10px;
+      border-radius: var(--radius-md);
       box-shadow: var(--shadow-lg);
       margin-bottom: 16px;
     }
 
-    .video-container iframe {
+    .welcome-video-container iframe {
       position: absolute;
       top: 0;
       left: 0;
@@ -116,8 +116,8 @@
     }
 
     .info-card {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05));
-      border: 2px solid rgba(99, 102, 241, 0.15);
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--border);
       border-radius: 16px;
       padding: 24px;
       transition: all 0.3s ease;
@@ -138,7 +138,7 @@
 
     .info-card h3 {
       margin: 0 0 8px 0;
-      color: var(--text-primary);
+      color: var(--text-main);
       font-size: 18px;
       font-weight: 600;
     }
@@ -151,7 +151,7 @@
     }
 
     .rules-list {
-      background: #f8f9ff;
+      background: var(--primary-light);
       border-left: 4px solid var(--primary);
       border-radius: 8px;
       padding: 24px;
@@ -164,7 +164,7 @@
     }
 
     .rules-list li {
-      color: var(--text-primary);
+      color: var(--text-main);
       font-size: 16px;
       margin-bottom: 12px;
       line-height: 1.6;
@@ -176,7 +176,7 @@
     }
 
     .cta-section {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.08));
+      background: var(--primary-light);
       border-radius: 16px;
       padding: 32px;
       text-align: center;
@@ -185,12 +185,12 @@
 
     .cta-section p {
       font-size: 18px;
-      color: var(--text-primary);
+      color: var(--text-main);
       margin-bottom: 24px;
     }
 
     .btn-start {
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      background: var(--primary);
       color: white;
       border: none;
       padding: 16px 48px;
@@ -206,6 +206,7 @@
     }
 
     .btn-start:hover {
+      background: var(--primary-hover);
       transform: translateY(-2px);
       box-shadow: var(--shadow-xl);
     }
@@ -246,19 +247,14 @@
 
     .progress-indicator.show {
       opacity: 1;
-      animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
+      animation: welcomeSlideUp 0.3s ease;
     }
 
     .progress-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--gray-300);
+      background: #d1d5db;
       animation: pulse 1.5s infinite;
     }
 
@@ -295,7 +291,7 @@
     }
 
     .shepherd-button:hover {
-      background: var(--secondary) !important;
+      background: var(--primary-hover) !important;
     }
 
     /* Desktop-only: Mobile media query removed */
@@ -304,8 +300,13 @@
 <body>
   <div class="welcome-container">
     <!-- Header -->
-    <div class="welcome-header">
-      <h1>¡Bienvenido/a a BraveGirls Academy! 🎓</h1>
+    <div class="welcome-header" style="position: relative;">
+      <button id="logoutBtn" class="btn btn-sm btn-ghost" 
+        style="position: absolute; top: 16px; right: 16px; color: rgba(255,255,255,0.8);"
+        onclick="logoutUser()">
+        <i class="fas fa-sign-out-alt"></i> Salir
+      </button>
+      <h1><i class="fas fa-graduation-cap"></i> ¡Bienvenido/a a BraveGirls Academy!</h1>
       <p class="subtitle">Estás a punto de comenzar tu formación como Chatter profesional</p>
     </div>
 
@@ -327,12 +328,16 @@
           <i class="fas fa-play-circle"></i>
           Video de Bienvenida
         </h2>
-        <div class="video-container">
-          <!-- Replace with actual Loom video URL -->
+        <div class="welcome-video-container">
+          <!-- TODO: Reemplazar YOUR_VIDEO_ID_HERE con el ID real del video de Loom -->
           <iframe 
             src="https://www.loom.com/embed/YOUR_VIDEO_ID_HERE"
             allowfullscreen>
           </iframe>
+          <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--secondary); color: var(--text-sidebar); flex-direction: column; gap: 12px; z-index: -1;">
+            <i class="fas fa-play-circle" style="font-size: 48px; opacity: 0.3;"></i>
+            <span style="font-size: 14px; opacity: 0.5;">Video de bienvenida</span>
+          </div>
         </div>
         <p style="color: var(--text-secondary); font-size: 14px; margin-top: 12px;">
           <i class="fas fa-clock"></i> 5 minutos · Conoce la visión de BraveGirls Agency
@@ -402,7 +407,7 @@
           <i class="fas fa-heart"></i>
           Nuestra Cultura
         </h2>
-        <p style="color: var(--text-primary); font-size: 16px; line-height: 1.8;">
+        <p style="color: var(--text-main); font-size: 16px; line-height: 1.8;">
           En BraveGirls Agency valoramos la <strong>profesionalidad</strong>, la <strong>empatía con los fans</strong>, 
           y el <strong>compromiso con la excelencia</strong>. Como chatter, serás la voz de las modelos. 
           Tu rol es crear conexiones auténticas, ofrecer un servicio excepcional, y generar resultados.
@@ -446,6 +451,15 @@
 
     let currentUser = null;
 
+    // Logout function
+    async function logoutUser() {
+      try {
+        await fetchWithAuth(`${API_BASE}/auth/logout`, { method: 'POST' });
+      } catch (e) { /* ignore logout errors */ }
+      localStorage.removeItem('lms_session');
+      window.location.href = '/lms/login.html';
+    }
+
     // Helper function to make authenticated fetch requests
     async function fetchWithAuth(url, options = {}) {
       const sessionToken = localStorage.getItem('lms_session');
@@ -474,18 +488,15 @@
 
         const data = await response.json();
         currentUser = data.user;
-        console.log('[Welcome] User authenticated:', currentUser.email, 'Onboarding completed:', !!currentUser.onboarding_completed_at);
         
         // VALIDACIÓN #28: Si usuario ya completó onboarding, redirigir a campus
         if (data.user && data.user.onboarding_completed_at) {
-          console.log('[Welcome] User already completed onboarding, redirecting to campus');
           window.location.href = '/lms/campus.html';
           return;
         }
 
         // VALIDACIÓN #27: Solo chatters deben ver welcome
         if (data.user.role !== 'chatter') {
-          console.log('[Welcome] Non-chatter user, redirecting to appropriate page');
           if (data.user.role === 'admin' || data.user.role === 'supervisor') {
             window.location.href = '/lms/admin.html';
           } else {
@@ -513,33 +524,33 @@
 
       if (currentUser.deadline_expired) {
         // Deadline vencido - Banner rojo crítico
-        banner.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+        banner.style.background = 'var(--error)';
         banner.style.color = 'white';
-        banner.style.boxShadow = '0 8px 24px rgba(239, 68, 68, 0.4)';
+        banner.style.boxShadow = '0 4px 16px rgba(239, 68, 68, 0.3)';
         title.innerHTML = '🚨 ¡Plazo Vencido!';
         message.innerHTML = `Tu fecha límite era el ${new Date(currentUser.course_deadline).toLocaleDateString('es-ES')}. Contacta a tu supervisor urgentemente.`;
         banner.classList.remove('hidden');
       } else if (daysRemaining <= 1) {
         // Menos de 1 día - Banner naranja urgente
-        banner.style.background = 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)';
+        banner.style.background = '#ea580c';
         banner.style.color = 'white';
-        banner.style.boxShadow = '0 8px 24px rgba(249, 115, 22, 0.4)';
+        banner.style.boxShadow = '0 4px 16px rgba(234, 88, 12, 0.3)';
         title.innerHTML = daysRemaining === 1 ? '⚠️ ¡ÚLTIMO DÍA!' : '⏰ ¡QUEDAN HORAS!';
         message.innerHTML = `Tu plazo vence ${daysRemaining === 1 ? 'mañana' : 'HOY'}. Completa el curso lo antes posible.`;
         banner.classList.remove('hidden');
       } else if (daysRemaining <= 3) {
         // 2-3 días - Banner amarillo advertencia
-        banner.style.background = 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)';
+        banner.style.background = 'var(--warning)';
         banner.style.color = '#78350f';
-        banner.style.boxShadow = '0 8px 24px rgba(251, 191, 36, 0.35)';
+        banner.style.boxShadow = '0 4px 16px rgba(245, 158, 11, 0.25)';
         title.innerHTML = '⏱️ Tiempo Limitado';
         message.innerHTML = `Quedan ${daysRemaining} días para completar tu formación. ¡Apresúrate!`;
         banner.classList.remove('hidden');
       } else if (daysRemaining <= 7) {
         // 4-7 días - Banner azul informativo
-        banner.style.background = 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)';
+        banner.style.background = 'var(--info)';
         banner.style.color = 'white';
-        banner.style.boxShadow = '0 8px 24px rgba(96, 165, 250, 0.35)';
+        banner.style.boxShadow = '0 4px 16px rgba(14, 165, 233, 0.25)';
         title.innerHTML = '📅 Fecha Límite para Completar el Curso';
         message.innerHTML = `Tienes hasta el ${new Date(currentUser.course_deadline).toLocaleDateString('es-ES')} para completar tu formación (${daysRemaining} días).`;
         banner.classList.remove('hidden');

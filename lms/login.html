@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Iniciar Sesión - BraveGirls LMS</title>
-    <link rel="stylesheet" href="/lms/lms-styles.css?v=2.29.0&t=20260119215500">
+    <link rel="stylesheet" href="/lms/lms-styles.css?v=4.0.0&t=20260215120000">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     .login-container {
@@ -15,7 +15,7 @@
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: var(--secondary);
       position: relative;
       overflow: hidden;
     }
@@ -28,7 +28,7 @@
       left: -50%;
       width: 200%;
       height: 200%;
-      background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(232, 85, 61, 0.08) 0%, transparent 70%);
       animation: rotateBackground 40s linear infinite;
       opacity: 0.6;
     }
@@ -68,10 +68,10 @@
     
     .login-icon {
       font-size: 3rem;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      background: none;
+      -webkit-background-clip: unset;
+      -webkit-text-fill-color: var(--primary);
+      color: var(--primary);
       margin-bottom: 12px;
       display: inline-block;
     }
@@ -79,10 +79,10 @@
     .login-header h1 {
       font-size: 1.625rem;
       font-weight: 700;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      background: none;
+      -webkit-background-clip: unset;
+      -webkit-text-fill-color: var(--text-main);
+      color: var(--text-main);
       margin-bottom: 6px;
     }
     
@@ -149,7 +149,6 @@
       <form id="loginForm">
         <div class="form-group-login">
           <label class="form-label" for="email">
-            <i class="fas fa-envelope"></i>
             Correo Electrónico
           </label>
           <input 
@@ -165,7 +164,6 @@
 
         <div class="form-group-login">
           <label class="form-label" for="password">
-            <i class="fas fa-lock"></i>
             Contraseña
           </label>
           <input 
@@ -188,7 +186,7 @@
       <div class="login-footer">
         <p>¿Olvidaste tu contraseña? <a href="#">Contacta al administrador</a></p>
         <p style="margin-top: var(--space-sm); font-size: var(--text-xs); opacity: 0.7;">
-          © 2025 BraveGirls Agency. Todos los derechos reservados.
+          © <script>document.write(new Date().getFullYear())</script> BraveGirls Agency. Todos los derechos reservados.
         </p>
       </div>
     </div>
@@ -226,10 +224,7 @@
           credentials: 'include'
         });
 
-        console.log('[Login] Response status:', response.status);
-        
         const data = await response.json();
-        console.log('[Login] Response data:', data);
 
         if (!response.ok) {
           throw new Error(data.error || 'Error al iniciar sesión');
@@ -237,20 +232,16 @@
 
         // Guardar token de sesión
         localStorage.setItem('lms_session', data.sessionToken);
-        console.log('[Login] Session token stored');
 
         showAlert('¡Login exitoso! Redirigiendo...', 'success');
         
         setTimeout(() => {
           // Check if user needs onboarding (solo si nunca lo completó)
           if (data.user.role === 'chatter' && !data.user.onboarding_completed_at) {
-            console.log('[Login] Chatter needs onboarding, redirecting to welcome');
             window.location.href = '/lms/welcome.html';
           } else if (data.user.role === 'admin' || data.user.role === 'supervisor') {
-            console.log('[Login] Admin/supervisor login, redirecting to admin');
             window.location.href = '/lms/admin.html';
           } else {
-            console.log('[Login] Regular user login, redirecting to campus');
             window.location.href = '/lms/campus.html';
           }
         }, 1000);
@@ -280,7 +271,6 @@
         
         if (response.ok) {
           const data = await response.json();
-          console.log('[Login] User already logged in:', data.user.email, 'Role:', data.user.role);
           
           // VALIDACIÓN #28: Prevenir redirect loop - verificar si ya está en welcome.html
           const currentPage = window.location.pathname;
@@ -288,17 +278,12 @@
           
           // Check if chatter needs onboarding (solo si nunca lo completó Y no está ya en welcome)
           if (data.user.role === 'chatter' && !data.user.onboarding_completed_at && !isOnWelcomePage) {
-            console.log('[Login] Redirecting to onboarding');
             window.location.href = '/lms/welcome.html';
           } else if (data.user.role === 'admin' || data.user.role === 'supervisor') {
-            console.log('[Login] Redirecting to admin');
             window.location.href = '/lms/admin.html';
           } else {
-            console.log('[Login] Redirecting to campus');
             window.location.href = '/lms/campus.html';
           }
-        } else {
-          console.log('[Login] Not authenticated, status:', response.status);
         }
       } catch (error) {
         console.error('[Login] Error checking auth:', error);

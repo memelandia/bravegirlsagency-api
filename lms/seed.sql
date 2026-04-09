@@ -1,6 +1,7 @@
 -- ===================================================================
--- LMS SEED DATA
+-- LMS SEED DATA — Curriculum v3 (Feb 2026)
 -- Datos iniciales para el curso de BraveGirls Agency
+-- 3 Etapas | 9 Módulos | 39 Lecciones | 9 Quizzes (sin preguntas)
 -- ===================================================================
 
 -- Crear usuario admin por defecto (password: Admin2026!)
@@ -9,377 +10,283 @@ INSERT INTO lms_users (name, email, password_hash, role, active) VALUES
 ('Admin', 'admin@bravegirlsagency.com', crypt('Admin2026!', gen_salt('bf', 10)), 'admin', true);
 
 -- ===================================================================
--- ETAPAS DEL CURSO
+-- ETAPAS DEL CURSO (3)
 -- ===================================================================
 INSERT INTO lms_stages (id, name, description, order_index) VALUES
-('11111111-1111-1111-1111-111111111111', 'ETAPA 1 — Onboarding y Control', 'Introducción a la cultura y reglas de la agencia', 0),
-('22222222-2222-2222-2222-222222222222', 'ETAPA 2 — Negocio y Producto', 'Comprensión del modelo de negocio y catálogo', 1),
-('33333333-3333-3333-3333-333333333333', 'ETAPA 3 — Operación OnlyFans', 'Manejo operativo de la plataforma OnlyFans', 2),
-('44444444-4444-4444-4444-444444444444', 'ETAPA 4 — OnlyMonster', 'Uso de herramientas de data y automatización', 3),
-('55555555-5555-5555-5555-555555555555', 'ETAPA 5 — SOP Diario', 'Procedimientos operativos estándar diarios', 4),
-('66666666-6666-6666-6666-666666666666', 'ETAPA 6 — Copy y Ejecución Comercial', 'Scripts y técnicas de comunicación con fans', 5),
-('77777777-7777-7777-7777-777777777777', 'ETAPA 7 — Monetización Avanzada', 'Estrategias para maximizar ingresos con fans VIP', 6),
-('88888888-8888-8888-8888-888888888888', 'ETAPA 8 — Incentivos', 'Sistema de incentivos y bonificaciones de la agencia', 7);
+('10000000-0000-0000-0000-000000000001', 'ETAPA 1 — Fundamentos BraveGirls', 'El chatter entiende dónde está, qué se espera, y conoce las reglas del juego. Día 1.', 0),
+('20000000-0000-0000-0000-000000000002', 'ETAPA 2 — Las Herramientas', 'El chatter domina OnlyFans, OnlyMonster, y sabe clasificar fans. Día 2.', 1),
+('30000000-0000-0000-0000-000000000003', 'ETAPA 3 — Ventas y Práctica', 'El chatter aprende a vender, fidelizar, manejar situaciones y conoce cómo se lo evalúa. Día 3.', 2);
 
 -- ===================================================================
--- MÓDULOS (uno por etapa)
+-- MÓDULOS (9) — order_index GLOBAL (0-8) para unlock secuencial
 -- ===================================================================
 INSERT INTO lms_modules (id, stage_id, title, description, order_index, published) VALUES
-(
-  'a0000000-0000-0000-0000-000000000000',
-  '11111111-1111-1111-1111-111111111111',
-  'MÓDULO 0 — Cultura y Reglas',
-  'Módulo obligatorio de introducción. Conoce la cultura de trabajo, valores y reglas fundamentales de BraveGirls Agency.',
-  0,
-  true
-),
-(
-  'a1111111-1111-1111-1111-111111111111',
-  '22222222-2222-2222-2222-222222222222',
-  'MÓDULO 1 — Modelo de Negocio + Catálogo + Precios',
-  'Comprende cómo funciona el negocio, qué productos vendemos y la tabla de precios oficial.',
-  1,
-  true
-),
-(
-  'a2222222-2222-2222-2222-222222222222',
-  '33333333-3333-3333-3333-333333333333',
-  'MÓDULO 2 — OnlyFans Operativo',
-  'Aprende a operar la plataforma OnlyFans sin teoría: acciones prácticas del día a día.',
-  2,
-  true
-),
-(
-  'a3333333-3333-3333-3333-333333333333',
-  '44444444-4444-4444-4444-444444444444',
-  'MÓDULO 3 — OnlyMonster: Data + Automatización + Insight',
-  'Domina OnlyMonster para analizar datos, automatizar tareas y obtener insights de los fans.',
-  3,
-  true
-),
-(
-  'a4444444-4444-4444-4444-444444444444',
-  '55555555-5555-5555-5555-555555555555',
-  'MÓDULO 4 — Tareas Diarias Obligatorias (SOP)',
-  'Checklist operativo diario que todo chatter debe cumplir sin excepción.',
-  4,
-  true
-),
-(
-  'a5555555-5555-5555-5555-555555555555',
-  '66666666-6666-6666-6666-666666666666',
-  'MÓDULO 5 — Scripts: Uso Correcto',
-  'Aprende a usar los scripts de venta correctamente y cuándo personalizar.',
-  5,
-  true
-),
-(
-  'a6666666-6666-6666-6666-666666666666',
-  '77777777-7777-7777-7777-777777777777',
-  'MÓDULO 6 — Ballenas, Listas y High Ticket',
-  'Estrategias avanzadas: customs caros, videollamadas (VC), venta de panties y manejo de fans VIP.',
-  6,
-  true
-),
-(
-  'a7777777-7777-7777-7777-777777777777',
-  '88888888-8888-8888-8888-888888888888',
-  'MÓDULO 7 — Incentivos de la Agencia',
-  'Conoce el sistema de bonos, incentivos y recompensas para chatters de alto desempeño.',
-  7,
-  true
-);
+-- ETAPA 1
+('b1100000-0000-0000-0000-000000000011', '10000000-0000-0000-0000-000000000001', 'Módulo 1.1 — Cultura de Trabajo BraveGirls', 'Propósito de la agencia, lema, frase de compromiso personal, y los 5 valores principales de trabajo.', 0, true),
+('b1200000-0000-0000-0000-000000000012', '10000000-0000-0000-0000-000000000001', 'Módulo 1.2 — Normativa y Operación Diaria', 'Reglas, código de conducta, tareas diarias obligatorias, precios, prioridades de venta, seguridad y reglas de oro del chat.', 1, true),
+('b1300000-0000-0000-0000-000000000013', '10000000-0000-0000-0000-000000000001', 'Módulo 1.3 — Glosario del Chatter', 'Vocabulario esencial: PPV, Custom, Script, Bóveda, Tip, DM, Masivo, ARPPU, Conversion Rate y más.', 2, true),
+-- ETAPA 2
+('b2100000-0000-0000-0000-000000000021', '20000000-0000-0000-0000-000000000002', 'Módulo 2.1 — OnlyFans: Conociendo la Plataforma', 'Secciones de OnlyFans, chat, bóveda, estadísticas, mensajes masivos, pagos y restricciones.', 3, true),
+('b2200000-0000-0000-0000-000000000022', '20000000-0000-0000-0000-000000000002', 'Módulo 2.2 — OnlyMonster: Tu Herramienta de Trabajo', 'Interfaz de OnlyMonster, chat, información del cliente, notas obligatorias y mensajes automáticos.', 4, true),
+('b2300000-0000-0000-0000-000000000023', '20000000-0000-0000-0000-000000000002', 'Módulo 2.3 — Clasificación de Fans', 'Tipos de fans, cómo detectarlos, sistema de listas, clasificación paso a paso y psicología básica del fan.', 5, true),
+-- ETAPA 3
+('b3100000-0000-0000-0000-000000000031', '30000000-0000-0000-0000-000000000003', 'Módulo 3.1 — Técnicas de Venta', 'Cómo vender videollamadas, customs, scripts, upselling, tips, ventas especiales, fidelización e inicio de conversación.', 6, true),
+('b3200000-0000-0000-0000-000000000032', '30000000-0000-0000-0000-000000000003', 'Módulo 3.2 — Situaciones Reales y Protocolo', 'Manejo de fans difíciles, errores comunes, protocolo de emergencia y flujo completo de una conversación de venta.', 7, true),
+('b3300000-0000-0000-0000-000000000033', '30000000-0000-0000-0000-000000000003', 'Módulo 3.3 — Métricas y Evaluación', 'Qué se mide, cómo se evalúa, perfiles de modelo en Discord y estándares de calidad.', 8, true);
 
 -- ===================================================================
--- LECCIONES INICIALES (placeholders - el admin debe completar)
+-- LECCIONES — ETAPA 1 (8 lecciones, todas texto)
 -- ===================================================================
 
--- MÓDULO 0: Cultura y Reglas
-INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
-('a0000000-0000-0000-0000-000000000000', 'Bienvenida y Cultura de BraveGirls', 'video', 0, 'https://www.loom.com/embed/placeholder-video-1');
+-- Módulo 1.1 — Cultura de Trabajo BraveGirls (1 lección)
+INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
+('b1100000-0000-0000-0000-000000000011', '🏛️ Cultura BraveGirls', 'text', 0,
+'# 🏛️ Cultura de Trabajo BraveGirls
+
+## ¿Quiénes somos?
+BraveGirls Agency es una agencia profesional de gestión de cuentas de creadoras de contenido.
+
+## Nuestro lema
+> **[COMPLETAR — Lema de la agencia]**
+
+## Los 5 Valores de Trabajo
+1. [COMPLETAR — Valor 1]
+2. [COMPLETAR — Valor 2]
+3. [COMPLETAR — Valor 3]
+4. [COMPLETAR — Valor 4]
+5. [COMPLETAR — Valor 5]
+
+**Al completar esta lección, confirmas que entiendes la cultura de trabajo de BraveGirls Agency.**');
+
+-- Módulo 1.2 — Normativa y Operación Diaria (6 lecciones)
+INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
+('b1200000-0000-0000-0000-000000000012', '📜 Normativa BraveGirls', 'text', 0,
+'# 📜 Normativa BraveGirls
+
+## Código de Conducta
+- Cumplir horarios asignados
+- Avisar con mínimo 24h de anticipación ausencias
+- Mantener comportamiento profesional
+- Confidencialidad absoluta
+
+## Consecuencias
+| 🟡 Leve | Advertencia verbal |
+| 🟠 Media | Advertencia escrita |
+| 🔴 Grave | Suspensión o terminación |
+| ⛔ Crítica | Terminación inmediata |');
 
 INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
-('a0000000-0000-0000-0000-000000000000', 'Reglas y Políticas Internas', 'text', 1, 
-'# Reglas y Políticas Internas
+('b1200000-0000-0000-0000-000000000012', '✅ Tareas Diarias Obligatorias', 'text', 1,
+'# ✅ Tareas Diarias Obligatorias
 
-## Horarios y Disponibilidad
-- Cumplir con los horarios asignados
-- Avisar con anticipación en caso de ausencias
-- Mantener disponibilidad durante el turno
+## 🌅 Arranque de Turno
+- Revisar notas del turno anterior
+- Leer mensajes sin responder y priorizarlos
+- Revisar notificaciones
 
-## Confidencialidad
-- Toda información de fans y modelos es CONFIDENCIAL
-- No compartir datos de acceso con terceros
-- No tomar capturas ni copiar información sin autorización
+## 💬 Durante el Turno
+- Responder TODOS los mensajes (objetivo: <4 min → 2-3 min)
+- Vender activamente según orden de prioridad
+- Reactivar fans inactivos usando listas de OnlyMonster
 
-## Rendimiento y KPIs
-- Cumplir con los objetivos de ventas mensuales
-- Mantener una buena relación con los fans
-- Reportar cualquier problema o situación irregular
+## 🌙 Cierre de Turno
+- Completar notas en OnlyMonster
+- Dejar resumen de pendientes para el siguiente turno
 
-## Consecuencias por Incumplimiento
-- Primera falta: advertencia verbal
-- Segunda falta: advertencia por escrito
-- Tercera falta: suspensión o terminación del contrato
-
-**Al completar este módulo, aceptas haber leído y comprendido estas reglas.**');
-
--- MÓDULO 1: Modelo de Negocio
-INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
-('a1111111-1111-1111-1111-111111111111', 'Cómo funciona el negocio de OnlyFans', 'text', 0,
-'# Modelo de Negocio OnlyFans
-
-## ¿Qué hacemos?
-BraveGirls Agency gestiona cuentas de creadoras de contenido en OnlyFans. Nuestro trabajo es:
-- Chatear con los fans (suplantando a la modelo)
-- Vender contenido personalizado y productos digitales
-- Maximizar los ingresos por cuenta
-- Mantener a los fans enganchados y gastando
-
-## Estructura de Ingresos
-1. **Suscripciones**: ingreso base mensual/anual
-2. **Tips**: propinas por mensajes o contenido
-3. **PPV (Pay Per View)**: contenido bloqueado que el fan debe pagar
-4. **Customs**: contenido personalizado hecho a medida
-
-## Tu rol como Chatter
-- Eres el intermediario entre la modelo y sus fans
-- Tu objetivo es VENDER más contenido
-- Debes mantener la ilusión y el engagement
-- Tu comisión depende de tus ventas
-
-Esta es una industria de ventas digitales: **más vendes, más ganas.**');
-
-INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
-('a1111111-1111-1111-1111-111111111111', 'Catálogo de Productos y Precios', 'video', 1, 'https://www.loom.com/embed/placeholder-video-2');
-
--- MÓDULO 2: OnlyFans Operativo
-INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
-('a2222222-2222-2222-2222-222222222222', 'Tour por la interfaz de OnlyFans', 'video', 0, 'https://www.loom.com/embed/placeholder-video-3');
-
-INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
-('a2222222-2222-2222-2222-222222222222', 'Cómo enviar mensajes y PPV', 'video', 1, 'https://www.loom.com/embed/placeholder-video-4');
+## 🔄 Traspaso
+- Notas claras y útiles para el siguiente chatter');
 
 INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
-('a2222222-2222-2222-2222-222222222222', 'Checklist Operativo OnlyFans', 'text', 2,
-'# Checklist Operativo OnlyFans
+('b1200000-0000-0000-0000-000000000012', '💰 Precios & Tarifas', 'text', 2,
+'# 💰 Precios & Tarifas — Tabla Oficial
 
-## Al inicio del turno
-- [ ] Revisar notificaciones pendientes
-- [ ] Leer mensajes nuevos
-- [ ] Identificar oportunidades de venta
+[COMPLETAR — Tabla completa de precios de todos los servicios]
 
-## Durante el turno
-- [ ] Responder todos los mensajes en menos de 30 min
-- [ ] Enviar al menos 2 PPV masivos
-- [ ] Hacer seguimiento a fans inactivos
-- [ ] Registrar ventas en el sistema
-
-## Al finalizar el turno
-- [ ] Dejar notas para el siguiente turno
-- [ ] Reportar ventas del día
-- [ ] Escalar cualquier problema o fan difícil');
-
--- MÓDULO 3: OnlyMonster
-INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
-('a3333333-3333-3333-3333-333333333333', 'Introducción a OnlyMonster', 'video', 0, 'https://www.loom.com/embed/placeholder-video-5');
+**Los precios son IGUALES para todas las modelos. NUNCA negociar sin autorización del supervisor.**');
 
 INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
-('a3333333-3333-3333-3333-333333333333', 'Uso básico de OnlyMonster', 'text', 1,
-'# OnlyMonster: Guía Operativa
+('b1200000-0000-0000-0000-000000000012', '🎯 Orden de Prioridad en Ventas', 'text', 3,
+'# 🎯 Orden de Prioridad en Ventas
 
-## ¿Qué es OnlyMonster?
-Herramienta de automatización y análisis para OnlyFans que te permite:
-- Ver estadísticas de fans (gasto, última conexión, engagement)
-- Automatizar mensajes masivos
-- Segmentar fans por comportamiento
-- Programar envíos
-
-## Funciones clave
-1. **Dashboard de Fans**: lista completa con métricas
-2. **Mass Messaging**: envío de PPV a segmentos específicos
-3. **Automation Rules**: respuestas automáticas
-4. **Analytics**: reportes de ventas y engagement
-
-## Mejores prácticas
-- Revisar métricas diariamente
-- Segmentar antes de enviar PPV masivo
-- No abusar de la automatización (puede parecer spam)');
-
--- MÓDULO 4: SOP Diario
-INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
-('a4444444-4444-4444-4444-444444444444', 'SOP Diario Explicado', 'video', 0, 'https://www.loom.com/embed/placeholder-video-6');
+[COMPLETAR — Qué vender primero y por qué, en orden de prioridad]');
 
 INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
-('a4444444-4444-4444-4444-444444444444', 'Checklist SOP Obligatorio', 'text', 1,
-'# SOP Diario Obligatorio
+('b1200000-0000-0000-0000-000000000012', '🔒 Seguridad y Confidencialidad', 'text', 4,
+'# 🔒 Seguridad y Confidencialidad
 
-## Tareas OBLIGATORIAS cada día
-
-### 1. Morning Routine (primeros 30 min)
-- Revisar métricas del día anterior
-- Leer notificaciones y mensajes urgentes
-- Planificar PPVs del día
-
-### 2. Engagement Continuo
-- Responder todos los mensajes en <30 min
-- Hacer follow-up a fans inactivos (última conexión >7 días)
-- Agradecer tips y compras
-
-### 3. Mass Messaging
-- Enviar al menos 2 PPV masivos al día
-- Horarios recomendados: 10am-12pm y 7pm-10pm
-- Segmentar por tipo de fan (whales, mid-spenders, low-spenders)
-
-### 4. Reportes
-- Actualizar ventas en el sistema cada 2 horas
-- Reportar cualquier issue o escalación
-- Dejar notas para el siguiente turno
-
-**El incumplimiento del SOP es motivo de advertencia.**');
-
--- MÓDULO 5: Scripts
-INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
-('a5555555-5555-5555-5555-555555555555', 'Cómo usar scripts correctamente', 'video', 0, 'https://www.loom.com/embed/placeholder-video-7');
+- NUNCA dar info personal
+- NUNCA tomar screenshots sin autorización
+- Protocolo de menores: avisar al supervisor INMEDIATAMENTE
+- NUNCA revelar que es una agencia');
 
 INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
-('a5555555-5555-5555-5555-555555555555', 'Ejemplos de Scripts y Personalización', 'text', 1,
-'# Scripts de Venta
+('b1200000-0000-0000-0000-000000000012', '🚫 Reglas de Oro del Chat', 'text', 5,
+'# 🚫 Reglas de Oro del Chat
 
-## Tipos de Scripts
+1. **Redes sociales**: SÍ las de trabajo, NUNCA las personales
+2. **"¿Sos una agencia?"**: NEGAR SIEMPRE A MUERTE
+3. **Contenido gratis**: NUNCA (excepción: retención de buen cliente)
+4. **Tiempos de entrega**: "Lo haré en cuanto pueda", nunca fechas exactas
+5. **Nunca hablar de otras modelos**
+6. **Nunca discutir con un fan** → calma + supervisor
+7. **Nunca inventar respuestas** → preguntar al supervisor');
 
-### 1. Mensaje de Bienvenida (nuevo suscriptor)
-```
-Hey baby! 💕 Thanks so much for subscribing! I''m so happy you''re here. 
-What kind of content do you like? I want to make sure you get exactly what you want 😘
-```
-
-### 2. PPV Teaser (venta de contenido)
-```
-I just recorded something VERY spicy for you 🔥
-It''s 15 min of pure fun... want to see? 😈
-*[locked video] - $20*
-```
-
-### 3. Custom Request (contenido personalizado)
-```
-I LOVE making customs baby! Tell me exactly what you want to see and I''ll make it happen 💋
-Pricing:
-- Photos (10 pics): $50
-- Video (5-10min): $100
-- Video (10-20min): $180
-```
-
-### 4. Re-engagement (fan inactivo)
-```
-Hey stranger! I miss you 😢
-I have some new content I think you''ll LOVE... want a sneak peek? 👀
-```
-
-## Cuándo Personalizar
-- Fan VIP/Whale: SIEMPRE personalizar
-- Conversación larga: adaptar el tono
-- Fan repetitivo: ajustar estrategia
-
-## Cuándo NO cambiar scripts
-- Mensajes masivos (PPV)
-- Bienvenida estándar
-- Pricing oficial (nunca ofrecer descuentos sin aprobación)');
-
--- MÓDULO 6: Ballenas y High Ticket
-INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
-('a6666666-6666-6666-6666-666666666666', 'Identificación y manejo de Whales', 'video', 0, 'https://www.loom.com/embed/placeholder-video-8');
-
+-- Módulo 1.3 — Glosario del Chatter (1 lección)
 INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
-('a6666666-6666-6666-6666-666666666666', 'Playbook de Monetización Avanzada', 'text', 1,
-'# Monetización Avanzada: Whales y High Ticket
+('b1300000-0000-0000-0000-000000000013', '🔤 Vocabulario y Glosario', 'text', 0,
+'# 🔤 Vocabulario y Glosario del Chatter
 
-## ¿Qué es una Whale (Ballena)?
-Fan que gasta +$500/mes. Representan el 80% de los ingresos.
-
-## Cómo identificar Whales
-- Gasto histórico alto
-- Compra customs frecuentemente
-- Responde rápido y siempre está online
-- Pide atención exclusiva
-
-## Estrategias para Whales
-
-### 1. Atención Personalizada
-- Responder SIEMPRE rápido
-- Usar su nombre
-- Recordar sus preferencias
-
-### 2. Productos High Ticket
-- **Customs premium**: $200-$500 (videos largos, fetiches específicos)
-- **Videollamadas (VC)**: $100-$300 por 10-20 min
-- **Panties usados**: $150-$300 (incluye envío)
-- **GFE (Girlfriend Experience)**: $500-$1000/semana (atención 24/7)
-
-### 3. Listas VIP
-- Crear lista exclusiva de Whales
-- Enviar contenido premium antes que al resto
-- Ofrecer descuentos "exclusivos" (aprobados por supervisor)
-
-### 4. Retention
-- Nunca dejar a una Whale en visto
-- Enviar mensajes proactivos ("thinking of you")
-- Celebrar hitos (cumpleaños, aniversario de suscripción)
-
-**Una Whale bien atendida puede generar $2000-$5000/mes.**');
-
--- MÓDULO 7: Incentivos
-INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
-('a7777777-7777-7777-7777-777777777777', 'Sistema de Incentivos y Bonos', 'text', 0,
-'# Sistema de Incentivos BraveGirls
-
-## Estructura de Comisiones
-
-### Base
-- 10% de las ventas que generes
-
-### Bonos por Desempeño
-- **Ventas >$5000/mes**: +2% (total 12%)
-- **Ventas >$10000/mes**: +3% (total 13%)
-- **Ventas >$15000/mes**: +5% (total 15%)
-
-## Bonos Especiales
-- **Top Chatter del Mes**: $300 extra
-- **Mejor Whale Hunter**: $200 extra (quien cierre más customs >$200)
-- **Perfect Attendance**: $100 extra (0 faltas en el mes)
-
-## Penalizaciones
-- Falta sin aviso: -$50
-- Incumplimiento de SOP: advertencia escrita
-- 3 advertencias = suspensión
-
-## Pagos
-- Quincenales (día 15 y último día del mes)
-- Vía transferencia bancaria
-- Reportes de ventas disponibles 24/7 en el sistema
-
-**Tu esfuerzo se refleja directamente en tu salario. ¡Entre más vendas, más ganas!**');
-
-INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
-('a7777777-7777-7777-7777-777777777777', 'Cómo maximizar tus incentivos', 'video', 1, 'https://www.loom.com/embed/placeholder-video-9');
+| Término | Significado |
+|---------|-------------|
+| **PPV** | Pay Per View — Contenido bloqueado que el fan paga para ver |
+| **Custom** | Contenido hecho a medida según pedido del fan |
+| **Script** | Guión de sexting interactivo |
+| **Bóveda/Vault** | Almacén de contenido en OnlyFans |
+| **Tip** | Pago voluntario del fan |
+| **DM** | Mensaje directo/privado |
+| **Masivo** | Mensaje enviado a muchos fans a la vez |
+| **ARPPU** | Ingreso promedio por usuario que paga |
+| **Conversion Rate** | % de fans que compran |
+| **Free Trial** | Suscripción gratuita temporal |
+| **Chargeback** | Fan pide reversión de pago a su banco |
+| **Upselling** | Ofrecer producto adicional/superior |
+| **Sexting** | Conversación sexual por texto (se cobra) |
+| **Lista VIP** | Segmento de fans de alto valor |
+| **Reactivación** | Contactar fans inactivos |');
 
 -- ===================================================================
--- QUIZZES (configuración inicial sin preguntas)
+-- LECCIONES — ETAPA 2 (16 lecciones: 13 video + 3 texto)
+-- ===================================================================
+
+-- Módulo 2.1 — OnlyFans (5 video + 1 texto)
+INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
+('b2100000-0000-0000-0000-000000000021', '🌐 ¿Qué es OnlyFans?', 'video', 0, 'https://www.loom.com/embed/placeholder-modulo21-leccion01'),
+('b2100000-0000-0000-0000-000000000021', '💬 El Chat de OnlyFans', 'video', 1, 'https://www.loom.com/embed/placeholder-modulo21-leccion02'),
+('b2100000-0000-0000-0000-000000000021', '🗄️ La Bóveda (Vault)', 'video', 2, 'https://www.loom.com/embed/placeholder-modulo21-leccion03'),
+('b2100000-0000-0000-0000-000000000021', '📊 Estadísticas', 'video', 3, 'https://www.loom.com/embed/placeholder-modulo21-leccion04'),
+('b2100000-0000-0000-0000-000000000021', '📤 Mensajes Masivos', 'video', 4, 'https://www.loom.com/embed/placeholder-modulo21-leccion05');
+
+INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
+('b2100000-0000-0000-0000-000000000021', '💳 Pagos y Restricciones de OF', 'text', 5,
+'# 💳 Pagos y Restricciones de OnlyFans
+
+- OF retiene el **20%** de cada transacción
+- El cliente paga un cargo adicional por procesamiento
+- Si no puede pagar → dividir en 2-3 cuotas (no bajar precio)
+- Contenido y términos prohibidos por TOS pueden causar suspensión de cuenta');
+
+-- Módulo 2.2 — OnlyMonster (4 video + 1 texto)
+INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
+('b2200000-0000-0000-0000-000000000022', '🖥️ ¿Qué es OnlyMonster?', 'video', 0, 'https://www.loom.com/embed/placeholder-modulo22-leccion01'),
+('b2200000-0000-0000-0000-000000000022', '💬 El Chat en OnlyMonster', 'video', 1, 'https://www.loom.com/embed/placeholder-modulo22-leccion02'),
+('b2200000-0000-0000-0000-000000000022', '👤 Información del Cliente', 'video', 2, 'https://www.loom.com/embed/placeholder-modulo22-leccion03'),
+('b2200000-0000-0000-0000-000000000022', '📝 Notas Obligatorias', 'video', 3, 'https://www.loom.com/embed/placeholder-modulo22-leccion04');
+
+INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
+('b2200000-0000-0000-0000-000000000022', '🤖 Mensajes Automáticos', 'text', 4,
+'# 🤖 Mensajes Automáticos
+
+- Están programados por la agencia — NO TOCARLOS
+- Si un fan responde a un auto-message → seguir la conversación natural
+- Nunca decir que fue un mensaje automático
+- Aprovechar la respuesta para iniciar una venta');
+
+-- Módulo 2.3 — Clasificación de Fans (4 video + 1 texto)
+INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
+('b2300000-0000-0000-0000-000000000023', '🎭 Tipos de Fans en OnlyFans', 'video', 0, 'https://www.loom.com/embed/placeholder-modulo23-leccion01'),
+('b2300000-0000-0000-0000-000000000023', '🔍 Cómo Detectar cada Tipo de Fan', 'video', 1, 'https://www.loom.com/embed/placeholder-modulo23-leccion02'),
+('b2300000-0000-0000-0000-000000000023', '📂 Sistema de Listas de la Agencia', 'video', 2, 'https://www.loom.com/embed/placeholder-modulo23-leccion03'),
+('b2300000-0000-0000-0000-000000000023', '📋 Cómo Clasificar un Fan Paso a Paso', 'video', 3, 'https://www.loom.com/embed/placeholder-modulo23-leccion04');
+
+INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
+('b2300000-0000-0000-0000-000000000023', '🧠 Psicología Básica del Fan', 'text', 4,
+'# 🧠 Psicología Básica del Fan
+
+¿Por qué los fans gastan dinero en OnlyFans?
+1. **Soledad** — buscan conexión humana
+2. **Fantasía** — vivir experiencias que no pueden tener
+3. **Conexión emocional** — sentir relación especial con la modelo
+4. **Exclusividad** — recibir algo que otros no tienen
+5. **Necesidad de atención** — que alguien les hable y les haga sentir importantes
+
+> Entender la motivación = vender mejor sin ser agresivo.');
+
+-- ===================================================================
+-- LECCIONES — ETAPA 3 (15 lecciones: 11 video + 4 texto)
+-- ===================================================================
+
+-- Módulo 3.1 — Técnicas de Venta (9 video)
+INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
+('b3100000-0000-0000-0000-000000000031', '📹 Cómo Vender una Videollamada', 'video', 0, 'https://www.loom.com/embed/placeholder-modulo31-leccion01'),
+('b3100000-0000-0000-0000-000000000031', '🎬 Cómo Vender un Custom', 'video', 1, 'https://www.loom.com/embed/placeholder-modulo31-leccion02'),
+('b3100000-0000-0000-0000-000000000031', '📝 Cómo Vender un Script', 'video', 2, 'https://www.loom.com/embed/placeholder-modulo31-leccion03'),
+('b3100000-0000-0000-0000-000000000031', '🗃️ Cómo Vender un Video de Bóveda como Custom', 'video', 3, 'https://www.loom.com/embed/placeholder-modulo31-leccion04'),
+('b3100000-0000-0000-0000-000000000031', '⬆️ Cómo Ofrecer Extras y Upselling', 'video', 4, 'https://www.loom.com/embed/placeholder-modulo31-leccion05'),
+('b3100000-0000-0000-0000-000000000031', '💸 Manejo de Tips', 'video', 5, 'https://www.loom.com/embed/placeholder-modulo31-leccion06'),
+('b3100000-0000-0000-0000-000000000031', '🛍️ Otras Ventas Especiales', 'video', 6, 'https://www.loom.com/embed/placeholder-modulo31-leccion07'),
+('b3100000-0000-0000-0000-000000000031', '💎 Fidelización de un Fan', 'video', 7, 'https://www.loom.com/embed/placeholder-modulo31-leccion08'),
+('b3100000-0000-0000-0000-000000000031', '💬 Cómo Iniciar Conversación con un Fan Nuevo', 'video', 8, 'https://www.loom.com/embed/placeholder-modulo31-leccion09');
+
+-- Módulo 3.2 — Situaciones Reales y Protocolo (2 video + 1 texto + 1 video)
+INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
+('b3200000-0000-0000-0000-000000000032', '😤 Manejo de Fans Difíciles', 'video', 0, 'https://www.loom.com/embed/placeholder-modulo32-leccion01'),
+('b3200000-0000-0000-0000-000000000032', '⚠️ Errores Comunes de Chatters Nuevos', 'video', 1, 'https://www.loom.com/embed/placeholder-modulo32-leccion02');
+
+INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
+('b3200000-0000-0000-0000-000000000032', '🆘 Protocolo "No Sé Qué Hacer"', 'text', 2,
+'# 🆘 Protocolo "No Sé Qué Hacer"
+
+**Regla #1:** Si no sabés → preguntarle al supervisor ANTES de responder.
+
+- Nunca inventar respuestas
+- Nunca prometer algo sin confirmar
+- Si la plataforma se cae → avisar al supervisor INMEDIATAMENTE');
+
+INSERT INTO lms_lessons (module_id, title, type, order_index, loom_url) VALUES
+('b3200000-0000-0000-0000-000000000032', '🔄 Flujo Completo de una Conversación de Venta', 'video', 3, 'https://www.loom.com/embed/placeholder-modulo32-leccion04');
+
+-- Módulo 3.3 — Métricas y Evaluación (2 texto)
+INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
+('b3300000-0000-0000-0000-000000000033', '📈 Qué se te Va a Medir', 'text', 0,
+'# 📈 Qué se te Va a Medir
+
+- Predisposición y compromiso
+- Proactividad
+- Capacidad resolutiva
+- **Tiempo de respuesta**: 4 min → 2-3 min
+- Cantidad de respuestas
+- Conversión (% fans que compran)
+- Fidelización
+- Calidad de trato');
+
+INSERT INTO lms_lessons (module_id, title, type, order_index, text_content) VALUES
+('b3300000-0000-0000-0000-000000000033', '🎭 Perfil de Modelo', 'text', 1,
+'# 🎭 Perfil de Modelo
+
+- Cada modelo tiene su perfil de personalidad en **Discord**
+- Es **OBLIGATORIO** estudiarlo antes de chatear
+- Precios iguales para todas las modelos
+- Incluye: personalidad, estilo, contenido, límites, datos ficticios');
+
+-- ===================================================================
+-- QUIZZES (9, sin preguntas — agregar desde admin panel)
 -- ===================================================================
 INSERT INTO lms_quizzes (module_id, passing_score, max_attempts, cooldown_minutes) VALUES
-('a0000000-0000-0000-0000-000000000000', 80, 3, 60),
-('a1111111-1111-1111-1111-111111111111', 80, 3, 60),
-('a2222222-2222-2222-2222-222222222222', 80, 3, 60),
-('a3333333-3333-3333-3333-333333333333', 80, 3, 60),
-('a4444444-4444-4444-4444-444444444444', 80, 3, 60),
-('a5555555-5555-5555-5555-555555555555', 80, 3, 60),
-('a6666666-6666-6666-6666-666666666666', 80, 3, 60),
-('a7777777-7777-7777-7777-777777777777', 80, 3, 60);
+('b1100000-0000-0000-0000-000000000011', 80, 3, 1),
+('b1200000-0000-0000-0000-000000000012', 80, 3, 1),
+('b1300000-0000-0000-0000-000000000013', 80, 3, 1),
+('b2100000-0000-0000-0000-000000000021', 80, 3, 1),
+('b2200000-0000-0000-0000-000000000022', 80, 3, 1),
+('b2300000-0000-0000-0000-000000000023', 80, 3, 1),
+('b3100000-0000-0000-0000-000000000031', 80, 3, 1),
+('b3200000-0000-0000-0000-000000000032', 80, 3, 1),
+('b3300000-0000-0000-0000-000000000033', 80, 3, 1);
 
 -- ===================================================================
 -- NOTAS
 -- ===================================================================
+-- Curriculum v3: 3 Etapas, 9 Módulos, 39 Lecciones, 9 Quizzes
 -- Los quizzes están creados pero SIN PREGUNTAS.
--- El admin debe agregar las preguntas desde el dashboard.
--- Las URLs de Loom son placeholders que deben ser reemplazadas.
--- El contenido de texto puede ser editado/mejorado desde el admin panel.
+-- El admin debe agregar las preguntas (~43) desde el dashboard.
+-- Las URLs de Loom son placeholders que deben ser reemplazadas con videos reales.
+-- Los [COMPLETAR] en texto deben llenarse con datos reales de la agencia.

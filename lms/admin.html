@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -7,24 +7,27 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Panel de Administración - BraveGirls LMS</title>
-  <link rel="stylesheet" href="/lms/lms-styles.css?v=2.34.0&t=20260121000100">
+  <link rel="stylesheet" href="/lms/lms-styles.css?v=4.0.0&t=20260215120000">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
   <header class="lms-header">
-    <div class="container-fluid">
-      <div class="lms-logo">
-        <i class="fas fa-graduation-cap"></i>
-        BraveGirls LMS
-      </div>
+    <div class="container-fluid container-fluid-pad">
       <nav class="lms-nav">
+        <div class="lms-logo">
+          <i class="fas fa-graduation-cap"></i>
+          BraveGirls LMS
+          <span class="badge badge-info" style="font-size: 0.65rem; padding: 3px 8px; margin-left: 4px;">Admin</span>
+        </div>
         <div class="user-info">
-          <i class="fas fa-user-shield"></i>
+          <a href="/lms/admin-analytics.html" class="btn btn-sm btn-outline">
+            <i class="fas fa-chart-line"></i> Analytics
+          </a>
+          <i class="fas fa-user-shield" style="color: var(--primary);"></i>
           <span id="userName"></span>
           <button class="btn btn-sm btn-outline" id="logoutBtn">
-            <i class="fas fa-sign-out-alt"></i>
-            Salir
+            <i class="fas fa-sign-out-alt"></i> Salir
           </button>
         </div>
       </nav>
@@ -251,42 +254,42 @@
               <!-- Metrics Grid - Unified Component -->
               <div class="analytics-metrics">
                 <div class="stat-card stat-card--analytics">
-                  <div class="stat-icon" style="background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); color: white;">
+                  <div class="stat-icon" style="background: var(--primary); color: white;">
                     <i class="fas fa-users"></i>
                   </div>
                   <div class="stat-value" id="metricTotalStudents">-</div>
                   <div class="stat-label">Total Estudiantes</div>
                 </div>
                 <div class="stat-card stat-card--analytics">
-                  <div class="stat-icon" style="background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: white;">
+                  <div class="stat-icon" style="background: var(--success); color: white;">
                     <i class="fas fa-user-check"></i>
                   </div>
                   <div class="stat-value" id="metricActiveStudents">-</div>
                   <div class="stat-label">Activos (7 días)</div>
                 </div>
                 <div class="stat-card stat-card--analytics">
-                  <div class="stat-icon" style="background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white;">
+                  <div class="stat-icon" style="background: var(--info); color: white;">
                     <i class="fas fa-graduation-cap"></i>
                   </div>
                   <div class="stat-value" id="metricCompletionRate">-</div>
                   <div class="stat-label">Completaron</div>
                 </div>
                 <div class="stat-card stat-card--analytics">
-                  <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                  <div class="stat-icon" style="background: var(--success); color: white;">
                     <i class="fas fa-star"></i>
                   </div>
                   <div class="stat-value" id="metricAvgScore">-</div>
                   <div class="stat-label">Score Promedio</div>
                 </div>
                 <div class="stat-card stat-card--analytics">
-                  <div class="stat-icon" style="background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: white;">
+                  <div class="stat-icon" style="background: var(--success); color: white;">
                     <i class="fas fa-check-circle"></i>
                   </div>
                   <div class="stat-value" id="metricPassRate">-</div>
                   <div class="stat-label">Tasa Aprobación</div>
                 </div>
                 <div class="stat-card stat-card--analytics">
-                  <div class="stat-icon" style="background: linear-gradient(135deg, #f87171 0%, #ef4444 100%); color: white;">
+                  <div class="stat-icon" style="background: var(--error); color: white;">
                     <i class="fas fa-user-times"></i>
                   </div>
                   <div class="stat-value" id="metricDropoutRate">-</div>
@@ -297,7 +300,7 @@
               <!-- Module Stats Table -->
               <div class="card" style="margin-top: 24px;">
                 <h3><i class="fas fa-table"></i> Estadísticas por Módulo</h3>
-                <table class="data-table" style="width: 100%;">
+                <table style="width: 100%;">
                   <thead>
                     <tr>
                       <th>Módulo</th>
@@ -405,11 +408,9 @@
         }
         const data = await response.json();
         currentUser = data.user;
-        console.log('[Admin] User authenticated:', currentUser.email, currentUser.role);
         document.getElementById('userName').textContent = currentUser.name + ' (' + currentUser.role + ')';
         
         if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
-          console.log('[Admin] User not authorized, redirecting to campus');
           window.location.href = '/lms/campus.html';
         }
       } catch (error) {
@@ -841,8 +842,29 @@
               
               <div id="textFields" class="${!isEdit || lesson.type === 'video' ? 'hidden' : ''}">
                 <div class="form-group">
-                  <label>Contenido de Texto</label>
-                  <textarea id="lsText" class="form-input" rows="6">${isEdit && lesson.text_content ? lesson.text_content : ''}</textarea>
+                  <label>Contenido de Texto <span style="font-weight:400; color:#6b7280; font-size:12px;">(soporta formato Markdown)</span></label>
+                  <div class="md-toolbar" style="display:flex; gap:4px; margin-bottom:6px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-sm btn-outline" onclick="mdInsert('# ', '')" title="Título grande" style="padding:4px 8px; font-size:12px;"><b>H1</b></button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="mdInsert('## ', '')" title="Subtítulo" style="padding:4px 8px; font-size:12px;"><b>H2</b></button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="mdInsert('### ', '')" title="Sección" style="padding:4px 8px; font-size:12px;"><b>H3</b></button>
+                    <span style="border-left:1px solid #d1d5db; margin:0 4px;"></span>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="mdWrap('**', '**')" title="Negrita" style="padding:4px 8px; font-size:12px;"><b>B</b></button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="mdWrap('*', '*')" title="Cursiva" style="padding:4px 8px; font-size:12px;"><i>I</i></button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="mdWrap('~~', '~~')" title="Tachado" style="padding:4px 8px; font-size:12px;"><del>S</del></button>
+                    <span style="border-left:1px solid #d1d5db; margin:0 4px;"></span>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="mdInsert('- ', '')" title="Lista" style="padding:4px 8px; font-size:12px;">• Lista</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="mdInsert('1. ', '')" title="Lista numerada" style="padding:4px 8px; font-size:12px;">1. Lista</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="mdInsert('> ', '')" title="Cita" style="padding:4px 8px; font-size:12px;">❝ Cita</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="mdInsert('---', '')" title="Línea separadora" style="padding:4px 8px; font-size:12px;">― Línea</button>
+                    <span style="border-left:1px solid #d1d5db; margin:0 4px;"></span>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="mdInsert('| Columna 1 | Columna 2 |\\n|---|---|\\n| dato | dato |', '')" title="Tabla" style="padding:4px 8px; font-size:12px;">⊞ Tabla</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="toggleMdPreview()" title="Vista previa" style="padding:4px 8px; font-size:12px; margin-left:auto; background:#f0fdf4; border-color:#86efac;">👁️ Preview</button>
+                  </div>
+                  <textarea id="lsText" class="form-input" rows="15" style="font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; line-height: 1.5; resize: vertical;">${isEdit && lesson.text_content ? lesson.text_content : ''}</textarea>
+                  <div id="mdPreview" class="hidden" style="border:1px solid #d1d5db; border-radius:8px; padding:20px; margin-top:8px; background:white; max-height:400px; overflow-y:auto; font-size:14px; line-height:1.7; color:#334155;"></div>
+                  <small style="color:#6b7280; font-size:11px; display:block; margin-top:4px;">
+                    💡 Formato: **negrita**, *cursiva*, # Título, ## Subtítulo, - lista, 1. lista numerada, > cita, --- línea, | tabla |
+                  </small>
                 </div>
               </div>
 
@@ -925,6 +947,101 @@
          document.getElementById('textFields').classList.remove('hidden');
       }
     };
+
+    // Markdown toolbar helpers
+    window.mdInsert = function(before, after) {
+      const ta = document.getElementById('lsText');
+      if (!ta) return;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const text = ta.value;
+      const selected = text.substring(start, end);
+      const newText = text.substring(0, start) + before + selected + after + text.substring(end);
+      ta.value = newText;
+      ta.focus();
+      ta.selectionStart = start + before.length;
+      ta.selectionEnd = start + before.length + selected.length;
+    };
+
+    window.mdWrap = function(before, after) {
+      const ta = document.getElementById('lsText');
+      if (!ta) return;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const text = ta.value;
+      const selected = text.substring(start, end) || 'texto';
+      const newText = text.substring(0, start) + before + selected + after + text.substring(end);
+      ta.value = newText;
+      ta.focus();
+      ta.selectionStart = start + before.length;
+      ta.selectionEnd = start + before.length + selected.length;
+    };
+
+    window.toggleMdPreview = function() {
+      const preview = document.getElementById('mdPreview');
+      const ta = document.getElementById('lsText');
+      if (!preview || !ta) return;
+      if (preview.classList.contains('hidden')) {
+        preview.classList.remove('hidden');
+        preview.innerHTML = adminParseMarkdown(ta.value);
+      } else {
+        preview.classList.add('hidden');
+      }
+    };
+
+    // Lightweight markdown parser for admin preview
+    function adminParseMarkdown(text) {
+      if (!text) return '<p style="color:#9ca3af;"><em>Sin contenido para previsualizar</em></p>';
+      let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const lines = html.split('\n');
+      let result = [];
+      let inUl = false, inOl = false;
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        // Table
+        if (line.trim().match(/^\|(.+)\|$/)) {
+          let tblRows = [line.trim()];
+          while (i + 1 < lines.length && lines[i+1].trim().match(/^\|(.+)\|$/)) {
+            i++; tblRows.push(lines[i].trim());
+          }
+          let tbl = '<table style="width:100%;border-collapse:collapse;margin:10px 0;font-size:13px;"><thead><tr>';
+          const hdr = tblRows[0].split('|').filter(c => c.trim());
+          hdr.forEach(c => { tbl += `<th style="background:#b45309;color:white;padding:6px 10px;text-align:left;">${inlineMd(c.trim())}</th>`; });
+          tbl += '</tr></thead><tbody>';
+          for (let r = 1; r < tblRows.length; r++) {
+            if (tblRows[r].match(/^\|[\s\-:]+\|$/)) continue;
+            tbl += '<tr>';
+            tblRows[r].split('|').filter(c => c.trim()).forEach(c => { tbl += `<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${inlineMd(c.trim())}</td>`; });
+            tbl += '</tr>';
+          }
+          tbl += '</tbody></table>';
+          result.push(tbl);
+          continue;
+        }
+        if (inUl && !line.match(/^[\s]*[-*•]\s/)) { result.push('</ul>'); inUl = false; }
+        if (inOl && !line.match(/^[\s]*\d+[.)]\s/)) { result.push('</ol>'); inOl = false; }
+        if (line.match(/^####\s+(.+)/)) { result.push(`<h4 style="font-size:14px;font-weight:600;color:#475569;margin:12px 0 6px;text-transform:uppercase;">${inlineMd(line.replace(/^####\s+/, ''))}</h4>`); continue; }
+        if (line.match(/^###\s+(.+)/)) { result.push(`<h3 style="font-size:16px;font-weight:700;color:#1e293b;margin:14px 0 8px;">${inlineMd(line.replace(/^###\s+/, ''))}</h3>`); continue; }
+        if (line.match(/^##\s+(.+)/)) { result.push(`<h2 style="font-size:18px;font-weight:700;color:#1e293b;margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">${inlineMd(line.replace(/^##\s+/, ''))}</h2>`); continue; }
+        if (line.match(/^#\s+(.+)/)) { result.push(`<h1 style="font-size:22px;font-weight:800;color:#1e293b;margin:20px 0 10px;padding-bottom:8px;border-bottom:2px solid #e5e7eb;">${inlineMd(line.replace(/^#\s+/, ''))}</h1>`); continue; }
+        if (line.match(/^[\s]*([-*_]){3,}[\s]*$/)) { result.push('<hr style="border:none;border-top:2px solid #e5e7eb;margin:16px 0;">'); continue; }
+        if (line.match(/^&gt;\s?(.*)/)) { result.push(`<blockquote style="border-left:3px solid #b45309;background:#fef3c7;padding:8px 14px;margin:10px 0;border-radius:0 6px 6px 0;font-style:italic;color:#78350f;">${inlineMd(line.replace(/^&gt;\s?/, ''))}</blockquote>`); continue; }
+        if (line.match(/^[\s]*[-*•]\s+(.+)/)) { if (!inUl) { result.push('<ul style="margin:8px 0;padding-left:20px;">'); inUl = true; } result.push(`<li style="margin:4px 0;">${inlineMd(line.replace(/^[\s]*[-*•]\s+/, ''))}</li>`); continue; }
+        if (line.match(/^[\s]*\d+[.)]\s+(.+)/)) { if (!inOl) { result.push('<ol style="margin:8px 0;padding-left:20px;">'); inOl = true; } result.push(`<li style="margin:4px 0;">${inlineMd(line.replace(/^[\s]*\d+[.)]\s+/, ''))}</li>`); continue; }
+        if (line.trim() === '') { result.push('<br>'); continue; }
+        result.push(`<p style="margin:0 0 6px;">${inlineMd(line)}</p>`);
+      }
+      if (inUl) result.push('</ul>');
+      if (inOl) result.push('</ol>');
+      return result.join('\n');
+    }
+    function inlineMd(t) {
+      return t.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+              .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+              .replace(/\*(.+?)\*/g, '<em>$1</em>')
+              .replace(/`(.+?)`/g, '<code style="background:#f1f5f9;color:#be185d;padding:1px 4px;border-radius:3px;font-size:12px;">$1</code>')
+              .replace(/~~(.+?)~~/g, '<del>$1</del>');
+    }
 
     // Generic helpers
     function appendModal(html) {
@@ -1074,9 +1191,14 @@
                   <td><small>${question.options.length} opciones</small></td>
                   <td><strong>${question.options[question.correct_option_index]}</strong></td>
                   <td>
-                    <button class="btn btn-sm btn-danger" onclick="deleteQuestion('${question.id}', '${moduleId}')">
-                      <i class="fas fa-trash"></i> Eliminar
-                    </button>
+                    <div style="display:flex;gap:6px;">
+                      <button class="btn btn-sm btn-outline" onclick='editQuestion(${JSON.stringify(question).replace(/'/g, "&#39;")})'>
+                        <i class="fas fa-edit"></i> Editar
+                      </button>
+                      <button class="btn btn-sm btn-danger" onclick="deleteQuestion('${question.id}', '${moduleId}')">
+                        <i class="fas fa-trash"></i> Eliminar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               `).join('')}
@@ -1108,6 +1230,88 @@
     
     // Global variable to keep track of options
     let currentOptions = [];
+    let editingQuestionId = null;
+
+    function editQuestion(question) {
+      editingQuestionId = question.id;
+      currentOptions = [...question.options];
+
+      const modalHtml = `
+        <div id="questionModal" class="modal-overlay" onclick="if(event.target===this) closeQuestionModal()">
+          <div class="modal-content" onclick="event.stopPropagation()">
+            <h2 class="mb-20">Editar Pregunta</h2>
+            <form id="editQuestionForm">
+              <div class="form-group">
+                <label>Pregunta</label>
+                <textarea id="qPrompt" class="form-input" rows="3" required>${question.prompt}</textarea>
+              </div>
+              <div class="form-group">
+                <label>Opciones (Selecciona la correcta)</label>
+                <div id="optionsContainer"></div>
+                <button type="button" id="btnAddOption" class="btn btn-sm btn-outline mt-10" onclick="addOption()">+ Agregar Opci\u00f3n</button>
+              </div>
+              <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn btn-outline" onclick="closeQuestionModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+
+      const modalContainer = document.createElement('div');
+      modalContainer.innerHTML = modalHtml;
+      document.body.appendChild(modalContainer);
+
+      // Set correct option radio
+      updateOptionsUI();
+      // After rendering, check the correct radio
+      const radios = document.querySelectorAll('input[name="correctOption"]');
+      radios.forEach(r => {
+        if (parseInt(r.value) === question.correct_option_index) r.checked = true;
+      });
+
+      document.getElementById('editQuestionForm').addEventListener('submit', handleEditQuestion);
+    }
+
+    async function handleEditQuestion(e) {
+      e.preventDefault();
+      const prompt = document.getElementById('qPrompt').value;
+      const correctOptionIndex = parseInt(document.querySelector('input[name="correctOption"]:checked').value);
+      const finalOptions = currentOptions.filter(o => o.trim() !== '');
+
+      if (finalOptions.length < 2) {
+        alert('Debes escribir al menos 2 opciones');
+        return;
+      }
+
+      try {
+        const response = await fetchWithAuth(`${API_BASE}/admin/questions`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            id: editingQuestionId,
+            prompt,
+            options: finalOptions,
+            correctOptionIndex
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Error al actualizar');
+        }
+
+        closeQuestionModal();
+        showAlert('Pregunta actualizada exitosamente', 'success');
+        const moduleId = document.getElementById('modulesFilterQuestions').value;
+        if (moduleId) loadQuestions(moduleId);
+        editingQuestionId = null;
+      } catch (error) {
+        showAlert('Error al actualizar pregunta: ' + error.message);
+      }
+    }
 
     function showCreateQuestionModal() {
       const moduleId = document.getElementById('modulesFilterQuestions').value;
@@ -1119,8 +1323,8 @@
       currentOptions = ['', '']; // Start with 2 empty options
 
       const modalHtml = `
-        <div id="questionModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
-          <div class="card" style="width: 600px; max-width: 90%; max-height: 90vh; overflow-y: auto;">
+        <div id="questionModal" class="modal-overlay" onclick="if(event.target===this) closeQuestionModal()">
+          <div class="modal-content" onclick="event.stopPropagation()">
             <h2 class="mb-20">Agregar Pregunta</h2>
             <form id="createQuestionForm">
               <input type="hidden" id="qModuleId" value="${moduleId}">
@@ -1282,6 +1486,7 @@
                 <th>Email</th>
                 <th>Progreso General</th>
                 <th>Módulos Completados</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -1296,6 +1501,11 @@
                     <small>${user.overallProgress}%</small>
                   </td>
                   <td>${user.completedModules} / ${user.totalModules}</td>
+                  <td>
+                    <button class="btn btn-xs btn-outline" onclick="showResetQuizModal('${user.userId}', '${user.userName}')">
+                      <i class="fas fa-redo"></i> Reset Quiz
+                    </button>
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
@@ -1303,6 +1513,64 @@
         `;
       } catch (error) {
         showAlert('Error al cargar progreso');
+      }
+    }
+
+    async function showResetQuizModal(userId, userName) {
+      try {
+        // Cargar módulos para mostrar selector
+        const response = await fetchWithAuth(`${API_BASE}/admin/modules`, { credentials: 'include' });
+        const data = await response.json();
+
+        const modalHtml = `
+          <div id="resetQuizModal" class="modal-overlay" onclick="if(event.target===this) this.parentElement.remove()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+              <h2 class="mb-20"><i class="fas fa-redo"></i> Resetear Quiz - ${userName}</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 20px;">Selecciona el módulo cuyo quiz deseas resetear. Se eliminarán todos los intentos del usuario para ese quiz.</p>
+              <div class="form-group">
+                <label>Módulo</label>
+                <select id="resetQuizModuleSelect" class="form-input">
+                  <option value="">Selecciona un módulo...</option>
+                  ${data.modules.map(m => `<option value="${m.id}">${m.title}</option>`).join('')}
+                </select>
+              </div>
+              <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button class="btn btn-outline" onclick="document.getElementById('resetQuizModal').parentElement.remove()">Cancelar</button>
+                <button class="btn btn-warning" onclick="confirmResetQuiz('${userId}')"><i class="fas fa-redo"></i> Resetear Intentos</button>
+              </div>
+            </div>
+          </div>
+        `;
+        const container = document.createElement('div');
+        container.innerHTML = modalHtml;
+        document.body.appendChild(container);
+      } catch (error) {
+        showAlert('Error al cargar módulos');
+      }
+    }
+
+    async function confirmResetQuiz(userId) {
+      const moduleId = document.getElementById('resetQuizModuleSelect').value;
+      if (!moduleId) {
+        alert('Selecciona un módulo primero');
+        return;
+      }
+      if (!confirm('¿Estás seguro? Se eliminarán todos los intentos del quiz para este usuario en este módulo.')) return;
+
+      try {
+        const response = await fetchWithAuth(`${API_BASE}/admin/quiz-attempts?userId=${userId}&moduleId=${moduleId}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Error al resetear');
+
+        const modal = document.getElementById('resetQuizModal');
+        if (modal) modal.parentElement.remove();
+        showAlert(`${data.deletedCount} intento(s) eliminados exitosamente`, 'success');
+        loadProgress();
+      } catch (error) {
+        showAlert('Error al resetear quiz: ' + error.message);
       }
     }
 
@@ -1347,8 +1615,8 @@
       // Aquí mejoraremos la UI para permitir contraseña opcional.
       
       const modalHtml = `
-        <div id="userModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
-          <div class="card" style="width: 400px; max-width: 90%;">
+        <div id="userModal" class="modal-overlay" onclick="if(event.target===this) closeUserModal()">
+          <div class="modal-content" onclick="event.stopPropagation()">
             <h2 class="mb-20">Crear Nuevo Usuario</h2>
             <form id="createUserForm">
               <div class="form-group">
@@ -1679,7 +1947,7 @@
 
         // Renderizar tabla
         const tableHtml = `
-          <table class="data-table">
+          <table>
             <thead>
               <tr>
                 <th>Chatter</th>
@@ -1796,7 +2064,7 @@
                 <!-- Module Scores -->
                 <div style="margin-bottom: var(--space-lg);">
                   <h4 style="margin-bottom: var(--space);">Scores por Módulo</h4>
-                  <table class="data-table">
+                  <table>
                     <thead>
                       <tr>
                         <th>Módulo</th>
@@ -1940,6 +2208,9 @@
     }
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
+      try {
+        await fetchWithAuth(`${API_BASE}/auth/logout`, { method: 'POST' });
+      } catch (e) { /* ignore logout errors */ }
       localStorage.removeItem('lms_session');
       window.location.href = '/lms/login.html';
     });

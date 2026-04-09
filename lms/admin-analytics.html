@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Analytics - BraveGirls LMS Admin</title>
-    <link rel="stylesheet" href="/lms/lms-styles.css?v=2.26.0&t=20260115160000">
+    <link rel="stylesheet" href="/lms/lms-styles.css?v=4.0.0&t=20260215120000">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     /* Layout específico de analytics (NO componentes, solo grid) */
@@ -41,10 +41,10 @@
       font-weight: 600;
       font-size: 13px;
     }
-    .score-excellent { background: #d1fae5; color: #065f46; }
-    .score-good { background: #dbeafe; color: #1e40af; }
-    .score-average { background: #fef3c7; color: #92400e; }
-    .score-poor { background: #fee2e2; color: #991b1b; }
+    .score-excellent { background: var(--success-light); color: #065f46; }
+    .score-good { background: var(--info-light); color: #1e40af; }
+    .score-average { background: var(--warning-light); color: #92400e; }
+    .score-poor { background: var(--error-light); color: #991b1b; }
     .peak-hours {
       display: flex;
       gap: 12px;
@@ -52,7 +52,7 @@
       margin-top: 12px;
     }
     .peak-hour-badge {
-      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+      background: var(--primary);
       color: white;
       padding: 8px 16px;
       border-radius: 8px;
@@ -63,13 +63,22 @@
 </head>
 <body>
   <header class="lms-header">
-    <div class="container">
-      <div class="lms-logo">📊 Analytics - BraveGirls LMS</div>
+    <div class="container-fluid container-fluid-pad">
       <nav class="lms-nav">
-        <a href="/lms/admin.html" class="btn btn-sm btn-outline">← Volver al Admin</a>
+        <div class="lms-logo">
+          <i class="fas fa-graduation-cap"></i>
+          BraveGirls LMS
+          <span class="badge badge-info" style="font-size: 0.65rem; padding: 3px 8px; margin-left: 4px;">Admin</span>
+        </div>
         <div class="user-info">
+          <a href="/lms/admin.html" class="btn btn-sm btn-outline">
+            <i class="fas fa-arrow-left"></i> Volver al Admin
+          </a>
+          <i class="fas fa-user-shield" style="color: var(--primary);"></i>
           <span id="userName">Loading...</span>
-          <button class="btn btn-sm btn-outline" id="logoutBtn">Salir</button>
+          <button class="btn btn-sm btn-outline" id="logoutBtn">
+            <i class="fas fa-sign-out-alt"></i> Salir
+          </button>
         </div>
       </nav>
     </div>
@@ -93,7 +102,7 @@
       <div class="analytics-metrics">
         <!-- Total Students -->
         <div class="stat-card stat-card--analytics">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); color: white;">
+          <div class="stat-icon" style="background: var(--primary); color: white;">
             <i class="fas fa-users"></i>
           </div>
           <div class="stat-value" id="totalStudents">-</div>
@@ -102,7 +111,7 @@
 
         <!-- Active Students -->
         <div class="stat-card stat-card--analytics">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: white;">
+          <div class="stat-icon" style="background: var(--success); color: white;">
             <i class="fas fa-user-check"></i>
           </div>
           <div class="stat-value" id="activeStudents">-</div>
@@ -111,7 +120,7 @@
 
         <!-- Completion Rate -->
         <div class="stat-card stat-card--analytics">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white;">
+          <div class="stat-icon" style="background: var(--info); color: white;">
             <i class="fas fa-graduation-cap"></i>
           </div>
           <div class="stat-value" id="completionRate">-</div>
@@ -120,7 +129,7 @@
 
         <!-- Avg Completion Time -->
         <div class="stat-card stat-card--analytics">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: white;">
+          <div class="stat-icon" style="background: var(--warning); color: white;">
             <i class="fas fa-clock"></i>
           </div>
           <div class="stat-value" id="avgCompletionTime">-</div>
@@ -129,7 +138,7 @@
 
         <!-- Avg Score -->
         <div class="stat-card stat-card--analytics">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+          <div class="stat-icon" style="background: var(--success); color: white;">
             <i class="fas fa-star"></i>
           </div>
           <div class="stat-value" id="avgScore">-</div>
@@ -138,7 +147,7 @@
 
         <!-- Pass Rate -->
         <div class="stat-card stat-card--analytics">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: white;">
+          <div class="stat-icon" style="background: var(--success); color: white;">
             <i class="fas fa-check-circle"></i>
           </div>
           <div class="stat-value" id="passRate">-</div>
@@ -147,7 +156,7 @@
 
         <!-- Dropout Rate -->
         <div class="stat-card stat-card--analytics">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #f87171 0%, #ef4444 100%); color: white;">
+          <div class="stat-icon" style="background: var(--error); color: white;">
             <i class="fas fa-user-times"></i>
           </div>
           <div class="stat-value" id="dropoutRate">-</div>
@@ -211,6 +220,19 @@
     const API_BASE = 'https://bravegirlsagency-api.vercel.app/api/lms';
     let currentUser = null;
 
+    // Helper function to make authenticated fetch requests
+    async function fetchWithAuth(url, options = {}) {
+      const sessionToken = localStorage.getItem('lms_session');
+      if (!sessionToken) {
+        window.location.href = '/lms/login.html';
+        throw new Error('No session token');
+      }
+      if (!options.headers) options.headers = {};
+      options.headers['Authorization'] = `Bearer ${sessionToken}`;
+      options.credentials = 'include';
+      return fetch(url, options);
+    }
+
     function showAlert(message, type = 'error') {
       const alertDiv = document.getElementById('alert');
       alertDiv.className = `alert alert-${type}`;
@@ -221,7 +243,7 @@
 
     async function checkAuth() {
       try {
-        const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+        const response = await fetchWithAuth(`${API_BASE}/auth/me`);
         if (!response.ok) throw new Error('Not authenticated');
         
         const data = await response.json();
@@ -242,7 +264,7 @@
 
     async function loadAnalytics() {
       try {
-        const response = await fetch(`${API_BASE}/admin/analytics`, { credentials: 'include' });
+        const response = await fetchWithAuth(`${API_BASE}/admin/analytics`);
         
         if (!response.ok) {
           const errorData = await response.json();
@@ -314,7 +336,10 @@
     }
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
+      try {
+        await fetchWithAuth(`${API_BASE}/auth/logout`, { method: 'POST' });
+      } catch (e) { /* ignore logout errors */ }
+      localStorage.removeItem('lms_session');
       window.location.href = '/lms/login.html';
     });
 

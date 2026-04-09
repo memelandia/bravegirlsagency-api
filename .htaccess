@@ -1,9 +1,43 @@
-# Desactivar cache para HTML y JS
+Options -Indexes
+DirectoryIndex index.html index.php
+
+# Canonical SEO redirects (force https + non-www)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Redirect www to non-www
+    RewriteCond %{HTTP_HOST} ^www\.bravegirlsagency\.com$ [NC]
+    RewriteRule ^(.*)$ https://bravegirlsagency.com/$1 [R=301,L]
+
+    # Force HTTPS on canonical host
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP_HOST} ^bravegirlsagency\.com$ [NC]
+    RewriteRule ^(.*)$ https://bravegirlsagency.com/$1 [R=301,L]
+
+    # Servir index.html en subcarpetas (landings por país)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_URI}/index.html -f
+    RewriteRule ^(.+?)/?$ /$1/index.html [L]
+</IfModule>
+
+# Cache por tipo de archivo
 <IfModule mod_headers.c>
-    <FilesMatch "\.(html|htm|js)$">
+    # HTML: sin cache (siempre descarga la ultima version)
+    <FilesMatch "\.(html|htm)$">
         Header set Cache-Control "no-cache, no-store, must-revalidate"
         Header set Pragma "no-cache"
         Header set Expires "0"
+    </FilesMatch>
+
+    # CSS y JS: cache de 7 dias
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "public, max-age=604800, immutable"
+    </FilesMatch>
+
+    # Imagenes: cache de 30 dias
+    <FilesMatch "\.(jpg|jpeg|png|webp|svg|ico)$">
+        Header set Cache-Control "public, max-age=2592000, immutable"
     </FilesMatch>
 </IfModule>
 
@@ -11,5 +45,11 @@
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType text/html "access plus 0 seconds"
-    ExpiresByType application/javascript "access plus 0 seconds"
+    ExpiresByType application/javascript "access plus 7 days"
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+    ExpiresByType image/x-icon "access plus 30 days"
 </IfModule>

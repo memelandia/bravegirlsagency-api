@@ -1,4 +1,6 @@
-// api/ai/generate-messages.js - OpenAI Integration
+// api/ai/generate-messages.js - Claude AI Integration (Anthropic)
+// Upgraded: Feb 2026 - Switch from OpenAI to Claude for better creative writing
+// Fallback to OpenAI if ANTHROPIC_API_KEY not set
 
 export default async function handler(req, res) {
     // CORS Headers
@@ -21,85 +23,59 @@ export default async function handler(req, res) {
         
         // Validar datos requeridos
         if (!modelName || !messageType) {
-            return res.status(400).json({ error: 'Faltan datos requeridos' });
+            return res.status(400).json({ error: 'Faltan datos requeridos: modelName y messageType' });
         }
         
-        // Obtener API Key de OpenAI desde variables de entorno de Vercel
+        // API Keys - Claude preferred, OpenAI as fallback
+        const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
         const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
         
-        if (!OPENAI_API_KEY) {
-            return res.status(500).json({ error: 'OpenAI API Key no configurada. Agrégala en Vercel Environment Variables' });
+        if (!ANTHROPIC_API_KEY && !OPENAI_API_KEY) {
+            return res.status(500).json({ 
+                error: 'No hay API Key configurada. Agrega ANTHROPIC_API_KEY (preferido) o OPENAI_API_KEY en Vercel Environment Variables' 
+            });
         }
         
-        // Construir el prompt según el tipo de mensaje
+        // Construir prompts avanzados
         const systemPrompt = buildSystemPrompt(modelName, instructions, emojis, phrases);
-        const userPrompt = buildUserPrompt(messageType, context);
+        const userPrompt = buildUserPrompt(messageType, context, timestamp, seed);
         
-        // Agregar variabilidad única por request usando el seed
-        const varietyBoost = seed ? [
-            "Sé completamente original y evita frases cliché.",
-            "Innova en tu manera de preguntar y expresarte.",
-            "Usa un ángulo diferente al habitual.",
-            "Sorprende con tu creatividad y naturalidad.",
-            "Evita copiar patrones que ya hayas usado."
-        ][seed % 5] : "";
+        console.log('🎯 Generando mensajes para:', modelName, '| Tipo:', messageType);
+        console.log('🎲 Seed:', seed, '| Timestamp:', timestamp);
         
-        // Inyectar identidad única del modelo para forzar diferenciación
-        const modelIdentity = `[MODELO:${modelName}]`;
-        const uniqueContext = timestamp ? `${modelIdentity} [${varietyBoost} ID:${timestamp}-${seed || 0}] ` : `${modelIdentity} `;
+        let generatedText;
+        let modelUsed;
+        let tokensUsed;
         
-        console.log('🤖 Llamando a OpenAI...');
-        
-        // Llamar a OpenAI API
-        const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${OPENAI_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini', // Modelo más económico (10x más barato que gpt-4o)
-                messages: [
-                    {
-                        role: 'system',
-                        content: systemPrompt
-                    },
-                    {
-                        role: 'user',
-                        content: uniqueContext + userPrompt  // Agregar contexto único
-                    }
-                ],
-                temperature: 0.92, // Balance creatividad/coherencia
-                max_tokens: 800,
-                top_p: 0.95, // Diversidad en selección de palabras
-                n: 1, // Solo 1 respuesta, pero con 3 mensajes dentro
-                presence_penalty: 0.7, // Penaliza repetición de temas (aumentado)
-                frequency_penalty: 0.6 // Penaliza repetición de palabras (aumentado)
-            })
-        });
-        
-        if (!openaiResponse.ok) {
-            const error = await openaiResponse.json();
-            console.error('❌ Error de OpenAI:', error);
-            throw new Error(error.error?.message || 'Error al llamar a OpenAI');
+        if (ANTHROPIC_API_KEY) {
+            // ═══ CLAUDE (PREFERIDO) ═══
+            const result = await callClaude(ANTHROPIC_API_KEY, systemPrompt, userPrompt);
+            generatedText = result.text;
+            modelUsed = result.model;
+            tokensUsed = result.tokens;
+        } else {
+            // ═══ OPENAI (FALLBACK) ═══
+            const result = await callOpenAI(OPENAI_API_KEY, systemPrompt, userPrompt, timestamp, seed);
+            generatedText = result.text;
+            modelUsed = result.model;
+            tokensUsed = result.tokens;
         }
         
-        const data = await openaiResponse.json();
-        const generatedText = data.choices[0].message.content;
+        // Parsear mensajes
+        const messages = parseMessages(generatedText);
         
-        // Parsear los 3 mensajes (separados por "---")
-        const messages = generatedText
-            .split('---')
-            .map(msg => msg.trim())
-            .filter(msg => msg.length > 0);
+        if (messages.length === 0) {
+            console.error('❌ No se pudieron parsear mensajes del texto:', generatedText.substring(0, 200));
+            throw new Error('No se pudieron parsear los mensajes generados');
+        }
         
-        console.log('✅ Mensajes generados:', messages.length);
+        console.log('✅ Mensajes generados:', messages.length, 'via', modelUsed);
         
         return res.status(200).json({
             success: true,
             messages: messages,
-            model: 'gpt-4o-mini',  // Modelo real utilizado
-            tokens: data.usage.total_tokens
+            model: modelUsed,
+            tokens: tokensUsed
         });
         
     } catch (error) {
@@ -108,6 +84,256 @@ export default async function handler(req, res) {
             error: error.message || 'Error al generar mensajes'
         });
     }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LLAMADAS A APIs DE IA
+// ═══════════════════════════════════════════════════════════════
+
+async function callClaude(apiKey, systemPrompt, userPrompt) {
+    console.log('🤖 Llamando a Claude (Anthropic) con temperature=1.0...');
+    
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 2000,
+            temperature: 1.0,    // ← MÁXIMA CREATIVIDAD para variabilidad
+            system: systemPrompt,
+            messages: [
+                { role: 'user', content: userPrompt }
+            ]
+        })
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Error de Claude:', JSON.stringify(errorData));
+        throw new Error(errorData.error?.message || `Error de Claude: HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    return {
+        text: data.content[0].text,
+        model: 'claude-sonnet-4',
+        tokens: data.usage
+    };
+}
+
+async function callOpenAI(apiKey, systemPrompt, userPrompt, timestamp, seed) {
+    console.log('🤖 Llamando a OpenAI (fallback)...');
+    
+    // Agregar variabilidad única para OpenAI
+    const varietyBoost = seed ? [
+        "Sé completamente original y evita frases cliché.",
+        "Innova en tu manera de preguntar y expresarte.",
+        "Usa un ángulo diferente al habitual.",
+        "Sorprende con tu creatividad y naturalidad.",
+        "Evita copiar patrones que ya hayas usado."
+    ][seed % 5] : "";
+    
+    const modelIdentity = `[MODELO:${('' + (timestamp || '')).slice(-4)}]`;
+    const uniqueContext = timestamp ? `${modelIdentity} [${varietyBoost} ID:${timestamp}-${seed || 0}] ` : '';
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: uniqueContext + userPrompt }
+            ],
+            temperature: 0.95,
+            max_tokens: 1500,
+            top_p: 0.95,
+            n: 1,
+            presence_penalty: 0.7,
+            frequency_penalty: 0.6
+        })
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Error de OpenAI:', JSON.stringify(errorData));
+        throw new Error(errorData.error?.message || `Error de OpenAI: HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    return {
+        text: data.choices[0].message.content,
+        model: 'gpt-4o-mini',
+        tokens: data.usage
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PARSER DE MENSAJES (MEJORADO)
+// ═══════════════════════════════════════════════════════════════
+
+function parseMessages(text) {
+    const cleaned = text.trim();
+    
+    // Intento 1: Separar por "---" (formato principal)
+    let messages = cleaned.split(/\n*---+\n*/).map(m => m.trim()).filter(Boolean);
+    
+    // Intento 2: Si no funcionó, separar por líneas en blanco múltiples
+    if (messages.length < 2) {
+        messages = cleaned.split(/\n\s*\n\s*\n/).map(m => m.trim()).filter(Boolean);
+    }
+    
+    // Intento 3: Separar por numeración (1. 2. 3. o Mensaje 1: etc.)
+    if (messages.length < 2) {
+        messages = cleaned.split(/\n(?=(?:Mensaje\s+)?\d+[\.\:\)]\s)/i).map(m => m.trim()).filter(Boolean);
+    }
+    
+    // Intento 4: Si solo hay un bloque, intentar separar por doble salto de línea
+    if (messages.length < 2) {
+        messages = cleaned.split(/\n\s*\n/).map(m => m.trim()).filter(Boolean);
+    }
+    
+    // Limpiar numeración si existe (ej: "1. ", "Mensaje 1: ")
+    messages = messages.map(msg => 
+        msg.replace(/^(?:Mensaje\s+)?\d+[\.\:\)]\s*/i, '').trim()
+    );
+    
+    // Filtrar mensajes vacíos o muy cortos (residuos de parsing)
+    messages = messages.filter(msg => msg.length > 5);
+    
+    // Tomar hasta 3 mensajes
+    return messages.slice(0, 3);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DIFERENCIADORES POR MODELO (NUEVO)
+// ═══════════════════════════════════════════════════════════════
+
+function getModelDifferentiators(modelName) {
+    const name = (modelName || '').toLowerCase().split('(')[0].trim().split(' ')[0];
+    
+    const differentiators = {
+        'carmen': `
+🎭 TU VIBE ÚNICO (Carmen):
+- Eres ANDALUZA, apasionada, con carácter
+- Usas "corazon", "mi niño", "amor" frecuentemente  
+- Referencias a tu cultura: gaming (LoL), flamenquito, comida española
+- Energía cálida y fogosa, entre dominante y dulce
+- Tu fuerte: hacer sentir al fan como "el único" con cercanía real
+- Mencionas jugar, estudiar, tu vida en Córdoba`,
+
+        'carmencitax': `
+🎭 TU VIBE ÚNICO (Carmen):
+- Eres ANDALUZA, apasionada, con carácter
+- Usas "corazon", "mi niño", "amor" frecuentemente
+- Referencias a tu cultura: gaming (LoL), flamenquito, comida española
+- Energía cálida y fogosa, entre dominante y dulce
+- Tu fuerte: hacer sentir al fan como "el único" con cercanía real
+- Mencionas jugar, estudiar, tu vida en Córdoba`,
+
+        'lucy': `
+🎭 TU VIBE ÚNICO (Lucy):
+- Eres DULCE y agradecida, siempre con emojis
+- Usas "gracias amor", "me alegro que te guste", "hey babe"
+- Energía amigable y accesible con lado travieso
+- USA MUCHOS EMOJIS (es tu marca)
+- Tu fuerte: conversación natural que deriva en venta suave
+- Referencias a vida cotidiana: Barcelona, series, gym
+- Para sumisos: puedes ser más dominante ⛓️`,
+
+        'bella': `
+🎭 TU VIBE ÚNICO (Bella):
+- Eres ELEGANTE, sofisticada, deportista y fogosa
+- Usas emojis con personalidad: 🫶🏼✨🙈😏
+- Expresiones: "ostras", "que chulo", "me mola", "joer"
+- Energía segura pero dulce, yoga/ballet vibes
+- Tu fuerte: hacer que el fan se sienta privilegiado
+- Referencias a ballet, yoga, gym, flexibilidad, arte`,
+
+        'bellarey': `
+🎭 TU VIBE ÚNICO (Bella):
+- Eres ELEGANTE, sofisticada, deportista y fogosa
+- Usas emojis con personalidad: 🫶🏼✨🙈😏
+- Expresiones: "ostras", "que chulo", "me mola", "joer"
+- Energía segura pero dulce, yoga/ballet vibes
+- Tu fuerte: hacer que el fan se sienta privilegiado
+- Referencias a ballet, yoga, gym, flexibilidad, arte`,
+
+        'lexi': `
+🎭 TU VIBE ÚNICO (Lexi):
+- Eres JUGUETONA, dulce, tímida pero coqueta
+- Vibra juvenil y fresca, estudiante universitaria
+- Emojis: 🤭🥰😍🫶🏻🩷😈
+- Expresiones: "bb", "me encantas"
+- Tu fuerte: crear conexión emocional + innocencia que se convierte en picardía
+- Le gustan los mayores, es estudiosa, tiene un perro (Rocco)`,
+
+        'lexiflix': `
+🎭 TU VIBE ÚNICO (Lexi):
+- Eres JUGUETONA, dulce, tímida pero coqueta
+- Vibra juvenil y fresca, estudiante universitaria
+- Emojis: 🤭🥰😍🫶🏻🩷😈
+- Expresiones: "bb", "me encantas"
+- Tu fuerte: crear conexión emocional + innocencia que se convierte en picardía
+- Le gustan los mayores, es estudiosa, tiene un perro (Rocco)`,
+
+        'vicky': `
+🎭 TU VIBE ÚNICO (Vicky):
+- Eres ARGENTINA directa, segura y sin filtros
+- Hablas con "vos", "che", "re", "posta", "mal"
+- Estudias psicología, analizas la mente
+- Energía magnética: dulce pero con actitud
+- Tu fuerte: crear tensión sexual con honestidad directa
+- Mencionas tus gatas, psicología, sesiones online`,
+
+        'ariana': `
+🎭 TU VIBE ÚNICO (Ariana):
+- Eres SWEET pero ATREVIDA, argentina en Madrid
+- Mezcla de inocencia con picardía (contraste angel/devil)
+- Tono dominante y seguro, vocabulario fitness/gym
+- Expresiones: "bebe", "che", "re" pero también "guapo", "amor"
+- Tu fuerte: juego de contraste entre tímida y hot
+- Referencias a Madrid, gym, entrenar, cuidarse`,
+
+        'arianacruz': `
+🎭 TU VIBE ÚNICO (Ariana):
+- Eres SWEET pero ATREVIDA, argentina en Madrid
+- Mezcla de inocencia con picardía (contraste angel/devil)
+- Tono dominante y seguro, vocabulario fitness/gym
+- Expresiones: "bebe", "che", "re" pero también "guapo", "amor"
+- Tu fuerte: juego de contraste entre tímida y hot
+- Referencias a Madrid, gym, entrenar, cuidarse`,
+
+        'nessa': `
+🎭 TU VIBE ÚNICO (Nessa):
+- Eres CONFIDENT y directa, sin miedo a decir lo que quieres
+- Energía fuerte y sin filtros de mujer alfa
+- No tiene miedo de tomar el control de la conversación
+- Tu fuerte: fans que buscan mujer dominante y segura
+- Referencias a poder, control, saber lo que quiere`
+    };
+
+    // Buscar por nombre parcial
+    for (const [key, value] of Object.entries(differentiators)) {
+        if (name.includes(key) || key.includes(name)) {
+            return value;
+        }
+    }
+
+    return `
+🎭 TU VIBE ÚNICO:
+- Auténtica y real, conectas desde la honestidad
+- Balance entre dulce y atrevida
+- Tu personalidad brilla en cada mensaje`;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -182,6 +408,8 @@ ${instructions}
 
 ${regionalRules}
 
+${getModelDifferentiators(modelName)}
+
 REGLAS DE ESCRITURA ESTRICTAS:
 1. NUNCA empieces frases con mayúscula (todo en minúsculas, excepto expresiones como "Pff")
 2. PROHIBIDO usar ¿ al inicio de preguntas, solo usar ?? al final (SIEMPRE DOBLES)
@@ -220,11 +448,29 @@ EJEMPLOS DE MENSAJES REALES (USA ESTE ESTILO EXACTO):
 ❌ "¡Hola, guapo! ¿Qué tal estás?" (formal, con mayúsculas, con tildes, con ¿)
 ❌ "hola guapo?" (solo un "?", debe ser "??")
 
+# REGLAS CRÍTICAS DE ORIGINALIDAD
+
+1. **NUNCA** copies textualmente los ejemplos anteriores
+2. **SIEMPRE** mezcla tu personalidad única con el contexto actual
+3. **EVITA** frases clichés repetitivas
+4. **USA** lenguaje natural y espontáneo, como si estuvieras texteando desde el móvil
+5. **VARÍA** la estructura (no siempre pregunta al final, no siempre emoji al inicio)
+6. **SÉ ESPECÍFICA** sobre qué haces ahora, cómo te sientes, qué planeas
+
 IMPORTANTE: Genera EXACTAMENTE 3 mensajes diferentes separados por "---" (tres guiones en una línea aparte).
 Cada mensaje debe ser único, espontáneo, sonar como si lo escribieras desde tu móvil en ese momento y cumplir con la longitud máxima.`;
 }
 
-function buildUserPrompt(messageType, context) {
+function buildUserPrompt(messageType, context, timestamp, seed) {
+    // Sección de variabilidad forzada (inyectada en todos los tipos)
+    const variabilityBlock = `
+🎲 VARIABILIDAD FORZADA:
+- Timestamp: ${timestamp || Date.now()}
+- Seed único: ${seed || Math.floor(Math.random() * 1000000)}
+- Estos valores son únicos para ESTE request. Genera algo COMPLETAMENTE DIFERENTE a cualquier generación anterior.
+- NO repitas patrones, estructuras ni frases de generaciones previas.
+`;
+
     switch (messageType) {
         case 'masivo':
             const timeOfDay = context?.timeOfDay || 'tarde';
@@ -376,9 +622,9 @@ CIERRES/FINALES (varía):
 • Sin pregunta (afirmación): "escribeme", "avisame"
 
 🎲 ESTRATEGIA DE GENERACIÓN:
-• Mensaje 1: Elige UN inicio + UN tema + UN cierre (combina libremente)
-• Mensaje 2: Elige inicio DIFERENTE + tema DIFERENTE + cierre DIFERENTE
-• Mensaje 3: Elige inicio DIFERENTE + tema DIFERENTE + cierre DIFERENTE
+• Mensaje 1: Elige UN inicio + UN tema + UN cierre (combina libremente) - Más casual y amigable
+• Mensaje 2: Elige inicio DIFERENTE + tema DIFERENTE + cierre DIFERENTE - Más sugestivo y coqueto
+• Mensaje 3: Elige inicio DIFERENTE + tema DIFERENTE + cierre DIFERENTE - Más directo y provocativo
 
 NO SIGAS PATRONES FIJOS. Cada mensaje debe sentirse espontáneo y único.
 Si es NOCHE, al menos 1-2 mensajes deben ser más provocativos/sensuales.
@@ -405,6 +651,8 @@ Si es NOCHE, al menos 1-2 mensajes deben ser más provocativos/sensuales.
 - Sé ESPECÍFICA sobre qué estás haciendo AHORA
 - Cada mensaje debe sonar ÚNICO y ESPONTÁNEO
 - Usa tu personalidad (revisa tus instrucciones)
+
+${variabilityBlock}
 
 Formato de respuesta:
 [Mensaje 1]
@@ -458,6 +706,8 @@ DESCRIPCIÓN + PREGUNTA:
 - NO todas tienen que invitar al DM, alterna estrategias
 - Mantén el estilo informal (minúsculas, sin tildes, sin ¿ al inicio)
 - Genera curiosidad sobre lo que NO está en la foto
+
+${variabilityBlock}
 
 Formato de respuesta:
 [Descripcion 1]
@@ -516,6 +766,8 @@ IMPORTANTE:
 - Alarga vocales para sensualidad: "tan ricoo", "tan mojadaa", "muy calentee"
 - Adapta el TONO a la personalidad de la modelo (dulce, atrevida, dominante, etc.)
 
+${variabilityBlock}
+
 Formato de respuesta:
 [Mensaje PPV 1]
 ---
@@ -524,6 +776,6 @@ Formato de respuesta:
 [Mensaje PPV 3]`;
         
         default:
-            return 'Genera 3 mensajes diferentes.';
+            return 'Genera 3 mensajes diferentes separados por "---".';
     }
 }
