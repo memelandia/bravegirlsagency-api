@@ -11,17 +11,40 @@ interface Props {
 // UTILIDADES
 // ═══════════════════════════════════════════
 
-function timeAgo(dateStr: string): string {
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  const diff = Math.max(0, now - then);
+const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const MONTH_NAMES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+function formatMsgTime(dateStr: string): { time: string; relative: string } {
+  const now = new Date();
+  const d = new Date(dateStr);
+  const diff = Math.max(0, now.getTime() - d.getTime());
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'ahora';
-  if (mins < 60) return `hace ${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `hace ${hrs}h`;
-  const days = Math.floor(hrs / 24);
-  return `hace ${days}d`;
+
+  // relative
+  let relative: string;
+  if (mins < 1) relative = 'ahora';
+  else if (mins < 60) relative = `hace ${mins}m`;
+  else if (mins < 1440) relative = `hace ${Math.floor(mins / 60)}h`;
+  else relative = `hace ${Math.floor(mins / 1440)}d`;
+
+  // time
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const hhmm = `${hh}:${mm}`;
+
+  const isToday = d.toDateString() === now.toDateString();
+  const diffDays = Math.floor(diff / 86400000);
+
+  let time: string;
+  if (isToday) {
+    time = hhmm;
+  } else if (diffDays < 7) {
+    time = `${DAY_NAMES[d.getDay()]} ${hhmm}`;
+  } else {
+    time = `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${hhmm}`;
+  }
+
+  return { time, relative };
 }
 
 function formatGapDuration(seconds: number): string {
@@ -55,6 +78,9 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
 
   // Mobile tabs
   const [mobileTab, setMobileTab] = useState<'fans' | 'chat'>('fans');
+
+  // Visited fans tracking (persists within session)
+  const [visitedFans, setVisitedFans] = useState<Set<string>>(new Set());
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -265,22 +291,41 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
           </div>
         ) : (
           <div className="p-2 space-y-1">
-            {filteredFans.map(fanId => (
-              <button
-                key={fanId}
-                onClick={() => {
-                  setSelectedFan(fanId);
-                  setMobileTab('chat');
-                }}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  selectedFan === fanId
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                👤 #{fanId}
-              </button>
-            ))}
+            {filteredFans.map((fanId, idx) => {
+              const isVisited = visitedFans.has(fanId);
+              const isSelected = selectedFan === fanId;
+              return (
+                <button
+                  key={fanId}
+                  onClick={() => {
+                    setSelectedFan(fanId);
+                    setVisitedFans(prev => new Set(prev).add(fanId));
+                    setMobileTab('chat');
+                  }}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
+                    isSelected
+                      ? 'bg-blue-600 text-white'
+                      : isVisited
+                        ? 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <span>
+                    <span className="text-gray-400 dark:text-gray-500 text-xs mr-1.5">{idx + 1}.</span>
+                    👤 #{fanId}
+                  </span>
+                  {isVisited && !isSelected && (
+                    <span className="text-green-500 text-xs" title="Revisado">✓</span>
+                  )}
+                </button>
+              );
+            })}
+            {/* Progress counter */}
+            {fanIds.length > 0 && visitedFans.size > 0 && (
+              <div className="px-3 py-2 text-[10px] text-gray-400 dark:text-gray-500 text-center border-t border-gray-200 dark:border-gray-700 mt-2">
+                ✓ {visitedFans.size}/{fanIds.length} revisados
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -308,7 +353,7 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
               </h3>
               {loadedAt && (
                 <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                  Cargado {timeAgo(loadedAt.toISOString())}
+                  Cargado {formatMsgTime(loadedAt.toISOString()).relative}
                 </p>
               )}
             </div>
@@ -323,7 +368,7 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
           </div>
 
           {/* Messages area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ maxHeight: '400px' }}>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messagesLoading ? (
               <div className="flex items-center justify-center py-12 text-gray-500 dark:text-gray-400">
                 <span className="animate-spin mr-2 text-lg">🔄</span> Cargando mensajes...
@@ -346,13 +391,29 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
                         <div
                           className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm ${
                             isCreator
-                              ? 'bg-gray-700 text-white rounded-br-md'
-                              : 'bg-blue-600 text-white rounded-bl-md'
+                              ? 'bg-emerald-700 dark:bg-emerald-800 text-white rounded-br-md'
+                              : 'bg-blue-600 dark:bg-blue-700 text-white rounded-bl-md'
                           }`}
                         >
-                          {msg.text && <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>}
+                          {msg.text && (
+                            <>
+                              <span className={`block text-[9px] uppercase tracking-wider opacity-70 mb-0.5 ${isCreator ? 'text-emerald-200' : 'text-blue-200'}`}>
+                                {isCreator ? 'Modelo' : 'Fan'}
+                              </span>
+                              <p
+                                className="text-sm whitespace-pre-wrap break-words"
+                                dangerouslySetInnerHTML={{
+                                  __html: msg.text
+                                    .replace(/<script[^>]*>.*?<\/script>/gi, '')
+                                    .replace(/<(?!\/?(b|i|em|strong|br)\b)[^>]+>/gi, '')
+                                    .trim()
+                                }}
+                              />
+                            </>
+                          )}
                           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                            <span className="text-[10px] opacity-60">{timeAgo(msg.created_at)}</span>
+                            <span className="text-[10px] opacity-60">{formatMsgTime(msg.created_at).time}</span>
+                            <span className="text-[10px] opacity-40 ml-1">({formatMsgTime(msg.created_at).relative})</span>
                             {hasPPV && (
                               <span className="bg-yellow-400/20 text-yellow-200 text-[10px] font-bold px-1.5 py-0.5 rounded">
                                 💰 PPV ${msg.price}
@@ -385,7 +446,7 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
               </button>
 
               {analysisOpen && (
-                <div className="px-4 pb-4 space-y-4">
+                <div className="px-4 pb-4 space-y-4 max-h-48 overflow-y-auto">
                   {/* Gaps */}
                   <div>
                     <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
@@ -397,7 +458,7 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
                       <div className="space-y-1">
                         {analysis.gaps.map((gap, i) => (
                           <div key={i} className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-lg">
-                            Gap de {formatGapDuration(gap.duration)} — {timeAgo(gap.timestamp)}
+                            Gap de {formatGapDuration(gap.duration)} — {formatMsgTime(gap.timestamp).relative}
                           </div>
                         ))}
                       </div>

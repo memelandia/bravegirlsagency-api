@@ -80,13 +80,14 @@ module.exports = async function handler(req, res) {
     const userIds = user_id ? [user_id] : null;
     const metricsData = await fetchUserMetrics(startDate, endDate, creatorIds, userIds);
 
-    // Filtrar por user_id si se especifica (sin creator_id, filtrado client-side fallback)
-    if (user_id && !creator_id) {
-      const filtered = metricsData.filter(m => m.user_id === user_id);
+    // Siempre filtrar por user_id si se especifica (safety net: OM API puede ignorar user_ids[])
+    if (user_id) {
+      const filtered = metricsData.filter(m => String(m.user_id) === String(user_id));
+      console.log(`[billing] user_id=${user_id} creator_id=${creator_id || 'none'} => ${filtered.length}/${metricsData.length} items after filter`);
       return res.status(200).json({
         success: true,
         data: filtered,
-        filtered_by: { user_id, account_id: account_id || null },
+        filtered_by: { user_id, creator_id: creator_id || null, account_id: account_id || null },
         timestamp: new Date().toISOString()
       });
     }
@@ -373,7 +374,7 @@ async function fetchAccountFans(omAccountId) {
 // =============================================
 
 async function fetchChatMessages(omAccountId, chatId) {
-  const url = `${ONLYMONSTER_BASE_URL}/api/v0/accounts/${encodeURIComponent(omAccountId)}/chats/${encodeURIComponent(chatId)}/messages?limit=50&order=desc`;
+  const url = `${ONLYMONSTER_BASE_URL}/api/v0/accounts/${encodeURIComponent(omAccountId)}/chats/${encodeURIComponent(chatId)}/messages?limit=100&order=desc`;
   console.log('Fetching /accounts/chats/messages:', url);
 
   const response = await fetch(url, {
@@ -390,5 +391,14 @@ async function fetchChatMessages(omAccountId, chatId) {
   }
 
   const data = await response.json();
-  return data.items || data.data || [];
+  const items = data.items || data.data || [];
+
+  // Filter to last 7 days only
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const filtered = items.filter(msg => {
+    const ts = msg.created_at || msg.createdAt || msg.timestamp;
+    return ts && new Date(ts).getTime() >= sevenDaysAgo;
+  });
+  console.log(`[messages] ${items.length} total => ${filtered.length} in last 7 days`);
+  return filtered;
 }

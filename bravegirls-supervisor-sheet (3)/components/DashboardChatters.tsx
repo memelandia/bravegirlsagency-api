@@ -726,11 +726,16 @@ const BillingMatrixView: React.FC<{
     return sum;
   }, [rowTotals]);
 
+  // Only show chatters that have at least one creator assigned (filters out non-chatters)
+  const activeChatters = useMemo(() => {
+    return chattersData.filter(c => (c.creator_ids || []).length > 0);
+  }, [chattersData]);
+
   // CSV export
   const exportCSV = useCallback(() => {
     const headers = ['Chatter', ...activeAccountIds.map(id => getAccountName(id)), 'TOTAL'];
     const rows: string[][] = [];
-    chattersData.forEach(chatter => {
+    activeChatters.forEach(chatter => {
       const row = [chatter.user_name];
       activeAccountIds.forEach(accId => {
         const cell = matrix.get(chatter.user_id)?.get(String(accId));
@@ -755,7 +760,7 @@ const BillingMatrixView: React.FC<{
     a.download = `billing-desglose-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [matrix, chattersData, activeAccountIds, rowTotals, colTotals, grandTotal, getAccountName]);
+  }, [matrix, activeChatters, activeAccountIds, rowTotals, colTotals, grandTotal, getAccountName]);
 
   if (chattersData.length === 0) {
     return (
@@ -826,7 +831,7 @@ const BillingMatrixView: React.FC<{
             </tr>
           </thead>
           <tbody>
-            {chattersData.map(chatter => {
+            {activeChatters.map(chatter => {
               const chatterColor = CHATTER_COLORS[chatter.user_name] || CHATTER_COLORS['default'];
               const rowTotal = rowTotals.get(chatter.user_id) ?? 0;
               return (
