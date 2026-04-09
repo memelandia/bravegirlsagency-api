@@ -343,10 +343,11 @@ async function fetchChatterHistory(userId, days) {
 // =============================================
 
 async function fetchAccountFans(omAccountId) {
-  const url = `${ONLYMONSTER_BASE_URL}/api/v0/accounts/${encodeURIComponent(omAccountId)}/fans?limit=10000`;
-  console.log('Fetching /accounts/fans:', url);
+  // Try /chats endpoint first (returns active conversations/fans)
+  const chatsUrl = `${ONLYMONSTER_BASE_URL}/api/v0/accounts/${encodeURIComponent(omAccountId)}/chats?limit=100`;
+  console.log('Fetching /accounts/chats:', chatsUrl);
 
-  const response = await fetch(url, {
+  const chatsResponse = await fetch(chatsUrl, {
     method: 'GET',
     headers: {
       'x-om-auth-token': ONLYMONSTER_API_KEY,
@@ -355,18 +356,39 @@ async function fetchAccountFans(omAccountId) {
     }
   });
 
-  if (!response.ok) {
-    throw new Error(`OnlyMonster /accounts/${omAccountId}/fans HTTP ${response.status}`);
+  if (chatsResponse.ok) {
+    const chatsData = await chatsResponse.json();
+    console.log('📋 /accounts/chats raw keys:', Object.keys(chatsData), 'sample:', JSON.stringify(chatsData).substring(0, 500));
+    const items = chatsData.items || chatsData.data || chatsData.list || chatsData.chats || [];
+    const rawItems = Array.isArray(chatsData) ? chatsData : items;
+    if (rawItems.length > 0) {
+      return rawItems.map(item => String(item.id || item.fan_id || item.user_id || item.withUser?.id || item));
+    }
   }
 
-  const data = await response.json();
-  console.log('📋 /accounts/fans raw keys:', Object.keys(data), 'total items sample:', JSON.stringify(data).substring(0, 500));
+  // Fallback: try /fans endpoint
+  const fansUrl = `${ONLYMONSTER_BASE_URL}/api/v0/accounts/${encodeURIComponent(omAccountId)}/fans?limit=10000`;
+  console.log('Fallback to /accounts/fans:', fansUrl);
+
+  const fansResponse = await fetch(fansUrl, {
+    method: 'GET',
+    headers: {
+      'x-om-auth-token': ONLYMONSTER_API_KEY,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    }
+  });
+
+  if (!fansResponse.ok) {
+    throw new Error(`OnlyMonster /accounts/${omAccountId}/fans HTTP ${fansResponse.status}`);
+  }
+
+  const data = await fansResponse.json();
+  console.log('📋 /accounts/fans raw keys:', Object.keys(data), 'sample:', JSON.stringify(data).substring(0, 500));
   const items = data.items || data.data || data.list || data.fans || [];
   if (!items.length && Array.isArray(data)) {
-    // OM API might return a raw array
     return data.map(item => String(item.id || item.fan_id || item.user_id || item));
   }
-  // Extract fan IDs as strings
   return items.map(item => String(item.id || item.fan_id || item.user_id || item));
 }
 
