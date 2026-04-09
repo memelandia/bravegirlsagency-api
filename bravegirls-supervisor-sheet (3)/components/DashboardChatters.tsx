@@ -728,7 +728,10 @@ const BillingMatrixView: React.FC<{
 
   // Only show chatters that have at least one creator assigned (filters out non-chatters)
   const activeChatters = useMemo(() => {
-    return chattersData.filter(c => (c.creator_ids || []).length > 0);
+    return chattersData.filter(c =>
+      (c.creator_ids || []).length > 0 &&
+      !EXCLUDED_MEMBER_IDS.includes(Number(c.user_id))
+    );
   }, [chattersData]);
 
   // CSV export

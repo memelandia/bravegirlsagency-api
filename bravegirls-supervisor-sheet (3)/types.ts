@@ -324,7 +324,8 @@ export interface OMMember {
 }
 
 // IDs de miembros de OnlyMonster que NO son chatters.
+// 24792 = Franco Ponce (admin), 25135 = jonatan benitez, 56895 = Aldi sanchez
 // Actualizar manualmente cuando cambie el equipo no-chatter.
 export const EXCLUDED_MEMBER_IDS: number[] = [
-  25135, 56895
+  24792, 25135, 56895
 ];

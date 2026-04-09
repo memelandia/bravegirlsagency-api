@@ -142,7 +142,7 @@ async function fetchUserMetrics(startDate, endDate, creatorIds, userIds) {
     console.log('Fetching /users/metrics with user_ids:', userIds);
   }
 
-  console.log('Fetching /users/metrics:', url);
+  console.log('[billing] query URL:', url);
 
   const MAX_RETRIES = 3;
   let responseData = null;

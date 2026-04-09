@@ -55,6 +55,40 @@ function formatGapDuration(seconds: number): string {
 }
 
 // ═══════════════════════════════════════════
+// COPY LINK BUTTON (isolated state to avoid re-renders)
+// ═══════════════════════════════════════════
+
+const CopyLinkButton: React.FC<{ fanId: string }> = ({ fanId }) => {
+  const [copied, setCopied] = useState(false);
+  const url = `https://onlyfans.com/my/chats/chat/${fanId}`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const el = document.createElement('textarea');
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      title={url}
+      className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors"
+    >
+      {copied ? '✅ Copiado' : '🔗 Copiar link'}
+    </button>
+  );
+};
+
+// ═══════════════════════════════════════════
 // COMPONENTE PRINCIPAL
 // ═══════════════════════════════════════════
 
@@ -173,11 +207,17 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
       }
     }
 
-    // Prices in text
+    // Prices in text and PPV
     const priceSet = new Set<string>();
     sorted.forEach(msg => {
+      // Precio del campo price (PPV configurado en plataforma)
+      if (msg.price > 0 && msg.is_free === false) {
+        priceSet.add(`$${msg.price} (PPV)`);
+      }
+      // Precio mencionado en el texto
       if (msg.text) {
-        const matches = msg.text.match(/\$\d+(\.\d{1,2})?/g);
+        const stripped = msg.text.replace(/<[^>]+>/g, '');
+        const matches = stripped.match(/\$\d+(\.\d{1,2})?/g);
         if (matches) matches.forEach((p: string) => priceSet.add(p));
       }
     });
@@ -344,18 +384,21 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
           <p className="text-sm font-medium">Seleccioná un fan para ver la conversación</p>
         </div>
       ) : (
-        <>
+        <div className="flex flex-col h-full overflow-hidden">
           {/* Chat header */}
           <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
             <div>
               <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm">
                 Fan #{selectedFan} — {accountName}
               </h3>
-              {loadedAt && (
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                  Cargado {formatMsgTime(loadedAt.toISOString()).relative}
-                </p>
-              )}
+              <div className="flex items-center gap-2 mt-0.5">
+                {loadedAt && (
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                    Cargado {formatMsgTime(loadedAt.toISOString()).relative}
+                  </p>
+                )}
+                <CopyLinkButton fanId={selectedFan} />
+              </div>
             </div>
             <button
               onClick={loadMessages}
@@ -504,7 +547,7 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
               )}
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
@@ -517,8 +560,8 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
     <div className="h-full overflow-hidden bg-gray-50 dark:bg-gray-900">
       {/* Desktop: side by side */}
       <div className="hidden md:flex h-full">
-        <div className="w-1/3 min-w-[16rem] shrink-0">{fansPanel}</div>
-        <div className="flex-1">{chatPanel}</div>
+        <div className="w-1/3 min-w-[16rem] shrink-0 h-full">{fansPanel}</div>
+        <div className="flex-1 h-full overflow-hidden">{chatPanel}</div>
       </div>
 
       {/* Mobile: tabs */}
