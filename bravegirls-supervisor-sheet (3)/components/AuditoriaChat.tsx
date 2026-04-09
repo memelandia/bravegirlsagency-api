@@ -14,7 +14,7 @@ interface Props {
 interface FanStatus {
   fanId: string;
   scanState: 'pending' | 'scanning' | 'done' | 'error';
-  classification: 'unanswered' | 'ppv' | 'replied' | 'unknown';
+  classification: 'unanswered' | 'ppv' | 'replied' | 'no_reply' | 'unknown';
   lastMessageText: string;
   lastMessageTime: string;
   lastMessageIsFromFan: boolean;
@@ -70,8 +70,8 @@ function formatGapDuration(seconds: number): string {
 function computeFanStatus(fanId: string, messages: any[]): FanStatus {
   if (!messages || messages.length === 0) {
     return {
-      fanId, scanState: 'done', classification: 'unknown',
-      lastMessageText: 'Sin mensajes', lastMessageTime: '',
+      fanId, scanState: 'done', classification: 'no_reply',
+      lastMessageText: 'Sin conversación individual', lastMessageTime: '',
       lastMessageIsFromFan: false, hasPPV: false, messageCount: 0
     };
   }
@@ -151,7 +151,7 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
   const [allFanIds, setAllFanIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [fanStatuses, setFanStatuses] = useState<Map<string, FanStatus>>(new Map());
-  const [activeFilter, setActiveFilter] = useState<'all' | 'unanswered' | 'ppv' | 'replied'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unanswered' | 'ppv' | 'replied' | 'no_reply' | 'has_chat'>('all');
   const [fanSearch, setFanSearch] = useState('');
   const [fansLoading, setFansLoading] = useState(false);
   const [fansError, setFansError] = useState<string | null>(null);
@@ -189,7 +189,12 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
   const filteredPageFans = useMemo(() => {
     let list = pageIds;
 
-    if (activeFilter !== 'all') {
+    if (activeFilter === 'has_chat') {
+      list = list.filter(id => {
+        const s = fanStatuses.get(id);
+        return s?.scanState === 'done' && ['unanswered', 'ppv', 'replied'].includes(s.classification);
+      });
+    } else if (activeFilter !== 'all') {
       list = list.filter(id => {
         const s = fanStatuses.get(id);
         return s?.scanState === 'done' && s.classification === activeFilter;
@@ -206,13 +211,14 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
 
   // ── Filter counts for current page ──
   const filterCounts = useMemo(() => {
-    const counts = { all: pageIds.length, unanswered: 0, ppv: 0, replied: 0 };
+    const counts = { all: pageIds.length, unanswered: 0, ppv: 0, replied: 0, no_reply: 0 };
     pageIds.forEach(id => {
       const s = fanStatuses.get(id);
       if (s?.scanState === 'done') {
         if (s.classification === 'unanswered') counts.unanswered++;
         else if (s.classification === 'ppv') counts.ppv++;
         else if (s.classification === 'replied') counts.replied++;
+        else if (s.classification === 'no_reply') counts.no_reply++;
       }
     });
     return counts;
@@ -507,6 +513,7 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
     if (s.classification === 'unanswered') return '🔴';
     if (s.classification === 'ppv') return '🟡';
     if (s.classification === 'replied') return '🟢';
+    if (s.classification === 'no_reply') return '⚫';
     return '❓';
   };
 
@@ -560,6 +567,7 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
               { key: 'unanswered' as const, label: '🔴 Sin resp.', count: filterCounts.unanswered },
               { key: 'ppv' as const, label: '🟡 PPV', count: filterCounts.ppv },
               { key: 'replied' as const, label: '🟢 Respondidos', count: filterCounts.replied },
+              { key: 'no_reply' as const, label: '⚫ Sin conv.', count: filterCounts.no_reply },
             ]).map(f => (
               <button
                 key={f.key}
@@ -573,6 +581,16 @@ const AuditoriaChat: React.FC<Props> = ({ onNavigate }) => {
                 {f.label} {f.count}
               </button>
             ))}
+            <button
+              onClick={() => setActiveFilter(activeFilter === 'has_chat' ? 'all' : 'has_chat' as any)}
+              className={`text-[10px] px-2 py-1 rounded-full font-bold transition-colors w-full mt-1 ${
+                activeFilter === 'has_chat'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+              }`}
+            >
+              {activeFilter === 'has_chat' ? '✅ Mostrando solo con chat' : '🔍 Filtrar solo con conversación'}
+            </button>
           </div>
         )}
 

@@ -80,6 +80,12 @@ module.exports = async function handler(req, res) {
     const userIds = user_id ? [user_id] : null;
     const metricsData = await fetchUserMetrics(startDate, endDate, creatorIds, userIds);
 
+    // Diagnostic logs para billing
+    if (user_id) {
+      console.log('[billing] user_id:', user_id);
+      console.log('[billing] creator_id:', creator_id || 'none');
+    }
+
     // Siempre filtrar por user_id si se especifica (safety net: OM API puede ignorar user_ids[])
     if (user_id) {
       const filtered = metricsData.filter(m => String(m.user_id) === String(user_id));
@@ -393,12 +399,7 @@ async function fetchChatMessages(omAccountId, chatId) {
   const data = await response.json();
   const items = data.items || data.data || [];
 
-  // Filter to last 7 days only
-  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const filtered = items.filter(msg => {
-    const ts = msg.created_at || msg.createdAt || msg.timestamp;
-    return ts && new Date(ts).getTime() >= sevenDaysAgo;
-  });
-  console.log(`[messages] ${items.length} total => ${filtered.length} in last 7 days`);
-  return filtered;
+  // Devolver tal cual — el limit=100 del request ya limita la cantidad
+  console.log(`[messages] ${items.length} messages returned for chat ${chatId}`);
+  return items;
 }
