@@ -43,9 +43,15 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    // ─── Fetch accounts dynamically from OM API ───
+    const accounts = await fetchAllAccounts();
+    if (!accounts.length) {
+      return res.status(500).json({ success: false, error: 'Could not fetch accounts from OnlyMonster' });
+    }
+
     // ─── MODO 1: Billing history (revenue diario) ───
     if (modelId && billing === 'true') {
-      const model = MODELS.find(m => m.id === modelId);
+      const model = accounts.find(m => m.id === modelId);
       if (!model) {
         return res.status(404).json({ success: false, error: 'Model not found' });
       }
@@ -61,7 +67,7 @@ module.exports = async function handler(req, res) {
 
     // ─── MODO 2: Detalle individual ───
     if (modelId) {
-      const model = MODELS.find(m => m.id === modelId);
+      const model = accounts.find(m => m.id === modelId);
       if (!model) {
         return res.status(404).json({ success: false, error: 'Model not found' });
       }
@@ -78,20 +84,20 @@ module.exports = async function handler(req, res) {
     const BATCH_DELAY_MS = 1500; // 1.5s entre lotes
     const validResults = [];
 
-    for (let i = 0; i < MODELS.length; i += BATCH_SIZE) {
-      const batch = MODELS.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < accounts.length; i += BATCH_SIZE) {
+      const batch = accounts.slice(i, i + BATCH_SIZE);
       console.log(`📦 Lote ${Math.floor(i/BATCH_SIZE)+1}: ${batch.map(m => m.name).join(', ')}`);
       
       const batchResults = await Promise.all(batch.map(model => fetchModelStats(model, dateRange)));
       batchResults.forEach(r => { if (r) validResults.push(r); });
 
       // Esperar entre lotes (excepto el último)
-      if (i + BATCH_SIZE < MODELS.length) {
+      if (i + BATCH_SIZE < accounts.length) {
         await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
       }
     }
 
-    console.log(`✅ Modelos con datos: ${validResults.length}/${MODELS.length}`);
+    console.log(`✅ Modelos con datos: ${validResults.length}/${accounts.length}`);
 
     return res.status(200).json({
       success: true,
@@ -112,17 +118,31 @@ module.exports = async function handler(req, res) {
 };
 
 // ═══════════════════════════════════════════
-// CONFIGURACIÓN DE MODELOS (IDs reales de OnlyMonster)
+// FETCH ACCOUNTS DINÁMICO (reemplaza MODELS hardcodeado)
 // ═══════════════════════════════════════════
 
-const MODELS = [
-  { id: '85825874', name: 'Carmen', username: '@carmencitax' },
-  { id: '314027187', name: 'Lucy', username: '@lucygarcia' },
-  { id: '296183678', name: 'Bellarey', username: '@bellarey1' },
-  { id: '326911669', name: 'Lexi', username: '@lexiflix' },
-  { id: '436482929', name: 'Vicky', username: '@xvickyluna' },
-  { id: '489272079', name: 'Ariana', username: '@arianacruzz' }
-];
+async function fetchAllAccounts() {
+  const url = `${ONLYMONSTER_BASE_URL}/api/v0/accounts`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'x-om-auth-token': ONLYMONSTER_API_KEY,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    }
+  });
+  if (!response.ok) {
+    console.error(`❌ fetchAllAccounts HTTP ${response.status}`);
+    return [];
+  }
+  const result = await response.json();
+  const raw = result.accounts || result.items || [];
+  return raw.map(a => ({
+    id: String(a.platform_account_id ?? a.id),
+    name: a.name || '',
+    username: a.username ? `@${a.username}` : ''
+  }));
+}
 
 // ═══════════════════════════════════════════
 // FETCH CON PAGINACIÓN (igual que api/accounts.js)

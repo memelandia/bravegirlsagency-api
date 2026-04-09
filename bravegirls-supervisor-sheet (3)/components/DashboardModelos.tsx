@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { onlyMonsterAPI } from '../api-service';
+import { useOMConfig } from '../hooks/useOMConfig';
 import { ModelStats, DailyBilling, ACCOUNT_COLORS, TimePeriod } from '../types';
 
 interface Props {
@@ -8,18 +9,6 @@ interface Props {
 }
 
 // ═══════════════════════════════════════════
-// CONFIGURACIÓN DE MODELOS
-// ═══════════════════════════════════════════
-
-const MODELS_CONFIG = [
-  { id: '85825874',  name: 'Carmen' },
-  { id: '314027187', name: 'Lucy' },
-  { id: '296183678', name: 'Bellarey' },
-  { id: '326911669', name: 'Lexi' },
-  { id: '436482929', name: 'Vicky' },
-  { id: '489272079', name: 'Ariana' },
-  { id: '412328657', name: 'Nessa' }
-];
 
 type SortOption = 'revenue' | 'fans' | 'projection' | 'name';
 
@@ -105,6 +94,7 @@ const fmtMoney = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionD
 // ═══════════════════════════════════════════
 
 const DashboardModelos: React.FC<Props> = ({ archivedData, isReadOnly = false }) => {
+  const { accounts: omAccounts, isLoading: configLoading } = useOMConfig();
   const [modelsData, setModelsData] = useState<ModelStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -342,7 +332,7 @@ const DashboardModelos: React.FC<Props> = ({ archivedData, isReadOnly = false })
               <select value={filterModel} onChange={e => setFilterModel(e.target.value)}
                 className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
                 <option value="all">Todas</option>
-                {MODELS_CONFIG.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                {omAccounts.map(a => <option key={a.platform_account_id} value={a.platform_account_id}>{a.name}</option>)}
               </select>
             </div>
             <div>
@@ -366,7 +356,7 @@ const DashboardModelos: React.FC<Props> = ({ archivedData, isReadOnly = false })
                 </span>
                 {filterModel !== 'all' && (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 dark:bg-purple-900/40 border border-purple-300 dark:border-purple-700 rounded-full text-xs font-medium text-purple-800 dark:text-purple-200">
-                    💎 {MODELS_CONFIG.find(m => m.id === filterModel)?.name || 'Modelo'}
+                    💎 {omAccounts.find(a => a.platform_account_id === filterModel)?.name || 'Modelo'}
                     <button onClick={() => setFilterModel('all')} className="hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors">✕</button>
                   </span>
                 )}

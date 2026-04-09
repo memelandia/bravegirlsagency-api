@@ -222,9 +222,10 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
       const data = await chatterMetricsAPI.getAllChatterMetrics(start, end, accountId);
 
       if (data && Array.isArray(data)) {
-        // Enrich: resolve creator_ids to account names
+        // Enrich: resolve creator_ids to account names + resolve user_name from omMembers
         const enriched = data.map(c => ({
           ...c,
+          user_name: omMembers.find(m => m.id === Number(c.user_id))?.name ?? c.user_name ?? `User ${c.user_id}`,
           accounts: c.accounts?.length ? c.accounts : resolveAccountNames(c.creator_ids ?? [])
         }));
         const withKPIs = calculateKPIs(enriched);
@@ -238,7 +239,7 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
       console.error('Load error:', e);
     }
     setIsLoading(false);
-  }, [period, customStartDate, customEndDate, filterModel, resolveAccountNames]);
+  }, [period, customStartDate, customEndDate, filterModel, resolveAccountNames, omMembers]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
