@@ -74,26 +74,48 @@ module.exports = async function handler(req, res) {
       ? new Date(end_date + 'T23:59:59.999Z')
       : now;
 
-    // Pasar creator_ids[] cuando hay account_id o creator_id para filtrado server-side
-    const creatorIds = creator_id ? [creator_id] : account_id ? [account_id] : null;
-    // Pasar user_ids[] cuando hay user_id (usado junto con creator_id para desglose por modelo)
+    // --- MODO BILLING POR MODELO: user_id + creator_id -> desglose por cuenta ---
+    if (user_id && creator_id) {
+      console.log('[billing-v2] Params recibidos:', JSON.stringify({ user_id, creator_id, start_date, end_date }));
+
+      // Fetch with ONLY user_ids[] — OM ignora creator_ids[] en combinación
+      const metricsData = await fetchUserMetrics(startDate, endDate, null, [user_id]);
+
+      console.log('[billing-v2] OM returned items:', metricsData.length);
+      metricsData.forEach((m, i) => {
+        console.log(`[billing-v2] item[${i}]: user_id=${m.user_id} creator_ids=${JSON.stringify(m.creator_ids)} revenue=${m.revenue.total_net}`);
+      });
+
+      // Filter to the specific creator — compare as strings for safety
+      const matched = metricsData.filter(m => {
+        if (String(m.user_id) !== String(user_id)) return false;
+        const cids = (m.creator_ids || []).map(String);
+        return cids.includes(String(creator_id));
+      });
+
+      console.log(`[billing-v2] Matched ${matched.length} items for creator_id=${creator_id}`);
+
+      return res.status(200).json({
+        success: true,
+        data: matched,
+        filtered_by: { user_id, creator_id },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // --- MODO METRICAS GENÉRICO ---
+    const creatorIds = account_id ? [account_id] : null;
     const userIds = user_id ? [user_id] : null;
     const metricsData = await fetchUserMetrics(startDate, endDate, creatorIds, userIds);
 
-    // Diagnostic logs para billing
-    if (user_id) {
-      console.log('[billing] user_id:', user_id);
-      console.log('[billing] creator_id:', creator_id || 'none');
-    }
-
-    // Siempre filtrar por user_id si se especifica (safety net: OM API puede ignorar user_ids[])
+    // Siempre filtrar por user_id si se especifica (safety net)
     if (user_id) {
       const filtered = metricsData.filter(m => String(m.user_id) === String(user_id));
-      console.log(`[billing] user_id=${user_id} creator_id=${creator_id || 'none'} => ${filtered.length}/${metricsData.length} items after filter`);
+      console.log(`[billing] user_id=${user_id} => ${filtered.length}/${metricsData.length} items after filter`);
       return res.status(200).json({
         success: true,
         data: filtered,
-        filtered_by: { user_id, creator_id: creator_id || null, account_id: account_id || null },
+        filtered_by: { user_id, account_id: account_id || null },
         timestamp: new Date().toISOString()
       });
     }

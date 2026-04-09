@@ -251,7 +251,9 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
 
   // ─── FILTERED & SORTED DATA ───
   const displayData = useMemo(() => {
-    let result = [...chattersData];
+    let result = chattersData.filter(c =>
+      !EXCLUDED_MEMBER_IDS.includes(Number(c.user_id))
+    );
 
     if (filterChatter !== 'all') {
       result = result.filter(c => c.user_id === filterChatter);
