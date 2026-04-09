@@ -33,12 +33,13 @@ module.exports = async function handler(req, res) {
   const { start_date, end_date, user_id, creator_id, history, days, account_id, fans_only, messages, om_account_id, chat_id } = req.query;
 
   try {
-    // --- MODO FANS: GET /api/v0/accounts/{id}/fans ---
+    // --- MODO FANS: GET /api/v0/accounts/{id}/chats ---
     if (fans_only === 'true' && om_account_id) {
-      const fansData = await fetchAccountFans(om_account_id);
+      const debugInfo = await debugFetchFans(om_account_id);
       return res.status(200).json({
         success: true,
-        data: { fan_ids: fansData },
+        data: { fan_ids: debugInfo.fan_ids },
+        _debug: debugInfo.debug,
         timestamp: new Date().toISOString()
       });
     }
@@ -341,6 +342,46 @@ async function fetchChatterHistory(userId, days) {
 // =============================================
 // FETCH FANS DE UNA CUENTA /accounts/{id}/fans
 // =============================================
+
+async function debugFetchFans(omAccountId) {
+  const debug = {};
+  const headers = { 'x-om-auth-token': ONLYMONSTER_API_KEY, 'Content-Type': 'application/json', 'Accept': 'application/json' };
+  
+  // Try /chats
+  try {
+    const r1 = await fetch(`${ONLYMONSTER_BASE_URL}/api/v0/accounts/${omAccountId}/chats?limit=20`, { method: 'GET', headers });
+    debug.chats_status = r1.status;
+    if (r1.ok) {
+      const d1 = await r1.json();
+      debug.chats_keys = Object.keys(d1);
+      debug.chats_sample = JSON.stringify(d1).substring(0, 300);
+    }
+  } catch (e) { debug.chats_error = e.message; }
+
+  // Try /fans
+  try {
+    const r2 = await fetch(`${ONLYMONSTER_BASE_URL}/api/v0/accounts/${omAccountId}/fans?limit=20`, { method: 'GET', headers });
+    debug.fans_status = r2.status;
+    if (r2.ok) {
+      const d2 = await r2.json();
+      debug.fans_keys = Object.keys(d2);
+      debug.fans_sample = JSON.stringify(d2).substring(0, 300);
+    }
+  } catch (e) { debug.fans_error = e.message; }
+
+  // Try /subscribers
+  try {
+    const r3 = await fetch(`${ONLYMONSTER_BASE_URL}/api/v0/accounts/${omAccountId}/subscribers?limit=20`, { method: 'GET', headers });
+    debug.subs_status = r3.status;
+    if (r3.ok) {
+      const d3 = await r3.json();
+      debug.subs_keys = Object.keys(d3);
+      debug.subs_sample = JSON.stringify(d3).substring(0, 300);
+    }
+  } catch (e) { debug.subs_error = e.message; }
+
+  return { fan_ids: [], debug };
+}
 
 async function fetchAccountFans(omAccountId) {
   // Try /chats endpoint first (returns active conversations/fans)
