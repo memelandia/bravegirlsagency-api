@@ -360,7 +360,12 @@ async function fetchAccountFans(omAccountId) {
   }
 
   const data = await response.json();
-  const items = data.items || data.data || [];
+  console.log('📋 /accounts/fans raw keys:', Object.keys(data), 'total items sample:', JSON.stringify(data).substring(0, 500));
+  const items = data.items || data.data || data.list || data.fans || [];
+  if (!items.length && Array.isArray(data)) {
+    // OM API might return a raw array
+    return data.map(item => String(item.id || item.fan_id || item.user_id || item));
+  }
   // Extract fan IDs as strings
   return items.map(item => String(item.id || item.fan_id || item.user_id || item));
 }
