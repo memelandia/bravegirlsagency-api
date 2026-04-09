@@ -22,14 +22,18 @@ export const CHECKLIST_ROWS: ChecklistRow[] = [
   { chatter: 'Yaye', cuenta: 'Lexi' },
   { chatter: 'Yaye', cuenta: 'Carmen' },
   { chatter: 'Yaye', cuenta: 'Lucy' },
-  { chatter: 'Emely', cuenta: 'Lexi' },
-  { chatter: 'Emely', cuenta: 'Carmen' },
-  { chatter: 'Emely', cuenta: 'Lucy' },
   { chatter: 'Carlo', cuenta: 'Lexi' },
   { chatter: 'Carlo', cuenta: 'Carmen' },
   { chatter: 'Carlo', cuenta: 'Lucy' },
-  { chatter: 'Diego', cuenta: 'Nessa' },
-  { chatter: 'Diego', cuenta: 'Ariana' },
+  { chatter: 'Leo', cuenta: 'Carmen' },
+  { chatter: 'Leo', cuenta: 'Lucy' },
+  { chatter: 'Leo', cuenta: 'Bellarey' },
+  { chatter: 'Leo', cuenta: 'Lexi' },
+  { chatter: 'Leo', cuenta: 'Vicky' },
+  { chatter: 'Leo', cuenta: 'Ariana' },
+  { chatter: 'Genesys', cuenta: 'Carmen' },
+  { chatter: 'Genesys', cuenta: 'Lucy' },
+  { chatter: 'Genesys', cuenta: 'Lexi' },
 ];
 
 export const VIP_ROWS = [
@@ -38,22 +42,21 @@ export const VIP_ROWS = [
   'Vicky',
   'Lexi',
   'Lucy',
-  'Ariana',
-  'Nessa'
+  'Ariana'
 ];
 
-export const CHATTERS = ['Nico', 'Alfonso', 'Yaye', 'Diego', 'Kari', 'Emely', 'Carlo'];
-export const ACCOUNTS = ['Carmen', 'Bellarey', 'Vicky', 'Lexi', 'Lucy', 'Ariana', 'Nessa'];
+export const CHATTERS = ['Nico', 'Alfonso', 'Yaye', 'Kari', 'Carlo', 'Leo', 'Genesys'];
+export const ACCOUNTS = ['Carmen', 'Bellarey', 'Vicky', 'Lexi', 'Lucy', 'Ariana'];
 
 // Color Mappings for Dropdowns/Badges (Light & Dark compatible)
 export const CHATTER_COLORS: Record<string, string> = {
   'Nico': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   'Alfonso': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
   'Yaye': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  'Diego': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   'Kari': 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
-  'Emely': 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
   'Carlo': 'bg-lime-100 text-lime-800 dark:bg-lime-900 dark:text-lime-200',
+  'Leo': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
+  'Genesys': 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
   'default': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
 };
 
@@ -64,7 +67,6 @@ export const ACCOUNT_COLORS: Record<string, string> = {
   'Lexi': 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-900',
   'Lucy': 'bg-cyan-50 text-cyan-700 border-cyan-100 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-900',
   'Ariana': 'bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-900',
-  'Nessa': 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100 dark:bg-fuchsia-900/30 dark:text-fuchsia-300 dark:border-fuchsia-900',
   'default': 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-300'
 };
 
@@ -267,6 +269,7 @@ export interface ChatterChargebacks {
 export interface ChatterMetrics {
   user_id: string;
   user_name: string;
+  creator_ids?: number[];
   accounts: string[];
   period: { start: string; end: string };
   revenue: ChatterRevenue;
@@ -300,3 +303,28 @@ export const RATING_COLORS: Record<number, string> = {
   2: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300',
   1: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300'
 };
+
+// ═══════════════════════════════════════════
+// ONLYMONSTER CONFIG TYPES (dynamic from API)
+// ═══════════════════════════════════════════
+
+export interface OMAccount {
+  id: number;
+  platform_account_id: string;
+  name: string;
+  username: string;
+  avatar: string;
+}
+
+export interface OMMember {
+  id: number;
+  name: string;
+  email: string;
+  avatar: string;
+}
+
+// IDs de miembros de OnlyMonster que NO son chatters.
+// Actualizar manualmente cuando cambie el equipo no-chatter.
+export const EXCLUDED_MEMBER_IDS: number[] = [
+  25135, 56895
+];

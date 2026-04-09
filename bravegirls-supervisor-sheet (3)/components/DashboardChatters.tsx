@@ -1,33 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { chatterMetricsAPI } from '../api-service';
+import { useOMConfig } from '../hooks/useOMConfig';
 import {
   ChatterMetrics, ChatterWithKPIs, TimePeriod,
-  CHATTER_COLORS, ACCOUNT_COLORS, RATING_COLORS
+  CHATTER_COLORS, ACCOUNT_COLORS, RATING_COLORS,
+  OMAccount, EXCLUDED_MEMBER_IDS
 } from '../types';
-
-// ═══════════════════════════════════════════
-// CONFIGURACIÓN LOCAL DE CHATTERS
-// ═══════════════════════════════════════════
-
-const CHATTERS_CONFIG = [
-  { id: '25140',  name: 'Nico',    accounts: ['Bellarey', 'Vicky'] },
-  { id: '66986',  name: 'Alfonso', accounts: ['Bellarey', 'Vicky'] },
-  { id: '125226', name: 'Yaye',    accounts: ['Carmen', 'Lucy', 'Lexi'] },
-  { id: '121434', name: 'Diego',   accounts: ['Nessa', 'Ariana'] },
-  { id: '124700', name: 'Kari',    accounts: ['Bellarey', 'Vicky'] },
-  { id: '139826', name: 'Emely',   accounts: ['Carmen', 'Lucy', 'Lexi'] },
-  { id: '145754', name: 'Carlo',   accounts: ['Carmen', 'Lucy', 'Lexi'] }
-];
-
-const ACCOUNTS_CONFIG = [
-  { id: '85825874',  name: 'Carmen' },
-  { id: '314027187', name: 'Lucy' },
-  { id: '296183678', name: 'Bellarey' },
-  { id: '326911669', name: 'Lexi' },
-  { id: '436482929', name: 'Vicky' },
-  { id: '489272079', name: 'Ariana' },
-  { id: '412328657', name: 'Nessa' }
-];
 
 type SortOption = 'revenue' | 'messages' | 'reply_time' | 'conversion' | 'fans';
 
@@ -163,6 +141,7 @@ const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 // ═══════════════════════════════════════════
 
 const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }) => {
+  const { accounts: omAccounts, members: omMembers, isLoading: configLoading, error: configError } = useOMConfig();
   const [chattersData, setChattersData] = useState<ChatterWithKPIs[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -181,6 +160,10 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
 
   // Modal
   const [selectedChatter, setSelectedChatter] = useState<string | null>(null);
+
+  // View mode toggle
+  type ViewMode = 'cards' | 'billing';
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
 
   // Quick range helper
   const setQuickRange = (days: number) => {
@@ -209,19 +192,42 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
     }
   }, [customStartDate, customEndDate]);
 
+  // ─── FILTERED MEMBERS (exclude non-chatters) ───
+  const filteredMembers = useMemo(() =>
+    omMembers.filter(m => !EXCLUDED_MEMBER_IDS.includes(m.id)),
+    [omMembers]
+  );
+
+  const chatterMembers = useMemo(() => {
+    if (chattersData.length === 0) return filteredMembers;
+    const activeIds = new Set(chattersData.map(c => Number(c.user_id)));
+    return filteredMembers.filter(m => activeIds.has(m.id));
+  }, [filteredMembers, chattersData]);
+
+  // Helper: resolve creator_ids to account names using dynamic config
+  const resolveAccountNames = useCallback((creatorIds: number[]): string[] => {
+    if (!creatorIds?.length || !omAccounts.length) return [];
+    return creatorIds.map(id => omAccounts.find(a => a.id === id)?.name ?? `#${id}`);
+  }, [omAccounts]);
+
   // ─── DATA LOADING ───
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const { start, end } = getDateRange(period, customStartDate, customEndDate);
-      
-      // ✅ Pasar account_id cuando hay filtro de modelo
+
+      // Pass account_id when filtering by model — backend handles creator_ids
       const accountId = filterModel !== 'all' ? filterModel : undefined;
       const data = await chatterMetricsAPI.getAllChatterMetrics(start, end, accountId);
 
       if (data && Array.isArray(data)) {
-        const withKPIs = calculateKPIs(data);
+        // Enrich: resolve creator_ids to account names
+        const enriched = data.map(c => ({
+          ...c,
+          accounts: c.accounts?.length ? c.accounts : resolveAccountNames(c.creator_ids ?? [])
+        }));
+        const withKPIs = calculateKPIs(enriched);
         setChattersData(withKPIs);
         setLastUpdate(new Date());
       } else {
@@ -232,7 +238,7 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
       console.error('Load error:', e);
     }
     setIsLoading(false);
-  }, [period, customStartDate, customEndDate, filterModel]);
+  }, [period, customStartDate, customEndDate, filterModel, resolveAccountNames]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -250,13 +256,7 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
       result = result.filter(c => c.user_id === filterChatter);
     }
 
-    // ✅ Fallback: si la API no filtró por account, filtrar por nombre
-    if (filterModel !== 'all') {
-      const accountName = ACCOUNTS_CONFIG.find(a => a.id === filterModel)?.name;
-      if (accountName && result.some(c => Array.isArray(c.accounts) && typeof c.accounts[0] === 'string')) {
-        result = result.filter(c => c.accounts.includes(accountName));
-      }
-    }
+    // No client-side account filtering — backend already filtered via creator_ids
 
     result.sort((a, b) => {
       switch (sortBy) {
@@ -276,8 +276,13 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
   }, [chattersData, filterChatter, filterModel, sortBy]);
 
   // ─── TOTALS (basados en datos filtrados) ───
+  // Helper to find account name from dynamic config
+  const getAccountName = useCallback((id: string) => {
+    return omAccounts.find(a => String(a.id) === id)?.name ?? id;
+  }, [omAccounts]);
+
   const totals = useMemo(() => {
-    const data = displayData; // ✅ Usar datos YA filtrados
+    const data = displayData;
     const activeWithReply = data.filter(c => c.performance.reply_time_avg_seconds > 0);
     return {
       totalRevenue: data.reduce((s, c) => s + c.revenue.total_net, 0),
@@ -289,7 +294,32 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
       totalSold: data.reduce((s, c) => s + c.messages.sold, 0),
       activeChatters: data.filter(c => c.messages.total > 0).length
     };
-  }, [displayData]); // ✅ Depende de displayData, no de chattersData
+  }, [displayData]);
+
+  // Show skeleton while OM config is loading
+  if (configLoading && omAccounts.length === 0) {
+    return (
+      <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">💬 Dashboard de Chatters</h1>
+          <LoadingSkeleton />
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if config failed and we have no cached data
+  if (configError && omAccounts.length === 0 && omMembers.length === 0) {
+    return (
+      <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors">
+        <div className="max-w-7xl mx-auto text-center py-16">
+          <div className="text-5xl mb-4">⚠️</div>
+          <h3 className="text-lg font-bold text-gray-700 dark:text-gray-300">Error cargando configuración</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{configError}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors">
@@ -419,7 +449,7 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
               <select value={filterChatter} onChange={e => setFilterChatter(e.target.value)}
                 className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
                 <option value="all">Todos</option>
-                {CHATTERS_CONFIG.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {chatterMembers.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
               </select>
             </div>
             <div>
@@ -427,7 +457,7 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
               <select value={filterModel} onChange={e => setFilterModel(e.target.value)}
                 className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
                 <option value="all">Todas</option>
-                {ACCOUNTS_CONFIG.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                {omAccounts.map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
               </select>
             </div>
             <div>
@@ -452,13 +482,13 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
                 </span>
                 {filterModel !== 'all' && (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 dark:bg-purple-900/40 border border-purple-300 dark:border-purple-700 rounded-full text-xs font-medium text-purple-800 dark:text-purple-200">
-                    📊 {ACCOUNTS_CONFIG.find(a => a.id === filterModel)?.name || 'Modelo'}
+                    📊 {getAccountName(filterModel)}
                     <button onClick={() => setFilterModel('all')} className="hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors">✕</button>
                   </span>
                 )}
                 {filterChatter !== 'all' && (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700 rounded-full text-xs font-medium text-green-800 dark:text-green-200">
-                    💬 {CHATTERS_CONFIG.find(c => c.id === filterChatter)?.name || 'Chatter'}
+                    💬 {chatterMembers.find(c => String(c.id) === filterChatter)?.name || 'Chatter'}
                     <button onClick={() => setFilterChatter('all')} className="hover:bg-green-200 dark:hover:bg-green-800 rounded-full p-0.5 transition-colors">✕</button>
                   </span>
                 )}
@@ -485,30 +515,54 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
               value={fmtMoney(totals.totalRevenue)}
               icon="💰"
               color="green"
-              subtitle={filterModel !== 'all' ? `Solo ${ACCOUNTS_CONFIG.find(a => a.id === filterModel)?.name}` : undefined}
+              subtitle={filterModel !== 'all' ? `Solo ${getAccountName(filterModel)}` : undefined}
             />
             <StatCard
               title={filterModel !== 'all' || filterChatter !== 'all' ? 'Mensajes (Filtrado)' : 'Mensajes'}
               value={fmtNum(totals.totalMessages)}
               icon="💬"
               color="blue"
-              subtitle={filterModel !== 'all' ? `Solo ${ACCOUNTS_CONFIG.find(a => a.id === filterModel)?.name}` : undefined}
+              subtitle={filterModel !== 'all' ? `Solo ${getAccountName(filterModel)}` : undefined}
             />
             <StatCard
               title={filterModel !== 'all' || filterChatter !== 'all' ? 'Fans (Filtrado)' : 'Fans'}
               value={fmtNum(totals.totalFans)}
               icon="👥"
               color="purple"
-              subtitle={filterModel !== 'all' ? `Solo ${ACCOUNTS_CONFIG.find(a => a.id === filterModel)?.name}` : undefined}
+              subtitle={filterModel !== 'all' ? `Solo ${getAccountName(filterModel)}` : undefined}
             />
             <StatCard title="Avg Reply Time" value={fmtTime(totals.avgReplyTime)} icon="⏱️" color="orange" />
             <StatCard title="PPV Vendidos" value={fmtNum(totals.totalSold)} icon="📩" color="pink" />
-            <StatCard title="Chatters Activos" value={`${totals.activeChatters}/${displayData.length > 0 ? displayData.length : CHATTERS_CONFIG.length}`} icon="🟢" color="yellow" />
+            <StatCard title="Chatters Activos" value={`${totals.activeChatters}/${displayData.length > 0 ? displayData.length : chatterMembers.length}`} icon="🟢" color="yellow" />
           </div>
         </div>
 
-        {/* ═══ CHATTER GRID ═══ */}
-        {isLoading && chattersData.length === 0 ? (
+        {/* ═══ VIEW MODE TOGGLE ═══ */}
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={() => setViewMode('cards')}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+              viewMode === 'cards'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+          >
+            📊 Vista Cards
+          </button>
+          <button
+            onClick={() => setViewMode('billing')}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+              viewMode === 'billing'
+                ? 'bg-purple-600 text-white shadow-md'
+                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+          >
+            💰 Billing Desglose
+          </button>
+        </div>
+
+        {/* ═══ CHATTER GRID (Cards view) ═══ */}
+        {viewMode === 'cards' && (isLoading && chattersData.length === 0 ? (
           <LoadingSkeleton />
         ) : displayData.length === 0 ? (
           <div className="text-center py-16">
@@ -524,12 +578,303 @@ const DashboardChatters: React.FC<Props> = ({ archivedData, isReadOnly = false }
               <ChatterCard key={chatter.user_id} chatter={chatter} onClick={() => setSelectedChatter(chatter.user_id)} />
             ))}
           </div>
+        ))}
+
+        {/* ═══ BILLING MATRIX (Billing view) ═══ */}
+        {viewMode === 'billing' && (
+          <BillingMatrixView
+            chattersData={chattersData}
+            omAccounts={omAccounts}
+            period={period}
+            customStartDate={customStartDate}
+            customEndDate={customEndDate}
+          />
         )}
 
         {/* ═══ MODAL DETALLE ═══ */}
         {selectedChatter && (
           <ChatterDetailModal chatterId={selectedChatter} chattersData={chattersData} onClose={() => setSelectedChatter(null)} />
         )}
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════
+// BILLING MATRIX VIEW
+// ═══════════════════════════════════════════
+
+interface MatrixCell {
+  revenue: number;
+  messages: number;
+  hasChargebacks: boolean;
+}
+
+const BillingMatrixView: React.FC<{
+  chattersData: ChatterWithKPIs[];
+  omAccounts: OMAccount[];
+  period: TimePeriod;
+  customStartDate: string;
+  customEndDate: string;
+}> = ({ chattersData, omAccounts, period, customStartDate, customEndDate }) => {
+  const [matrix, setMatrix] = useState<Map<string, Map<string, MatrixCell>>>(new Map());
+  const [isLoadingMatrix, setIsLoadingMatrix] = useState(false);
+  const [loadProgress, setLoadProgress] = useState({ done: 0, total: 0 });
+
+  // Determine which accounts each chatter works on
+  const chatterAccountPairs = useMemo(() => {
+    const pairs: { userId: string; userName: string; creatorId: number }[] = [];
+    chattersData.forEach(chatter => {
+      (chatter.creator_ids || []).forEach(cid => {
+        pairs.push({ userId: chatter.user_id, userName: chatter.user_name, creatorId: cid });
+      });
+    });
+    return pairs;
+  }, [chattersData]);
+
+  // Unique accounts that appear in current data
+  const activeAccountIds = useMemo(() => {
+    const ids = new Set<number>();
+    chattersData.forEach(c => (c.creator_ids || []).forEach(id => ids.add(id)));
+    return Array.from(ids).sort((a, b) => a - b);
+  }, [chattersData]);
+
+  const getAccountName = useCallback((id: number) => {
+    return omAccounts.find(a => a.id === id)?.name ?? `#${id}`;
+  }, [omAccounts]);
+
+  // Fetch per-chatter-per-model breakdown
+  const loadMatrix = useCallback(async () => {
+    if (chatterAccountPairs.length === 0) return;
+    setIsLoadingMatrix(true);
+    const { start, end } = getDateRange(period, customStartDate, customEndDate);
+    const newMatrix = new Map<string, Map<string, MatrixCell>>();
+    const BATCH_SIZE = 10;
+    const total = chatterAccountPairs.length;
+    setLoadProgress({ done: 0, total });
+
+    for (let i = 0; i < total; i += BATCH_SIZE) {
+      const batch = chatterAccountPairs.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(
+        batch.map(async ({ userId, creatorId }) => {
+          try {
+            const data = await chatterMetricsAPI.getChatterMetricsByModel(
+              userId, String(creatorId), start, end
+            );
+            return { userId, creatorId, data };
+          } catch {
+            return { userId, creatorId, data: null };
+          }
+        })
+      );
+
+      results.forEach(({ userId, creatorId, data }) => {
+        if (!newMatrix.has(userId)) newMatrix.set(userId, new Map());
+        const row = newMatrix.get(userId)!;
+        const cid = String(creatorId);
+        if (data) {
+          const hasChargebacks = (data.chargebacks?.tips || 0) > 0 ||
+            (data.chargebacks?.messages_price || 0) > 0 ||
+            (data.chargebacks?.posts_price || 0) > 0;
+          row.set(cid, {
+            revenue: data.revenue?.total_net ?? 0,
+            messages: data.messages?.total ?? 0,
+            hasChargebacks
+          });
+        } else {
+          row.set(cid, { revenue: 0, messages: 0, hasChargebacks: false });
+        }
+      });
+
+      setLoadProgress({ done: Math.min(i + BATCH_SIZE, total), total });
+    }
+
+    setMatrix(newMatrix);
+    setIsLoadingMatrix(false);
+  }, [chatterAccountPairs, period, customStartDate, customEndDate]);
+
+  useEffect(() => { loadMatrix(); }, [loadMatrix]);
+
+  // Compute totals
+  const rowTotals = useMemo(() => {
+    const totals = new Map<string, number>();
+    matrix.forEach((row, userId) => {
+      let sum = 0;
+      row.forEach(cell => { sum += cell.revenue; });
+      totals.set(userId, sum);
+    });
+    return totals;
+  }, [matrix]);
+
+  const colTotals = useMemo(() => {
+    const totals = new Map<string, number>();
+    activeAccountIds.forEach(accId => {
+      let sum = 0;
+      matrix.forEach(row => {
+        const cell = row.get(String(accId));
+        if (cell) sum += cell.revenue;
+      });
+      totals.set(String(accId), sum);
+    });
+    return totals;
+  }, [matrix, activeAccountIds]);
+
+  const grandTotal = useMemo(() => {
+    let sum = 0;
+    rowTotals.forEach(v => { sum += v; });
+    return sum;
+  }, [rowTotals]);
+
+  // CSV export
+  const exportCSV = useCallback(() => {
+    const headers = ['Chatter', ...activeAccountIds.map(id => getAccountName(id)), 'TOTAL'];
+    const rows: string[][] = [];
+    chattersData.forEach(chatter => {
+      const row = [chatter.user_name];
+      activeAccountIds.forEach(accId => {
+        const cell = matrix.get(chatter.user_id)?.get(String(accId));
+        row.push(cell ? cell.revenue.toFixed(2) : '0.00');
+      });
+      row.push((rowTotals.get(chatter.user_id) ?? 0).toFixed(2));
+      rows.push(row);
+    });
+    // TOTAL row
+    const totalRow = ['TOTAL'];
+    activeAccountIds.forEach(accId => {
+      totalRow.push((colTotals.get(String(accId)) ?? 0).toFixed(2));
+    });
+    totalRow.push(grandTotal.toFixed(2));
+    rows.push(totalRow);
+
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `billing-desglose-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [matrix, chattersData, activeAccountIds, rowTotals, colTotals, grandTotal, getAccountName]);
+
+  if (chattersData.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <div className="text-5xl mb-4">📭</div>
+        <h3 className="text-lg font-bold text-gray-700 dark:text-gray-300">No hay datos para el desglose</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Carga datos en la vista Cards primero</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Header with export */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">💰 Billing Desglose por Modelo</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Revenue NET por chatter × cuenta (datos reales OnlyMonster)</p>
+        </div>
+        <button
+          onClick={exportCSV}
+          disabled={isLoadingMatrix}
+          className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
+        >
+          📥 Exportar CSV
+        </button>
+      </div>
+
+      {/* Loading progress */}
+      {isLoadingMatrix && (
+        <div className="mb-4 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="animate-spin text-lg">🔄</span>
+            <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+              Cargando desglose... {loadProgress.done}/{loadProgress.total} combinaciones
+            </span>
+          </div>
+          <div className="w-full bg-purple-200 dark:bg-purple-800 rounded-full h-2">
+            <div
+              className="bg-purple-600 dark:bg-purple-400 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${loadProgress.total > 0 ? (loadProgress.done / loadProgress.total) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Matrix table */}
+      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-100 dark:bg-gray-800">
+              <th className="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300 sticky left-0 bg-gray-100 dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
+                Chatter
+              </th>
+              {activeAccountIds.map(accId => {
+                const accColor = ACCOUNT_COLORS[getAccountName(accId)] || ACCOUNT_COLORS['default'] || '';
+                return (
+                  <th key={accId} className="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300 min-w-[120px]">
+                    <span className={`${accColor} border text-[10px] px-1.5 py-0.5 rounded font-medium`}>
+                      {getAccountName(accId)}
+                    </span>
+                  </th>
+                );
+              })}
+              <th className="px-4 py-3 text-right font-bold text-gray-900 dark:text-gray-100 border-l-2 border-gray-300 dark:border-gray-600 bg-gray-200 dark:bg-gray-700">
+                TOTAL
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {chattersData.map(chatter => {
+              const chatterColor = CHATTER_COLORS[chatter.user_name] || CHATTER_COLORS['default'];
+              const rowTotal = rowTotals.get(chatter.user_id) ?? 0;
+              return (
+                <tr key={chatter.user_id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                  <td className="px-4 py-3 sticky left-0 bg-white dark:bg-gray-900 z-10 border-r border-gray-200 dark:border-gray-700">
+                    <span className={`${chatterColor} px-2 py-0.5 rounded-full text-xs font-bold`}>{chatter.user_name}</span>
+                  </td>
+                  {activeAccountIds.map(accId => {
+                    const cell = matrix.get(chatter.user_id)?.get(String(accId));
+                    const revenue = cell?.revenue ?? 0;
+                    const hasChargebacks = cell?.hasChargebacks ?? false;
+                    return (
+                      <td key={accId} className="px-4 py-3 text-right">
+                        {isLoadingMatrix ? (
+                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-16 ml-auto" />
+                        ) : revenue > 0 ? (
+                          <span className="font-bold text-green-600 dark:text-green-400">
+                            {fmtMoney(revenue)}
+                            {hasChargebacks && <span className="ml-1 text-red-500" title="Tiene chargebacks">⚠️</span>}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 dark:text-gray-600">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="px-4 py-3 text-right font-bold text-gray-900 dark:text-gray-100 border-l-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800">
+                    {fmtMoney(rowTotal)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="bg-gray-200 dark:bg-gray-700 font-bold border-t-2 border-gray-300 dark:border-gray-600">
+              <td className="px-4 py-3 sticky left-0 bg-gray-200 dark:bg-gray-700 z-10 border-r border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+                TOTAL
+              </td>
+              {activeAccountIds.map(accId => (
+                <td key={accId} className="px-4 py-3 text-right text-green-700 dark:text-green-300">
+                  {fmtMoney(colTotals.get(String(accId)) ?? 0)}
+                </td>
+              ))}
+              <td className="px-4 py-3 text-right text-green-700 dark:text-green-300 border-l-2 border-gray-300 dark:border-gray-600 bg-gray-300 dark:bg-gray-600">
+                {fmtMoney(grandTotal)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
   );

@@ -48,6 +48,28 @@ const RegistroErrores: React.FC<Props> = ({ archivedData, isReadOnly = false, on
     loadData();
   }, [archivedData]);
 
+  // Read auditoria_prefill from localStorage (set by AuditoriaChat)
+  useEffect(() => {
+    const prefill = localStorage.getItem('auditoria_prefill');
+    if (prefill && !isReadOnly) {
+      localStorage.removeItem('auditoria_prefill');
+      const newEntry: ErrorLogEntry = {
+        id: Date.now().toString(),
+        fecha: new Date().toISOString().split('T')[0],
+        cuenta: '',
+        chatter: '',
+        tipo: '',
+        gravedad: Severity.MEDIO,
+        detalle: prefill,
+        traslado: 'No',
+        estado: ErrorStatus.ABIERTO,
+        link: ''
+      };
+      setEntries(prev => [newEntry, ...prev]);
+      setFilterStatus('OPEN');
+    }
+  }, [isReadOnly]);
+
   useEffect(() => {
     const saveData = async () => {
       if (isLoading) return;

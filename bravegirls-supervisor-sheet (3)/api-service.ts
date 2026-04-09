@@ -448,5 +448,85 @@ export const chatterMetricsAPI = {
       console.error(`❌ [CHATTERS] Error fetching history for ${userId}:`, error);
       return null;
     }
+  },
+
+  /**
+   * Obtener métricas de un chatter para una cuenta/modelo específica
+   * Usado para el desglose billing matrix (chatter × modelo)
+   * @param userId - OnlyMonster user ID del chatter
+   * @param creatorId - OnlyMonster creator ID de la cuenta/modelo
+   * @param startDate - Fecha inicio YYYY-MM-DD
+   * @param endDate - Fecha fin YYYY-MM-DD
+   * @returns ChatterMetrics item o null
+   */
+  async getChatterMetricsByModel(userId: string, creatorId: string, startDate: string, endDate: string) {
+    try {
+      const url = `${CHATTER_METRICS_ENDPOINT}?user_id=${userId}&creator_id=${creatorId}&start_date=${startDate}&end_date=${endDate}`;
+      console.log('📊 [CHATTERS] Fetching metrics by model:', userId, 'creator:', creatorId);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await response.json();
+      if (result.success && result.data && result.data.length > 0) {
+        return result.data[0];
+      }
+      return null;
+    } catch (error) {
+      console.error(`❌ [CHATTERS] Error fetching metrics for ${userId} x ${creatorId}:`, error);
+      return null;
+    }
+  },
+
+  /**
+   * Obtener fan IDs activos de una cuenta
+   * @param omAccountId - ID interno de OnlyMonster (account.id)
+   * @returns array de fan IDs o [] si falla
+   */
+  async getActiveFans(omAccountId: string): Promise<string[]> {
+    try {
+      const url = `${CHATTER_METRICS_ENDPOINT}?fans_only=true&om_account_id=${omAccountId}`;
+      console.log('📊 [CHATTERS] Fetching active fans for account:', omAccountId);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await response.json();
+      if (result.success && result.data?.fan_ids) {
+        return result.data.fan_ids;
+      }
+      return [];
+    } catch (error) {
+      console.error(`❌ [CHATTERS] Error fetching fans for account ${omAccountId}:`, error);
+      return [];
+    }
+  },
+
+  /**
+   * Obtener mensajes de un chat específico
+   * @param omAccountId - ID interno de OnlyMonster (account.id)
+   * @param chatId - ID del chat/fan
+   * @returns array de mensajes o [] si falla
+   */
+  async getChatMessages(omAccountId: string, chatId: string): Promise<any[]> {
+    try {
+      const url = `${CHATTER_METRICS_ENDPOINT}?messages=true&om_account_id=${omAccountId}&chat_id=${chatId}`;
+      console.log('📊 [CHATTERS] Fetching messages for chat:', chatId, 'account:', omAccountId);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await response.json();
+      if (result.success && result.data?.items) {
+        return result.data.items;
+      }
+      return [];
+    } catch (error) {
+      console.error(`❌ [CHATTERS] Error fetching messages for chat ${chatId}:`, error);
+      return [];
+    }
   }
 };

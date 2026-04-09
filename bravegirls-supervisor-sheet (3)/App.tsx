@@ -6,7 +6,11 @@ import VipRepasoMes from './components/VipRepasoMes';
 import RegistroErrores from './components/RegistroErrores';
 import SupervisionSemanal from './components/SupervisionSemanal';
 import Metricas from './components/Metricas';
+import DashboardModelos from './components/DashboardModelos';
+import DashboardChatters from './components/DashboardChatters';
 import { Toast } from './components/ui/Toast';
+
+const AuditoriaChat = React.lazy(() => import('./components/AuditoriaChat'));
 
 enum Tab {
   SOP = 'SOP_SUPERVISOR',
@@ -14,7 +18,10 @@ enum Tab {
   VIP = 'TRACKER_VIPS',
   SEMANAL = 'SUPERVISION_SEMANAL',
   METRICAS = 'METRICAS_KPI',
-  ERRORES = 'REGISTRO_ERRORES'
+  ERRORES = 'REGISTRO_ERRORES',
+  MODELOS = 'DASHBOARD_MODELOS',
+  CHATTERS = 'DASHBOARD_CHATTERS',
+  AUDITORIA = 'AUDITORIA_CHAT'
 }
 
 const TAB_LABELS: Record<Tab, string> = {
@@ -23,7 +30,10 @@ const TAB_LABELS: Record<Tab, string> = {
   [Tab.VIP]: '🐳 TRACKER VIPS',
   [Tab.SEMANAL]: '📊 SUPERVISION SEMANAL',
   [Tab.METRICAS]: '📈 MÉTRICAS',
-  [Tab.ERRORES]: '🚨 REGISTRO ERRORES'
+  [Tab.ERRORES]: '🚨 REGISTRO ERRORES',
+  [Tab.MODELOS]: '💎 DASHBOARD MODELOS',
+  [Tab.CHATTERS]: '💬 DASHBOARD CHATTERS',
+  [Tab.AUDITORIA]: '🔍 AUDITORÍA CHAT'
 };
 
 // Archive Interface
@@ -221,6 +231,16 @@ const App: React.FC = () => {
         return <Metricas {...dataProps} />;
       case Tab.ERRORES:
         return <RegistroErrores {...dataProps} onShowToast={showToast} />;
+      case Tab.MODELOS:
+        return <DashboardModelos {...dataProps} />;
+      case Tab.CHATTERS:
+        return <DashboardChatters {...dataProps} />;
+      case Tab.AUDITORIA:
+        return (
+          <React.Suspense fallback={<div className="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400">Cargando...</div>}>
+            <AuditoriaChat onNavigate={(tab) => setActiveTab(tab as Tab)} />
+          </React.Suspense>
+        );
       default:
         return <SopSupervisor />;
     }

@@ -1,56 +1,26 @@
 /**
  * API Endpoint CONSOLIDADO: /api/onlymonster/chatter-metrics
- * 
- * Obtiene métricas REALES por chatter usando /api/v0/users/metrics de OnlyMonster.
+ *
+ * Obtiene metricas REALES por chatter usando /api/v0/users/metrics de OnlyMonster.
  * Incluye: reply time, messages (total/AI/media/PPV), revenue real, fans, chargebacks, etc.
- * 
+ *
  * Modos:
- *   GET ?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD           → Todos los chatters
- *   GET ?start_date=...&end_date=...&user_id=XXX              → Un chatter específico
- *   GET ?user_id=XXX&history=true&days=30                     → Historial diario (transactions-based)
+ *   GET ?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD                        -> Todos los chatters
+ *   GET ?start_date=...&end_date=...&user_id=XXX                          -> Un chatter especifico
+ *   GET ?start_date=...&end_date=...&account_id=XXX                       -> Filtrado por cuenta (creator_ids)
+ *   GET ?user_id=XXX&history=true&days=30                                  -> Historial diario (/users/metrics-based)
+ *   GET ?fans_only=true&om_account_id=XXX                                  -> Lista de fan IDs activos
+ *   GET ?messages=true&om_account_id=XXX&chat_id=YYY                      -> Mensajes de un chat
  */
 
 const fetch = require('node-fetch');
 
-const ONLYMONSTER_API_KEY = process.env.ONLYMONSTER_API_KEY || 'om_token_37211a79c42556feab68a2fdfc74c49087008c48b5b81e5b677877fd2c2be9b5';
+const ONLYMONSTER_API_KEY =
+  process.env.ONLYMONSTER_API_KEY ||
+  'om_token_37211a79c42556feab68a2fdfc74c49087008c48b5b81e5b677877fd2c2be9b5';
 const ONLYMONSTER_BASE_URL = 'https://omapi.onlymonster.ai';
 
-// ═══════════════════════════════════════════
-// CONFIGURACIÓN: Chatters y sus cuentas asignadas
-// ═══════════════════════════════════════════
-
-const CHATTERS = [
-  { id: '25140', name: 'Nico', accountNames: ['Bellarey', 'Vicky'], assignedAccounts: ['296183678', '436482929'] },
-  { id: '66986', name: 'Alfonso', accountNames: ['Bellarey', 'Vicky'], assignedAccounts: ['296183678', '436482929'] },
-  { id: '125226', name: 'Yaye', accountNames: ['Carmen', 'Lucy', 'Lexi'], assignedAccounts: ['85825874', '314027187', '326911669'] },
-  { id: '124700', name: 'Kari', accountNames: ['Bellarey', 'Vicky'], assignedAccounts: ['296183678', '436482929'] },
-  { id: '145754', name: 'Carlo', accountNames: ['Carmen', 'Lucy', 'Lexi'], assignedAccounts: ['85825874', '314027187', '326911669'] },
-  { id: '164901', name: 'Leo', accountNames: ['Carmen', 'Lucy', 'Bellarey', 'Lexi', 'Vicky', 'Ariana'], assignedAccounts: ['85825874', '314027187', '296183678', '326911669', '436482929', '489272079'] },
-  { id: '166534', name: 'Genesys', accountNames: ['Carmen', 'Lucy', 'Lexi'], assignedAccounts: ['85825874', '314027187', '326911669'] }
-];
-
-const ACCOUNTS = [
-  { id: '85825874', name: 'Carmen' },
-  { id: '314027187', name: 'Lucy' },
-  { id: '296183678', name: 'Bellarey' },
-  { id: '326911669', name: 'Lexi' },
-  { id: '436482929', name: 'Vicky' },
-  { id: '489272079', name: 'Ariana' }
-];
-
 const round2 = (n) => Math.round(n * 100) / 100;
-
-// Para historial diario (usa transactions, no metrics)
-function getChattersPerAccount() {
-  const map = {};
-  ACCOUNTS.forEach(a => { map[a.id] = []; });
-  CHATTERS.forEach(c => {
-    c.assignedAccounts.forEach(accId => {
-      if (map[accId]) map[accId].push(c.id);
-    });
-  });
-  return map;
-}
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -60,24 +30,42 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
-  const { start_date, end_date, user_id, history, days, account_id } = req.query;
+  const { start_date, end_date, user_id, creator_id, history, days, account_id, fans_only, messages, om_account_id, chat_id } = req.query;
 
   try {
-    // ─── MODO HISTORIAL: transactions-based daily breakdown ───
-    if (user_id && history === 'true') {
-      const chatter = CHATTERS.find(c => c.id === user_id);
-      if (!chatter) return res.status(404).json({ success: false, error: 'Chatter not found' });
-      const daysNum = parseInt(days) || 30;
-      const historyData = await fetchChatterHistory(chatter, daysNum);
+    // --- MODO FANS: GET /api/v0/accounts/{id}/fans ---
+    if (fans_only === 'true' && om_account_id) {
+      const fansData = await fetchAccountFans(om_account_id);
       return res.status(200).json({
         success: true,
-        data: historyData,
-        chatter: chatter.name,
+        data: { fan_ids: fansData },
         timestamp: new Date().toISOString()
       });
     }
 
-    // ─── MODO MÉTRICAS REALES: /users/metrics endpoint ───
+    // --- MODO MENSAJES: GET /api/v0/accounts/{id}/chats/{chat_id}/messages ---
+    if (messages === 'true' && om_account_id && chat_id) {
+      const messagesData = await fetchChatMessages(om_account_id, chat_id);
+      return res.status(200).json({
+        success: true,
+        data: { items: messagesData },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // --- MODO HISTORIAL: daily /users/metrics breakdown ---
+    if (user_id && history === 'true') {
+      const daysNum = parseInt(days) || 30;
+      const historyData = await fetchChatterHistory(user_id, daysNum);
+      return res.status(200).json({
+        success: true,
+        data: historyData,
+        user_id,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // --- MODO METRICAS: /users/metrics endpoint ---
     const now = new Date();
     const startDate = start_date
       ? new Date(start_date + 'T00:00:00.000Z')
@@ -86,17 +74,14 @@ module.exports = async function handler(req, res) {
       ? new Date(end_date + 'T23:59:59.999Z')
       : now;
 
-    // ✅ Si se especifica account_id, intentar obtener métricas PER-ACCOUNT
-    let metricsData;
-    if (account_id) {
-      console.log(`📊 Fetching per-account metrics for account: ${account_id}`);
-      metricsData = await fetchPerAccountMetrics(startDate, endDate, account_id);
-    } else {
-      metricsData = await fetchUserMetrics(startDate, endDate);
-    }
+    // Pasar creator_ids[] cuando hay account_id o creator_id para filtrado server-side
+    const creatorIds = creator_id ? [creator_id] : account_id ? [account_id] : null;
+    // Pasar user_ids[] cuando hay user_id (usado junto con creator_id para desglose por modelo)
+    const userIds = user_id ? [user_id] : null;
+    const metricsData = await fetchUserMetrics(startDate, endDate, creatorIds, userIds);
 
-    // Filtrar por user_id si se especifica
-    if (user_id) {
+    // Filtrar por user_id si se especifica (sin creator_id, filtrado client-side fallback)
+    if (user_id && !creator_id) {
       const filtered = metricsData.filter(m => m.user_id === user_id);
       return res.status(200).json({
         success: true,
@@ -124,16 +109,39 @@ module.exports = async function handler(req, res) {
   }
 };
 
-// ═══════════════════════════════════════════
-// FETCH MÉTRICAS REALES DE /users/metrics
-// ═══════════════════════════════════════════
+// =============================================
+// FETCH METRICAS REALES DE /users/metrics
+// =============================================
 
-async function fetchUserMetrics(startDate, endDate) {
+/**
+ * @param {Date} startDate
+ * @param {Date} endDate
+ * @param {string[]|null} creatorIds - Si se pasa, filtra por creator_ids[] en la API
+ * @param {string[]|null} userIds - Si se pasa, filtra por user_ids[] en la API
+ */
+async function fetchUserMetrics(startDate, endDate, creatorIds, userIds) {
   const from = startDate.toISOString();
   const to = endDate.toISOString();
 
-  const url = `${ONLYMONSTER_BASE_URL}/api/v0/users/metrics?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&offset=0&limit=100`;
-  console.log('📊 Fetching /users/metrics:', url);
+  let url = `${ONLYMONSTER_BASE_URL}/api/v0/users/metrics?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&offset=0&limit=100`;
+
+  // Append creator_ids[] when filtering by account
+  if (creatorIds && creatorIds.length > 0) {
+    creatorIds.forEach(id => {
+      url += `&creator_ids[]=${encodeURIComponent(id)}`;
+    });
+    console.log('Fetching /users/metrics with creator_ids:', creatorIds);
+  }
+
+  // Append user_ids[] when filtering by specific user (used for per-model breakdown)
+  if (userIds && userIds.length > 0) {
+    userIds.forEach(id => {
+      url += `&user_ids[]=${encodeURIComponent(id)}`;
+    });
+    console.log('Fetching /users/metrics with user_ids:', userIds);
+  }
+
+  console.log('Fetching /users/metrics:', url);
 
   const MAX_RETRIES = 3;
   let responseData = null;
@@ -156,7 +164,7 @@ async function fetchUserMetrics(startDate, endDate) {
 
       if (response.status === 429 || response.status >= 500) {
         const waitMs = attempt * 2000;
-        console.warn(`⚠️ /users/metrics attempt ${attempt}/${MAX_RETRIES}: HTTP ${response.status}, waiting ${waitMs}ms`);
+        console.warn(`/users/metrics attempt ${attempt}/${MAX_RETRIES}: HTTP ${response.status}, waiting ${waitMs}ms`);
         await new Promise(r => setTimeout(r, waitMs));
         continue;
       }
@@ -165,7 +173,7 @@ async function fetchUserMetrics(startDate, endDate) {
     } catch (err) {
       if (attempt === MAX_RETRIES) throw err;
       const waitMs = attempt * 2000;
-      console.warn(`⚠️ /users/metrics attempt ${attempt}: ${err.message}, waiting ${waitMs}ms`);
+      console.warn(`/users/metrics attempt ${attempt}: ${err.message}, waiting ${waitMs}ms`);
       await new Promise(r => setTimeout(r, waitMs));
     }
   }
@@ -175,15 +183,10 @@ async function fetchUserMetrics(startDate, endDate) {
   }
 
   const items = responseData.items;
-  console.log(`📊 Got ${items.length} user metrics items`);
+  console.log(`Got ${items.length} user metrics items`);
 
-  // Filter to known chatters only
-  const knownIds = new Set(CHATTERS.map(c => c.id));
-  const chatterItems = items.filter(i => knownIds.has(String(i.user_id)));
-  console.log(`📊 Filtered to ${chatterItems.length} known chatters`);
-
-  // Map to enriched format
-  const results = chatterItems.map(item => mapMetricsItem(item, from, to));
+  // Map all items to enriched format (no hardcoded filter)
+  const results = items.map(item => mapMetricsItem(item, from, to));
 
   // Calculate impact percentage
   const totalRevenue = results.reduce((sum, c) => sum + c.revenue.total_net, 0);
@@ -199,10 +202,12 @@ async function fetchUserMetrics(startDate, endDate) {
   return results;
 }
 
-function mapMetricsItem(item, from, to) {
-  const chatter = CHATTERS.find(c => c.id === String(item.user_id));
+// =============================================
+// MAP RAW METRICS ITEM -> ENRICHED FORMAT
+// =============================================
 
-  // Revenue calculation: NET = (sold_messages + tips + sold_posts) × 0.8
+function mapMetricsItem(item, from, to) {
+  // Revenue calculation: NET = (sold_messages + tips + sold_posts) x 0.8
   const soldMsgsGross = item.sold_messages_price_sum || 0;
   const tipsGross = item.tips_amount_sum || 0;
   const soldPostsGross = item.sold_posts_price_sum || 0;
@@ -212,10 +217,14 @@ function mapMetricsItem(item, from, to) {
   const paidSent = item.paid_messages_count || 0;
   const sold = item.sold_messages_count || 0;
 
+  // creator_ids from the API response - lets the frontend resolve names
+  const creatorIds = item.creator_ids || [];
+
   return {
     user_id: String(item.user_id),
-    user_name: chatter?.name || `User ${item.user_id}`,
-    accounts: chatter?.accountNames || [],
+    user_name: item.user_name || item.name || `User ${item.user_id}`,
+    creator_ids: creatorIds,
+    accounts: [],   // frontend resolves names via useOMConfig
     period: { start: from, end: to },
     revenue: {
       total_net: round2(totalNet),
@@ -258,225 +267,125 @@ function mapMetricsItem(item, from, to) {
   };
 }
 
-// ═══════════════════════════════════════════
-// FETCH PER-ACCOUNT METRICS (filtered by account_id)
-// ═══════════════════════════════════════════
+// =============================================
+// HISTORIAL DIARIO (/users/metrics por dia, en batches de 7)
+// =============================================
 
-async function fetchPerAccountMetrics(startDate, endDate, accountId) {
-  const from = startDate.toISOString();
-  const to = endDate.toISOString();
-  const account = ACCOUNTS.find(a => a.id === accountId);
-  const accountName = account?.name || 'Unknown';
-
-  // Only chatters assigned to this account
-  const assignedChatters = CHATTERS.filter(c => c.assignedAccounts.includes(accountId));
-  if (assignedChatters.length === 0) {
-    console.log(`📊 No chatters assigned to account ${accountId} (${accountName})`);
-    return [];
-  }
-
-  console.log(`📊 Fetching per-account metrics for ${accountName} (${accountId}), ${assignedChatters.length} chatters assigned`);
-
-  // Try account-specific endpoint first
-  const url = `${ONLYMONSTER_BASE_URL}/api/v0/platforms/onlyfans/accounts/${accountId}/users/metrics?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&offset=0&limit=100`;
-  console.log('📊 Trying per-account endpoint:', url);
-
-  const MAX_RETRIES = 3;
-  let responseData = null;
-  let usedPerAccount = false;
-
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'x-om-auth-token': ONLYMONSTER_API_KEY,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        responseData = await response.json();
-        usedPerAccount = true;
-        console.log(`✅ Per-account endpoint worked for ${accountName}! Got ${responseData.items?.length || 0} items`);
-        break;
-      }
-
-      if (response.status === 404) {
-        console.log(`⚠️ Per-account endpoint not available (404), falling back to global`);
-        break;
-      }
-
-      if (response.status === 429 || response.status >= 500) {
-        const waitMs = attempt * 2000;
-        console.warn(`⚠️ Per-account attempt ${attempt}/${MAX_RETRIES}: HTTP ${response.status}, waiting ${waitMs}ms`);
-        await new Promise(r => setTimeout(r, waitMs));
-        continue;
-      }
-
-      console.log(`⚠️ Per-account returned HTTP ${response.status}, falling back to global`);
-      break;
-    } catch (err) {
-      if (attempt === MAX_RETRIES) {
-        console.warn(`⚠️ Per-account failed after ${MAX_RETRIES} attempts, falling back to global`);
-        break;
-      }
-      const waitMs = attempt * 2000;
-      await new Promise(r => setTimeout(r, waitMs));
-    }
-  }
-
-  // If per-account endpoint worked, use its data
-  if (usedPerAccount && responseData?.items) {
-    const items = responseData.items;
-    const knownIds = new Set(assignedChatters.map(c => c.id));
-    const chatterItems = items.filter(i => knownIds.has(String(i.user_id)));
-    console.log(`📊 Per-account: ${chatterItems.length} chatters with data on ${accountName}`);
-
-    const results = chatterItems.map(item => {
-      const mapped = mapMetricsItem(item, from, to);
-      mapped._filteredAccount = accountName;
-      mapped._filteredAccountId = accountId;
-      return mapped;
-    });
-
-    // Calculate impact percentage within this account
-    const totalRevenue = results.reduce((sum, c) => sum + c.revenue.total_net, 0);
-    results.forEach(c => {
-      c.revenue.impact_percentage = totalRevenue > 0 ? round2((c.revenue.total_net / totalRevenue) * 100) : 0;
-    });
-    results.sort((a, b) => b.revenue.total_net - a.revenue.total_net);
-
-    return results;
-  }
-
-  // Fallback: fetch global metrics and filter to assigned chatters
-  console.log(`📊 Fallback: using global metrics filtered to ${accountName} chatters`);
-  const globalData = await fetchUserMetrics(startDate, endDate);
-  const assignedIds = new Set(assignedChatters.map(c => c.id));
-  const filtered = globalData.filter(c => assignedIds.has(c.user_id));
-
-  // Mark as filtered (but metrics are global, not per-account)
-  filtered.forEach(c => {
-    c._filteredAccount = accountName;
-    c._filteredAccountId = accountId;
-    c._isGlobalFallback = true;
-  });
-
-  return filtered;
-}
-
-// ═══════════════════════════════════════════
-// HISTORIAL DIARIO (transactions-based, para gráficos)
-// ═══════════════════════════════════════════
-
-async function fetchAllTransactions(accountId, startDate, endDate) {
-  let allItems = [];
-  let cursor = null;
-  const MAX_RETRIES = 3;
-
-  do {
-    let url = `${ONLYMONSTER_BASE_URL}/api/v0/platforms/onlyfans/accounts/${accountId}/transactions?start=${startDate.toISOString()}&end=${endDate.toISOString()}&limit=1000`;
-    if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
-
-    let success = false;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'x-om-auth-token': ONLYMONSTER_API_KEY,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          allItems = allItems.concat(result.items || []);
-          cursor = result.cursor || null;
-          success = true;
-          break;
-        }
-
-        if (response.status === 429 || response.status >= 500) {
-          const waitMs = attempt * 2000;
-          console.warn(`⚠️ ${accountId} attempt ${attempt}/${MAX_RETRIES}: HTTP ${response.status}, waiting ${waitMs}ms`);
-          await new Promise(r => setTimeout(r, waitMs));
-          continue;
-        }
-
-        console.error(`❌ OnlyMonster API Error for ${accountId}: ${response.status}`);
-        cursor = null;
-        success = true;
-        break;
-      } catch (err) {
-        const waitMs = attempt * 2000;
-        console.warn(`⚠️ ${accountId} attempt ${attempt}: ${err.message}, waiting ${waitMs}ms`);
-        await new Promise(r => setTimeout(r, waitMs));
-      }
-    }
-
-    if (!success) {
-      console.error(`❌ ${accountId}: All retries failed`);
-      break;
-    }
-  } while (cursor);
-
-  return allItems;
-}
-
-async function fetchChatterHistory(chatter, days) {
+async function fetchChatterHistory(userId, days) {
   const now = new Date();
-  const startDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() - days, 0, 0, 0));
-  const endDate = now;
-  const chattersPerAccount = getChattersPerAccount();
+  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 
-  // Fetch all assigned accounts
-  const accountTransactions = {};
-  for (let i = 0; i < chatter.assignedAccounts.length; i++) {
-    const accId = chatter.assignedAccounts[i];
-    accountTransactions[accId] = await fetchAllTransactions(accId, startDate, endDate);
-    if (i < chatter.assignedAccounts.length - 1) {
+  // Build array of day ranges
+  const dayRanges = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const dayStart = new Date(today);
+    dayStart.setUTCDate(dayStart.getUTCDate() - i);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setUTCHours(23, 59, 59, 999);
+    dayRanges.push({ date: dayStart.toISOString().split('T')[0], from: dayStart, to: dayEnd });
+  }
+
+  const results = [];
+  const BATCH_SIZE = 7;
+
+  for (let b = 0; b < dayRanges.length; b += BATCH_SIZE) {
+    const batch = dayRanges.slice(b, b + BATCH_SIZE);
+
+    const batchResults = await Promise.all(
+      batch.map(async ({ date, from, to }) => {
+        try {
+          const url = `${ONLYMONSTER_BASE_URL}/api/v0/users/metrics?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&user_ids[]=${userId}&offset=0&limit=10`;
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'x-om-auth-token': ONLYMONSTER_API_KEY,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          });
+
+          if (!response.ok) return { date, sales: 0, messages: 0, fans: 0, conversion: 0 };
+
+          const data = await response.json();
+          const item = (data.items || []).find(i => String(i.user_id) === userId);
+
+          if (!item) return { date, sales: 0, messages: 0, fans: 0, conversion: 0 };
+
+          const gross = (item.sold_messages_price_sum || 0) + (item.tips_amount_sum || 0) + (item.sold_posts_price_sum || 0);
+          const net = round2(gross * 0.8);
+          const msgs = item.messages_count || 0;
+          const fans = item.fans_count || 0;
+          const paidSent = item.paid_messages_count || 0;
+          const sold = item.sold_messages_count || 0;
+          const conversion = paidSent > 0 ? round2((sold / paidSent) * 100) : 0;
+
+          return { date, sales: net, messages: msgs, fans, conversion };
+        } catch (err) {
+          return { date, sales: 0, messages: 0, fans: 0, conversion: 0 };
+        }
+      })
+    );
+
+    results.push(...batchResults);
+
+    // Wait between batches to respect rate limits
+    if (b + BATCH_SIZE < dayRanges.length) {
       await new Promise(r => setTimeout(r, 1500));
     }
   }
 
-  // Build daily data
-  const dailyMap = {};
-  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-    const key = d.toISOString().split('T')[0];
-    dailyMap[key] = { sales: 0, messages: 0, fans: new Set() };
-  }
+  // Return newest first
+  return results.reverse();
+}
 
-  chatter.assignedAccounts.forEach(accId => {
-    const txs = accountTransactions[accId] || [];
-    const numChatters = chattersPerAccount[accId]?.length || 1;
-    const share = 1 / numChatters;
+// =============================================
+// FETCH FANS DE UNA CUENTA /accounts/{id}/fans
+// =============================================
 
-    txs.forEach(tx => {
-      if (tx.status !== 'done' && tx.status !== 'loading') return;
-      const dateKey = new Date(tx.timestamp).toISOString().split('T')[0];
-      if (!dailyMap[dateKey]) return;
+async function fetchAccountFans(omAccountId) {
+  const url = `${ONLYMONSTER_BASE_URL}/api/v0/accounts/${encodeURIComponent(omAccountId)}/fans?limit=10000`;
+  console.log('Fetching /accounts/fans:', url);
 
-      dailyMap[dateKey].sales += tx.amount * 0.8 * share;
-
-      const type = (tx.type || '').toLowerCase();
-      if (type.includes('message') || type.includes('payment for message')) {
-        dailyMap[dateKey].messages += Math.round(share);
-      }
-      if (tx.fan?.id) dailyMap[dateKey].fans.add(tx.fan.id);
-    });
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'x-om-auth-token': ONLYMONSTER_API_KEY,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    }
   });
 
-  return Object.entries(dailyMap)
-    .sort(([a], [b]) => b.localeCompare(a))
-    .map(([date, data]) => ({
-      date,
-      sales: Math.round(data.sales * 100) / 100,
-      messages: data.messages,
-      fans: data.fans.size,
-      conversion: data.fans.size > 0 ? Math.round((data.messages / data.fans.size) * 100 * 10) / 10 : 0
-    }));
+  if (!response.ok) {
+    throw new Error(`OnlyMonster /accounts/${omAccountId}/fans HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  const items = data.items || data.data || [];
+  // Extract fan IDs as strings
+  return items.map(item => String(item.id || item.fan_id || item.user_id || item));
+}
+
+// =============================================
+// FETCH MENSAJES DE UN CHAT /accounts/{id}/chats/{chat_id}/messages
+// =============================================
+
+async function fetchChatMessages(omAccountId, chatId) {
+  const url = `${ONLYMONSTER_BASE_URL}/api/v0/accounts/${encodeURIComponent(omAccountId)}/chats/${encodeURIComponent(chatId)}/messages?limit=50&order=desc`;
+  console.log('Fetching /accounts/chats/messages:', url);
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'x-om-auth-token': ONLYMONSTER_API_KEY,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`OnlyMonster /accounts/${omAccountId}/chats/${chatId}/messages HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.items || data.data || [];
 }

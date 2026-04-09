@@ -80,6 +80,18 @@ const TASKS: Task[] = [
       'Podrás consultar meses pasados en el menú desplegable "📚".'
     ],
     icon: '💾'
+  },
+  {
+    id: 'step_audit',
+    title: 'Auditoría de Chat (NUEVO)',
+    details: [
+      'Ve a la pestaña 🔍 AUDITORÍA CHAT.',
+      'Seleccioná la modelo → aparecen fans activos de las últimas 48h.',
+      'Hacé click en cualquier fan para revisar la conversación.',
+      'El panel de análisis detecta gaps de respuesta y precios.',
+      'Usá "🚨 Registrar Error" para documentar problemas directamente.'
+    ],
+    icon: '🔍'
   }
 ];
 
