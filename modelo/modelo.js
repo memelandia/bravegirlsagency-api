@@ -82,17 +82,8 @@
     statsContainer.innerHTML = renderSkeletons(6);
     recordingContainer.innerHTML = renderSkeletons(1);
 
-    // Agency message
-    var agencyMsg = window.CONFIG.modelDashboardMessage || '';
-    if (agencyMsg) {
-      agencyMsgContainer.innerHTML =
-        '<div class="card agency-msg-card">' +
-        '<div class="dash-section-title">💬 Mensaje de tu agencia</div>' +
-        '<div class="agency-msg-text">' + esc(agencyMsg) + '</div></div>';
-      agencyMsgContainer.classList.remove('hidden');
-    } else {
-      agencyMsgContainer.classList.add('hidden');
-    }
+    // Agency message — removed by design
+    agencyMsgContainer.classList.add('hidden');
 
     // OnlyFans stats
     var hasOM = cfg.onlyMonsterId && cfg.onlyMonsterId !== 'PENDING' && cfg.onlyMonsterId !== 'MODELO_ID_AQUI';
@@ -274,113 +265,65 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  // RENDER FULL STATS
+  // RENDER FULL STATS — v3 visual redesign
   // ═══════════════════════════════════════════════════════════
   function renderFullStats(container, current, lastSame, lastFull, period) {
-    var periodLabel = period.lastMonthName + ' 1-' + period.currentDay;
+    var html = '';
 
-    // --- Motivational message ---
-    var motivHtml = renderMotivational(current, lastSame, lastFull, period);
-
-    // --- Progress bar ---
-    var progressHtml = renderProgressBar(current, lastFull, period);
-
-    // --- Main stats grid ---
-    var html = motivHtml + progressHtml + '<div class="stats-grid">';
-
-    // 1. Monthly revenue
-    html += '<div class="card card-highlight">' +
-      '<div class="stat-label">💰 Ingresos del mes</div>' +
-      '<div class="stat-big">' + fmtCur(current.totalRevenue) + '</div>' +
-      '<div style="margin-top:0.5rem">' +
-        growthBadge(current.totalRevenue, lastSame.totalRevenue, fmtCur(lastSame.totalRevenue) + ' en ' + periodLabel) +
-      '</div></div>';
-
-    // 2. Subscribers
-    html += '<div class="card">' +
-      '<div class="stat-label">👥 Suscriptores activos</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;margin-top:0.5rem">' +
-        fanBlock(current.fansToday, 'Hoy') +
-        fanBlock(current.fansThisWeek, 'Semana') +
-        fanBlock(current.fansThisMonth, 'Este mes') +
+    // 1. HERO CARD — revenue big
+    html += '<div class="card card-hero">' +
+      '<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;' +
+        'letter-spacing:0.1em;color:rgba(255,107,179,0.7);margin-bottom:0.5rem">' +
+        '💰 Ingresos ' + period.currentMonthName +
       '</div>' +
-      '<div style="margin-top:0.5rem">' +
-        growthBadge(current.fansThisMonth, lastSame.fansThisMonth, lastSame.fansThisMonth + ' en ' + periodLabel) +
-      '</div></div>';
-
-    // 3. Subscriptions
-    html += '<div class="card">' +
-      '<div class="stat-label">💎 Suscripciones</div>' +
-      '<div class="stat-medium">' + fmtCur(current.subscriptionRevenue) + '</div>' +
-      '<div style="margin-top:0.5rem">' +
-        growthBadge(current.subscriptionRevenue, lastSame.subscriptionRevenue, fmtCur(lastSame.subscriptionRevenue) + ' en ' + periodLabel) +
-      '</div></div>';
-
-    // 4. PPV & Tips
-    html += '<div class="card">' +
-      '<div class="stat-label">💎 PPV & Tips</div>' +
-      '<div class="stat-medium">' + fmtCur(current.ppvRevenue + current.tipRevenue) + '</div>' +
-      '<div style="margin-top:0.5rem">' +
-        growthBadge(current.ppvRevenue + current.tipRevenue, lastSame.ppvRevenue + lastSame.tipRevenue,
-          fmtCur(lastSame.ppvRevenue + lastSame.tipRevenue) + ' en ' + periodLabel) +
-      '</div></div>';
-
-    // 5. Messages sold
-    html += '<div class="card">' +
-      '<div class="stat-label">✉️ Mensajes vendidos</div>' +
-      '<div class="stat-medium">' + current.messageCount.toLocaleString() + '</div>' +
-      '<div style="margin-top:0.5rem">' +
-        growthBadge(current.messageCount, lastSame.messageCount, lastSame.messageCount + ' en ' + periodLabel) +
+      '<div class="stat-hero">' + fmtCur(current.totalRevenue) + '</div>' +
+      '<div style="margin-top:0.75rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">' +
+        growthBadge(current.totalRevenue, lastSame.totalRevenue, '') +
+        '<span style="color:var(--text-muted);font-size:0.8rem">' +
+          'vs primeros ' + period.currentDay + ' días de ' + period.lastMonthName +
+        '</span>' +
       '</div>' +
-      '<div class="stat-sub">Promedio: ' + fmtCur(current.avgMessagePrice) + '/msg</div>' +
-      '</div>';
+      (current.projection > 0 ?
+        '<div style="margin-top:0.75rem;padding:0.6rem 0.9rem;border-radius:10px;' +
+        'background:rgba(255,255,255,0.04);display:inline-flex;align-items:center;gap:0.5rem">' +
+        '<span style="font-size:0.75rem;color:var(--text-muted)">🎯 Previsión:</span>' +
+        '<span style="font-size:0.9rem;font-weight:700;color:var(--success)">' +
+        fmtCur(current.projection) + '</span>' +
+        '</div>' : '') +
+    '</div>';
 
-    // 6. Projection
-    html += '<div class="card">' +
-      '<div class="stat-label">🎯 Proyección</div>' +
-      '<div class="stat-medium" style="color:var(--accent-light)">' + fmtCur(current.projection) + '</div>' +
-      '<div style="margin-top:0.5rem">' +
-        growthBadge(current.projection, lastFull.totalRevenue,
-          'vs ' + fmtCur(lastFull.totalRevenue) + ' ' + period.lastMonthName + ' completo') +
+    // 2. MINI-STATS ROW (3 cards)
+    html += '<div class="mini-stats-row">' +
+      '<div class="card mini-stat-card card-accent-fans">' +
+        '<div class="mini-stat-icon">👥</div>' +
+        '<div class="mini-stat-value">' + current.fansThisMonth + '</div>' +
+        '<div class="mini-stat-label">Chicos que pagaron</div>' +
       '</div>' +
-      '<div class="stat-sub">Si continúa este ritmo</div>' +
-      '</div>';
+      '<div class="card mini-stat-card card-accent-ppv">' +
+        '<div class="mini-stat-icon">✉️</div>' +
+        '<div class="mini-stat-value">' + current.messageCount.toLocaleString() + '</div>' +
+        '<div class="mini-stat-label">Mensajes vendidos</div>' +
+      '</div>' +
+      '<div class="card mini-stat-card card-accent-tips">' +
+        '<div class="mini-stat-icon">💵</div>' +
+        '<div class="mini-stat-value">' + fmtCur(current.averagePerFan) + '</div>' +
+        '<div class="mini-stat-label">Por fan de media</div>' +
+      '</div>' +
+    '</div>';
 
-    html += '</div>'; // close stats-grid
+    // 3. PROGRESS RING
+    html += renderProgressRing(current, lastFull, period);
 
-    // --- Second row: smaller stats ---
-    html += '<div class="stats-grid" style="margin-top:1rem">';
-
-    // Avg per fan
-    html += '<div class="card" style="text-align:center">' +
-      '<div class="stat-label">💰 Promedio/Fan</div>' +
-      '<div class="stat-medium">' + fmtCur(current.averagePerFan) + '</div></div>';
-
-    // Recent activity
-    html += '<div class="card" style="text-align:center">' +
-      '<div class="stat-label">⚡ Actividad 24h</div>' +
-      '<div class="stat-medium">' + current.recentActivity + ' <span style="font-size:0.8rem;color:var(--text-muted)">ventas</span></div></div>';
-
-    // Best day
-    if (current.bestDay.date) {
-      var bestDate = new Date(current.bestDay.date);
-      html += '<div class="card" style="text-align:center">' +
-        '<div class="stat-label">🌟 Mejor día</div>' +
-        '<div class="stat-medium" style="color:var(--gold)">' +
-          bestDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) +
-        '</div>' +
-        '<div class="stat-sub">' + fmtCur(current.bestDay.amount) + '</div></div>';
-    }
-
-    html += '</div>'; // close second stats-grid
-
-    // --- Comparison table ---
-    html += renderComparison(current, lastSame, lastFull, period);
-
-    // --- Income distribution ---
+    // 4. DONUT — Income distribution
     html += renderIncomeDistribution(current);
 
-    // --- Last update ---
+    // 5. COMPARISON TABLE (simplified)
+    html += renderComparison(current, lastSame, lastFull, period);
+
+    // 6. MOTIVATIONAL (at the end)
+    html += renderMotivational(current, lastSame, lastFull, period);
+
+    // 7. Last update
     html += '<div style="text-align:center;margin-top:1.5rem;color:var(--text-muted);font-size:0.75rem">' +
       '🔄 Actualizado: ' + new Date().toLocaleString('es-ES', {
         day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -389,88 +332,76 @@
     container.innerHTML = html;
   }
 
-  // ═══ MOTIVATIONAL MESSAGE ═══
+  // ═══ MOTIVATIONAL MESSAGE (at end, shorter) ═══
   function renderMotivational(current, lastSame, lastFull, period) {
     var revGrowth = calcGrowth(current.totalRevenue, lastSame.totalRevenue);
-    var daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-    var monthPct = ((period.currentDay / daysInMonth) * 100).toFixed(0);
-    var revPctOfLastFull = lastFull.totalRevenue > 0 ? ((current.totalRevenue / lastFull.totalRevenue) * 100).toFixed(0) : 100;
 
     var emoji, headline, message;
     if (revGrowth >= 20) {
       emoji = '🚀'; headline = '¡Estás volando este mes!';
-      message = 'Tus ingresos están un <strong style="color:var(--success)">+' + revGrowth.toFixed(0) + '%</strong> por encima del mismo período de ' + period.lastMonthName + '. ¡Increíble trabajo!';
+      message = 'Vas un <strong style="color:var(--success)">+' + revGrowth.toFixed(0) + '%</strong> por encima de ' + period.lastMonthName + '. ¡Increíble!';
     } else if (revGrowth >= 0) {
       emoji = '💪'; headline = '¡Vas por buen camino!';
-      message = 'Ya superaste lo que facturaste en los primeros ' + period.currentDay + ' días de ' + period.lastMonthName + '. ¡Sigue así!';
+      message = 'Ya superaste los primeros ' + period.currentDay + ' días de ' + period.lastMonthName + '. ¡Sigue así!';
     } else if (revGrowth >= -15) {
-      emoji = '✨'; headline = '¡Cada día cuenta, sigue así!';
-      message = 'Estás muy cerca del ritmo de ' + period.lastMonthName + '. Con un poco más de impulso puedes superarlo.';
+      emoji = '✨'; headline = '¡Cada día cuenta!';
+      message = 'Estás cerca del ritmo de ' + period.lastMonthName + '. Un poco más y lo superas.';
     } else {
       emoji = '💫'; headline = '¡El mes apenas empieza!';
-      message = 'Llevas el <strong style="color:var(--info)">' + revPctOfLastFull + '%</strong> de lo que se facturó en todo ' + period.lastMonthName + ' y solo ha pasado el <strong style="color:var(--info)">' + monthPct + '%</strong> del mes.';
+      message = 'Cuantos más reels subas, más suscriptores llegarán. ¡Tú puedes!';
     }
 
-    var fansMsg = current.fansThisMonth > 0
-      ? '<br>Este mes han ingresado <strong style="color:var(--accent-light)">' + current.fansThisMonth + ' suscriptores</strong>' + (current.fansToday > 0 ? ' (' + current.fansToday + ' solo hoy)' : '') + '.'
-      : '';
-
-    var projMsg = current.projection > 0
-      ? '<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted)">🎯 A este ritmo, podrías cerrar el mes en <strong style="color:var(--success)">' + fmtCur(current.projection) + '</strong></div>'
-      : '';
-
-    return '<div class="card" style="margin-bottom:1rem;background:linear-gradient(135deg,rgba(52,211,153,0.08),rgba(255,107,179,0.06));border-color:rgba(52,211,153,0.2)">' +
-      '<div style="display:flex;align-items:flex-start;gap:14px">' +
-        '<div style="font-size:2.5rem;line-height:1">' + emoji + '</div>' +
+    return '<div class="card" style="margin-top:1rem;background:linear-gradient(135deg,rgba(52,211,153,0.06),rgba(255,107,179,0.04));border-color:rgba(52,211,153,0.15)">' +
+      '<div style="display:flex;align-items:center;gap:12px">' +
+        '<div style="font-size:2rem;line-height:1">' + emoji + '</div>' +
         '<div style="flex:1">' +
-          '<div style="font-size:1.15rem;font-weight:800;color:#fff;margin-bottom:6px">' + headline + '</div>' +
-          '<div style="font-size:0.85rem;color:var(--text-secondary);line-height:1.6">' + message + fansMsg +
-            ' <span style="color:var(--text-muted)">Cuantos más reels subas y mejor sea su calidad, más suscriptores llegarán.</span>' +
-          '</div>' + projMsg +
+          '<div style="font-size:1rem;font-weight:800;color:#fff;margin-bottom:4px">' + headline + '</div>' +
+          '<div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.5">' + message + '</div>' +
         '</div>' +
       '</div></div>';
   }
 
-  // ═══ PROGRESS BAR ═══
-  function renderProgressBar(current, lastFull, period) {
+  // ═══ PROGRESS RING (SVG circle) ═══
+  function renderProgressRing(current, lastFull, period) {
     var goal = lastFull.totalRevenue > 0 ? lastFull.totalRevenue : (current.projection || 1);
     var pct = Math.min((current.totalRevenue / goal) * 100, 100);
-    var daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-    var monthPct = ((period.currentDay / daysInMonth) * 100).toFixed(0);
 
-    var insight;
-    if (pct >= parseFloat(monthPct)) {
-      insight = '<span style="color:var(--success)">⚡ Vas al ' + pct.toFixed(0) + '% de ' + period.lastMonthName + ' con solo el ' + monthPct + '% del mes — ¡ritmo excelente!</span>';
-    } else if (pct >= parseFloat(monthPct) * 0.7) {
-      insight = '<span style="color:var(--gold)">📈 Ya alcanzaste el ' + pct.toFixed(0) + '% de ' + period.lastMonthName + '. Con ' + (daysInMonth - period.currentDay) + ' días por delante, tienes mucho margen.</span>';
-    } else {
-      insight = '<span style="color:var(--info)">💡 Llevas el ' + pct.toFixed(0) + '% y faltan ' + (daysInMonth - period.currentDay) + ' días. ¡Tú puedes!</span>';
-    }
+    var circumference = 282.7;
+    var dashOffset = circumference - (pct / 100 * circumference);
+    var ringColor = pct >= 80 ? '#10b981' : pct >= 50 ? '#FF1F8E' : '#f59e0b';
+    var borderColor = pct >= 80 ? 'rgba(16,185,129,0.3)' : 'rgba(255,31,142,0.2)';
 
-    return '<div class="card" style="margin-bottom:1rem">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">' +
-        '<span class="stat-label" style="margin:0">📊 Meta vs ' + period.lastMonthName + '</span>' +
-        '<span style="font-size:1.25rem;font-weight:800;color:var(--accent-light)">' + pct.toFixed(0) + '%</span>' +
-      '</div>' +
-      '<div class="progress-track"><div class="progress-fill" style="width:' + Math.max(pct, 3) + '%">' + pct.toFixed(0) + '%</div></div>' +
-      '<div class="stat-sub" style="margin-top:0.5rem">Llevas ' + fmtCur(current.totalRevenue) + ' de ' + fmtCur(goal) + ' de ' + period.lastMonthName + '</div>' +
-      '<div style="margin-top:0.5rem;font-size:0.8rem">' + insight + '</div>' +
-      '</div>';
+    return '<div class="card" style="text-align:center;border-color:' + borderColor + ';margin-bottom:1rem">' +
+      '<div class="stat-label">🎯 Meta del mes</div>' +
+      '<div class="progress-ring-wrap">' +
+        '<svg width="120" height="120" viewBox="0 0 120 120" style="max-width:100%">' +
+          '<circle cx="60" cy="60" r="45" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>' +
+          '<circle cx="60" cy="60" r="45" fill="none" stroke="' + ringColor + '" stroke-width="10" ' +
+            'stroke-linecap="round" stroke-dasharray="' + circumference + '" stroke-dashoffset="' + dashOffset + '" ' +
+            'transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 1s ease"/>' +
+          '<text x="60" y="55" text-anchor="middle" fill="' + ringColor + '" font-size="22" font-weight="900">' + pct.toFixed(0) + '%</text>' +
+          '<text x="60" y="73" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="9">completado</text>' +
+        '</svg>' +
+        '<div style="text-align:left">' +
+          '<div style="font-size:0.8rem;color:var(--text-muted)">Llevas</div>' +
+          '<div style="font-size:1.4rem;font-weight:800;color:#fff">' + fmtCur(current.totalRevenue) + '</div>' +
+          '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px">Meta</div>' +
+          '<div style="font-size:1.1rem;font-weight:700;color:var(--text-secondary)">' + fmtCur(goal) + '</div>' +
+          '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">(' + period.lastMonthName + ' completo)</div>' +
+        '</div>' +
+      '</div></div>';
   }
 
-  // ═══ COMPARISON TABLE ═══
+  // ═══ COMPARISON TABLE (simplified) ═══
   function renderComparison(current, lastSame, lastFull, period) {
-    var currentLabel = period.currentMonthName + ' 1-' + period.currentDay;
-    var lastSameLabel = period.lastMonthName + ' 1-' + period.currentDay;
-    var lastFullLabel = period.lastMonthName + ' (completo)';
+    var currentLabel = period.currentMonthName;
+    var lastSameLabel = period.lastMonthName;
 
     var metrics = [
-      { label: 'Facturación Total', c: current.totalRevenue, ls: lastSame.totalRevenue, lf: lastFull.totalRevenue, cur: true },
-      { label: 'Suscripciones', c: current.subscriptionRevenue, ls: lastSame.subscriptionRevenue, lf: lastFull.subscriptionRevenue, cur: true },
-      { label: 'PPV & Tips', c: current.ppvRevenue + current.tipRevenue, ls: lastSame.ppvRevenue + lastSame.tipRevenue, lf: lastFull.ppvRevenue + lastFull.tipRevenue, cur: true },
-      { label: 'Fans Activos', c: current.fansThisMonth, ls: lastSame.fansThisMonth, lf: lastFull.fansThisMonth, cur: false },
-      { label: 'Mensajes Vendidos', c: current.messageCount, ls: lastSame.messageCount, lf: lastFull.messageCount, cur: false },
-      { label: 'Promedio/Fan', c: current.averagePerFan, ls: lastSame.averagePerFan, lf: lastFull.averagePerFan, cur: true }
+      { label: '💰 Total del mes', c: current.totalRevenue, ls: lastSame.totalRevenue, cur: true },
+      { label: '👥 Chicos que pagaron', c: current.fansThisMonth, ls: lastSame.fansThisMonth, cur: false },
+      { label: '✉️ Mensajes y Vídeos', c: current.ppvRevenue + current.tipRevenue, ls: lastSame.ppvRevenue + lastSame.tipRevenue, cur: true },
+      { label: '💎 Suscripciones', c: current.subscriptionRevenue, ls: lastSame.subscriptionRevenue, cur: true }
     ];
 
     var positiveCount = 0;
@@ -490,54 +421,88 @@
         '<td style="padding:10px 8px;text-align:right;color:var(--text-muted);font-size:0.85rem">' + val(m.ls) + '</td>' +
         '<td style="padding:10px 8px;text-align:center"><span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;background:' + bg + ';color:' + color + ';font-weight:700;font-size:0.8rem">' +
           arrow + ' ' + (isZero ? '0' : (isUp ? '+' : '') + g.toFixed(1)) + '%</span></td>' +
-        '<td style="padding:10px 4px;text-align:right;color:var(--text-muted);font-size:0.75rem">' + val(m.lf) + '</td>' +
         '</tr>';
     }).join('');
 
-    var summaryEmoji = positiveCount >= metrics.length ? '🏆' : positiveCount >= 3 ? '🔥' : positiveCount > 0 ? '💡' : '📈';
-    var summaryColor = positiveCount >= 3 ? 'var(--success)' : 'var(--info)';
-    var summaryMsg = positiveCount >= metrics.length ? '¡Todas las métricas por encima del mes pasado!'
-      : '<strong>' + positiveCount + ' de ' + metrics.length + '</strong> métricas por encima del mes pasado';
+    var summaryEmoji = positiveCount >= metrics.length ? '🏆' : positiveCount >= 2 ? '🔥' : positiveCount > 0 ? '💡' : '📈';
+    var summaryColor = positiveCount >= 2 ? 'var(--success)' : 'var(--info)';
+    var summaryMsg = positiveCount >= metrics.length ? '¡Todo por encima del mes pasado!'
+      : '<strong>' + positiveCount + ' de ' + metrics.length + '</strong> métricas mejorando';
 
-    return '<div class="card" style="margin-top:1.5rem;overflow-x:auto">' +
-      '<div class="stat-label">📐 Comparativa con el mes anterior</div>' +
+    return '<div class="card" style="margin-top:1rem;overflow-x:auto">' +
+      '<div class="stat-label">📊 Tu progreso vs el mes pasado</div>' +
       '<div style="font-size:0.7rem;color:var(--info);margin:0.5rem 0;background:rgba(59,130,246,0.15);padding:2px 8px;border-radius:4px;display:inline-block">Comparación justa: mismos ' + period.currentDay + ' días</div>' +
       '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">' +
       '<thead><tr style="border-bottom:2px solid rgba(255,255,255,0.1)">' +
         '<th style="text-align:left;padding:8px;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase">Métrica</th>' +
         '<th style="text-align:right;padding:8px;color:var(--accent-light);font-size:0.7rem;text-transform:uppercase">' + currentLabel + '</th>' +
         '<th style="text-align:right;padding:8px;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase">' + lastSameLabel + '</th>' +
-        '<th style="text-align:center;padding:8px;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase">vs Mismo</th>' +
-        '<th style="text-align:right;padding:8px;color:var(--text-muted);font-size:0.65rem;text-transform:uppercase">' + lastFullLabel + '</th>' +
+        '<th style="text-align:center;padding:8px;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase">Cambio</th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table>' +
-      '<div style="margin-top:12px;padding:10px 14px;border-radius:12px;background:' + (positiveCount >= 3 ? 'rgba(52,211,153,0.1)' : 'rgba(96,165,250,0.1)') + ';display:flex;align-items:center;gap:10px">' +
+      '<div style="margin-top:12px;padding:10px 14px;border-radius:12px;background:' + (positiveCount >= 2 ? 'rgba(52,211,153,0.1)' : 'rgba(96,165,250,0.1)') + ';display:flex;align-items:center;gap:10px">' +
         '<span style="font-size:1.5rem">' + summaryEmoji + '</span>' +
         '<span style="color:' + summaryColor + ';font-size:0.9rem;font-weight:600">' + summaryMsg + '</span>' +
       '</div></div>';
   }
 
-  // ═══ INCOME DISTRIBUTION ═══
+  // ═══ INCOME DISTRIBUTION — SVG DONUT ═══
   function renderIncomeDistribution(stats) {
     var total = stats.totalRevenue;
     if (total === 0) return '';
 
-    var subsPct = (stats.subscriptionRevenue / total * 100).toFixed(1);
-    var ppvPct = (stats.ppvRevenue / total * 100).toFixed(1);
-    var tipsPct = (stats.tipRevenue / total * 100).toFixed(1);
+    var subs = stats.subscriptionRevenue;
+    var ppv  = stats.ppvRevenue;
+    var tips = stats.tipRevenue;
 
-    function bar(label, pct, amount, color) {
-      return '<div style="margin-bottom:0.75rem">' +
-        '<div class="income-row"><span class="label">' + label + '</span>' +
-        '<span class="value">' + pct + '% — ' + fmtCur(amount) + '</span></div>' +
-        '<div class="income-bar-track"><div class="income-bar-fill" style="width:' + pct + '%;background:' + color + '"></div></div></div>';
+    var r = 50, circ = 314.16, cx = 70, cy = 70;
+
+    function arc(value, offset, color) {
+      var pct = total > 0 ? value / total : 0;
+      var dash = pct * circ;
+      var gap  = circ - dash;
+      return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" ' +
+        'fill="none" stroke="' + color + '" stroke-width="18" ' +
+        'stroke-dasharray="' + dash.toFixed(2) + ' ' + gap.toFixed(2) + '" ' +
+        'stroke-dashoffset="' + (-(offset * circ)).toFixed(2) + '" ' +
+        'transform="rotate(-90 ' + cx + ' ' + cy + ')" stroke-linecap="butt"/>';
     }
 
-    return '<div class="card" style="margin-top:1rem">' +
-      '<div class="stat-label">📊 Distribución de ingresos</div>' +
-      bar('Suscripciones', subsPct, stats.subscriptionRevenue, '#3B82F6') +
-      bar('PPV (Mensajes + Posts)', ppvPct, stats.ppvRevenue, '#FF6BB3') +
-      bar('Tips', tipsPct, stats.tipRevenue, '#FFD700') +
-      '</div>';
+    var subsOffset = 0;
+    var ppvOffset  = total > 0 ? subs / total : 0;
+    var tipsOffset = total > 0 ? (subs + ppv) / total : 0;
+
+    var svgDonut =
+      '<svg width="140" height="140" viewBox="0 0 140 140" style="max-width:100%">' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="18"/>' +
+        arc(subs, subsOffset, 'var(--color-subs)') +
+        arc(ppv,  ppvOffset,  'var(--color-ppv)') +
+        arc(tips, tipsOffset, 'var(--color-tips)') +
+        '<text x="' + cx + '" y="' + (cy - 6) + '" text-anchor="middle" fill="rgba(255,255,255,0.9)" font-size="13" font-weight="900">' + fmtCur(total) + '</text>' +
+        '<text x="' + cx + '" y="' + (cy + 12) + '" text-anchor="middle" fill="rgba(255,255,255,0.35)" font-size="8">total</text>' +
+      '</svg>';
+
+    function legendItem(label, amount, color) {
+      var pct = total > 0 ? (amount / total * 100).toFixed(0) : 0;
+      return '<div class="donut-legend-item">' +
+        '<div class="donut-legend-dot" style="background:' + color + '"></div>' +
+        '<div style="flex:1">' +
+          '<div style="font-size:0.8rem;color:var(--text-secondary);font-weight:600">' + label + '</div>' +
+          '<div style="font-size:0.95rem;font-weight:800;color:#fff">' + fmtCur(amount) +
+            '<span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px">' + pct + '%</span>' +
+          '</div>' +
+        '</div></div>';
+    }
+
+    return '<div class="card" style="margin-bottom:1rem">' +
+      '<div class="stat-label">💎 De dónde viene tu dinero</div>' +
+      '<div class="donut-wrap">' +
+        svgDonut +
+        '<div>' +
+          legendItem('Suscripciones', subs, 'var(--color-subs)') +
+          legendItem('Mensajes y Vídeos', ppv, 'var(--color-ppv)') +
+          legendItem('Propinas', tips, 'var(--color-tips)') +
+        '</div>' +
+      '</div></div>';
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -619,6 +584,22 @@
   }
 
   function renderRecording(container, grabados, pendientesCount, enviados, pct, pendientesArr) {
+    // Dynamic colors based on progress
+    var borderColor, bgStyle, titleText;
+    if (pct >= 100) {
+      borderColor = 'rgba(16,185,129,0.4)';
+      bgStyle = 'background:rgba(16,185,129,0.06);';
+      titleText = '🎉 ¡Todo grabado!';
+    } else if (pct >= 70) {
+      borderColor = 'rgba(251,191,36,0.3)';
+      bgStyle = '';
+      titleText = '📹 Tus reels pendientes';
+    } else {
+      borderColor = 'rgba(255,31,142,0.2)';
+      bgStyle = '';
+      titleText = '📹 Tus reels pendientes';
+    }
+
     var chipsHtml = '';
     if (pendientesArr.length > 0) {
       chipsHtml = '<div style="margin-top:0.75rem"><div class="stat-sub" style="margin-bottom:0.4rem">⏳ Faltan grabar:</div>' +
@@ -630,8 +611,8 @@
     }
 
     container.innerHTML =
-      '<div class="card">' +
-        '<div class="dash-section-title">📹 Tus reels pendientes</div>' +
+      '<div class="card" style="border-color:' + borderColor + ';' + bgStyle + '">' +
+        '<div class="dash-section-title">' + titleText + '</div>' +
         '<div class="recording-summary">' +
           '<div class="recording-stat" style="color:var(--success)"><span class="num">' + grabados + '</span> grabados</div>' +
           '<div class="recording-stat" style="color:var(--gold)"><span class="num">' + pendientesCount + '</span> pendientes</div>' +
