@@ -150,9 +150,15 @@
       renderFullStats(container, currentStats, lastSameStats, lastFullStats, periodInfo);
     } catch (err) {
       console.error('Stats error:', err);
+      var errMsg = err.message || 'Error desconocido';
+      var isApiDown = errMsg.indexOf('503') !== -1 || errMsg.indexOf('502') !== -1 || errMsg.indexOf('504') !== -1;
+      var displayMsg = isApiDown
+        ? 'El servicio de estadísticas está temporalmente fuera de línea. Suele resolverse en minutos.'
+        : 'No se pudieron cargar tus stats (' + esc(errMsg) + ')';
       container.innerHTML =
-        '<div class="error-state"><div class="icon">⚠️</div>' +
-        '<div class="msg">No se pudieron cargar tus stats. Intenta en unos minutos.</div></div>';
+        '<div class="error-state"><div class="icon">' + (isApiDown ? '🔧' : '⚠️') + '</div>' +
+        '<div class="msg">' + displayMsg + '</div>' +
+        '<button onclick="location.reload()" style="margin-top:1rem;padding:0.6rem 1.5rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">🔄 Reintentar</button></div>';
     }
   }
 
