@@ -552,27 +552,25 @@
     '</div>';
   }
 
-  // ═══ PROGRESS RING (SVG circle — integrated layout) ═══
+  // ═══ PROGRESS RING (SVG circle — integrated, gradient, big) ═══
   function renderProgressRing(current, lastFull, period) {
-    // Goal = last month + 15% (beat it, don't just match it)
     var lastMonthRev = lastFull.totalRevenue;
     var goal = lastMonthRev > 0 ? Math.round(lastMonthRev * 1.15) : (current.projection || 1);
     var pct = Math.min((current.totalRevenue / goal) * 100, 100);
     var remaining = Math.max(goal - current.totalRevenue, 0);
 
-    // Days left in month for $/día calc
     var now = new Date();
     var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     var daysLeft = daysInMonth - now.getDate();
     var perDayNeeded = daysLeft > 0 ? remaining / daysLeft : 0;
 
-    var r = 80, circumference = 2 * Math.PI * r;
+    var svgSize = 260, cx = 130, cy = 130, r = 100;
+    var circumference = 2 * Math.PI * r;
     var dashOffset = circumference - (pct / 100 * circumference);
-    var ringColor = pct >= 100 ? '#10b981' : pct >= 70 ? '#FF1F8E' : pct >= 40 ? '#f59e0b' : '#f87171';
-    var borderColor = pct >= 70 ? 'rgba(16,185,129,0.3)' : 'rgba(255,31,142,0.2)';
-    var svgSize = 220;
+    var gradId = 'ringGrad';
+    var gradColors = pct >= 100 ? ['#10b981','#34d399'] : pct >= 60 ? ['#FF1F8E','#c026d3'] : ['#f59e0b','#FF1F8E'];
+    var borderColor = pct >= 70 ? 'rgba(16,185,129,0.25)' : 'rgba(255,31,142,0.18)';
 
-    // Build the per-day message
     var perDayHtml = '';
     if (pct >= 100) {
       perDayHtml = '<div class="ring-perday ring-perday-done">🎉 ¡Meta superada!</div>';
@@ -583,20 +581,22 @@
       '</div>';
     }
 
-    return '<div class="card ring-card-v2" style="border-color:' + borderColor + '">' +
+    return '<div class="card chart-card-unified" style="border-color:' + borderColor + '">' +
       '<div class="section-title" style="text-align:center;width:100%">🎯 Meta del mes</div>' +
-      '<div class="ring-integrated">' +
-        '<div class="ring-svg-wrap">' +
-          '<svg width="' + svgSize + '" height="' + svgSize + '" viewBox="0 0 ' + svgSize + ' ' + svgSize + '" style="max-width:100%">' +
-            '<circle cx="110" cy="110" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="14"/>' +
-            '<circle cx="110" cy="110" r="' + r + '" fill="none" stroke="' + ringColor + '" stroke-width="14" ' +
-              'stroke-linecap="round" stroke-dasharray="' + circumference.toFixed(2) + '" stroke-dashoffset="' + dashOffset.toFixed(2) + '" ' +
-              'transform="rotate(-90 110 110)" style="transition:stroke-dashoffset 1s ease"/>' +
-            '<text x="110" y="96" text-anchor="middle" fill="' + ringColor + '" font-size="34" font-weight="900">' + pct.toFixed(0) + '%</text>' +
-            '<text x="110" y="118" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="12">' + fmtCur(current.totalRevenue) + '</text>' +
-            '<text x="110" y="136" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-size="11">de ' + fmtCur(goal) + '</text>' +
-          '</svg>' +
-        '</div>' +
+      '<div class="chart-svg-center">' +
+        '<svg width="' + svgSize + '" height="' + svgSize + '" viewBox="0 0 ' + svgSize + ' ' + svgSize + '">' +
+          '<defs><linearGradient id="' + gradId + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
+            '<stop offset="0%" stop-color="' + gradColors[0] + '"/>' +
+            '<stop offset="100%" stop-color="' + gradColors[1] + '"/>' +
+          '</linearGradient></defs>' +
+          '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="16"/>' +
+          '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="url(#' + gradId + ')" stroke-width="16" ' +
+            'stroke-linecap="round" stroke-dasharray="' + circumference.toFixed(2) + '" stroke-dashoffset="' + dashOffset.toFixed(2) + '" ' +
+            'transform="rotate(-90 ' + cx + ' ' + cy + ')" style="transition:stroke-dashoffset 1s ease;filter:drop-shadow(0 0 8px ' + gradColors[0] + '40)"/>' +
+          '<text x="' + cx + '" y="' + (cy - 12) + '" text-anchor="middle" fill="#fff" font-size="40" font-weight="900">' + pct.toFixed(0) + '%</text>' +
+          '<text x="' + cx + '" y="' + (cy + 12) + '" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="13" font-weight="700">' + fmtCur(current.totalRevenue) + '</text>' +
+          '<text x="' + cx + '" y="' + (cy + 30) + '" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-size="11">de ' + fmtCur(goal) + '</text>' +
+        '</svg>' +
       '</div>' +
       perDayHtml +
       '<div class="ring-meta">Meta = ' + period.lastMonthName + ' + 15%</div>' +
@@ -627,7 +627,7 @@
         '<div class="cmp-body">' +
           '<div class="cmp-label">' + m.label + '</div>' +
           '<div class="cmp-value">' + val(m.c) + '</div>' +
-          '<div class="cmp-prev">' + period.lastMonthName + ': ' + val(m.ls) + '</div>' +
+          '<div class="cmp-prev">' + period.lastMonthName + ': <strong>' + val(m.ls) + '</strong></div>' +
         '</div>' +
         '<div class="cmp-pill ' + pillCls + '">' + arrow + ' ' + (isZero ? '0' : (isUp ? '+' : '') + g.toFixed(1)) + '%</div>' +
       '</div>';
@@ -647,7 +647,7 @@
       '</div></div>';
   }
 
-  // ═══ INCOME DISTRIBUTION — SVG DONUT ═══
+  // ═══ INCOME DISTRIBUTION — SVG DONUT (big, gradient, matching height) ═══
   function renderIncomeDistribution(stats) {
     var total = stats.totalRevenue;
     if (total === 0) return '';
@@ -656,56 +656,65 @@
     var ppv  = stats.ppvRevenue;
     var tips = stats.tipRevenue;
 
-    var r = 70, circ = 2 * Math.PI * r, cx = 100, cy = 100;
-    var svgW = 200;
+    var svgSize = 260, cx = 130, cy = 130, r = 100;
+    var circ = 2 * Math.PI * r;
+    var gapSize = 4; // gap in SVG units between segments
+    var gapAngle = gapSize / r; // radians per gap
+    var totalGapAngle = gapAngle * 3;
+    var usableCirc = circ - (gapSize * 3);
 
-    function arc(value, offset, color) {
+    function arcGrad(value, offset, gradId, colors) {
       var pct = total > 0 ? value / total : 0;
-      var dash = pct * circ;
+      var dash = pct * usableCirc;
+      if (dash < 1) return '';
       var gap  = circ - dash;
-      return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" ' +
-        'fill="none" stroke="' + color + '" stroke-width="22" ' +
+      var angleOff = offset * usableCirc + (offset > 0 ? gapSize * Math.ceil(offset * 3) : 0);
+      return '<defs><linearGradient id="' + gradId + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
+        '<stop offset="0%" stop-color="' + colors[0] + '"/>' +
+        '<stop offset="100%" stop-color="' + colors[1] + '"/>' +
+      '</linearGradient></defs>' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" ' +
+        'fill="none" stroke="url(#' + gradId + ')" stroke-width="24" ' +
         'stroke-dasharray="' + dash.toFixed(2) + ' ' + gap.toFixed(2) + '" ' +
-        'stroke-dashoffset="' + (-(offset * circ)).toFixed(2) + '" ' +
-        'transform="rotate(-90 ' + cx + ' ' + cy + ')" stroke-linecap="butt"/>';
+        'stroke-dashoffset="' + (-angleOff).toFixed(2) + '" ' +
+        'transform="rotate(-90 ' + cx + ' ' + cy + ')" stroke-linecap="round" ' +
+        'style="filter:drop-shadow(0 0 6px ' + colors[0] + '30)"/>';
     }
 
-    var subsOffset = 0;
-    var ppvOffset  = total > 0 ? subs / total : 0;
-    var tipsOffset = total > 0 ? (subs + ppv) / total : 0;
+    var subsPct = total > 0 ? subs / total : 0;
+    var ppvPct  = total > 0 ? ppv / total : 0;
 
     var svgDonut =
-      '<svg width="' + svgW + '" height="' + svgW + '" viewBox="0 0 ' + svgW + ' ' + svgW + '" style="max-width:100%">' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="22"/>' +
-        arc(subs, subsOffset, 'var(--color-subs)') +
-        arc(ppv,  ppvOffset,  'var(--color-ppv)') +
-        arc(tips, tipsOffset, 'var(--color-tips)') +
-        '<text x="' + cx + '" y="' + (cy - 6) + '" text-anchor="middle" fill="rgba(255,255,255,0.9)" font-size="18" font-weight="900">' + fmtCur(total) + '</text>' +
-        '<text x="' + cx + '" y="' + (cy + 14) + '" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="11">total</text>' +
+      '<svg width="' + svgSize + '" height="' + svgSize + '" viewBox="0 0 ' + svgSize + ' ' + svgSize + '">' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="24"/>' +
+        arcGrad(subs, 0, 'dSubs', ['#06b6d4', '#22d3ee']) +
+        arcGrad(ppv, subsPct, 'dPpv', ['#c026d3', '#e879f9']) +
+        arcGrad(tips, subsPct + ppvPct, 'dTips', ['#f59e0b', '#fbbf24']) +
+        '<text x="' + cx + '" y="' + (cy - 8) + '" text-anchor="middle" fill="#fff" font-size="22" font-weight="900">' + fmtCur(total) + '</text>' +
+        '<text x="' + cx + '" y="' + (cy + 14) + '" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="12">total</text>' +
       '</svg>';
 
     function legendItem(label, amount, color) {
-      var pct = total > 0 ? (amount / total * 100).toFixed(0) : 0;
+      var pctVal = total > 0 ? (amount / total * 100).toFixed(0) : 0;
       return '<div class="donut-legend-item">' +
         '<div class="donut-legend-dot" style="background:' + color + '"></div>' +
         '<div style="flex:1">' +
           '<div style="font-size:0.8rem;color:var(--text-secondary);font-weight:600">' + label + '</div>' +
-          '<div style="font-size:0.95rem;font-weight:800;color:#fff">' + fmtCur(amount) +
-            '<span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px">' + pct + '%</span>' +
+          '<div style="font-size:1rem;font-weight:800;color:#fff">' + fmtCur(amount) +
+            '<span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px">' + pctVal + '%</span>' +
           '</div>' +
         '</div></div>';
     }
 
-    return '<div class="card donut-card" style="flex-direction:column">' +
+    return '<div class="card chart-card-unified" style="flex-direction:column">' +
       '<div class="section-title" style="width:100%;text-align:center">💎 De dónde viene tu dinero</div>' +
-      '<div style="display:flex;align-items:center;justify-content:center;gap:2.5rem;flex-wrap:wrap">' +
-        svgDonut +
-        '<div>' +
-          legendItem('Suscripciones', subs, 'var(--color-subs)') +
-          legendItem('Mensajes y Vídeos', ppv, 'var(--color-ppv)') +
-          legendItem('Propinas', tips, 'var(--color-tips)') +
-        '</div>' +
-      '</div></div>';
+      '<div class="chart-svg-center">' + svgDonut + '</div>' +
+      '<div class="donut-legend-row">' +
+        legendItem('Suscripciones', subs, '#22d3ee') +
+        legendItem('PPV + Msgs', ppv, '#e879f9') +
+        legendItem('Propinas', tips, '#fbbf24') +
+      '</div>' +
+    '</div>';
   }
 
   // ═══════════════════════════════════════════════════════════
