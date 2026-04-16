@@ -332,17 +332,17 @@
     var html = '';
 
     // 0. PERIOD TABS
-    html += '<div class="period-tabs" id="period-tabs">' +
-      '<button class="period-tab" data-period="today">Hoy</button>' +
-      '<button class="period-tab" data-period="week">Semana</button>' +
-      '<button class="period-tab active" data-period="month">Este Mes</button>' +
+    html += '<div class="period-tabs" id="period-tabs" role="tablist" aria-label="Período de tiempo">' +
+      '<button class="period-tab" data-period="today" role="tab" aria-selected="false">Hoy</button>' +
+      '<button class="period-tab" data-period="week" role="tab" aria-selected="false">Semana</button>' +
+      '<button class="period-tab active" data-period="month" role="tab" aria-selected="true">Este Mes</button>' +
     '</div>';
 
     // 0b. MOTIVATIONAL (above hero, contextual)
     html += '<div id="motivational-slot">' + renderMotivational(current, lastSame, lastFull, period, 'month') + '</div>';
 
     // 1. HERO CARD — revenue big (no sparkline)
-    html += '<div class="card card-hero" id="hero-card">' +
+    html += '<div class="card card-hero animate-in" id="hero-card">' +
       '<div class="hero-label">💰 Ingresos ' + period.currentMonthName + '</div>' +
       '<div class="stat-hero" id="hero-amount">' + fmtCur(current.totalRevenue) + '</div>' +
       '<div class="hero-growth" id="hero-growth">' +
@@ -377,7 +377,7 @@
     }
 
     // 2. MINI-STATS ROW (4 cards with avg msg price)
-    html += '<div class="grid-4col" id="mini-stats-row">' +
+    html += '<div class="grid-4col animate-in" id="mini-stats-row">' +
       miniStatCard('👥', current.fansThisMonth, 'Fans que pagaron', '#22d3ee') +
       miniStatCard('✉️', current.messageCount.toLocaleString(), 'Mensajes vendidos', '#e879f9') +
       miniStatCard('💵', fmtCur(current.averagePerFan), 'Por fan de media', '#34d399') +
@@ -385,13 +385,13 @@
     '</div>';
 
     // 3 + 4. PROGRESS RING + DONUT side by side
-    html += '<div class="grid-2col">' +
+    html += '<div class="grid-2col" id="charts-row">' +
       renderProgressRing(current, lastFull, period) +
       renderIncomeDistribution(current) +
     '</div>';
 
-    // 4b. DAILY REVENUE LINE CHART
-    html += renderDailyChart(current.dailyRevenue, period);
+    // 4b. DAILY REVENUE LINE CHART (before comparison for visual flow)
+    html += '<div id="daily-chart-slot">' + renderDailyChart(current.dailyRevenue, period) + '</div>';
 
     // 5. COMPARISON CARDS
     html += renderComparison(current, lastSame, lastFull, period);
@@ -409,6 +409,27 @@
 
     // Animate numbers
     animateCounters(container);
+
+    // Detect chart scroll overflow for gradient indicator
+    var chartWrap = container.querySelector('.daily-chart-wrap');
+    if (chartWrap) {
+      var checkScroll = function() {
+        if (chartWrap.scrollWidth > chartWrap.clientWidth + 2) {
+          chartWrap.classList.add('has-scroll');
+        } else {
+          chartWrap.classList.remove('has-scroll');
+        }
+      };
+      checkScroll();
+      chartWrap.addEventListener('scroll', function() {
+        if (chartWrap.scrollLeft + chartWrap.clientWidth >= chartWrap.scrollWidth - 4) {
+          chartWrap.classList.remove('has-scroll');
+        } else {
+          chartWrap.classList.add('has-scroll');
+        }
+      });
+      window.addEventListener('resize', checkScroll);
+    }
   }
 
   function miniStatCard(icon, value, label, accentColor) {
@@ -472,7 +493,14 @@
       data.push(val);
       if (val > maxVal) maxVal = val;
     }
-    if (maxVal === 0 || data.length < 2) return '';
+    if (maxVal === 0 || data.length < 2) {
+      return '<div class="card daily-chart-card">' +
+        '<div class="section-title">📈 Ingresos por día — ' + period.currentMonthName + '</div>' +
+        '<div style="text-align:center;padding:2rem 1rem;color:var(--text-muted)">' +
+          '<div style="font-size:2rem;margin-bottom:0.5rem">📊</div>' +
+          '<div style="font-size:0.85rem">Aún no hay suficientes datos para mostrar el gráfico.<br>Vuelve mañana.</div>' +
+        '</div></div>';
+    }
 
     var W = 700, H = 280, padX = 48, padY = 24;
     var plotW = W - padX * 2;
@@ -552,51 +580,33 @@
     '</div>';
   }
 
-  // ═══ SPARKLINE — SVG bar chart of daily revenue ═══
-  function renderSparkline(dailyRevenue, period) {
-    if (!dailyRevenue) return '';
-    var now = new Date();
-    var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    var bars = [];
-    var maxVal = 0;
-    for (var d = 1; d <= now.getDate(); d++) {
-      var key = now.getFullYear() + '-' +
-        String(now.getMonth() + 1).padStart(2, '0') + '-' +
-        String(d).padStart(2, '0');
-      var val = dailyRevenue[key] || 0;
-      bars.push(val);
-      if (val > maxVal) maxVal = val;
-    }
-    if (maxVal === 0) return '';
-
-    var svgW = 180, svgH = 60;
-    var barW = Math.max(2, Math.floor((svgW - bars.length) / bars.length));
-    var gap = 1;
-    var totalW = bars.length * (barW + gap);
-
-    var rects = bars.map(function(val, i) {
-      var h = Math.max(2, (val / maxVal) * (svgH - 4));
-      var x = i * (barW + gap);
-      var isToday = (i === bars.length - 1);
-      var color = isToday ? 'var(--accent)' : 'rgba(255,107,179,0.4)';
-      return '<rect x="' + x + '" y="' + (svgH - h) + '" width="' + barW + '" height="' + h + '" rx="1" fill="' + color + '"/>';
-    }).join('');
-
-    return '<svg width="' + totalW + '" height="' + svgH + '" viewBox="0 0 ' + totalW + ' ' + svgH + '" style="max-width:100%">' +
-      rects + '</svg>';
-  }
-
   // ═══ PERIOD TAB SWITCHING ═══
   function wireTabSwitching(container) {
     var tabs = container.querySelectorAll('.period-tab');
     tabs.forEach(function(tab) {
       tab.addEventListener('click', function() {
-        tabs.forEach(function(t) { t.classList.remove('active'); });
+        tabs.forEach(function(t) { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
         tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
         var p = tab.dataset.period;
         updatePeriodView(container, p);
       });
     });
+    // Keyboard navigation: left/right arrows
+    var tabList = container.querySelector('#period-tabs');
+    if (tabList) {
+      tabList.addEventListener('keydown', function(e) {
+        var tabArr = Array.prototype.slice.call(tabs);
+        var idx = tabArr.indexOf(document.activeElement);
+        if (idx === -1) return;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+          e.preventDefault();
+          var next = e.key === 'ArrowRight' ? (idx + 1) % tabArr.length : (idx - 1 + tabArr.length) % tabArr.length;
+          tabArr[next].focus();
+          tabArr[next].click();
+        }
+      });
+    }
   }
 
   function updatePeriodView(container, period) {
@@ -604,12 +614,15 @@
     if (!s.current) return;
     var c = s.current;
     var heroAmount = container.querySelector('#hero-amount');
+    var heroGrowth = container.querySelector('#hero-growth');
     var miniRow = container.querySelector('#mini-stats-row');
     var motivSlot = container.querySelector('#motivational-slot');
+    var dailySlot = container.querySelector('#daily-chart-slot');
     if (!heroAmount) return;
 
     if (period === 'today') {
       heroAmount.textContent = fmtCur(c.todayRevenue);
+      if (heroGrowth) heroGrowth.innerHTML = '<span class="hero-vs">Ingresos de hoy</span>';
       if (miniRow) miniRow.innerHTML =
         miniStatCard('👥', c.todayFans, 'Fans hoy', '#22d3ee') +
         miniStatCard('✉️', c.todayMsgCount.toLocaleString(), 'Msgs hoy', '#e879f9') +
@@ -617,6 +630,7 @@
         miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg', '#fbbf24');
     } else if (period === 'week') {
       heroAmount.textContent = fmtCur(c.weekRevenue);
+      if (heroGrowth) heroGrowth.innerHTML = '<span class="hero-vs">Últimos 7 días</span>';
       if (miniRow) miniRow.innerHTML =
         miniStatCard('👥', c.weekFans, 'Fans semana', '#22d3ee') +
         miniStatCard('✉️', c.weekMsgCount.toLocaleString(), 'Msgs semana', '#e879f9') +
@@ -624,6 +638,9 @@
         miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg', '#fbbf24');
     } else {
       heroAmount.textContent = fmtCur(c.totalRevenue);
+      if (heroGrowth) heroGrowth.innerHTML =
+        growthBadge(c.totalRevenue, s.lastSame.totalRevenue, '') +
+        '<span class="hero-vs">vs primeros ' + s.period.currentDay + ' días de ' + s.period.lastMonthName + '</span>';
       if (miniRow) miniRow.innerHTML =
         miniStatCard('👥', c.fansThisMonth, 'Fans que pagaron', '#22d3ee') +
         miniStatCard('✉️', c.messageCount.toLocaleString(), 'Mensajes vendidos', '#e879f9') +
@@ -631,10 +648,22 @@
         miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg', '#fbbf24');
     }
 
+    // Update daily chart: show daily for month, hide for today/week
+    if (dailySlot) {
+      if (period === 'month') {
+        dailySlot.innerHTML = renderDailyChart(c.dailyRevenue, s.period);
+      } else {
+        dailySlot.innerHTML = '';
+      }
+    }
+
     // Update motivational contextual to tab
     if (motivSlot) {
       motivSlot.innerHTML = renderMotivational(s.current, s.lastSame, s.lastFull, s.period, period);
     }
+
+    // Re-animate counters on tab change
+    animateCounters(container);
   }
 
   // ═══ MOTIVATIONAL MESSAGE (above hero, contextual to tab) ═══
@@ -730,8 +759,9 @@
           '</linearGradient></defs>' +
           '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="16"/>' +
           '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="url(#' + gradId + ')" stroke-width="16" ' +
-            'stroke-linecap="round" stroke-dasharray="' + circumference.toFixed(2) + '" stroke-dashoffset="' + dashOffset.toFixed(2) + '" ' +
-            'transform="rotate(-90 ' + cx + ' ' + cy + ')" style="transition:stroke-dashoffset 1s ease;filter:drop-shadow(0 0 8px ' + gradColors[0] + '40)"/>' +
+            'stroke-linecap="round" stroke-dasharray="' + circumference.toFixed(2) + '" ' +
+            'class="ring-animated" style="--circ:' + circumference.toFixed(2) + ';--final-offset:' + dashOffset.toFixed(2) + ';stroke-dashoffset:' + dashOffset.toFixed(2) + ';filter:drop-shadow(0 0 8px ' + gradColors[0] + '40)" ' +
+            'transform="rotate(-90 ' + cx + ' ' + cy + ')"/>' +
           '<text x="' + cx + '" y="' + (cy - 12) + '" text-anchor="middle" fill="#fff" font-size="40" font-weight="900">' + pct.toFixed(0) + '%</text>' +
           '<text x="' + cx + '" y="' + (cy + 12) + '" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="13" font-weight="700">' + fmtCur(current.totalRevenue) + '</text>' +
           '<text x="' + cx + '" y="' + (cy + 30) + '" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-size="11">de ' + fmtCur(goal) + '</text>' +
@@ -813,15 +843,20 @@
       var pct = total > 0 ? value / total : 0;
       var dash = pct * circ;
       if (dash < 2) return '';
-      var gap = circ - dash;
+      // Micro-gap: subtract 4px from arc, add 4px gap
+      var gapSize = 4;
+      var arcLen = Math.max(dash - gapSize, 2);
+      var gapLen = circ - arcLen;
+      var offset = -(offsetFrac * circ + gapSize / 2);
       return '<defs><linearGradient id="' + gradId + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
         '<stop offset="0%" stop-color="' + colors[0] + '"/>' +
         '<stop offset="100%" stop-color="' + colors[1] + '"/>' +
       '</linearGradient></defs>' +
       '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" ' +
         'fill="none" stroke="url(#' + gradId + ')" stroke-width="22" ' +
-        'stroke-dasharray="' + dash.toFixed(2) + ' ' + gap.toFixed(2) + '" ' +
-        'stroke-dashoffset="' + (-(offsetFrac * circ)).toFixed(2) + '" ' +
+        'class="donut-arc" ' +
+        'stroke-dasharray="' + arcLen.toFixed(2) + ' ' + gapLen.toFixed(2) + '" ' +
+        'stroke-dashoffset="' + offset.toFixed(2) + '" ' +
         'transform="rotate(-90 ' + cx + ' ' + cy + ')" ' +
         'style="filter:drop-shadow(0 0 8px ' + colors[0] + '40)"/>';
     }
