@@ -338,24 +338,22 @@
       '<button class="period-tab active" data-period="month">Este Mes</button>' +
     '</div>';
 
-    // 1. HERO CARD — revenue big + sparkline
+    // 0b. MOTIVATIONAL (above hero, contextual)
+    html += '<div id="motivational-slot">' + renderMotivational(current, lastSame, lastFull, period, 'month') + '</div>';
+
+    // 1. HERO CARD — revenue big (no sparkline)
     html += '<div class="card card-hero" id="hero-card">' +
-      '<div class="hero-top-row">' +
-        '<div class="hero-left">' +
-          '<div class="hero-label">💰 Ingresos ' + period.currentMonthName + '</div>' +
-          '<div class="stat-hero" id="hero-amount">' + fmtCur(current.totalRevenue) + '</div>' +
-          '<div class="hero-growth" id="hero-growth">' +
-            growthBadge(current.totalRevenue, lastSame.totalRevenue, '') +
-            '<span class="hero-vs">vs primeros ' + period.currentDay + ' días de ' + period.lastMonthName + '</span>' +
-          '</div>' +
-          (current.projection > 0 ?
-            '<div class="hero-projection">' +
-            '<span class="hero-proj-label">🎯 Previsión:</span>' +
-            '<span class="hero-proj-value">' + fmtCur(current.projection) + '</span>' +
-            '</div>' : '') +
-        '</div>' +
-        '<div class="hero-sparkline">' + renderSparkline(current.dailyRevenue, period) + '</div>' +
+      '<div class="hero-label">💰 Ingresos ' + period.currentMonthName + '</div>' +
+      '<div class="stat-hero" id="hero-amount">' + fmtCur(current.totalRevenue) + '</div>' +
+      '<div class="hero-growth" id="hero-growth">' +
+        growthBadge(current.totalRevenue, lastSame.totalRevenue, '') +
+        '<span class="hero-vs">vs primeros ' + period.currentDay + ' días de ' + period.lastMonthName + '</span>' +
       '</div>' +
+      (current.projection > 0 ?
+        '<div class="hero-projection">' +
+        '<span class="hero-proj-label">🎯 Previsión:</span>' +
+        '<span class="hero-proj-value">' + fmtCur(current.projection) + '</span>' +
+        '</div>' : '') +
     '</div>';
 
     // 1b. BEST DAY CARD (glow)
@@ -392,13 +390,10 @@
       renderIncomeDistribution(current) +
     '</div>';
 
-    // 5. COMPARISON TABLE
+    // 5. COMPARISON CARDS
     html += renderComparison(current, lastSame, lastFull, period);
 
-    // 6. MOTIVATIONAL
-    html += renderMotivational(current, lastSame, lastFull, period);
-
-    // 7. Last update
+    // 6. Last update
     html += '<div style="text-align:center;margin-top:1.5rem;color:var(--text-muted);font-size:0.75rem">' +
       '🔄 Actualizado: ' + new Date().toLocaleString('es-ES', {
         day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -471,6 +466,7 @@
     var c = s.current;
     var heroAmount = container.querySelector('#hero-amount');
     var miniRow = container.querySelector('#mini-stats-row');
+    var motivSlot = container.querySelector('#motivational-slot');
     if (!heroAmount) return;
 
     if (period === 'today') {
@@ -495,100 +491,146 @@
         miniStatCard('💵', fmtCur(c.averagePerFan), 'Por fan de media') +
         miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg');
     }
+
+    // Update motivational contextual to tab
+    if (motivSlot) {
+      motivSlot.innerHTML = renderMotivational(s.current, s.lastSame, s.lastFull, s.period, period);
+    }
   }
 
-  // ═══ MOTIVATIONAL MESSAGE (at end, shorter) ═══
-  function renderMotivational(current, lastSame, lastFull, period) {
-    var revGrowth = calcGrowth(current.totalRevenue, lastSame.totalRevenue);
-
+  // ═══ MOTIVATIONAL MESSAGE (above hero, contextual to tab) ═══
+  function renderMotivational(current, lastSame, lastFull, period, activeTab) {
     var emoji, headline, message;
-    if (revGrowth >= 20) {
-      emoji = '🚀'; headline = '¡Estás volando este mes!';
-      message = 'Vas un <strong style="color:var(--success)">+' + revGrowth.toFixed(0) + '%</strong> por encima de ' + period.lastMonthName + '. ¡Increíble!';
-    } else if (revGrowth >= 0) {
-      emoji = '💪'; headline = '¡Vas por buen camino!';
-      message = 'Ya superaste los primeros ' + period.currentDay + ' días de ' + period.lastMonthName + '. ¡Sigue así!';
-    } else if (revGrowth >= -15) {
-      emoji = '✨'; headline = '¡Cada día cuenta!';
-      message = 'Estás cerca del ritmo de ' + period.lastMonthName + '. Un poco más y lo superas.';
+
+    if (activeTab === 'today') {
+      var todayRev = current.todayRevenue || 0;
+      var avgDaily = current.totalRevenue / Math.max(period.currentDay, 1);
+      if (todayRev >= avgDaily * 1.2) {
+        emoji = '🔥'; headline = '¡Hoy estás on fire!';
+        message = 'Llevas <strong style="color:var(--success)">' + fmtCur(todayRev) + '</strong> — por encima de tu promedio diario.';
+      } else if (todayRev > 0) {
+        emoji = '⚡'; headline = '¡Buen día hasta ahora!';
+        message = 'Llevas ' + fmtCur(todayRev) + ' hoy. Tu promedio diario es ' + fmtCur(avgDaily) + '.';
+      } else {
+        emoji = '☀️'; headline = '¡El día recién empieza!';
+        message = 'Tu promedio diario este mes es ' + fmtCur(avgDaily) + '. ¡A por él!';
+      }
+    } else if (activeTab === 'week') {
+      var weekRev = current.weekRevenue || 0;
+      var weekAvg = avgDaily * 7;
+      var avgDaily = current.totalRevenue / Math.max(period.currentDay, 1);
+      var weekTarget = avgDaily * 7;
+      if (weekRev >= weekTarget) {
+        emoji = '💪'; headline = '¡Semana fuerte!';
+        message = 'Llevas <strong style="color:var(--success)">' + fmtCur(weekRev) + '</strong> en 7 días — por encima del ritmo.';
+      } else {
+        emoji = '✨'; headline = '¡La semana sigue!';
+        message = 'Llevas ' + fmtCur(weekRev) + ' esta semana. Objetivo semanal: ' + fmtCur(weekTarget) + '.';
+      }
     } else {
-      emoji = '💫'; headline = '¡El mes apenas empieza!';
-      message = 'Cuantos más reels subas, más suscriptores llegarán. ¡Tú puedes!';
+      var revGrowth = calcGrowth(current.totalRevenue, lastSame.totalRevenue);
+      if (revGrowth >= 20) {
+        emoji = '🚀'; headline = '¡Estás volando este mes!';
+        message = 'Vas un <strong style="color:var(--success)">+' + revGrowth.toFixed(0) + '%</strong> por encima de ' + period.lastMonthName + '. ¡Increíble!';
+      } else if (revGrowth >= 0) {
+        emoji = '💪'; headline = '¡Vas por buen camino!';
+        message = 'Ya superaste los primeros ' + period.currentDay + ' días de ' + period.lastMonthName + '. ¡Sigue así!';
+      } else if (revGrowth >= -15) {
+        emoji = '✨'; headline = '¡Cada día cuenta!';
+        message = 'Estás cerca del ritmo de ' + period.lastMonthName + '. Un poco más y lo superas.';
+      } else {
+        emoji = '💫'; headline = '¡El mes apenas empieza!';
+        message = 'Cuantos más reels subas, más suscriptores llegarán. ¡Tú puedes!';
+      }
     }
 
-    return '<div class="card" style="margin-top:1rem;background:linear-gradient(135deg,rgba(52,211,153,0.06),rgba(255,107,179,0.04));border-color:rgba(52,211,153,0.15)">' +
-      '<div style="display:flex;align-items:center;gap:12px">' +
-        '<div style="font-size:2rem;line-height:1">' + emoji + '</div>' +
-        '<div style="flex:1">' +
-          '<div style="font-size:1rem;font-weight:800;color:#fff;margin-bottom:4px">' + headline + '</div>' +
-          '<div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.5">' + message + '</div>' +
-        '</div>' +
-      '</div></div>';
-  }
-
-  // ═══ PROGRESS RING (SVG circle) ═══
-  function renderProgressRing(current, lastFull, period) {
-    var goal = lastFull.totalRevenue > 0 ? lastFull.totalRevenue : (current.projection || 1);
-    var pct = Math.min((current.totalRevenue / goal) * 100, 100);
-
-    var r = 80, circumference = 2 * Math.PI * r;
-    var dashOffset = circumference - (pct / 100 * circumference);
-    var ringColor = pct >= 80 ? '#10b981' : pct >= 50 ? '#FF1F8E' : '#f59e0b';
-    var borderColor = pct >= 80 ? 'rgba(16,185,129,0.3)' : 'rgba(255,31,142,0.2)';
-    var svgSize = 200;
-
-    return '<div class="card ring-card" style="border-color:' + borderColor + '">' +
-      '<div style="text-align:center">' +
-        '<div class="section-title">🎯 Meta del mes</div>' +
-        '<svg width="' + svgSize + '" height="' + svgSize + '" viewBox="0 0 ' + svgSize + ' ' + svgSize + '" style="max-width:100%">' +
-          '<circle cx="100" cy="100" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="14"/>' +
-          '<circle cx="100" cy="100" r="' + r + '" fill="none" stroke="' + ringColor + '" stroke-width="14" ' +
-            'stroke-linecap="round" stroke-dasharray="' + circumference.toFixed(2) + '" stroke-dashoffset="' + dashOffset.toFixed(2) + '" ' +
-            'transform="rotate(-90 100 100)" style="transition:stroke-dashoffset 1s ease"/>' +
-          '<text x="100" y="92" text-anchor="middle" fill="' + ringColor + '" font-size="36" font-weight="900">' + pct.toFixed(0) + '%</text>' +
-          '<text x="100" y="118" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="13">completado</text>' +
-        '</svg>' +
-      '</div>' +
-      '<div class="ring-info">' +
-        '<div class="ring-label">Llevas</div>' +
-        '<div class="ring-value">' + fmtCur(current.totalRevenue) + '</div>' +
-        '<div class="ring-label" style="margin-top:12px">Meta</div>' +
-        '<div class="ring-value-secondary">' + fmtCur(goal) + '</div>' +
-        '<div class="ring-note">(' + period.lastMonthName + ' completo)</div>' +
+    return '<div class="motivational-banner">' +
+      '<span class="motivational-emoji">' + emoji + '</span>' +
+      '<div class="motivational-text">' +
+        '<strong>' + headline + '</strong> ' + message +
       '</div>' +
     '</div>';
   }
 
-  // ═══ COMPARISON TABLE (simplified) ═══
-  function renderComparison(current, lastSame, lastFull, period) {
-    var currentLabel = period.currentMonthName;
-    var lastSameLabel = period.lastMonthName;
+  // ═══ PROGRESS RING (SVG circle — integrated layout) ═══
+  function renderProgressRing(current, lastFull, period) {
+    // Goal = last month + 15% (beat it, don't just match it)
+    var lastMonthRev = lastFull.totalRevenue;
+    var goal = lastMonthRev > 0 ? Math.round(lastMonthRev * 1.15) : (current.projection || 1);
+    var pct = Math.min((current.totalRevenue / goal) * 100, 100);
+    var remaining = Math.max(goal - current.totalRevenue, 0);
 
+    // Days left in month for $/día calc
+    var now = new Date();
+    var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    var daysLeft = daysInMonth - now.getDate();
+    var perDayNeeded = daysLeft > 0 ? remaining / daysLeft : 0;
+
+    var r = 80, circumference = 2 * Math.PI * r;
+    var dashOffset = circumference - (pct / 100 * circumference);
+    var ringColor = pct >= 100 ? '#10b981' : pct >= 70 ? '#FF1F8E' : pct >= 40 ? '#f59e0b' : '#f87171';
+    var borderColor = pct >= 70 ? 'rgba(16,185,129,0.3)' : 'rgba(255,31,142,0.2)';
+    var svgSize = 220;
+
+    // Build the per-day message
+    var perDayHtml = '';
+    if (pct >= 100) {
+      perDayHtml = '<div class="ring-perday ring-perday-done">🎉 ¡Meta superada!</div>';
+    } else if (daysLeft > 0) {
+      perDayHtml = '<div class="ring-perday">' +
+        '<span class="ring-perday-label">Quedan ' + daysLeft + ' día' + (daysLeft !== 1 ? 's' : '') + ' —</span> ' +
+        '<span class="ring-perday-value">necesitas ' + fmtCur(perDayNeeded) + '/día</span>' +
+      '</div>';
+    }
+
+    return '<div class="card ring-card-v2" style="border-color:' + borderColor + '">' +
+      '<div class="section-title" style="text-align:center;width:100%">🎯 Meta del mes</div>' +
+      '<div class="ring-integrated">' +
+        '<div class="ring-svg-wrap">' +
+          '<svg width="' + svgSize + '" height="' + svgSize + '" viewBox="0 0 ' + svgSize + ' ' + svgSize + '" style="max-width:100%">' +
+            '<circle cx="110" cy="110" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="14"/>' +
+            '<circle cx="110" cy="110" r="' + r + '" fill="none" stroke="' + ringColor + '" stroke-width="14" ' +
+              'stroke-linecap="round" stroke-dasharray="' + circumference.toFixed(2) + '" stroke-dashoffset="' + dashOffset.toFixed(2) + '" ' +
+              'transform="rotate(-90 110 110)" style="transition:stroke-dashoffset 1s ease"/>' +
+            '<text x="110" y="96" text-anchor="middle" fill="' + ringColor + '" font-size="34" font-weight="900">' + pct.toFixed(0) + '%</text>' +
+            '<text x="110" y="118" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="12">' + fmtCur(current.totalRevenue) + '</text>' +
+            '<text x="110" y="136" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-size="11">de ' + fmtCur(goal) + '</text>' +
+          '</svg>' +
+        '</div>' +
+      '</div>' +
+      perDayHtml +
+      '<div class="ring-meta">Meta = ' + period.lastMonthName + ' + 15%</div>' +
+    '</div>';
+  }
+
+  // ═══ COMPARISON — HORIZONTAL CARDS ═══
+  function renderComparison(current, lastSame, lastFull, period) {
     var metrics = [
-      { label: '💰 Total del mes', c: current.totalRevenue, ls: lastSame.totalRevenue, cur: true },
-      { label: '👥 Fans que pagaron', c: current.fansThisMonth, ls: lastSame.fansThisMonth, cur: false },
-      { label: '✉️ Mensajes y Vídeos', c: current.ppvRevenue + current.tipRevenue, ls: lastSame.ppvRevenue + lastSame.tipRevenue, cur: true },
-      { label: '💎 Suscripciones', c: current.subscriptionRevenue, ls: lastSame.subscriptionRevenue, cur: true }
+      { icon: '💰', label: 'Total', c: current.totalRevenue, ls: lastSame.totalRevenue, cur: true },
+      { icon: '👥', label: 'Fans', c: current.fansThisMonth, ls: lastSame.fansThisMonth, cur: false },
+      { icon: '✉️', label: 'PPV + Tips', c: current.ppvRevenue + current.tipRevenue, ls: lastSame.ppvRevenue + lastSame.tipRevenue, cur: true },
+      { icon: '💎', label: 'Suscripciones', c: current.subscriptionRevenue, ls: lastSame.subscriptionRevenue, cur: true }
     ];
 
     var positiveCount = 0;
     metrics.forEach(function (m) { if (calcGrowth(m.c, m.ls) > 0) positiveCount++; });
 
-    var rows = metrics.map(function (m) {
+    var cards = metrics.map(function (m) {
       var g = calcGrowth(m.c, m.ls);
       var isUp = g > 0; var isZero = g === 0;
-      var color = isUp ? 'var(--success)' : (isZero ? 'var(--text-muted)' : 'var(--danger)');
       var arrow = isUp ? '▲' : (isZero ? '—' : '▼');
-      var bg = isUp ? 'rgba(52,211,153,0.08)' : (isZero ? 'transparent' : 'rgba(248,113,113,0.08)');
+      var pillCls = isUp ? 'cmp-pill-up' : (isZero ? 'cmp-pill-zero' : 'cmp-pill-down');
       var val = function (v) { return m.cur ? fmtCur(v) : v.toLocaleString(); };
 
-      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">' +
-        '<td style="padding:10px 8px;color:#E5E7EB;font-size:0.85rem">' + m.label + '</td>' +
-        '<td style="padding:10px 8px;text-align:right;color:#fff;font-weight:700">' + val(m.c) + '</td>' +
-        '<td style="padding:10px 8px;text-align:right;color:var(--text-muted);font-size:0.85rem">' + val(m.ls) + '</td>' +
-        '<td style="padding:10px 8px;text-align:center"><span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;background:' + bg + ';color:' + color + ';font-weight:700;font-size:0.8rem">' +
-          arrow + ' ' + (isZero ? '0' : (isUp ? '+' : '') + g.toFixed(1)) + '%</span></td>' +
-        '</tr>';
+      return '<div class="cmp-card">' +
+        '<div class="cmp-icon">' + m.icon + '</div>' +
+        '<div class="cmp-body">' +
+          '<div class="cmp-label">' + m.label + '</div>' +
+          '<div class="cmp-value">' + val(m.c) + '</div>' +
+          '<div class="cmp-prev">' + period.lastMonthName + ': ' + val(m.ls) + '</div>' +
+        '</div>' +
+        '<div class="cmp-pill ' + pillCls + '">' + arrow + ' ' + (isZero ? '0' : (isUp ? '+' : '') + g.toFixed(1)) + '%</div>' +
+      '</div>';
     }).join('');
 
     var summaryEmoji = positiveCount >= metrics.length ? '🏆' : positiveCount >= 2 ? '🔥' : positiveCount > 0 ? '💡' : '📈';
@@ -596,19 +638,12 @@
     var summaryMsg = positiveCount >= metrics.length ? '¡Todo por encima del mes pasado!'
       : '<strong>' + positiveCount + ' de ' + metrics.length + '</strong> métricas mejorando';
 
-    return '<div class="card" style="margin-top:1rem;overflow-x:auto">' +
-      '<div class="section-title">📊 Tu progreso vs el mes pasado</div>' +
-      '<div style="font-size:0.7rem;color:var(--info);margin:0.5rem 0;background:rgba(59,130,246,0.15);padding:2px 8px;border-radius:4px;display:inline-block">Comparación justa: mismos ' + period.currentDay + ' días</div>' +
-      '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">' +
-      '<thead><tr style="border-bottom:2px solid rgba(255,255,255,0.1)">' +
-        '<th style="text-align:left;padding:8px;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase">Métrica</th>' +
-        '<th style="text-align:right;padding:8px;color:var(--accent-light);font-size:0.7rem;text-transform:uppercase">' + currentLabel + '</th>' +
-        '<th style="text-align:right;padding:8px;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase">' + lastSameLabel + '</th>' +
-        '<th style="text-align:center;padding:8px;color:var(--text-muted);font-size:0.7rem;text-transform:uppercase">Cambio</th>' +
-      '</tr></thead><tbody>' + rows + '</tbody></table>' +
-      '<div style="margin-top:12px;padding:10px 14px;border-radius:12px;background:' + (positiveCount >= 2 ? 'rgba(52,211,153,0.1)' : 'rgba(96,165,250,0.1)') + ';display:flex;align-items:center;gap:10px">' +
-        '<span style="font-size:1.5rem">' + summaryEmoji + '</span>' +
-        '<span style="color:' + summaryColor + ';font-size:0.9rem;font-weight:600">' + summaryMsg + '</span>' +
+    return '<div style="margin-top:1rem">' +
+      '<div class="section-title" style="margin-bottom:0.5rem">📊 vs ' + period.lastMonthName + ' <span style="font-size:0.7rem;color:var(--info);font-weight:500">(mismos ' + period.currentDay + ' días)</span></div>' +
+      '<div class="cmp-grid">' + cards + '</div>' +
+      '<div class="cmp-summary" style="background:' + (positiveCount >= 2 ? 'rgba(52,211,153,0.1)' : 'rgba(96,165,250,0.1)') + '">' +
+        '<span style="font-size:1.3rem">' + summaryEmoji + '</span>' +
+        '<span style="color:' + summaryColor + ';font-size:0.85rem;font-weight:600">' + summaryMsg + '</span>' +
       '</div></div>';
   }
 
@@ -773,9 +808,12 @@
 
     var html = '<div class="card rec-card" style="border-color:' + borderColor + ';background:' + bgGrad + '">';
 
-    // Header
+    // Header with refresh button
     html += '<div class="rec-header">' +
       '<div class="rec-title">' + emoji + ' ' + titleText + '</div>' +
+      '<button class="rec-refresh-btn" id="rec-refresh-btn">' +
+        '<span class="rec-refresh-icon">🔄</span> Actualizar reels' +
+      '</button>' +
     '</div>';
 
     // 3 big stat blocks
@@ -817,6 +855,20 @@
 
     html += '</div>';
     container.innerHTML = html;
+
+    // Wire refresh button
+    var refreshBtn = container.querySelector('#rec-refresh-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function () {
+        var cfg = getModelConfig();
+        if (!cfg || !cfg.driveKey) return;
+        refreshBtn.classList.add('rec-refresh-loading');
+        refreshBtn.querySelector('.rec-refresh-icon').textContent = '⏳';
+        loadRecordingData(cfg, container).finally(function () {
+          // Button re-renders with container
+        });
+      });
+    }
   }
 
   // ═══ HELPERS ═══
