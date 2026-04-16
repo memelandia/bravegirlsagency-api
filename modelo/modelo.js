@@ -390,6 +390,9 @@
       renderIncomeDistribution(current) +
     '</div>';
 
+    // 4b. DAILY REVENUE LINE CHART
+    html += renderDailyChart(current.dailyRevenue, period);
+
     // 5. COMPARISON CARDS
     html += renderComparison(current, lastSame, lastFull, period);
 
@@ -403,6 +406,9 @@
 
     // Wire up tab switching
     wireTabSwitching(container);
+
+    // Animate numbers
+    animateCounters(container);
   }
 
   function miniStatCard(icon, value, label, accentColor) {
@@ -411,6 +417,138 @@
       '<div class="mini-stat-icon">' + icon + '</div>' +
       '<div class="mini-stat-value" style="color:' + color + '">' + value + '</div>' +
       '<div class="mini-stat-label">' + label + '</div>' +
+    '</div>';
+  }
+
+  // ═══ COUNTER ANIMATION ═══
+  function animateCounters(container) {
+    var heroEl = container.querySelector('#hero-amount');
+    if (heroEl) animateValue(heroEl, heroEl.textContent);
+    container.querySelectorAll('.mini-stat-value').forEach(function(el) {
+      animateValue(el, el.textContent);
+    });
+    container.querySelectorAll('.best-day-value').forEach(function(el) {
+      animateValue(el, el.textContent);
+    });
+  }
+  function animateValue(el, finalText) {
+    var isCurrency = finalText.indexOf('$') === 0;
+    var numStr = finalText.replace(/[^0-9.]/g, '');
+    var target = parseFloat(numStr);
+    if (isNaN(target) || target === 0) return;
+    var duration = 1200;
+    var start = performance.now();
+    var origColor = el.style.color;
+    function tick(now) {
+      var elapsed = now - start;
+      var progress = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      var t = 1 - Math.pow(1 - progress, 3);
+      var current = target * t;
+      if (isCurrency) {
+        el.textContent = '$' + current.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      } else {
+        el.textContent = Math.round(current).toLocaleString();
+      }
+      if (progress < 1) requestAnimationFrame(tick);
+      else el.textContent = finalText;
+    }
+    el.textContent = isCurrency ? '$0.00' : '0';
+    requestAnimationFrame(tick);
+  }
+
+  // ═══ DAILY REVENUE LINE CHART ═══
+  function renderDailyChart(dailyRevenue, period) {
+    if (!dailyRevenue) return '';
+    var now = new Date();
+    var currentDay = now.getDate();
+    var data = [];
+    var maxVal = 0;
+    for (var d = 1; d <= currentDay; d++) {
+      var key = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d).padStart(2, '0');
+      var val = dailyRevenue[key] || 0;
+      data.push(val);
+      if (val > maxVal) maxVal = val;
+    }
+    if (maxVal === 0 || data.length < 2) return '';
+
+    var W = 600, H = 180, padX = 40, padY = 20;
+    var plotW = W - padX * 2;
+    var plotH = H - padY * 2;
+    var stepX = plotW / Math.max(data.length - 1, 1);
+
+    var points = data.map(function(v, i) {
+      var x = padX + i * stepX;
+      var y = padY + plotH - (v / maxVal) * plotH;
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    });
+    var polyline = points.join(' ');
+    // Area fill path
+    var areaPath = 'M' + padX + ',' + (padY + plotH) + ' ' +
+      points.map(function(p) { return 'L' + p; }).join(' ') +
+      ' L' + (padX + (data.length - 1) * stepX) + ',' + (padY + plotH) + ' Z';
+
+    // Grid lines (3)
+    var gridLines = '';
+    for (var g = 0; g <= 3; g++) {
+      var gy = padY + (plotH / 3) * g;
+      var gVal = maxVal - (maxVal / 3) * g;
+      gridLines += '<line x1="' + padX + '" y1="' + gy + '" x2="' + (W - padX) + '" y2="' + gy + '" stroke="rgba(255,255,255,0.06)" stroke-dasharray="4,4"/>';
+      gridLines += '<text x="' + (padX - 6) + '" y="' + (gy + 4) + '" text-anchor="end" fill="rgba(255,255,255,0.25)" font-size="9" font-weight="600">$' + Math.round(gVal) + '</text>';
+    }
+
+    // Day labels (show every few days)
+    var dayLabels = '';
+    var labelEvery = data.length > 20 ? 5 : data.length > 10 ? 3 : 2;
+    for (var dl = 0; dl < data.length; dl++) {
+      if (dl === 0 || dl === data.length - 1 || dl % labelEvery === 0) {
+        var dlx = padX + dl * stepX;
+        dayLabels += '<text x="' + dlx + '" y="' + (H - 2) + '" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-size="9" font-weight="600">' + (dl + 1) + '</text>';
+      }
+    }
+
+    // Dots on data points
+    var dots = '';
+    data.forEach(function(v, i) {
+      var x = padX + i * stepX;
+      var y = padY + plotH - (v / maxVal) * plotH;
+      var isLast = i === data.length - 1;
+      if (isLast || data.length <= 15 || i % 2 === 0) {
+        dots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (isLast ? 5 : 3) + '" fill="' + (isLast ? '#FF1F8E' : 'rgba(255,107,179,0.6)') + '"' + (isLast ? ' style="filter:drop-shadow(0 0 6px #FF1F8E80)"' : '') + '/>';
+      }
+    });
+
+    // Tooltip for last day
+    var lastVal = data[data.length - 1];
+    var lastX = padX + (data.length - 1) * stepX;
+    var lastY = padY + plotH - (lastVal / maxVal) * plotH;
+    var tooltip = '<rect x="' + (lastX - 30) + '" y="' + (lastY - 28) + '" width="60" height="20" rx="6" fill="rgba(255,31,142,0.25)" stroke="rgba(255,31,142,0.4)" stroke-width="1"/>' +
+      '<text x="' + lastX + '" y="' + (lastY - 14) + '" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">$' + Math.round(lastVal) + '</text>';
+
+    return '<div class="card daily-chart-card">' +
+      '<div class="section-title">📈 Ingresos por día — ' + period.currentMonthName + '</div>' +
+      '<div class="daily-chart-wrap">' +
+        '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" width="100%" height="' + H + '">' +
+          '<defs>' +
+            '<linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">' +
+              '<stop offset="0%" stop-color="#FF1F8E" stop-opacity="0.25"/>' +
+              '<stop offset="100%" stop-color="#FF1F8E" stop-opacity="0.02"/>' +
+            '</linearGradient>' +
+            '<linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">' +
+              '<stop offset="0%" stop-color="#c026d3"/>' +
+              '<stop offset="100%" stop-color="#FF1F8E"/>' +
+            '</linearGradient>' +
+          '</defs>' +
+          gridLines +
+          '<path d="' + areaPath + '" fill="url(#areaGrad)"/>' +
+          '<polyline points="' + polyline + '" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 4px #FF1F8E40)"/>' +
+          dots +
+          tooltip +
+          dayLabels +
+        '</svg>' +
+      '</div>' +
     '</div>';
   }
 
@@ -684,7 +822,7 @@
         'fill="none" stroke="url(#' + gradId + ')" stroke-width="22" ' +
         'stroke-dasharray="' + dash.toFixed(2) + ' ' + gap.toFixed(2) + '" ' +
         'stroke-dashoffset="' + (-(offsetFrac * circ)).toFixed(2) + '" ' +
-        'transform="rotate(-90 ' + cx + ' ' + cy + ')" stroke-linecap="round" ' +
+        'transform="rotate(-90 ' + cx + ' ' + cy + ')" ' +
         'style="filter:drop-shadow(0 0 8px ' + colors[0] + '40)"/>';
     }
 
@@ -827,6 +965,9 @@
     }
 
     var html = '<div class="card rec-card" style="border-color:' + borderColor + ';background:' + bgGrad + '">';
+
+    // Section title (outside card)
+    html = '<div class="section-title" style="margin-bottom:0.75rem">📹 Seguimiento de Grabaciones</div>' + html;
 
     // Header with refresh button
     html += '<div class="rec-header">' +
