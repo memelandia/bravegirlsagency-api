@@ -378,10 +378,10 @@
 
     // 2. MINI-STATS ROW (4 cards with avg msg price)
     html += '<div class="grid-4col" id="mini-stats-row">' +
-      miniStatCard('👥', current.fansThisMonth, 'Fans que pagaron') +
-      miniStatCard('✉️', current.messageCount.toLocaleString(), 'Mensajes vendidos') +
-      miniStatCard('💵', fmtCur(current.averagePerFan), 'Por fan de media') +
-      miniStatCard('💬', fmtCur(current.avgMessagePrice), 'Precio medio msg') +
+      miniStatCard('👥', current.fansThisMonth, 'Fans que pagaron', '#22d3ee') +
+      miniStatCard('✉️', current.messageCount.toLocaleString(), 'Mensajes vendidos', '#e879f9') +
+      miniStatCard('💵', fmtCur(current.averagePerFan), 'Por fan de media', '#34d399') +
+      miniStatCard('💬', fmtCur(current.avgMessagePrice), 'Precio medio msg', '#fbbf24') +
     '</div>';
 
     // 3 + 4. PROGRESS RING + DONUT side by side
@@ -405,10 +405,11 @@
     wireTabSwitching(container);
   }
 
-  function miniStatCard(icon, value, label) {
-    return '<div class="card mini-stat-card">' +
+  function miniStatCard(icon, value, label, accentColor) {
+    var color = accentColor || '#fff';
+    return '<div class="card mini-stat-card" style="border-top:3px solid ' + color + ';background:linear-gradient(180deg,' + color + '08 0%,transparent 40%)">' +
       '<div class="mini-stat-icon">' + icon + '</div>' +
-      '<div class="mini-stat-value">' + value + '</div>' +
+      '<div class="mini-stat-value" style="color:' + color + '">' + value + '</div>' +
       '<div class="mini-stat-label">' + label + '</div>' +
     '</div>';
   }
@@ -472,24 +473,24 @@
     if (period === 'today') {
       heroAmount.textContent = fmtCur(c.todayRevenue);
       if (miniRow) miniRow.innerHTML =
-        miniStatCard('👥', c.todayFans, 'Fans hoy') +
-        miniStatCard('✉️', c.todayMsgCount.toLocaleString(), 'Msgs hoy') +
-        miniStatCard('💵', c.todayFans > 0 ? fmtCur(c.todayRevenue / c.todayFans) : '$0.00', 'Por fan hoy') +
-        miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg');
+        miniStatCard('👥', c.todayFans, 'Fans hoy', '#22d3ee') +
+        miniStatCard('✉️', c.todayMsgCount.toLocaleString(), 'Msgs hoy', '#e879f9') +
+        miniStatCard('💵', c.todayFans > 0 ? fmtCur(c.todayRevenue / c.todayFans) : '$0.00', 'Por fan hoy', '#34d399') +
+        miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg', '#fbbf24');
     } else if (period === 'week') {
       heroAmount.textContent = fmtCur(c.weekRevenue);
       if (miniRow) miniRow.innerHTML =
-        miniStatCard('👥', c.weekFans, 'Fans semana') +
-        miniStatCard('✉️', c.weekMsgCount.toLocaleString(), 'Msgs semana') +
-        miniStatCard('💵', c.weekFans > 0 ? fmtCur(c.weekRevenue / c.weekFans) : '$0.00', 'Por fan semana') +
-        miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg');
+        miniStatCard('👥', c.weekFans, 'Fans semana', '#22d3ee') +
+        miniStatCard('✉️', c.weekMsgCount.toLocaleString(), 'Msgs semana', '#e879f9') +
+        miniStatCard('💵', c.weekFans > 0 ? fmtCur(c.weekRevenue / c.weekFans) : '$0.00', 'Por fan semana', '#34d399') +
+        miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg', '#fbbf24');
     } else {
       heroAmount.textContent = fmtCur(c.totalRevenue);
       if (miniRow) miniRow.innerHTML =
-        miniStatCard('👥', c.fansThisMonth, 'Fans que pagaron') +
-        miniStatCard('✉️', c.messageCount.toLocaleString(), 'Mensajes vendidos') +
-        miniStatCard('💵', fmtCur(c.averagePerFan), 'Por fan de media') +
-        miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg');
+        miniStatCard('👥', c.fansThisMonth, 'Fans que pagaron', '#22d3ee') +
+        miniStatCard('✉️', c.messageCount.toLocaleString(), 'Mensajes vendidos', '#e879f9') +
+        miniStatCard('💵', fmtCur(c.averagePerFan), 'Por fan de media', '#34d399') +
+        miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg', '#fbbf24');
     }
 
     // Update motivational contextual to tab
@@ -647,7 +648,7 @@
       '</div></div>';
   }
 
-  // ═══ INCOME DISTRIBUTION — SVG DONUT (big, gradient, matching height) ═══
+  // ═══ INCOME DISTRIBUTION — SVG DONUT (dominant % inside, progress bars legend) ═══
   function renderIncomeDistribution(stats) {
     var total = stats.totalRevenue;
     if (total === 0) return '';
@@ -656,63 +657,73 @@
     var ppv  = stats.ppvRevenue;
     var tips = stats.tipRevenue;
 
+    // Find dominant category
+    var categories = [
+      { label: 'PPV + Msgs', amount: ppv, colors: ['#c026d3','#e879f9'], color: '#e879f9' },
+      { label: 'Suscripciones', amount: subs, colors: ['#06b6d4','#22d3ee'], color: '#22d3ee' },
+      { label: 'Propinas', amount: tips, colors: ['#f59e0b','#fbbf24'], color: '#fbbf24' }
+    ];
+    categories.sort(function(a,b) { return b.amount - a.amount; });
+    var dominant = categories[0];
+    var domPct = total > 0 ? (dominant.amount / total * 100).toFixed(0) : 0;
+
     var svgSize = 260, cx = 130, cy = 130, r = 100;
     var circ = 2 * Math.PI * r;
-    var gapSize = 4; // gap in SVG units between segments
-    var gapAngle = gapSize / r; // radians per gap
-    var totalGapAngle = gapAngle * 3;
-    var usableCirc = circ - (gapSize * 3);
 
-    function arcGrad(value, offset, gradId, colors) {
+    // Simple arc function with gradient
+    function arcGrad(value, offsetFrac, gradId, colors) {
       var pct = total > 0 ? value / total : 0;
-      var dash = pct * usableCirc;
-      if (dash < 1) return '';
-      var gap  = circ - dash;
-      var angleOff = offset * usableCirc + (offset > 0 ? gapSize * Math.ceil(offset * 3) : 0);
+      var dash = pct * circ;
+      if (dash < 2) return '';
+      var gap = circ - dash;
       return '<defs><linearGradient id="' + gradId + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
         '<stop offset="0%" stop-color="' + colors[0] + '"/>' +
         '<stop offset="100%" stop-color="' + colors[1] + '"/>' +
       '</linearGradient></defs>' +
       '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" ' +
-        'fill="none" stroke="url(#' + gradId + ')" stroke-width="24" ' +
+        'fill="none" stroke="url(#' + gradId + ')" stroke-width="22" ' +
         'stroke-dasharray="' + dash.toFixed(2) + ' ' + gap.toFixed(2) + '" ' +
-        'stroke-dashoffset="' + (-angleOff).toFixed(2) + '" ' +
+        'stroke-dashoffset="' + (-(offsetFrac * circ)).toFixed(2) + '" ' +
         'transform="rotate(-90 ' + cx + ' ' + cy + ')" stroke-linecap="round" ' +
-        'style="filter:drop-shadow(0 0 6px ' + colors[0] + '30)"/>';
+        'style="filter:drop-shadow(0 0 8px ' + colors[0] + '40)"/>';
     }
 
-    var subsPct = total > 0 ? subs / total : 0;
-    var ppvPct  = total > 0 ? ppv / total : 0;
+    var subsFrac = total > 0 ? subs / total : 0;
+    var ppvFrac  = total > 0 ? ppv / total : 0;
 
     var svgDonut =
       '<svg width="' + svgSize + '" height="' + svgSize + '" viewBox="0 0 ' + svgSize + ' ' + svgSize + '">' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="24"/>' +
-        arcGrad(subs, 0, 'dSubs', ['#06b6d4', '#22d3ee']) +
-        arcGrad(ppv, subsPct, 'dPpv', ['#c026d3', '#e879f9']) +
-        arcGrad(tips, subsPct + ppvPct, 'dTips', ['#f59e0b', '#fbbf24']) +
-        '<text x="' + cx + '" y="' + (cy - 8) + '" text-anchor="middle" fill="#fff" font-size="22" font-weight="900">' + fmtCur(total) + '</text>' +
-        '<text x="' + cx + '" y="' + (cy + 14) + '" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="12">total</text>' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="22"/>' +
+        arcGrad(subs, 0, 'dS2', ['#06b6d4','#22d3ee']) +
+        arcGrad(ppv, subsFrac, 'dP2', ['#c026d3','#e879f9']) +
+        arcGrad(tips, subsFrac + ppvFrac, 'dT2', ['#f59e0b','#fbbf24']) +
+        '<text x="' + cx + '" y="' + (cy - 10) + '" text-anchor="middle" fill="' + dominant.color + '" font-size="42" font-weight="900">' + domPct + '%</text>' +
+        '<text x="' + cx + '" y="' + (cy + 14) + '" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="12" font-weight="600">' + dominant.label + '</text>' +
       '</svg>';
 
-    function legendItem(label, amount, color) {
-      var pctVal = total > 0 ? (amount / total * 100).toFixed(0) : 0;
-      return '<div class="donut-legend-item">' +
-        '<div class="donut-legend-dot" style="background:' + color + '"></div>' +
-        '<div style="flex:1">' +
-          '<div style="font-size:0.8rem;color:var(--text-secondary);font-weight:600">' + label + '</div>' +
-          '<div style="font-size:1rem;font-weight:800;color:#fff">' + fmtCur(amount) +
-            '<span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px">' + pctVal + '%</span>' +
-          '</div>' +
-        '</div></div>';
+    // Progress bar legend items
+    function legendBar(label, amount, color) {
+      var pctVal = total > 0 ? (amount / total * 100) : 0;
+      return '<div class="donut-bar-item">' +
+        '<div class="donut-bar-header">' +
+          '<span class="donut-bar-dot" style="background:' + color + '"></span>' +
+          '<span class="donut-bar-label">' + label + '</span>' +
+          '<span class="donut-bar-amount">' + fmtCur(amount) + '</span>' +
+          '<span class="donut-bar-pct">' + pctVal.toFixed(0) + '%</span>' +
+        '</div>' +
+        '<div class="donut-bar-track">' +
+          '<div class="donut-bar-fill" style="width:' + Math.max(pctVal, 2) + '%;background:' + color + '"></div>' +
+        '</div>' +
+      '</div>';
     }
 
     return '<div class="card chart-card-unified" style="flex-direction:column">' +
       '<div class="section-title" style="width:100%;text-align:center">💎 De dónde viene tu dinero</div>' +
       '<div class="chart-svg-center">' + svgDonut + '</div>' +
-      '<div class="donut-legend-row">' +
-        legendItem('Suscripciones', subs, '#22d3ee') +
-        legendItem('PPV + Msgs', ppv, '#e879f9') +
-        legendItem('Propinas', tips, '#fbbf24') +
+      '<div class="donut-bars-wrap">' +
+        legendBar('Suscripciones', subs, '#22d3ee') +
+        legendBar('PPV + Mensajes', ppv, '#e879f9') +
+        legendBar('Propinas', tips, '#fbbf24') +
       '</div>' +
     '</div>';
   }
