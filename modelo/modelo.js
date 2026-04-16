@@ -70,6 +70,23 @@
       clearSession();
       location.reload();
     });
+
+    // Inject refresh FAB
+    var fab = document.createElement('button');
+    fab.id = 'refresh-fab';
+    fab.className = 'refresh-fab';
+    fab.innerHTML = '🔄';
+    fab.title = 'Actualizar datos';
+    fab.addEventListener('click', function () {
+      fab.classList.add('spinning');
+      loadAllData(cfg).then(function () {
+        fab.classList.remove('spinning');
+      }).catch(function () {
+        fab.classList.remove('spinning');
+      });
+    });
+    document.getElementById('dashboard-screen').appendChild(fab);
+
     loadAllData(cfg);
   }
 
@@ -79,8 +96,8 @@
     var recordingContainer = document.getElementById('recording-section');
     var agencyMsgContainer = document.getElementById('agency-msg-section');
 
-    statsContainer.innerHTML = renderSkeletons(6);
-    recordingContainer.innerHTML = renderSkeletons(1);
+    statsContainer.innerHTML = renderSkeletons('stats');
+    recordingContainer.innerHTML = renderSkeletons('recording');
 
     // Agency message — removed by design
     agencyMsgContainer.classList.add('hidden');
@@ -244,6 +261,36 @@
       if (currentDay > 0) projection = (totalRevenue / currentDay) * daysInMonth;
     }
 
+    // Compute today/week revenue
+    var todayRevenue = 0, weekRevenue = 0;
+    var todayMsgCount = 0, weekMsgCount = 0;
+    var todaySubRev = 0, weekSubRev = 0;
+    var todayPpvRev = 0, weekPpvRev = 0;
+    var todayTipRev = 0, weekTipRev = 0;
+    transactions.forEach(function (tx) {
+      if (tx.status !== 'done' && tx.status !== 'loading') return;
+      var netAmt = tx.amount * 0.8;
+      var txD = new Date(tx.timestamp);
+      var txType = (tx.type || '').toLowerCase();
+      var isSub = txType.includes('subscription') || txType.includes('recurring');
+      var isTip = txType.includes('tip');
+      var isMsg = txType.includes('message') || txType.includes('payment for message');
+      if (txD >= todayStart) {
+        todayRevenue += netAmt;
+        if (isMsg) todayMsgCount++;
+        if (isSub) todaySubRev += netAmt;
+        else if (isTip) todayTipRev += netAmt;
+        else todayPpvRev += netAmt;
+      }
+      if (txD >= weekStart) {
+        weekRevenue += netAmt;
+        if (isMsg) weekMsgCount++;
+        if (isSub) weekSubRev += netAmt;
+        else if (isTip) weekTipRev += netAmt;
+        else weekPpvRev += netAmt;
+      }
+    });
+
     return {
       totalRevenue: totalRevenue,
       subscriptionRevenue: subscriptionRevenue,
@@ -260,55 +307,83 @@
       recentActivity: recentActivity,
       bestDay: bestDay,
       projection: projection,
-      transactionCount: transactions.length
+      transactionCount: transactions.length,
+      dailyRevenue: dailyRevenue,
+      todayRevenue: todayRevenue,
+      weekRevenue: weekRevenue,
+      todayFans: fansToday.size,
+      weekFans: fansThisWeek.size,
+      todayMsgCount: todayMsgCount,
+      weekMsgCount: weekMsgCount,
+      todaySubRev: todaySubRev, todayPpvRev: todayPpvRev, todayTipRev: todayTipRev,
+      weekSubRev: weekSubRev, weekPpvRev: weekPpvRev, weekTipRev: weekTipRev
     };
   }
 
   // ═══════════════════════════════════════════════════════════
-  // RENDER FULL STATS — v3 visual redesign
+  // RENDER FULL STATS — v4 sparkline + best day + tabs
   // ═══════════════════════════════════════════════════════════
+
+  // Store stats globally for tab switching
+  var _statsCache = {};
+
   function renderFullStats(container, current, lastSame, lastFull, period) {
+    _statsCache = { current: current, lastSame: lastSame, lastFull: lastFull, period: period };
     var html = '';
 
-    // 1. HERO CARD — revenue big
-    html += '<div class="card card-hero">' +
-      '<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;' +
-        'letter-spacing:0.1em;color:rgba(255,107,179,0.7);margin-bottom:0.5rem">' +
-        '💰 Ingresos ' + period.currentMonthName +
-      '</div>' +
-      '<div class="stat-hero">' + fmtCur(current.totalRevenue) + '</div>' +
-      '<div style="margin-top:0.75rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">' +
-        growthBadge(current.totalRevenue, lastSame.totalRevenue, '') +
-        '<span style="color:var(--text-muted);font-size:0.8rem">' +
-          'vs primeros ' + period.currentDay + ' días de ' + period.lastMonthName +
-        '</span>' +
-      '</div>' +
-      (current.projection > 0 ?
-        '<div style="margin-top:0.75rem;padding:0.6rem 0.9rem;border-radius:10px;' +
-        'background:rgba(255,255,255,0.04);display:inline-flex;align-items:center;gap:0.5rem">' +
-        '<span style="font-size:0.75rem;color:var(--text-muted)">🎯 Previsión:</span>' +
-        '<span style="font-size:0.9rem;font-weight:700;color:var(--success)">' +
-        fmtCur(current.projection) + '</span>' +
-        '</div>' : '') +
+    // 0. PERIOD TABS
+    html += '<div class="period-tabs" id="period-tabs">' +
+      '<button class="period-tab" data-period="today">Hoy</button>' +
+      '<button class="period-tab" data-period="week">Semana</button>' +
+      '<button class="period-tab active" data-period="month">Este Mes</button>' +
     '</div>';
 
-    // 2. MINI-STATS ROW (3 cards)
-    html += '<div class="grid-3col">' +
-      '<div class="card mini-stat-card">' +
-        '<div class="mini-stat-icon">👥</div>' +
-        '<div class="mini-stat-value">' + current.fansThisMonth + '</div>' +
-        '<div class="mini-stat-label">Fans que pagaron</div>' +
+    // 1. HERO CARD — revenue big + sparkline
+    html += '<div class="card card-hero" id="hero-card">' +
+      '<div class="hero-top-row">' +
+        '<div class="hero-left">' +
+          '<div class="hero-label">💰 Ingresos ' + period.currentMonthName + '</div>' +
+          '<div class="stat-hero" id="hero-amount">' + fmtCur(current.totalRevenue) + '</div>' +
+          '<div class="hero-growth" id="hero-growth">' +
+            growthBadge(current.totalRevenue, lastSame.totalRevenue, '') +
+            '<span class="hero-vs">vs primeros ' + period.currentDay + ' días de ' + period.lastMonthName + '</span>' +
+          '</div>' +
+          (current.projection > 0 ?
+            '<div class="hero-projection">' +
+            '<span class="hero-proj-label">🎯 Previsión:</span>' +
+            '<span class="hero-proj-value">' + fmtCur(current.projection) + '</span>' +
+            '</div>' : '') +
+        '</div>' +
+        '<div class="hero-sparkline">' + renderSparkline(current.dailyRevenue, period) + '</div>' +
       '</div>' +
-      '<div class="card mini-stat-card">' +
-        '<div class="mini-stat-icon">✉️</div>' +
-        '<div class="mini-stat-value">' + current.messageCount.toLocaleString() + '</div>' +
-        '<div class="mini-stat-label">Mensajes vendidos</div>' +
-      '</div>' +
-      '<div class="card mini-stat-card">' +
-        '<div class="mini-stat-icon">💵</div>' +
-        '<div class="mini-stat-value">' + fmtCur(current.averagePerFan) + '</div>' +
-        '<div class="mini-stat-label">Por fan de media</div>' +
-      '</div>' +
+    '</div>';
+
+    // 1b. BEST DAY CARD (glow)
+    if (current.bestDay && current.bestDay.amount > 0) {
+      var bdDate = new Date(current.bestDay.date);
+      var isToday = bdDate.toDateString() === new Date().toDateString();
+      var bdFormatted = bdDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+      html += '<div class="card best-day-card' + (isToday ? ' best-day-today' : '') + '">' +
+        '<div class="best-day-trophy">🏆</div>' +
+        '<div class="best-day-info">' +
+          '<div class="best-day-label">' + (isToday ? '¡Tu mejor día es HOY!' : 'Tu mejor día') + '</div>' +
+          '<div class="best-day-value">' + fmtCur(current.bestDay.amount) + '</div>' +
+          '<div class="best-day-date">' + bdFormatted + '</div>' +
+        '</div>' +
+        (current.recentActivity > 0 ?
+          '<div class="live-dot-wrap">' +
+            '<span class="live-dot"></span>' +
+            '<span class="live-text">' + current.recentActivity + ' tx últimas 24h</span>' +
+          '</div>' : '') +
+      '</div>';
+    }
+
+    // 2. MINI-STATS ROW (4 cards with avg msg price)
+    html += '<div class="grid-4col" id="mini-stats-row">' +
+      miniStatCard('👥', current.fansThisMonth, 'Fans que pagaron') +
+      miniStatCard('✉️', current.messageCount.toLocaleString(), 'Mensajes vendidos') +
+      miniStatCard('💵', fmtCur(current.averagePerFan), 'Por fan de media') +
+      miniStatCard('💬', fmtCur(current.avgMessagePrice), 'Precio medio msg') +
     '</div>';
 
     // 3 + 4. PROGRESS RING + DONUT side by side
@@ -317,10 +392,10 @@
       renderIncomeDistribution(current) +
     '</div>';
 
-    // 5. COMPARISON TABLE (simplified)
+    // 5. COMPARISON TABLE
     html += renderComparison(current, lastSame, lastFull, period);
 
-    // 6. MOTIVATIONAL (at the end)
+    // 6. MOTIVATIONAL
     html += renderMotivational(current, lastSame, lastFull, period);
 
     // 7. Last update
@@ -330,6 +405,96 @@
       }) + '</div>';
 
     container.innerHTML = html;
+
+    // Wire up tab switching
+    wireTabSwitching(container);
+  }
+
+  function miniStatCard(icon, value, label) {
+    return '<div class="card mini-stat-card">' +
+      '<div class="mini-stat-icon">' + icon + '</div>' +
+      '<div class="mini-stat-value">' + value + '</div>' +
+      '<div class="mini-stat-label">' + label + '</div>' +
+    '</div>';
+  }
+
+  // ═══ SPARKLINE — SVG bar chart of daily revenue ═══
+  function renderSparkline(dailyRevenue, period) {
+    if (!dailyRevenue) return '';
+    var now = new Date();
+    var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    var bars = [];
+    var maxVal = 0;
+    for (var d = 1; d <= now.getDate(); d++) {
+      var key = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d).padStart(2, '0');
+      var val = dailyRevenue[key] || 0;
+      bars.push(val);
+      if (val > maxVal) maxVal = val;
+    }
+    if (maxVal === 0) return '';
+
+    var svgW = 180, svgH = 60;
+    var barW = Math.max(2, Math.floor((svgW - bars.length) / bars.length));
+    var gap = 1;
+    var totalW = bars.length * (barW + gap);
+
+    var rects = bars.map(function(val, i) {
+      var h = Math.max(2, (val / maxVal) * (svgH - 4));
+      var x = i * (barW + gap);
+      var isToday = (i === bars.length - 1);
+      var color = isToday ? 'var(--accent)' : 'rgba(255,107,179,0.4)';
+      return '<rect x="' + x + '" y="' + (svgH - h) + '" width="' + barW + '" height="' + h + '" rx="1" fill="' + color + '"/>';
+    }).join('');
+
+    return '<svg width="' + totalW + '" height="' + svgH + '" viewBox="0 0 ' + totalW + ' ' + svgH + '" style="max-width:100%">' +
+      rects + '</svg>';
+  }
+
+  // ═══ PERIOD TAB SWITCHING ═══
+  function wireTabSwitching(container) {
+    var tabs = container.querySelectorAll('.period-tab');
+    tabs.forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        tabs.forEach(function(t) { t.classList.remove('active'); });
+        tab.classList.add('active');
+        var p = tab.dataset.period;
+        updatePeriodView(container, p);
+      });
+    });
+  }
+
+  function updatePeriodView(container, period) {
+    var s = _statsCache;
+    if (!s.current) return;
+    var c = s.current;
+    var heroAmount = container.querySelector('#hero-amount');
+    var miniRow = container.querySelector('#mini-stats-row');
+    if (!heroAmount) return;
+
+    if (period === 'today') {
+      heroAmount.textContent = fmtCur(c.todayRevenue);
+      if (miniRow) miniRow.innerHTML =
+        miniStatCard('👥', c.todayFans, 'Fans hoy') +
+        miniStatCard('✉️', c.todayMsgCount.toLocaleString(), 'Msgs hoy') +
+        miniStatCard('💵', c.todayFans > 0 ? fmtCur(c.todayRevenue / c.todayFans) : '$0.00', 'Por fan hoy') +
+        miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg');
+    } else if (period === 'week') {
+      heroAmount.textContent = fmtCur(c.weekRevenue);
+      if (miniRow) miniRow.innerHTML =
+        miniStatCard('👥', c.weekFans, 'Fans semana') +
+        miniStatCard('✉️', c.weekMsgCount.toLocaleString(), 'Msgs semana') +
+        miniStatCard('💵', c.weekFans > 0 ? fmtCur(c.weekRevenue / c.weekFans) : '$0.00', 'Por fan semana') +
+        miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg');
+    } else {
+      heroAmount.textContent = fmtCur(c.totalRevenue);
+      if (miniRow) miniRow.innerHTML =
+        miniStatCard('👥', c.fansThisMonth, 'Fans que pagaron') +
+        miniStatCard('✉️', c.messageCount.toLocaleString(), 'Mensajes vendidos') +
+        miniStatCard('💵', fmtCur(c.averagePerFan), 'Por fan de media') +
+        miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg');
+    }
   }
 
   // ═══ MOTIVATIONAL MESSAGE (at end, shorter) ═══
@@ -588,44 +753,70 @@
 
   function renderRecording(container, grabados, pendientesCount, enviados, pct, pendientesArr) {
     // Dynamic colors based on progress
-    var borderColor, bgStyle, titleText;
+    var borderColor, bgGrad, titleText, emoji;
     if (pct >= 100) {
       borderColor = 'rgba(16,185,129,0.4)';
-      bgStyle = 'background:rgba(16,185,129,0.06);';
-      titleText = '🎉 ¡Todo grabado!';
+      bgGrad = 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(52,211,153,0.04))';
+      titleText = '¡Todo grabado!';
+      emoji = '🎉';
     } else if (pct >= 70) {
       borderColor = 'rgba(251,191,36,0.3)';
-      bgStyle = '';
-      titleText = '📹 Tus reels pendientes';
+      bgGrad = 'linear-gradient(135deg, rgba(251,191,36,0.06), rgba(255,215,0,0.03))';
+      titleText = 'Casi completo';
+      emoji = '📹';
     } else {
-      borderColor = 'rgba(255,31,142,0.2)';
-      bgStyle = '';
-      titleText = '📹 Tus reels pendientes';
+      borderColor = 'rgba(255,31,142,0.25)';
+      bgGrad = 'linear-gradient(135deg, rgba(255,31,142,0.06), rgba(192,38,211,0.03))';
+      titleText = 'Tus reels pendientes';
+      emoji = '📹';
     }
 
-    var chipsHtml = '';
+    var html = '<div class="card rec-card" style="border-color:' + borderColor + ';background:' + bgGrad + '">';
+
+    // Header
+    html += '<div class="rec-header">' +
+      '<div class="rec-title">' + emoji + ' ' + titleText + '</div>' +
+    '</div>';
+
+    // 3 big stat blocks
+    html += '<div class="rec-stats-row">' +
+      '<div class="rec-stat">' +
+        '<div class="rec-stat-num" style="color:var(--success)">' + grabados + '</div>' +
+        '<div class="rec-stat-label">Grabados</div>' +
+      '</div>' +
+      '<div class="rec-stat">' +
+        '<div class="rec-stat-num" style="color:var(--gold)">' + pendientesCount + '</div>' +
+        '<div class="rec-stat-label">Pendientes</div>' +
+      '</div>' +
+      '<div class="rec-stat">' +
+        '<div class="rec-stat-num" style="color:var(--text-secondary)">' + enviados + '</div>' +
+        '<div class="rec-stat-label">Enviados</div>' +
+      '</div>' +
+    '</div>';
+
+    // Big progress bar
+    html += '<div class="rec-progress-wrap">' +
+      '<div class="rec-progress-track">' +
+        '<div class="rec-progress-fill" style="width:' + Math.max(pct, 3) + '%"></div>' +
+      '</div>' +
+      '<div class="rec-progress-label">' + pct + '% completado</div>' +
+    '</div>';
+
+    // Pending reels as big cards
     if (pendientesArr.length > 0) {
-      chipsHtml = '<div style="margin-top:0.75rem"><div class="stat-sub" style="margin-bottom:0.4rem">⏳ Faltan grabar:</div>' +
-        '<div class="pending-chips">';
+      html += '<div class="rec-pending-section">' +
+        '<div class="rec-pending-title">⏳ Faltan grabar (' + pendientesArr.length + ')</div>' +
+        '<div class="rec-pending-grid">';
       pendientesArr.sort(function (a, b) { return a - b; }).forEach(function (n) {
-        chipsHtml += '<span class="chip">#' + n + '</span>';
+        html += '<div class="rec-pending-item">' +
+          '<span class="rec-pending-num">#' + n + '</span>' +
+        '</div>';
       });
-      chipsHtml += '</div></div>';
+      html += '</div></div>';
     }
 
-    container.innerHTML =
-      '<div class="card" style="border-color:' + borderColor + ';' + bgStyle + '">' +
-        '<div class="dash-section-title">' + titleText + '</div>' +
-        '<div class="recording-summary">' +
-          '<div class="recording-stat" style="color:var(--success)"><span class="num">' + grabados + '</span> grabados</div>' +
-          '<div class="recording-stat" style="color:var(--gold)"><span class="num">' + pendientesCount + '</span> pendientes</div>' +
-          '<div class="recording-stat" style="color:var(--text-muted)">de ' + enviados + ' enviados</div>' +
-        '</div>' +
-        '<div class="progress-track">' +
-          '<div class="progress-fill" style="width:' + Math.max(pct, 3) + '%">' + pct + '%</div>' +
-        '</div>' +
-        chipsHtml +
-      '</div>';
+    html += '</div>';
+    container.innerHTML = html;
   }
 
   // ═══ HELPERS ═══
@@ -665,9 +856,33 @@
       '<div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;margin-top:4px">' + label + '</div></div>';
   }
 
-  function renderSkeletons(count) {
+  function renderSkeletons(type) {
+    if (type === 'stats') {
+      return '<div class="skeleton-group">' +
+        '<div class="skeleton skeleton-tabs"></div>' +
+        '<div class="skeleton skeleton-hero"></div>' +
+        '<div class="skeleton skeleton-bestday"></div>' +
+        '<div class="grid-4col">' +
+          '<div class="skeleton skeleton-mini"></div>' +
+          '<div class="skeleton skeleton-mini"></div>' +
+          '<div class="skeleton skeleton-mini"></div>' +
+          '<div class="skeleton skeleton-mini"></div>' +
+        '</div>' +
+        '<div class="grid-2col">' +
+          '<div class="skeleton skeleton-chart"></div>' +
+          '<div class="skeleton skeleton-chart"></div>' +
+        '</div>' +
+        '<div class="skeleton skeleton-table"></div>' +
+      '</div>';
+    }
+    if (type === 'recording') {
+      return '<div class="skeleton-group">' +
+        '<div class="skeleton skeleton-recording"></div>' +
+      '</div>';
+    }
+    // fallback
     var html = '<div class="stats-grid">';
-    for (var i = 0; i < count; i++) {
+    for (var i = 0; i < 4; i++) {
       html += '<div class="card skeleton skeleton-card"></div>';
     }
     return html + '</div>';
