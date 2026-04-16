@@ -293,29 +293,29 @@
     '</div>';
 
     // 2. MINI-STATS ROW (3 cards)
-    html += '<div class="mini-stats-row">' +
-      '<div class="card mini-stat-card card-accent-fans">' +
+    html += '<div class="grid-3col">' +
+      '<div class="card mini-stat-card">' +
         '<div class="mini-stat-icon">👥</div>' +
         '<div class="mini-stat-value">' + current.fansThisMonth + '</div>' +
-        '<div class="mini-stat-label">Chicos que pagaron</div>' +
+        '<div class="mini-stat-label">Fans que pagaron</div>' +
       '</div>' +
-      '<div class="card mini-stat-card card-accent-ppv">' +
+      '<div class="card mini-stat-card">' +
         '<div class="mini-stat-icon">✉️</div>' +
         '<div class="mini-stat-value">' + current.messageCount.toLocaleString() + '</div>' +
         '<div class="mini-stat-label">Mensajes vendidos</div>' +
       '</div>' +
-      '<div class="card mini-stat-card card-accent-tips">' +
+      '<div class="card mini-stat-card">' +
         '<div class="mini-stat-icon">💵</div>' +
         '<div class="mini-stat-value">' + fmtCur(current.averagePerFan) + '</div>' +
         '<div class="mini-stat-label">Por fan de media</div>' +
       '</div>' +
     '</div>';
 
-    // 3. PROGRESS RING
-    html += renderProgressRing(current, lastFull, period);
-
-    // 4. DONUT — Income distribution
-    html += renderIncomeDistribution(current);
+    // 3 + 4. PROGRESS RING + DONUT side by side
+    html += '<div class="grid-2col">' +
+      renderProgressRing(current, lastFull, period) +
+      renderIncomeDistribution(current) +
+    '</div>';
 
     // 5. COMPARISON TABLE (simplified)
     html += renderComparison(current, lastSame, lastFull, period);
@@ -366,30 +366,32 @@
     var goal = lastFull.totalRevenue > 0 ? lastFull.totalRevenue : (current.projection || 1);
     var pct = Math.min((current.totalRevenue / goal) * 100, 100);
 
-    var circumference = 282.7;
+    var r = 80, circumference = 2 * Math.PI * r;
     var dashOffset = circumference - (pct / 100 * circumference);
     var ringColor = pct >= 80 ? '#10b981' : pct >= 50 ? '#FF1F8E' : '#f59e0b';
     var borderColor = pct >= 80 ? 'rgba(16,185,129,0.3)' : 'rgba(255,31,142,0.2)';
+    var svgSize = 200;
 
-    return '<div class="card" style="text-align:center;border-color:' + borderColor + ';margin-bottom:1rem">' +
-      '<div class="stat-label">🎯 Meta del mes</div>' +
-      '<div class="progress-ring-wrap">' +
-        '<svg width="120" height="120" viewBox="0 0 120 120" style="max-width:100%">' +
-          '<circle cx="60" cy="60" r="45" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>' +
-          '<circle cx="60" cy="60" r="45" fill="none" stroke="' + ringColor + '" stroke-width="10" ' +
-            'stroke-linecap="round" stroke-dasharray="' + circumference + '" stroke-dashoffset="' + dashOffset + '" ' +
-            'transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 1s ease"/>' +
-          '<text x="60" y="55" text-anchor="middle" fill="' + ringColor + '" font-size="22" font-weight="900">' + pct.toFixed(0) + '%</text>' +
-          '<text x="60" y="73" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="9">completado</text>' +
+    return '<div class="card ring-card" style="border-color:' + borderColor + '">' +
+      '<div style="text-align:center">' +
+        '<div class="section-title">🎯 Meta del mes</div>' +
+        '<svg width="' + svgSize + '" height="' + svgSize + '" viewBox="0 0 ' + svgSize + ' ' + svgSize + '" style="max-width:100%">' +
+          '<circle cx="100" cy="100" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="14"/>' +
+          '<circle cx="100" cy="100" r="' + r + '" fill="none" stroke="' + ringColor + '" stroke-width="14" ' +
+            'stroke-linecap="round" stroke-dasharray="' + circumference.toFixed(2) + '" stroke-dashoffset="' + dashOffset.toFixed(2) + '" ' +
+            'transform="rotate(-90 100 100)" style="transition:stroke-dashoffset 1s ease"/>' +
+          '<text x="100" y="92" text-anchor="middle" fill="' + ringColor + '" font-size="36" font-weight="900">' + pct.toFixed(0) + '%</text>' +
+          '<text x="100" y="118" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="13">completado</text>' +
         '</svg>' +
-        '<div style="text-align:left">' +
-          '<div style="font-size:0.8rem;color:var(--text-muted)">Llevas</div>' +
-          '<div style="font-size:1.4rem;font-weight:800;color:#fff">' + fmtCur(current.totalRevenue) + '</div>' +
-          '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px">Meta</div>' +
-          '<div style="font-size:1.1rem;font-weight:700;color:var(--text-secondary)">' + fmtCur(goal) + '</div>' +
-          '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">(' + period.lastMonthName + ' completo)</div>' +
-        '</div>' +
-      '</div></div>';
+      '</div>' +
+      '<div class="ring-info">' +
+        '<div class="ring-label">Llevas</div>' +
+        '<div class="ring-value">' + fmtCur(current.totalRevenue) + '</div>' +
+        '<div class="ring-label" style="margin-top:12px">Meta</div>' +
+        '<div class="ring-value-secondary">' + fmtCur(goal) + '</div>' +
+        '<div class="ring-note">(' + period.lastMonthName + ' completo)</div>' +
+      '</div>' +
+    '</div>';
   }
 
   // ═══ COMPARISON TABLE (simplified) ═══
@@ -399,7 +401,7 @@
 
     var metrics = [
       { label: '💰 Total del mes', c: current.totalRevenue, ls: lastSame.totalRevenue, cur: true },
-      { label: '👥 Chicos que pagaron', c: current.fansThisMonth, ls: lastSame.fansThisMonth, cur: false },
+      { label: '👥 Fans que pagaron', c: current.fansThisMonth, ls: lastSame.fansThisMonth, cur: false },
       { label: '✉️ Mensajes y Vídeos', c: current.ppvRevenue + current.tipRevenue, ls: lastSame.ppvRevenue + lastSame.tipRevenue, cur: true },
       { label: '💎 Suscripciones', c: current.subscriptionRevenue, ls: lastSame.subscriptionRevenue, cur: true }
     ];
@@ -430,7 +432,7 @@
       : '<strong>' + positiveCount + ' de ' + metrics.length + '</strong> métricas mejorando';
 
     return '<div class="card" style="margin-top:1rem;overflow-x:auto">' +
-      '<div class="stat-label">📊 Tu progreso vs el mes pasado</div>' +
+      '<div class="section-title">📊 Tu progreso vs el mes pasado</div>' +
       '<div style="font-size:0.7rem;color:var(--info);margin:0.5rem 0;background:rgba(59,130,246,0.15);padding:2px 8px;border-radius:4px;display:inline-block">Comparación justa: mismos ' + period.currentDay + ' días</div>' +
       '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">' +
       '<thead><tr style="border-bottom:2px solid rgba(255,255,255,0.1)">' +
@@ -454,14 +456,15 @@
     var ppv  = stats.ppvRevenue;
     var tips = stats.tipRevenue;
 
-    var r = 50, circ = 314.16, cx = 70, cy = 70;
+    var r = 70, circ = 2 * Math.PI * r, cx = 100, cy = 100;
+    var svgW = 200;
 
     function arc(value, offset, color) {
       var pct = total > 0 ? value / total : 0;
       var dash = pct * circ;
       var gap  = circ - dash;
       return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" ' +
-        'fill="none" stroke="' + color + '" stroke-width="18" ' +
+        'fill="none" stroke="' + color + '" stroke-width="22" ' +
         'stroke-dasharray="' + dash.toFixed(2) + ' ' + gap.toFixed(2) + '" ' +
         'stroke-dashoffset="' + (-(offset * circ)).toFixed(2) + '" ' +
         'transform="rotate(-90 ' + cx + ' ' + cy + ')" stroke-linecap="butt"/>';
@@ -472,13 +475,13 @@
     var tipsOffset = total > 0 ? (subs + ppv) / total : 0;
 
     var svgDonut =
-      '<svg width="140" height="140" viewBox="0 0 140 140" style="max-width:100%">' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="18"/>' +
+      '<svg width="' + svgW + '" height="' + svgW + '" viewBox="0 0 ' + svgW + ' ' + svgW + '" style="max-width:100%">' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="22"/>' +
         arc(subs, subsOffset, 'var(--color-subs)') +
         arc(ppv,  ppvOffset,  'var(--color-ppv)') +
         arc(tips, tipsOffset, 'var(--color-tips)') +
-        '<text x="' + cx + '" y="' + (cy - 6) + '" text-anchor="middle" fill="rgba(255,255,255,0.9)" font-size="13" font-weight="900">' + fmtCur(total) + '</text>' +
-        '<text x="' + cx + '" y="' + (cy + 12) + '" text-anchor="middle" fill="rgba(255,255,255,0.35)" font-size="8">total</text>' +
+        '<text x="' + cx + '" y="' + (cy - 6) + '" text-anchor="middle" fill="rgba(255,255,255,0.9)" font-size="18" font-weight="900">' + fmtCur(total) + '</text>' +
+        '<text x="' + cx + '" y="' + (cy + 14) + '" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="11">total</text>' +
       '</svg>';
 
     function legendItem(label, amount, color) {
@@ -493,9 +496,9 @@
         '</div></div>';
     }
 
-    return '<div class="card" style="margin-bottom:1rem">' +
-      '<div class="stat-label">💎 De dónde viene tu dinero</div>' +
-      '<div class="donut-wrap">' +
+    return '<div class="card donut-card" style="flex-direction:column">' +
+      '<div class="section-title" style="width:100%;text-align:center">💎 De dónde viene tu dinero</div>' +
+      '<div style="display:flex;align-items:center;justify-content:center;gap:2.5rem;flex-wrap:wrap">' +
         svgDonut +
         '<div>' +
           legendItem('Suscripciones', subs, 'var(--color-subs)') +
