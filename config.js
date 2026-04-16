@@ -33,6 +33,15 @@ window.CONFIG = {
         }
     },
     
+    // Marketing Pipeline API (Google Apps Script)
+    marketingApi: {
+        url: 'https://script.google.com/macros/s/AKfycbzuT0PNN1l52QcuHgPdGGezvrSh1FzGOo3bR1gxZzuw9-R1z8aM1dvtyiBJQ8bP37XO9A/exec',
+        key: 'BG-Franco2025-Pipeline'
+    },
+
+    // Mensaje de agencia para dashboards de modelos (dejar vacío para ocultar)
+    modelDashboardMessage: '¡Buen trabajo esta semana! 🔥',
+
     // Usuarios del sistema con IDs reales de OnlyMonster
     users: {
         // ═══════════════════════════════════════════════════════════
@@ -43,10 +52,14 @@ window.CONFIG = {
                 id: 'model1',
                 username: 'carmen',
                 password: 'carmen2025',
+                slug: 'carmencitax',
+                dashboardPassword: 'carmen123',
                 name: '✨Carmen✨ 𝙑𝙄𝙋',
                 type: 'model',
                 onlyFansUsername: '@carmencitax',
-                onlyMonsterId: '85825874' // Platform Account ID correcto
+                onlyMonsterId: '85825874', // Platform Account ID correcto
+                driveKey: 'CARMEN',
+                instagramHandle: '@carmencitax'
             },
             {
                 id: 'model2',
@@ -70,21 +83,54 @@ window.CONFIG = {
                 id: 'model4',
                 username: 'lexi',
                 password: 'lexi2025',
+                slug: 'lexiflix',
+                dashboardPassword: 'lexi123',
                 name: 'Lexiflix 😇',
                 type: 'model',
                 onlyFansUsername: '@lexiflix',
-                onlyMonsterId: '326911669' // Platform Account ID correcto
+                onlyMonsterId: '326911669', // Platform Account ID correcto
+                driveKey: 'LEXI',
+                instagramHandle: '@lexiflix'
             },
             {
                 id: 'model5',
                 username: 'vicky',
                 password: 'vicky2025',
+                slug: 'xvickyluna',
+                dashboardPassword: 'vicky123',
                 name: 'Vicky Luna 🌙',
                 type: 'model',
                 onlyFansUsername: '@xvickyluna',
-                onlyMonsterId: '436482929' // Platform Account ID correcto
+                onlyMonsterId: '436482929', // Platform Account ID correcto
+                driveKey: 'VICKY',
+                instagramHandle: '@xvickyluna'
             },
-
+            {
+                id: 'model6',
+                username: 'lily',
+                password: 'lily2025',
+                slug: 'lilymontero',
+                dashboardPassword: 'lily123',
+                name: 'Lily Montero 🌸',
+                type: 'model',
+                onlyFansUsername: '@lilymontero',
+                onlyMonsterId: 'PENDING',
+                driveKey: 'LILY',
+                instagramHandle: '@lilymontero'
+            },
+            {
+                id: 'model7',
+                username: 'ariana',
+                password: 'ariana2025',
+                slug: 'arianacruzz',
+                dashboardPassword: 'ariana123',
+                name: 'Ariana Cruz 💫',
+                type: 'model',
+                onlyFansUsername: '@arianacruzz',
+                onlyMonsterId: 'PENDING',
+                driveKey: 'ARIANA',
+                instagramHandle: '@arianacruzz'
+            },
         ],
         
         // ═══════════════════════════════════════════════════════════

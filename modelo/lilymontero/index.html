@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Mi Dashboard - BraveGirls Agency</title>
+  <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../modelo.css">
+</head>
+<body>
+
+  <!-- LOGIN SCREEN -->
+  <div id="login-screen" class="login-wrapper">
+    <div class="login-card">
+      <img src="/assets/logo-bravegirls.png" alt="BraveGirls" class="login-logo">
+      <div id="login-greeting" class="login-greeting">Cargando...</div>
+      <div class="login-subtitle">Ingresa tu contraseña para ver tu dashboard</div>
+      <form id="login-form" autocomplete="off">
+        <input id="login-password" type="password" class="login-input" placeholder="Tu contraseña" required autocomplete="current-password">
+        <button type="submit" class="login-btn">Entrar</button>
+      </form>
+      <div id="login-error" class="login-error"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD SCREEN -->
+  <div id="dashboard-screen" class="dashboard-screen">
+    <header class="dash-header">
+      <img src="/assets/logo-bravegirls.png" alt="BG" class="dash-header-logo">
+      <span id="dash-model-name" class="dash-header-name"></span>
+      <button id="logout-btn" class="dash-logout-btn">
+        <span class="dash-logout-icon">✕</span>
+        <span class="dash-logout-text">Cerrar sesión</span>
+      </button>
+    </header>
+
+    <div class="dash-content">
+      <div id="stats-section"></div>
+      <div id="recording-section" style="margin-top:1.5rem"></div>
+      <div id="agency-msg-section" class="hidden" style="margin-top:1.5rem"></div>
+    </div>
+  </div>
+
+  <script>window.MODEL_SLUG = 'lilymontero';</script>
+  <script src="/config.js"></script>
+  <script src="../modelo.js"></script>
+</body>
+</html>
