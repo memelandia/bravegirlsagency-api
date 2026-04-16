@@ -474,9 +474,9 @@
     }
     if (maxVal === 0 || data.length < 2) return '';
 
-    var W = 600, H = 180, padX = 40, padY = 20;
+    var W = 700, H = 280, padX = 48, padY = 24;
     var plotW = W - padX * 2;
-    var plotH = H - padY * 2;
+    var plotH = H - padY * 2 - 16;
     var stepX = plotW / Math.max(data.length - 1, 1);
 
     var points = data.map(function(v, i) {
@@ -496,7 +496,7 @@
       var gy = padY + (plotH / 3) * g;
       var gVal = maxVal - (maxVal / 3) * g;
       gridLines += '<line x1="' + padX + '" y1="' + gy + '" x2="' + (W - padX) + '" y2="' + gy + '" stroke="rgba(255,255,255,0.06)" stroke-dasharray="4,4"/>';
-      gridLines += '<text x="' + (padX - 6) + '" y="' + (gy + 4) + '" text-anchor="end" fill="rgba(255,255,255,0.25)" font-size="9" font-weight="600">$' + Math.round(gVal) + '</text>';
+      gridLines += '<text x="' + (padX - 8) + '" y="' + (gy + 4) + '" text-anchor="end" fill="rgba(255,255,255,0.3)" font-size="11" font-weight="600">$' + Math.round(gVal) + '</text>';
     }
 
     // Day labels (show every few days)
@@ -505,7 +505,7 @@
     for (var dl = 0; dl < data.length; dl++) {
       if (dl === 0 || dl === data.length - 1 || dl % labelEvery === 0) {
         var dlx = padX + dl * stepX;
-        dayLabels += '<text x="' + dlx + '" y="' + (H - 2) + '" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-size="9" font-weight="600">' + (dl + 1) + '</text>';
+        dayLabels += '<text x="' + dlx + '" y="' + (H - 4) + '" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-size="11" font-weight="600">' + (dl + 1) + '</text>';
       }
     }
 
@@ -516,7 +516,7 @@
       var y = padY + plotH - (v / maxVal) * plotH;
       var isLast = i === data.length - 1;
       if (isLast || data.length <= 15 || i % 2 === 0) {
-        dots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (isLast ? 5 : 3) + '" fill="' + (isLast ? '#FF1F8E' : 'rgba(255,107,179,0.6)') + '"' + (isLast ? ' style="filter:drop-shadow(0 0 6px #FF1F8E80)"' : '') + '/>';
+        dots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (isLast ? 6 : 3.5) + '" fill="' + (isLast ? '#FF1F8E' : 'rgba(255,107,179,0.6)') + '"' + (isLast ? ' style="filter:drop-shadow(0 0 8px #FF1F8E80)"' : '') + '/>';
       }
     });
 
@@ -524,13 +524,13 @@
     var lastVal = data[data.length - 1];
     var lastX = padX + (data.length - 1) * stepX;
     var lastY = padY + plotH - (lastVal / maxVal) * plotH;
-    var tooltip = '<rect x="' + (lastX - 30) + '" y="' + (lastY - 28) + '" width="60" height="20" rx="6" fill="rgba(255,31,142,0.25)" stroke="rgba(255,31,142,0.4)" stroke-width="1"/>' +
-      '<text x="' + lastX + '" y="' + (lastY - 14) + '" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">$' + Math.round(lastVal) + '</text>';
+    var tooltip = '<rect x="' + (lastX - 34) + '" y="' + (lastY - 32) + '" width="68" height="24" rx="8" fill="rgba(255,31,142,0.3)" stroke="rgba(255,31,142,0.5)" stroke-width="1"/>' +
+      '<text x="' + lastX + '" y="' + (lastY - 15) + '" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">$' + Math.round(lastVal) + '</text>';
 
     return '<div class="card daily-chart-card">' +
       '<div class="section-title">📈 Ingresos por día — ' + period.currentMonthName + '</div>' +
       '<div class="daily-chart-wrap">' +
-        '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" width="100%" height="' + H + '">' +
+        '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" width="100%">' +
           '<defs>' +
             '<linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">' +
               '<stop offset="0%" stop-color="#FF1F8E" stop-opacity="0.25"/>' +
