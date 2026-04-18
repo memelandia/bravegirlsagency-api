@@ -527,6 +527,9 @@
       miniStatCard('💬', fmtCur(current.avgMessagePrice), 'Precio medio msg', '#fbbf24') +
     '</div>';
 
+    // 2b. CHATTER TEAM (right after mini stats)
+    html += '<div id="chatter-team-slot">' + renderChatterTeam(cfg) + '</div>';
+
     // 3 + 4. PROGRESS RING + DONUT side by side (month only)
     html += '<div class="grid-2col" id="charts-row">' +
       renderProgressRing(current, lastFull, period) +
@@ -541,9 +544,6 @@
 
     // 5b. TOP FANS
     html += '<div id="top-fans-slot">' + renderTopFans(current.topFans) + '</div>';
-
-    // 5c. CHATTER TEAM (rendered inline from config)
-    html += '<div id="chatter-team-slot">' + renderChatterTeam(cfg) + '</div>';
 
     // 5d. TODAY TIMELINE (hidden until Hoy tab active)
     html += '<div id="today-timeline-slot" style="display:none"></div>';
@@ -1374,10 +1374,15 @@
   // CHATTER TEAM — from config.chatters array
   // ═══════════════════════════════════════════════════════════
   function renderChatterTeam(cfg) {
+    console.log('renderChatterTeam called, cfg.chatters:', cfg && cfg.chatters);
     var names = cfg.chatters;
-    if (!names || names.length === 0) return '';
+    if (!names || names.length === 0) {
+      console.log('renderChatterTeam: no chatters found, returning empty');
+      return '';
+    }
 
-    var html = '<div style="margin-top:1rem">';
+    console.log('renderChatterTeam: rendering', names.length, 'chatters:', names);
+    var html = '<div style="margin-top:1rem;padding:1rem;background:rgba(96,165,250,0.08);border:2px solid rgba(96,165,250,0.3);border-radius:14px">';
     html += '<div class="section-title" style="margin-bottom:0.5rem">' + svgIcon('chat', 18, '#60A5FA') + ' Tu Equipo de Chatters</div>';
     html += '<div class="chatter-team-grid">';
     names.forEach(function(name) {
