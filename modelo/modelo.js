@@ -1395,26 +1395,29 @@
       '</div>';
     }
 
+    // Filter teamLeader out of chatters to avoid duplicate
+    var chatters = cfg.chatters.filter(function(n) { return n !== teamLeader; });
+
     var html = '<div class="card team-card animate-in">';
     html += '<div class="section-title" style="margin-bottom:0.75rem">' + svgIcon('fans', 18, '#60A5FA') + ' Tu Equipo</div>';
 
-    html += '<div class="team-grid">';
-
-    // Management row
+    // Management row (centered)
+    html += '<div class="team-row team-row-mgmt">';
     html += memberPill(svgBriefcase, 'Franco', 'CEO & Administración', '#f472b6');
     html += memberPill(svgShield, 'Jonatan', 'Supervisión Chatting', '#60A5FA');
+    html += '</div>';
 
-    // Team Leader
+    // Team Leader + Chatters row (centered)
+    html += '<div class="team-row team-row-ops">';
     if (teamLeader) {
       html += memberPill(svgCrown, teamLeader, 'Team Leader', '#c084fc');
     }
-
-    // Chatters
-    cfg.chatters.forEach(function(name) {
+    chatters.forEach(function(name) {
       html += memberPill(svgHeadset, name, 'Chatter', '#34d399');
     });
+    html += '</div>';
 
-    html += '</div></div>';
+    html += '</div>';
     return html;
   }
 
