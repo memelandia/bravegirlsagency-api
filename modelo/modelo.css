@@ -97,6 +97,15 @@ body {
 .dashboard-screen { display: none; min-height: 100vh; padding-bottom: 2rem; }
 .dashboard-screen.active { display: block; }
 
+.dash-subtitle {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
 .dash-header {
   position: sticky; top: 0; z-index: 50;
   background: rgba(10,12,18,0.92);

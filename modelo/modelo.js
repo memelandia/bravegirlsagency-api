@@ -32,8 +32,8 @@
       return;
     }
 
-    document.getElementById('login-greeting').textContent = 'Hola, ' + modelCfg.name + ' 👋';
-    document.getElementById('dash-model-name').textContent = modelCfg.name;
+    document.getElementById('login-greeting').textContent = 'Hola, ' + (modelCfg.realName || modelCfg.name) + ' 👋';
+    document.getElementById('dash-model-name').textContent = 'Bienvenida ' + (modelCfg.realName || modelCfg.name) + '!';
 
     var session = getSession();
     if (session && session.slug === slug) {
@@ -488,6 +488,11 @@
   function renderFullStats(container, current, lastSame, lastFull, period) {
     _statsCache = { current: current, lastSame: lastSame, lastFull: lastFull, period: period };
     var html = '';
+
+    // Subtitle
+    var cfg = getModelConfig();
+    var realName = (cfg && cfg.realName) || (cfg && cfg.name) || '';
+    html += '<div class="dash-subtitle">Este es el estado de tu cuenta trabajando con nosotros, ' + esc(realName) + ' \u2728</div>';
 
     // 0. PERIOD TABS
     html += '<div class="period-tabs" id="period-tabs" role="tablist" aria-label="Período de tiempo">' +
@@ -1292,7 +1297,7 @@
     var html = '<div class="card rec-card" style="border-color:' + borderColor + ';background:' + bgGrad + '">';
 
     // Section title (outside card)
-    html = '<div class="section-title" style="margin-bottom:0.75rem">📹 Seguimiento de Grabaciones</div>' + html;
+    html = '<div class="section-title" style="margin-bottom:0.75rem">📹 Reels Pendientes</div>' + html;
 
     // Header with refresh button
     html += '<div class="rec-header">' +
@@ -1314,7 +1319,7 @@
       '</div>' +
       '<div class="rec-stat">' +
         '<div class="rec-stat-num" style="color:var(--text-secondary)">' + enviados + '</div>' +
-        '<div class="rec-stat-label">Enviados</div>' +
+        '<div class="rec-stat-label">Ejemplos enviados</div>' +
       '</div>' +
     '</div>';
 
