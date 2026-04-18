@@ -161,6 +161,10 @@
         '<div class="error-state"><div class="icon">📹</div>' +
         '<div class="msg">Sin datos de grabación disponibles.</div></div>';
     }
+
+    // Tips section (after recording)
+    var tipsEl = document.getElementById('tips-section');
+    if (tipsEl) tipsEl.innerHTML = renderTipsSection();
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -530,8 +534,7 @@
     // 2b. TEAM SECTION (right after mini stats)
     html += '<div id="team-section-slot">' + renderTeamSection(cfg) + '</div>';
 
-    // 2c. TIPS SECTION (right after team)
-    html += renderTipsSection();
+    // Tips section moved to after recording section (see loadAllData)
 
     // 3 + 4. PROGRESS RING + DONUT side by side (month only)
     html += '<div class="grid-2col" id="charts-row">' +
@@ -1401,14 +1404,10 @@
     var html = '<div class="card team-card animate-in">';
     html += '<div class="section-title" style="margin-bottom:0.75rem">' + svgIcon('fans', 18, '#60A5FA') + ' Tu Equipo</div>';
 
-    // Management row (2 columns)
-    html += '<div class="team-card-grid-mgmt">';
+    // Single uniform grid for all members
+    html += '<div class="team-card-grid">';
     html += memberCard(svgBriefcase, 'Franco', 'CEO & Administración', '#f472b6');
     html += memberCard(svgShield, 'Jonatan', 'Supervisión Chatting', '#60A5FA');
-    html += '</div>';
-
-    // Team Leader + Chatters row (auto-fill)
-    html += '<div class="team-card-grid-ops">';
     if (teamLeader) {
       html += memberCard(svgCrown, teamLeader, 'Team Leader', '#c084fc');
     }
