@@ -97,15 +97,6 @@ body {
 .dashboard-screen { display: none; min-height: 100vh; padding-bottom: 2rem; }
 .dashboard-screen.active { display: block; }
 
-.dash-subtitle {
-  text-align: center;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin-bottom: 1.25rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-}
-
 .dash-header {
   position: sticky; top: 0; z-index: 50;
   background: rgba(10,12,18,0.92);
@@ -116,8 +107,9 @@ body {
 }
 .dash-header-logo { width: 36px; height: auto; }
 .dash-header-name {
-  font-size: 1.05rem; font-weight: 700;
+  font-size: 0.82rem; font-weight: 700;
   color: var(--text-primary); flex: 1; text-align: center;
+  line-height: 1.3;
 }
 .dash-logout-btn {
   background: rgba(239,68,68,0.08);
@@ -735,18 +727,9 @@ body {
 }
 
 /* ═══ CHATTER TEAM ═══ */
-.chatter-summary {
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-  margin-bottom: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background: rgba(96,165,250,0.06);
-  border: 1px solid rgba(96,165,250,0.12);
-  border-radius: 10px;
-}
 .chatter-team-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.5rem;
 }
 .chatter-card {
@@ -754,9 +737,7 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  text-align: center;
   transition: border-color 0.2s;
 }
 .chatter-card:hover { border-color: rgba(96,165,250,0.3); }
@@ -764,23 +745,6 @@ body {
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-primary);
-}
-.chatter-stats {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-.chatter-stat {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.chatter-reply {
-  font-size: 0.72rem;
-  font-weight: 700;
 }
 
 /* ═══ TODAY TIMELINE ═══ */

@@ -33,7 +33,7 @@
     }
 
     document.getElementById('login-greeting').textContent = 'Hola, ' + (modelCfg.realName || modelCfg.name) + ' 👋';
-    document.getElementById('dash-model-name').textContent = 'Bienvenida ' + (modelCfg.realName || modelCfg.name) + '!';
+    document.getElementById('dash-model-name').textContent = 'Bienvenida ' + (modelCfg.realName || modelCfg.name) + '! Este es el estado de tu cuenta trabajando con nosotros ✨';
 
     var session = getSession();
     if (session && session.slug === slug) {
@@ -491,10 +491,7 @@
     _statsCache = { current: current, lastSame: lastSame, lastFull: lastFull, period: period };
     var html = '';
 
-    // Subtitle
     var cfg = getModelConfig();
-    var realName = (cfg && cfg.realName) || (cfg && cfg.name) || '';
-    html += '<div class="dash-subtitle">Este es el estado de tu cuenta trabajando con nosotros, ' + esc(realName) + ' \u2728</div>';
 
     // 0. PERIOD TABS
     html += '<div class="period-tabs" id="period-tabs" role="tablist" aria-label="Período de tiempo">' +
@@ -1376,79 +1373,26 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  // CHATTER TEAM — fetched from /api/onlymonster/chatter-metrics
+  // CHATTER TEAM — from config.chatters array
   // ═══════════════════════════════════════════════════════════
-  async function loadChatterTeam(cfg) {
-    try {
-      var omId = cfg.onlyMonsterId;
-      if (!omId || omId === 'PENDING') return;
-      var now = new Date();
-      var startDate = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
-      var endDate = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  function loadChatterTeam(cfg) {
+    var names = cfg.chatters;
+    if (!names || names.length === 0) return;
 
-      var url = '/api/onlymonster/chatter-metrics?account_id=' + encodeURIComponent(omId) +
-        '&start_date=' + startDate + '&end_date=' + endDate;
+    var slot = document.querySelector('#chatter-team-slot');
+    if (!slot) return;
 
-      var resp = await fetch(url);
-      if (!resp.ok) return;
-      var json = await resp.json();
-      if (!json.success || !json.data || json.data.length === 0) return;
+    var html = '<div style="margin-top:1rem">';
+    html += '<div class="section-title" style="margin-bottom:0.5rem">' + svgIcon('chat', 18, '#60A5FA') + ' Tu Equipo de Chatters</div>';
+    html += '<div class="chatter-team-grid">';
+    names.forEach(function(name) {
+      html += '<div class="chatter-card">' +
+        '<div class="chatter-name">' + esc(name) + '</div>' +
+      '</div>';
+    });
+    html += '</div></div>';
 
-      // Filter chatters with actual activity
-      var chatters = json.data.filter(function(c) {
-        return c.messages && c.messages.total > 0;
-      }).sort(function(a, b) {
-        return b.revenue.total_net - a.revenue.total_net;
-      });
-
-      if (chatters.length === 0) return;
-
-      var slot = document.querySelector('#chatter-team-slot');
-      if (!slot) return;
-
-      var avgReply = 0;
-      var totalReply = 0;
-      var replyCount = 0;
-      chatters.forEach(function(c) {
-        if (c.performance.reply_time_avg_minutes > 0) {
-          totalReply += c.performance.reply_time_avg_minutes;
-          replyCount++;
-        }
-      });
-      avgReply = replyCount > 0 ? (totalReply / replyCount) : 0;
-
-      var html = '<div style="margin-top:1rem">';
-      html += '<div class="section-title" style="margin-bottom:0.5rem">' + svgIcon('chat', 18, '#60A5FA') + ' Tu Equipo de Chatters <span style="font-size:0.7rem;color:var(--text-muted);font-weight:500">(' + chatters.length + ' activos)</span></div>';
-
-      // Summary bar
-      var replyText = avgReply >= 1 ? avgReply.toFixed(1) + ' min' : Math.round(avgReply * 60) + ' seg';
-      html += '<div class="chatter-summary">Tiempo promedio de respuesta: <strong style="color:' + (avgReply <= 5 ? 'var(--success)' : avgReply <= 10 ? 'var(--gold)' : 'var(--danger)') + '">' + replyText + '</strong></div>';
-
-      // Individual chatter cards
-      html += '<div class="chatter-team-grid">';
-      chatters.forEach(function(c) {
-        var name = c.user_name || 'Chatter';
-        var msgs = c.messages.total;
-        var rev = c.revenue.total_net;
-        var reply = c.performance.reply_time_avg_minutes;
-        var replyStr = reply >= 1 ? reply.toFixed(1) + 'min' : Math.round(reply * 60) + 'seg';
-        var replyColor = reply <= 5 ? 'var(--success)' : reply <= 10 ? 'var(--gold)' : 'var(--danger)';
-
-        html += '<div class="chatter-card">' +
-          '<div class="chatter-name">' + esc(name) + '</div>' +
-          '<div class="chatter-stats">' +
-            '<span class="chatter-stat">' + svgIcon('mail', 14, '#e879f9') + ' ' + msgs + ' msgs</span>' +
-            '<span class="chatter-stat">' + svgIcon('dollar', 14, '#34d399') + ' ' + fmtCur(rev) + '</span>' +
-          '</div>' +
-          '<div class="chatter-reply" style="color:' + replyColor + '">⏱ ' + replyStr + '</div>' +
-        '</div>';
-      });
-      html += '</div></div>';
-
-      slot.innerHTML = html;
-    } catch (err) {
-      console.error('Chatter team error:', err);
-    }
+    slot.innerHTML = html;
   }
 
   // ═══ HELPERS ═══

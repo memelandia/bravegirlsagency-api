@@ -61,7 +61,8 @@ window.CONFIG = {
                 onlyMonsterId: '85825874', // Platform Account ID correcto
                 driveKey: 'CARMEN',
                 instagramHandle: '@carmencitax',
-                monthlyGoal: 3500 // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
+                monthlyGoal: 3500, // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
+                chatters: ['Genesys', 'Yaye', 'Camila']
             },
             {
                 id: 'model2',
@@ -94,7 +95,8 @@ window.CONFIG = {
                 onlyMonsterId: '326911669', // Platform Account ID correcto
                 driveKey: 'LEXI',
                 instagramHandle: '@lexiflix',
-                monthlyGoal: 3000 // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
+                monthlyGoal: 3000, // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
+                chatters: ['Genesys', 'Yaye', 'Camila']
             },
             {
                 id: 'model5',
@@ -109,7 +111,8 @@ window.CONFIG = {
                 onlyMonsterId: '436482929', // Platform Account ID correcto
                 driveKey: 'VICKY',
                 instagramHandle: '@xvickyluna',
-                monthlyGoal: 13000 // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
+                monthlyGoal: 13000, // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
+                chatters: ['Alfonso', 'Nico', 'Kari']
             },
             {
                 id: 'model6',
@@ -124,7 +127,8 @@ window.CONFIG = {
                 onlyMonsterId: 'PENDING',
                 driveKey: 'LILY',
                 instagramHandle: '@lilymontero',
-                monthlyGoal: 5000 // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
+                monthlyGoal: 5000, // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
+                chatters: ['Alfonso', 'Nico', 'Kari']
             },
             {
                 id: 'model7',
@@ -133,13 +137,46 @@ window.CONFIG = {
                 slug: 'arianacruzz',
                 dashboardPassword: 'ariana123',
                 name: 'Ariana Cruz 💫',
-                realName: 'Ariana',
+                realName: 'Ailen',
                 type: 'model',
                 onlyFansUsername: '@arianacruzz',
                 onlyMonsterId: 'PENDING',
                 driveKey: 'ARIANA',
                 instagramHandle: '@arianacruzz',
-                monthlyGoal: null // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
+                monthlyGoal: null, // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
+                chatters: ['Leo']
+            },
+            {
+                id: 'model8',
+                username: 'katierose',
+                password: 'katie2025',
+                slug: 'xxkatierose',
+                dashboardPassword: 'katie123',
+                name: 'KatieRose 🌹',
+                realName: 'Malena',
+                type: 'model',
+                onlyFansUsername: '@xxkatierose',
+                onlyMonsterId: '62052',
+                driveKey: 'KATIEROSE',
+                instagramHandle: '',
+                monthlyGoal: 3000,
+                chatters: ['Genesys', 'Yaye', 'Camila']
+            },
+            {
+                id: 'model9',
+                username: 'lilyjane',
+                password: 'lily2025',
+                slug: 'lilyjane',
+                dashboardPassword: 'lily123',
+                name: 'LilyJane 🌼',
+                realName: 'Cata',
+                type: 'model',
+                onlyFansUsername: '@lilyjane',
+                onlyMonsterId: '61572',
+                driveKey: 'LILYJANE',
+                instagramHandle: '',
+                monthlyGoal: 750,
+                chatters: ['Alfonso', 'Nico', 'Kari']
             },
         ],
         
