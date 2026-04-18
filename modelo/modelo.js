@@ -1398,11 +1398,8 @@
       '</div>';
     }
 
-    // Filter teamLeader out of chatters to avoid duplicate
-    var chatters = cfg.chatters.filter(function(n) { return n !== teamLeader; });
-
     var html = '<div class="card team-card animate-in">';
-    html += '<div class="section-title" style="margin-bottom:0.75rem">' + svgIcon('fans', 18, '#60A5FA') + ' Tu Equipo</div>';
+    html += '<div class="section-title" style="margin-bottom:0.75rem;text-align:center">' + svgIcon('fans', 18, '#60A5FA') + ' Tu equipo de trabajo:</div>';
 
     // Single uniform grid for all members
     html += '<div class="team-card-grid">';
@@ -1411,7 +1408,7 @@
     if (teamLeader) {
       html += memberCard(svgCrown, teamLeader, 'Team Leader', '#c084fc');
     }
-    chatters.forEach(function(name) {
+    cfg.chatters.forEach(function(name) {
       html += memberCard(svgHeadset, name, 'Chatter', '#34d399');
     });
     html += '</div>';
