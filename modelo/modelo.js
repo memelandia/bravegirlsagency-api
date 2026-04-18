@@ -247,6 +247,7 @@
     var recentActivity = 0;
     var bestDay = { date: null, amount: 0 };
     var dailyRevenue = {};
+    var fanSpend = {}; // { fanId: { total, purchases, lastDate } }
 
     var now = new Date();
     var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
@@ -268,6 +269,11 @@
         fansThisMonth.add(fanId);
         if (txDate >= todayStart) fansToday.add(fanId);
         if (txDate >= weekStart) fansThisWeek.add(fanId);
+        // Track per-fan spending
+        if (!fanSpend[fanId]) fanSpend[fanId] = { total: 0, purchases: 0, lastDate: txDate };
+        fanSpend[fanId].total += netAmount;
+        fanSpend[fanId].purchases++;
+        if (txDate > fanSpend[fanId].lastDate) fanSpend[fanId].lastDate = txDate;
       }
 
       var hoursSince = (now - txDate) / (1000 * 60 * 60);
@@ -359,8 +365,53 @@
       todayMsgCount: todayMsgCount,
       weekMsgCount: weekMsgCount,
       todaySubRev: todaySubRev, todayPpvRev: todayPpvRev, todayTipRev: todayTipRev,
-      weekSubRev: weekSubRev, weekPpvRev: weekPpvRev, weekTipRev: weekTipRev
+      weekSubRev: weekSubRev, weekPpvRev: weekPpvRev, weekTipRev: weekTipRev,
+      topFans: buildTopFans(fanSpend, 5)
     };
+  }
+
+  function buildTopFans(fanSpend, limit) {
+    return Object.keys(fanSpend).map(function(id) {
+      return { id: id, total: fanSpend[id].total, purchases: fanSpend[id].purchases, lastDate: fanSpend[id].lastDate };
+    }).sort(function(a, b) { return b.total - a.total; }).slice(0, limit);
+  }
+
+  function buildSnapshotText(tab, current, lastSame) {
+    var parts = [];
+    if (tab === 'today') {
+      if (current.todayRevenue > 0) parts.push(fmtCur(current.todayRevenue));
+      if (current.todayFans > 0) parts.push(current.todayFans + ' fans');
+      if (current.todayMsgCount > 0) parts.push(current.todayMsgCount + ' msgs');
+      if (parts.length === 0) parts.push('Sin actividad hoy aún');
+    } else if (tab === 'week') {
+      if (current.weekRevenue > 0) parts.push(fmtCur(current.weekRevenue));
+      if (current.weekFans > 0) parts.push(current.weekFans + ' fans');
+      if (current.weekMsgCount > 0) parts.push(current.weekMsgCount + ' msgs');
+      if (parts.length === 0) parts.push('Sin actividad esta semana');
+    } else {
+      if (current.totalRevenue > 0) parts.push(fmtCur(current.totalRevenue));
+      var revG = calcGrowth(current.totalRevenue, lastSame.totalRevenue);
+      if (revG !== 0) parts.push((revG > 0 ? '+' : '') + revG.toFixed(0) + '%');
+      if (current.fansThisMonth > 0) parts.push(current.fansThisMonth + ' fans');
+    }
+    return parts.join(' · ');
+  }
+
+  function renderTopFans(topFans) {
+    if (!topFans || topFans.length === 0) return '';
+    var html = '<div style="margin-top:1rem">';
+    html += '<div class="section-title" style="margin-bottom:0.5rem">👑 Top Fans del Mes</div>';
+    html += '<div class="top-fans-grid">';
+    var medals = ['🥇','🥈','🥉','4°','5°'];
+    topFans.forEach(function(fan, i) {
+      html += '<div class="top-fan-card">' +
+        '<span class="top-fan-rank">' + medals[i] + '</span>' +
+        '<span class="top-fan-amount">' + fmtCur(fan.total) + '</span>' +
+        '<span class="top-fan-meta">' + fan.purchases + ' compras</span>' +
+      '</div>';
+    });
+    html += '</div></div>';
+    return html;
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -381,15 +432,8 @@
       '<button class="period-tab active" data-period="month" role="tab" aria-selected="true">Este Mes</button>' +
     '</div>';
 
-    // 0a. SNAPSHOT SUMMARY (quick glance)
-    var snapParts = [];
-    if (current.totalRevenue > 0) snapParts.push(fmtCur(current.totalRevenue));
-    var revG = calcGrowth(current.totalRevenue, lastSame.totalRevenue);
-    if (revG !== 0) snapParts.push((revG > 0 ? '+' : '') + revG.toFixed(0) + '%');
-    if (current.fansThisMonth > 0) snapParts.push(current.fansThisMonth + ' fans');
-    if (snapParts.length > 0) {
-      html += '<div class="snapshot-bar" id="snapshot-bar">' + snapParts.join(' · ') + '</div>';
-    }
+    // 0a. SNAPSHOT SUMMARY (quick glance — reactive via updateSnapshotBar)
+    html += '<div class="snapshot-bar" id="snapshot-bar">' + buildSnapshotText('month', current, lastSame) + '</div>';
 
     // 0b. MOTIVATIONAL (above hero, contextual)
     html += '<div id="motivational-slot">' + renderMotivational(current, lastSame, lastFull, period, 'month') + '</div>';
@@ -430,6 +474,9 @@
 
     // 5. COMPARISON CARDS (month only)
     html += '<div id="comparison-slot">' + renderComparison(current, lastSame, lastFull, period) + '</div>';
+
+    // 5b. TOP FANS
+    html += '<div id="top-fans-slot">' + renderTopFans(current.topFans) + '</div>';
 
     // 6. Last update
     // 6. Last update (now shown in header too)
@@ -622,8 +669,9 @@
       }
     }
 
-    // Dots on data points
+    // Dots on data points + hover hit areas
     var dots = '';
+    var hitAreas = '';
     data.forEach(function(v, i) {
       var x = padX + i * stepX;
       var y = padY + plotH - (v / maxVal) * plotH;
@@ -631,9 +679,18 @@
       if (isLast || data.length <= 15 || i % 2 === 0) {
         dots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (isLast ? 6 : 3.5) + '" fill="' + (isLast ? '#FF1F8E' : 'rgba(255,107,179,0.6)') + '"' + (isLast ? ' style="filter:drop-shadow(0 0 8px #FF1F8E80)"' : '') + '/>';
       }
+      // Invisible hit area for hover tooltip on every point
+      hitAreas += '<g class="chart-hover-point" style="pointer-events:all">' +
+        '<rect x="' + (x - 18).toFixed(1) + '" y="' + (padY - 4) + '" width="36" height="' + (plotH + 28) + '" fill="transparent" />' +
+        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="8" fill="transparent" class="chart-hover-dot" />' +
+        '<g class="chart-hover-tip" style="opacity:0;pointer-events:none;transition:opacity .15s">' +
+          '<rect x="' + (x - 38).toFixed(1) + '" y="' + (y - 34).toFixed(1) + '" width="76" height="26" rx="8" fill="rgba(255,31,142,0.35)" stroke="rgba(255,31,142,0.5)" stroke-width="1"/>' +
+          '<text x="' + x.toFixed(1) + '" y="' + (y - 16).toFixed(1) + '" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">Día ' + (i + 1) + ': $' + Math.round(v) + '</text>' +
+        '</g>' +
+      '</g>';
     });
 
-    // Tooltip for last day
+    // Tooltip for last day (always visible)
     var lastVal = data[data.length - 1];
     var lastX = padX + (data.length - 1) * stepX;
     var lastY = padY + plotH - (lastVal / maxVal) * plotH;
@@ -659,6 +716,7 @@
           '<polyline points="' + polyline + '" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 4px #FF1F8E40)"/>' +
           dots +
           tooltip +
+          hitAreas +
           dayLabels +
         '</svg>' +
       '</div>' +
@@ -710,6 +768,14 @@
     var bestDaySlot = container.querySelector('#best-day-slot');
     if (!heroAmount) return;
 
+    // Update snapshot bar
+    var snapBar = container.querySelector('#snapshot-bar');
+    if (snapBar) snapBar.innerHTML = buildSnapshotText(period, s.current, s.lastSame);
+
+    // Update top fans visibility
+    var topFansSlot = container.querySelector('#top-fans-slot');
+    if (topFansSlot) topFansSlot.style.display = period === 'month' ? '' : 'none';
+
     if (period === 'today') {
       heroAmount.textContent = fmtCur(c.todayRevenue);
       if (heroLabel) heroLabel.textContent = '💰 Ingresos de Hoy';
@@ -745,7 +811,19 @@
     }
 
     // Charts/ring/donut: only show for month
-    if (chartsRow) chartsRow.style.display = period === 'month' ? '' : 'none';
+    if (chartsRow) {
+      chartsRow.style.display = period === 'month' ? '' : 'none';
+      // Re-trigger ring animation when returning to month tab
+      if (period === 'month') {
+        var ringEl = chartsRow.querySelector('.ring-animated');
+        if (ringEl) {
+          var finalOffset = ringEl.style.getPropertyValue('--final-offset') || ringEl.getAttribute('stroke-dashoffset');
+          var circ = ringEl.style.getPropertyValue('--circ');
+          ringEl.style.strokeDashoffset = circ;
+          requestAnimationFrame(function() { ringEl.style.strokeDashoffset = finalOffset; });
+        }
+      }
+    }
 
     // Daily chart: show for month only
     if (dailySlot) {
@@ -909,15 +987,16 @@
       '</div>';
     }).join('');
 
-    var summaryEmoji = positiveCount >= metrics.length ? '🏆' : positiveCount >= 2 ? '🔥' : positiveCount > 0 ? '💡' : '📈';
-    var summaryColor = positiveCount >= 2 ? 'var(--success)' : 'var(--info)';
+    var summaryEmoji = positiveCount >= metrics.length ? '🏆' : positiveCount >= 2 ? '🔥' : positiveCount > 0 ? '💡' : '�';
+    var summaryColor = positiveCount >= 2 ? 'var(--success)' : positiveCount > 0 ? 'var(--info)' : 'var(--gold)';
     var summaryMsg = positiveCount >= metrics.length ? '¡Todo por encima del mes pasado!'
+      : positiveCount === 0 ? '¡Cada día es una nueva oportunidad! 🚀'
       : '<strong>' + positiveCount + ' de ' + metrics.length + '</strong> métricas mejorando';
 
     return '<div style="margin-top:1rem">' +
       '<div class="section-title" style="margin-bottom:0.5rem">📊 vs ' + period.lastMonthName + ' <span style="font-size:0.7rem;color:var(--info);font-weight:500">(mismos ' + period.currentDay + ' días)</span></div>' +
       '<div class="cmp-grid">' + cards + '</div>' +
-      '<div class="cmp-summary" style="background:' + (positiveCount >= 2 ? 'rgba(52,211,153,0.1)' : 'rgba(96,165,250,0.1)') + '">' +
+      '<div class="cmp-summary" style="background:' + (positiveCount >= 2 ? 'rgba(52,211,153,0.1)' : positiveCount > 0 ? 'rgba(96,165,250,0.1)' : 'rgba(251,191,36,0.1)') + '">' +
         '<span style="font-size:1.3rem">' + summaryEmoji + '</span>' +
         '<span style="color:' + summaryColor + ';font-size:0.85rem;font-weight:600">' + summaryMsg + '</span>' +
       '</div></div>';
@@ -1041,16 +1120,18 @@
 
       console.log('📹 Recording data:', driveKey, 'ejemplos:', ejemplosEnviados.length, 'carpetas:', carpetasGrabadas.length);
 
-      // Extract reel numbers from ejemplosEnviados (objects with numReel)
+      // Extract reel numbers AND dates from ejemplosEnviados
       var enviadosNums = [];
+      var reelFechaMap = {};
       var seenNums = new Set();
       ejemplosEnviados.forEach(function (e) {
-        // e is an object like {numReel: "10", subcuenta: "VICKYLUNA", ...}
         var raw = (typeof e === 'object' && e !== null) ? (e.numReel || '') : String(e);
         var num = parseInt(String(raw).replace(/\D/g, ''), 10);
         if (!isNaN(num) && num > 0 && !seenNums.has(num)) {
           seenNums.add(num);
           enviadosNums.push(num);
+          var fecha = (typeof e === 'object' && e !== null) ? (e.fecha || e.createdAt || '') : '';
+          if (fecha) reelFechaMap[num] = fecha;
         }
       });
 
@@ -1064,12 +1145,15 @@
       var totalEnviados = enviadosNums.length;
       var totalGrabados = enviadosNums.filter(function (n) { return grabadosSet.has(n); }).length;
       var pendientes = enviadosNums.filter(function (n) { return !grabadosSet.has(n); });
+      var pendientesWithDates = pendientes.map(function(n) {
+        return { num: n, fecha: reelFechaMap[n] || '' };
+      });
       var totalPendientes = pendientes.length;
       var pct = totalEnviados > 0 ? Math.round((totalGrabados / totalEnviados) * 100) : 0;
 
       console.log('📹 Parsed:', totalEnviados, 'enviados,', totalGrabados, 'grabados,', totalPendientes, 'pendientes');
 
-      renderRecording(container, totalGrabados, totalPendientes, totalEnviados, pct, pendientes);
+      renderRecording(container, totalGrabados, totalPendientes, totalEnviados, pct, pendientesWithDates);
     } catch (err) {
       console.error('Recording error:', err);
       container.innerHTML =
@@ -1151,9 +1235,19 @@
       html += '<div class="rec-pending-section">' +
         '<div class="rec-pending-title">⏳ Faltan grabar (' + pendientesArr.length + ')</div>' +
         '<div class="rec-pending-grid">';
-      pendientesArr.sort(function (a, b) { return a - b; }).forEach(function (n) {
+      pendientesArr.sort(function (a, b) { return (a.num || a) - (b.num || b); }).forEach(function (item) {
+        var num = item.num || item;
+        var fecha = item.fecha || '';
+        var fechaShort = '';
+        if (fecha) {
+          var d = new Date(fecha);
+          if (!isNaN(d.getTime())) {
+            fechaShort = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
+          }
+        }
         html += '<div class="rec-pending-item">' +
-          '<span class="rec-pending-num">#' + n + '</span>' +
+          '<span class="rec-pending-num">#' + num + '</span>' +
+          (fechaShort ? '<span class="rec-pending-date">' + fechaShort + '</span>' : '') +
         '</div>';
       });
       html += '</div></div>';
