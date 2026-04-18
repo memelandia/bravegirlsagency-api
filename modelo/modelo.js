@@ -147,8 +147,6 @@
     var hasOM = cfg.onlyMonsterId && cfg.onlyMonsterId !== 'PENDING' && cfg.onlyMonsterId !== 'MODELO_ID_AQUI';
     if (hasOM) {
       loadOnlyFansStats(cfg, statsContainer);
-      // Load chatter metrics (non-blocking, fills slot after stats render)
-      loadChatterTeam(cfg);
     } else {
       statsContainer.innerHTML =
         '<div class="error-state"><div class="icon">📊</div>' +
@@ -544,8 +542,8 @@
     // 5b. TOP FANS
     html += '<div id="top-fans-slot">' + renderTopFans(current.topFans) + '</div>';
 
-    // 5c. CHATTER TEAM (loaded async)
-    html += '<div id="chatter-team-slot"></div>';
+    // 5c. CHATTER TEAM (rendered inline from config)
+    html += '<div id="chatter-team-slot">' + renderChatterTeam(cfg) + '</div>';
 
     // 5d. TODAY TIMELINE (hidden until Hoy tab active)
     html += '<div id="today-timeline-slot" style="display:none"></div>';
@@ -1375,12 +1373,9 @@
   // ═══════════════════════════════════════════════════════════
   // CHATTER TEAM — from config.chatters array
   // ═══════════════════════════════════════════════════════════
-  function loadChatterTeam(cfg) {
+  function renderChatterTeam(cfg) {
     var names = cfg.chatters;
-    if (!names || names.length === 0) return;
-
-    var slot = document.querySelector('#chatter-team-slot');
-    if (!slot) return;
+    if (!names || names.length === 0) return '';
 
     var html = '<div style="margin-top:1rem">';
     html += '<div class="section-title" style="margin-bottom:0.5rem">' + svgIcon('chat', 18, '#60A5FA') + ' Tu Equipo de Chatters</div>';
@@ -1391,8 +1386,7 @@
       '</div>';
     });
     html += '</div></div>';
-
-    slot.innerHTML = html;
+    return html;
   }
 
   // ═══ HELPERS ═══
