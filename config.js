@@ -127,7 +127,7 @@ window.CONFIG = {
                 realName: 'Cata',
                 type: 'model',
                 onlyFansUsername: '@lilymontero',
-                onlyMonsterId: '61567',
+                onlyMonsterId: '540671022',
                 driveKey: 'LILY',
                 instagramHandle: '@lilymontero',
                 monthlyGoal: 5000, // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
