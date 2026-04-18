@@ -177,19 +177,6 @@ body {
   border-radius: 50%;
   pointer-events: none;
 }
-.hero-layout {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-}
-.hero-left { flex: 1; min-width: 0; }
-.hero-right {
-  width: 140px;
-  height: 60px;
-  flex-shrink: 0;
-  opacity: 0.85;
-}
 .hero-snapshot {
   margin-top: 0.5rem;
   font-size: 0.8rem;
@@ -747,6 +734,55 @@ body {
   font-weight: 500;
 }
 
+/* ═══ CHATTER TEAM ═══ */
+.chatter-summary {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(96,165,250,0.06);
+  border: 1px solid rgba(96,165,250,0.12);
+  border-radius: 10px;
+}
+.chatter-team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.5rem;
+}
+.chatter-card {
+  padding: 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  transition: border-color 0.2s;
+}
+.chatter-card:hover { border-color: rgba(96,165,250,0.3); }
+.chatter-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.chatter-stats {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.chatter-stat {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.chatter-reply {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 /* ═══ TODAY TIMELINE ═══ */
 .today-timeline-card {
   position: relative;
@@ -1031,7 +1067,6 @@ body {
   .dash-content { padding: 0.75rem; }
   .card { padding: 1rem; border-radius: 0.85rem; }
   .card-hero { padding: 1.25rem 1rem; }
-  .hero-right { width: 100px; height: 45px; }
   .hero-snapshot { font-size: 0.7rem; }
   .stat-hero { font-size: 2.6rem; }
   .hero-label { font-size: 0.68rem; }
@@ -1118,7 +1153,6 @@ body {
   .dash-content { padding: 2rem 3rem; }
   .card { padding: 1.75rem; }
   .card-hero { padding: 2.5rem 3rem; }
-  .hero-right { width: 160px; height: 70px; }
   .stat-hero { font-size: 4.5rem; }
   .mini-stat-value { font-size: 2.2rem; }
   .daily-chart-wrap svg { min-height: 260px; }

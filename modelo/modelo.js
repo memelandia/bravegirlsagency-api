@@ -147,6 +147,8 @@
     var hasOM = cfg.onlyMonsterId && cfg.onlyMonsterId !== 'PENDING' && cfg.onlyMonsterId !== 'MODELO_ID_AQUI';
     if (hasOM) {
       loadOnlyFansStats(cfg, statsContainer);
+      // Load chatter metrics (non-blocking, fills slot after stats render)
+      loadChatterTeam(cfg);
     } else {
       statsContainer.innerHTML =
         '<div class="error-state"><div class="icon">📊</div>' +
@@ -504,23 +506,18 @@
     // 0a. MOTIVATIONAL (above hero, contextual)
     html += '<div id="motivational-slot">' + renderMotivational(current, lastSame, lastFull, period, 'month') + '</div>';
 
-    // 1. HERO CARD — revenue big + sparkline right + snapshot integrated
+    // 1. HERO CARD — revenue big, centered, clean
     html += '<div class="card card-hero animate-in" id="hero-card">' +
-      '<div class="hero-layout">' +
-        '<div class="hero-left">' +
-          '<div class="hero-label" id="hero-label">' + svgIcon('dollar', 18, '#FF1F8E') + ' Ingresos ' + period.currentMonthName + '</div>' +
-          '<div class="stat-hero" id="hero-amount">' + fmtCur(current.totalRevenue) + '</div>' +
-          '<div class="hero-growth" id="hero-growth">' +
-            growthBadge(current.totalRevenue, lastSame.totalRevenue, '') +
-            '<span class="hero-vs">vs primeros ' + period.currentDay + ' días de ' + period.lastMonthName + '</span>' +
-          '</div>' +
-          '<div class="hero-snapshot" id="hero-snapshot">' + buildSnapshotText('month', current, lastSame) + '</div>' +
-          '<div class="hero-projection" id="hero-projection"' + (current.projection > 0 ? '' : ' style="display:none"') + '>' +
-            '<span class="hero-proj-label">🎯 Previsión:</span>' +
-            '<span class="hero-proj-value">' + fmtCur(current.projection) + '</span>' +
-          '</div>' +
-        '</div>' +
-        '<div class="hero-right" id="hero-sparkline">' + buildMiniSparkline(current.dailyRevenue) + '</div>' +
+      '<div class="hero-label" id="hero-label">' + svgIcon('dollar', 18, '#FF1F8E') + ' Ingresos ' + period.currentMonthName + '</div>' +
+      '<div class="stat-hero" id="hero-amount">' + fmtCur(current.totalRevenue) + '</div>' +
+      '<div class="hero-growth" id="hero-growth">' +
+        growthBadge(current.totalRevenue, lastSame.totalRevenue, '') +
+        '<span class="hero-vs">vs primeros ' + period.currentDay + ' días de ' + period.lastMonthName + '</span>' +
+      '</div>' +
+      '<div class="hero-snapshot" id="hero-snapshot">' + buildSnapshotText('month', current, lastSame) + '</div>' +
+      '<div class="hero-projection" id="hero-projection"' + (current.projection > 0 ? '' : ' style="display:none"') + '>' +
+        '<span class="hero-proj-label">🎯 Previsión:</span>' +
+        '<span class="hero-proj-value">' + fmtCur(current.projection) + '</span>' +
       '</div>' +
     '</div>';
 
@@ -550,7 +547,10 @@
     // 5b. TOP FANS
     html += '<div id="top-fans-slot">' + renderTopFans(current.topFans) + '</div>';
 
-    // 5c. TODAY TIMELINE (hidden until Hoy tab active)
+    // 5c. CHATTER TEAM (loaded async)
+    html += '<div id="chatter-team-slot"></div>';
+
+    // 5d. TODAY TIMELINE (hidden until Hoy tab active)
     html += '<div id="today-timeline-slot" style="display:none"></div>';
 
     // 6. Last update (now shown in header too)
@@ -862,9 +862,7 @@
     var heroSnap = container.querySelector('#hero-snapshot');
     if (heroSnap) heroSnap.innerHTML = buildSnapshotText(period, s.current, s.lastSame);
 
-    // Update sparkline visibility
-    var heroSparkline = container.querySelector('#hero-sparkline');
-    if (heroSparkline) heroSparkline.style.display = period === 'month' ? '' : 'none';
+    // Update sparkline visibility — removed (hero centered now)
 
     // Today timeline
     var timelineSlot = container.querySelector('#today-timeline-slot');
@@ -1374,6 +1372,82 @@
           // Button re-renders with container
         });
       });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // CHATTER TEAM — fetched from /api/onlymonster/chatter-metrics
+  // ═══════════════════════════════════════════════════════════
+  async function loadChatterTeam(cfg) {
+    try {
+      var omId = cfg.onlyMonsterId;
+      if (!omId || omId === 'PENDING') return;
+      var now = new Date();
+      var startDate = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+      var endDate = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+      var url = '/api/onlymonster/chatter-metrics?account_id=' + encodeURIComponent(omId) +
+        '&start_date=' + startDate + '&end_date=' + endDate;
+
+      var resp = await fetch(url);
+      if (!resp.ok) return;
+      var json = await resp.json();
+      if (!json.success || !json.data || json.data.length === 0) return;
+
+      // Filter chatters with actual activity
+      var chatters = json.data.filter(function(c) {
+        return c.messages && c.messages.total > 0;
+      }).sort(function(a, b) {
+        return b.revenue.total_net - a.revenue.total_net;
+      });
+
+      if (chatters.length === 0) return;
+
+      var slot = document.querySelector('#chatter-team-slot');
+      if (!slot) return;
+
+      var avgReply = 0;
+      var totalReply = 0;
+      var replyCount = 0;
+      chatters.forEach(function(c) {
+        if (c.performance.reply_time_avg_minutes > 0) {
+          totalReply += c.performance.reply_time_avg_minutes;
+          replyCount++;
+        }
+      });
+      avgReply = replyCount > 0 ? (totalReply / replyCount) : 0;
+
+      var html = '<div style="margin-top:1rem">';
+      html += '<div class="section-title" style="margin-bottom:0.5rem">' + svgIcon('chat', 18, '#60A5FA') + ' Tu Equipo de Chatters <span style="font-size:0.7rem;color:var(--text-muted);font-weight:500">(' + chatters.length + ' activos)</span></div>';
+
+      // Summary bar
+      var replyText = avgReply >= 1 ? avgReply.toFixed(1) + ' min' : Math.round(avgReply * 60) + ' seg';
+      html += '<div class="chatter-summary">Tiempo promedio de respuesta: <strong style="color:' + (avgReply <= 5 ? 'var(--success)' : avgReply <= 10 ? 'var(--gold)' : 'var(--danger)') + '">' + replyText + '</strong></div>';
+
+      // Individual chatter cards
+      html += '<div class="chatter-team-grid">';
+      chatters.forEach(function(c) {
+        var name = c.user_name || 'Chatter';
+        var msgs = c.messages.total;
+        var rev = c.revenue.total_net;
+        var reply = c.performance.reply_time_avg_minutes;
+        var replyStr = reply >= 1 ? reply.toFixed(1) + 'min' : Math.round(reply * 60) + 'seg';
+        var replyColor = reply <= 5 ? 'var(--success)' : reply <= 10 ? 'var(--gold)' : 'var(--danger)';
+
+        html += '<div class="chatter-card">' +
+          '<div class="chatter-name">' + esc(name) + '</div>' +
+          '<div class="chatter-stats">' +
+            '<span class="chatter-stat">' + svgIcon('mail', 14, '#e879f9') + ' ' + msgs + ' msgs</span>' +
+            '<span class="chatter-stat">' + svgIcon('dollar', 14, '#34d399') + ' ' + fmtCur(rev) + '</span>' +
+          '</div>' +
+          '<div class="chatter-reply" style="color:' + replyColor + '">⏱ ' + replyStr + '</div>' +
+        '</div>';
+      });
+      html += '</div></div>';
+
+      slot.innerHTML = html;
+    } catch (err) {
+      console.error('Chatter team error:', err);
     }
   }
 
