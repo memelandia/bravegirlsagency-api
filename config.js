@@ -59,7 +59,8 @@ window.CONFIG = {
                 onlyFansUsername: '@carmencitax',
                 onlyMonsterId: '85825874', // Platform Account ID correcto
                 driveKey: 'CARMEN',
-                instagramHandle: '@carmencitax'
+                instagramHandle: '@carmencitax',
+                monthlyGoal: null // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
             },
             {
                 id: 'model2',
@@ -90,7 +91,8 @@ window.CONFIG = {
                 onlyFansUsername: '@lexiflix',
                 onlyMonsterId: '326911669', // Platform Account ID correcto
                 driveKey: 'LEXI',
-                instagramHandle: '@lexiflix'
+                instagramHandle: '@lexiflix',
+                monthlyGoal: null // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
             },
             {
                 id: 'model5',
@@ -103,7 +105,8 @@ window.CONFIG = {
                 onlyFansUsername: '@xvickyluna',
                 onlyMonsterId: '436482929', // Platform Account ID correcto
                 driveKey: 'VICKY',
-                instagramHandle: '@xvickyluna'
+                instagramHandle: '@xvickyluna',
+                monthlyGoal: null // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
             },
             {
                 id: 'model6',
@@ -116,7 +119,8 @@ window.CONFIG = {
                 onlyFansUsername: '@lilymontero',
                 onlyMonsterId: 'PENDING',
                 driveKey: 'LILY',
-                instagramHandle: '@lilymontero'
+                instagramHandle: '@lilymontero',
+                monthlyGoal: null // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
             },
             {
                 id: 'model7',
@@ -129,7 +133,8 @@ window.CONFIG = {
                 onlyFansUsername: '@arianacruzz',
                 onlyMonsterId: 'PENDING',
                 driveKey: 'ARIANA',
-                instagramHandle: '@arianacruzz'
+                instagramHandle: '@arianacruzz',
+                monthlyGoal: null // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
             },
         ],
         

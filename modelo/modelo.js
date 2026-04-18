@@ -13,31 +13,10 @@
 
   var SESSION_KEY = 'bg-model-session';
   var STATS_CACHE_KEY = 'bg-model-stats-' + slug;
-  var GOAL_KEY = 'bg-model-goal-' + slug;
-
-  // Admin: ?meta=5000 in URL saves custom goal to localStorage
-  (function checkGoalParam() {
-    var params = new URLSearchParams(window.location.search);
-    var metaVal = params.get('meta');
-    if (metaVal) {
-      var goal = parseFloat(metaVal);
-      if (!isNaN(goal) && goal > 0) {
-        localStorage.setItem(GOAL_KEY, String(goal));
-      } else if (metaVal === 'reset' || metaVal === '0') {
-        localStorage.removeItem(GOAL_KEY);
-      }
-      // Clean URL without reload
-      params.delete('meta');
-      var clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-      window.history.replaceState({}, '', clean);
-    }
-  })();
 
   function getCustomGoal() {
-    try {
-      var val = localStorage.getItem(GOAL_KEY);
-      return val ? parseFloat(val) : null;
-    } catch(e) { return null; }
+    var cfg = getModelConfig();
+    return (cfg && cfg.monthlyGoal) ? cfg.monthlyGoal : null;
   }
 
   function getModelConfig() {
