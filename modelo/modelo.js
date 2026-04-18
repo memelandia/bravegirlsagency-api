@@ -527,8 +527,8 @@
       miniStatCard('💬', fmtCur(current.avgMessagePrice), 'Precio medio msg', '#fbbf24') +
     '</div>';
 
-    // 2b. CHATTER TEAM (right after mini stats)
-    html += '<div id="chatter-team-slot">' + renderChatterTeam(cfg) + '</div>';
+    // 2b. TEAM SECTION (right after mini stats)
+    html += '<div id="team-section-slot">' + renderTeamSection(cfg) + '</div>';
 
     // 3 + 4. PROGRESS RING + DONUT side by side (month only)
     html += '<div class="grid-2col" id="charts-row">' +
@@ -1371,25 +1371,49 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  // CHATTER TEAM — from config.chatters array
+  // TEAM SECTION — renders full team card from config
   // ═══════════════════════════════════════════════════════════
-  function renderChatterTeam(cfg) {
-    console.log('renderChatterTeam called, cfg.chatters:', cfg && cfg.chatters);
-    var names = cfg.chatters;
-    if (!names || names.length === 0) {
-      console.log('renderChatterTeam: no chatters found, returning empty');
-      return '';
+  function renderTeamSection(cfg) {
+    if (!cfg.chatters || cfg.chatters.length === 0) return '';
+
+    var teamLeader = cfg.teamLeader || '';
+
+    // SVG icons for each role
+    var svgStar = '<svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="#fbbf24"/></svg>';
+    var svgShield = '<svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 11h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11V12z" fill="#60A5FA"/></svg>';
+    var svgCrown = '<svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm0 2h14v2H5v-2z" fill="#c084fc"/></svg>';
+    var svgHeadset = '<svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle"><path d="M12 1c-4.97 0-9 4.03-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7c0-4.97-4.03-9-9-9z" fill="#34d399"/></svg>';
+    var svgBriefcase = '<svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle"><path d="M20 7h-4V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM10 5h4v2h-4V5z" fill="#f472b6"/></svg>';
+
+    function memberPill(icon, name, role, accentColor) {
+      return '<div class="team-member">' +
+        '<div class="team-member-icon" style="background:' + accentColor + '15;border-color:' + accentColor + '30">' + icon + '</div>' +
+        '<div class="team-member-info">' +
+          '<div class="team-member-name">' + esc(name) + '</div>' +
+          '<div class="team-member-role" style="color:' + accentColor + '">' + role + '</div>' +
+        '</div>' +
+      '</div>';
     }
 
-    console.log('renderChatterTeam: rendering', names.length, 'chatters:', names);
-    var html = '<div style="margin-top:1rem;padding:1rem;background:rgba(96,165,250,0.08);border:2px solid rgba(96,165,250,0.3);border-radius:14px">';
-    html += '<div class="section-title" style="margin-bottom:0.5rem">' + svgIcon('chat', 18, '#60A5FA') + ' Tu Equipo de Chatters</div>';
-    html += '<div class="chatter-team-grid">';
-    names.forEach(function(name) {
-      html += '<div class="chatter-card">' +
-        '<div class="chatter-name">' + esc(name) + '</div>' +
-      '</div>';
+    var html = '<div class="card team-card animate-in">';
+    html += '<div class="section-title" style="margin-bottom:0.75rem">' + svgIcon('fans', 18, '#60A5FA') + ' Tu Equipo</div>';
+
+    html += '<div class="team-grid">';
+
+    // Management row
+    html += memberPill(svgBriefcase, 'Franco', 'CEO & Administración', '#f472b6');
+    html += memberPill(svgShield, 'Jonatan', 'Supervisión Chatting', '#60A5FA');
+
+    // Team Leader
+    if (teamLeader) {
+      html += memberPill(svgCrown, teamLeader, 'Team Leader', '#c084fc');
+    }
+
+    // Chatters
+    cfg.chatters.forEach(function(name) {
+      html += memberPill(svgHeadset, name, 'Chatter', '#34d399');
     });
+
     html += '</div></div>';
     return html;
   }

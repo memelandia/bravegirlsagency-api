@@ -62,7 +62,8 @@ window.CONFIG = {
                 driveKey: 'CARMEN',
                 instagramHandle: '@carmencitax',
                 monthlyGoal: 3500, // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
-                chatters: ['Genesys', 'Yaye', 'Camila']
+                chatters: ['Genesys', 'Yaye', 'Camila'],
+                teamLeader: 'Yaye'
             },
             {
                 id: 'model2',
@@ -96,7 +97,8 @@ window.CONFIG = {
                 driveKey: 'LEXI',
                 instagramHandle: '@lexiflix',
                 monthlyGoal: 3000, // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
-                chatters: ['Genesys', 'Yaye', 'Camila']
+                chatters: ['Genesys', 'Yaye', 'Camila'],
+                teamLeader: 'Yaye'
             },
             {
                 id: 'model5',
@@ -112,7 +114,8 @@ window.CONFIG = {
                 driveKey: 'VICKY',
                 instagramHandle: '@xvickyluna',
                 monthlyGoal: 13000, // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
-                chatters: ['Alfonso', 'Nico', 'Kari']
+                chatters: ['Alfonso', 'Nico', 'Kari'],
+                teamLeader: 'Kari'
             },
             {
                 id: 'model6',
@@ -128,7 +131,8 @@ window.CONFIG = {
                 driveKey: 'LILY',
                 instagramHandle: '@lilymontero',
                 monthlyGoal: 5000, // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
-                chatters: ['Alfonso', 'Nico', 'Kari']
+                chatters: ['Alfonso', 'Nico', 'Kari'],
+                teamLeader: 'Kari'
             },
             {
                 id: 'model7',
@@ -144,7 +148,8 @@ window.CONFIG = {
                 driveKey: 'ARIANA',
                 instagramHandle: '@arianacruzz',
                 monthlyGoal: null, // Meta mensual personalizada en USD (null = auto: mes pasado + 15%)
-                chatters: ['Leo']
+                chatters: ['Leo'],
+                teamLeader: 'Leo'
             },
             {
                 id: 'model8',
@@ -160,7 +165,8 @@ window.CONFIG = {
                 driveKey: 'KATIEROSE',
                 instagramHandle: '',
                 monthlyGoal: 3000,
-                chatters: ['Genesys', 'Yaye', 'Camila']
+                chatters: ['Genesys', 'Yaye', 'Camila'],
+                teamLeader: 'Yaye'
             },
             {
                 id: 'model9',
@@ -176,7 +182,8 @@ window.CONFIG = {
                 driveKey: 'LILYJANE',
                 instagramHandle: '',
                 monthlyGoal: 750,
-                chatters: ['Alfonso', 'Nico', 'Kari']
+                chatters: ['Alfonso', 'Nico', 'Kari'],
+                teamLeader: 'Kari'
             },
         ],
         
