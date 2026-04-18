@@ -155,6 +155,38 @@ body {
   );
   border-color: rgba(255,31,142,0.2);
   padding: 2rem 2.5rem;
+  position: relative;
+  overflow: hidden;
+}
+/* Subtle decorative orb on hero */
+.card-hero::before {
+  content: '';
+  position: absolute;
+  top: -40%; right: -10%;
+  width: 240px; height: 240px;
+  background: radial-gradient(circle, rgba(255,31,142,0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.hero-layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+.hero-left { flex: 1; min-width: 0; }
+.hero-right {
+  width: 140px;
+  height: 60px;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.hero-snapshot {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
 }
 
 /* Section title inside cards */
@@ -226,6 +258,8 @@ body {
   text-align: center;
   padding: 1.25rem 0.75rem;
   background: rgba(255,255,255,0.025);
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 1rem;
   transition: transform 0.2s, box-shadow 0.2s;
@@ -625,15 +659,38 @@ body {
 }
 .rec-pending-item {
   padding: 0.75rem 1.5rem;
-  background: rgba(248,113,113,0.08);
-  border: 1px solid rgba(248,113,113,0.25);
   border-radius: 12px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
+  transition: transform 0.15s;
 }
+.rec-pending-item:hover { transform: translateY(-2px); }
+
+/* 3-tier urgency: >30d old, >14d mid, <14d new */
+.rec-urgency-old {
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.45);
+  box-shadow: 0 0 8px rgba(239,68,68,0.15);
+}
+.rec-urgency-old .rec-pending-num { color: #f87171; }
+.rec-urgency-old .rec-pending-date { color: #fca5a5; }
+
+.rec-urgency-mid {
+  background: rgba(251,191,36,0.12);
+  border: 1px solid rgba(251,191,36,0.35);
+}
+.rec-urgency-mid .rec-pending-num { color: #fbbf24; }
+.rec-urgency-mid .rec-pending-date { color: #fcd34d; }
+
+.rec-urgency-new {
+  background: rgba(52,211,153,0.08);
+  border: 1px solid rgba(52,211,153,0.25);
+}
+.rec-urgency-new .rec-pending-num { color: #6ee7b7; }
+.rec-urgency-new .rec-pending-date { color: var(--text-muted); }
 .rec-pending-num {
   font-size: 1.1rem;
   font-weight: 800;
@@ -681,6 +738,62 @@ body {
   font-weight: 500;
 }
 
+/* ═══ TODAY TIMELINE ═══ */
+.today-timeline-card {
+  position: relative;
+  overflow: hidden;
+}
+.today-timeline-card::before {
+  content: '';
+  position: absolute;
+  top: -30%; left: -10%;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(96,165,250,0.05) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.timeline-item:last-child { border-bottom: none; }
+.timeline-time {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 42px;
+  font-variant-numeric: tabular-nums;
+}
+.timeline-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+}
+.timeline-body {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.timeline-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.timeline-amount {
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
 /* ═══ DAILY CHART ═══ */
 .daily-chart-card {
   padding: 1.5rem;
@@ -704,19 +817,38 @@ body {
 .chart-hover-point:hover .chart-hover-tip { opacity: 1 !important; }
 .chart-hover-point:hover .chart-hover-dot { fill: rgba(255,31,142,0.3) !important; }
 
-/* ═══ MOTIVATIONAL BANNER ═══ */
-.snapshot-bar {
-  text-align: center;
-  padding: 0.5rem 1rem;
-  margin-bottom: 0.75rem;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(255,31,142,0.06), rgba(139,92,246,0.05));
-  border: 1px solid rgba(255,31,142,0.12);
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--text-secondary);
-  letter-spacing: 0.02em;
+/* Subtle decorative orbs on chart cards */
+.chart-card-unified {
+  position: relative;
+  overflow: hidden;
 }
+.chart-card-unified::after {
+  content: '';
+  position: absolute;
+  bottom: -30%; left: -15%;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(192,38,211,0.06) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Subtle bg on best-day */
+.best-day-card {
+  position: relative;
+  overflow: hidden;
+}
+.best-day-card::before {
+  content: '';
+  position: absolute;
+  top: -50%; right: -20%;
+  width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(255,215,0,0.06) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* ═══ MOTIVATIONAL BANNER ═══ */
+/* snapshot-bar removed — now integrated into hero-snapshot */
 .header-timestamp {
   font-size: 0.65rem;
   color: var(--text-muted);
@@ -890,6 +1022,8 @@ body {
   .dash-content { padding: 0.75rem; }
   .card { padding: 1rem; border-radius: 0.85rem; }
   .card-hero { padding: 1.25rem 1rem; }
+  .hero-right { width: 100px; height: 45px; }
+  .hero-snapshot { font-size: 0.7rem; }
   .stat-hero { font-size: 2.6rem; }
   .hero-label { font-size: 0.68rem; }
   .hero-growth { gap: 0.5rem; }
@@ -975,6 +1109,7 @@ body {
   .dash-content { padding: 2rem 3rem; }
   .card { padding: 1.75rem; }
   .card-hero { padding: 2.5rem 3rem; }
+  .hero-right { width: 160px; height: 70px; }
   .stat-hero { font-size: 4.5rem; }
   .mini-stat-value { font-size: 2.2rem; }
   .daily-chart-wrap svg { min-height: 260px; }

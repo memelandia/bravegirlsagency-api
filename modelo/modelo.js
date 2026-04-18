@@ -185,6 +185,7 @@
       ]);
 
       var currentStats = calculateStats(results[0], 'current');
+      currentStats._rawTransactions = results[0]; // keep for today timeline
       var lastSameStats = calculateStats(results[1], 'last');
       var lastFullStats = calculateStats(results[2], 'last');
 
@@ -397,6 +398,69 @@
     return parts.join(' · ');
   }
 
+  function buildMiniSparkline(dailyRevenue) {
+    if (!dailyRevenue) return '';
+    var now = new Date();
+    var data = [];
+    for (var d = 1; d <= now.getDate(); d++) {
+      var key = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      data.push(dailyRevenue[key] || 0);
+    }
+    if (data.length < 2) return '';
+    var max = Math.max.apply(null, data) || 1;
+    var W = 120, H = 50, pad = 2;
+    var step = (W - pad * 2) / Math.max(data.length - 1, 1);
+    var pts = data.map(function(v, i) {
+      return (pad + i * step).toFixed(1) + ',' + (H - pad - ((v / max) * (H - pad * 2))).toFixed(1);
+    });
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="100%" preserveAspectRatio="none">' +
+      '<defs><linearGradient id="spkGrad" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="#FF1F8E" stop-opacity="0.4"/>' +
+        '<stop offset="100%" stop-color="#FF1F8E" stop-opacity="0.02"/>' +
+      '</linearGradient></defs>' +
+      '<path d="M' + pad + ',' + H + ' L' + pts.join(' L') + ' L' + (pad + (data.length - 1) * step) + ',' + H + ' Z" fill="url(#spkGrad)"/>' +
+      '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#FF1F8E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+  }
+
+  function renderTodayTimeline(rawTx) {
+    if (!rawTx || rawTx.length === 0) return '<div style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.85rem">Sin transacciones hoy</div>';
+    var now = new Date();
+    var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    var todayTx = rawTx.filter(function(tx) {
+      return (tx.status === 'done' || tx.status === 'loading') && new Date(tx.timestamp) >= todayStart;
+    }).sort(function(a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
+    if (todayTx.length === 0) return '<div style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.85rem">Sin transacciones hoy todavía</div>';
+
+    var typeInfo = function(type) {
+      var t = (type || '').toLowerCase();
+      if (t.includes('subscription') || t.includes('recurring')) return { label: 'Suscripción', color: '#22d3ee', icon: 'fans' };
+      if (t.includes('tip')) return { label: 'Propina', color: '#fbbf24', icon: 'dollar' };
+      if (t.includes('message')) return { label: 'Mensaje', color: '#e879f9', icon: 'mail' };
+      return { label: 'PPV', color: '#e879f9', icon: 'chat' };
+    };
+
+    var html = '<div class="card today-timeline-card" style="margin-top:1rem">' +
+      '<div class="section-title">' + svgIcon('dollar', 18, '#FF1F8E') + ' Actividad de hoy <span style=\"font-size:0.7rem;color:var(--text-muted);font-weight:500\">(' + todayTx.length + ' tx)</span></div>' +
+      '<div class="timeline-list">';
+    todayTx.slice(0, 20).forEach(function(tx) {
+      var d = new Date(tx.timestamp);
+      var time = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+      var net = (tx.amount * 0.8);
+      var info = typeInfo(tx.type);
+      html += '<div class="timeline-item">' +
+        '<div class="timeline-time">' + time + '</div>' +
+        '<div class="timeline-dot" style="background:' + info.color + '"></div>' +
+        '<div class="timeline-body">' +
+          '<span class="timeline-label">' + info.label + '</span>' +
+          '<span class="timeline-amount" style="color:' + info.color + '">' + fmtCur(net) + '</span>' +
+        '</div>' +
+      '</div>';
+    });
+    html += '</div></div>';
+    return html;
+  }
+
   function renderTopFans(topFans) {
     if (!topFans || topFans.length === 0) return '';
     var html = '<div style="margin-top:1rem">';
@@ -432,23 +496,26 @@
       '<button class="period-tab active" data-period="month" role="tab" aria-selected="true">Este Mes</button>' +
     '</div>';
 
-    // 0a. SNAPSHOT SUMMARY (quick glance — reactive via updateSnapshotBar)
-    html += '<div class="snapshot-bar" id="snapshot-bar">' + buildSnapshotText('month', current, lastSame) + '</div>';
-
-    // 0b. MOTIVATIONAL (above hero, contextual)
+    // 0a. MOTIVATIONAL (above hero, contextual)
     html += '<div id="motivational-slot">' + renderMotivational(current, lastSame, lastFull, period, 'month') + '</div>';
 
-    // 1. HERO CARD — revenue big (no sparkline)
+    // 1. HERO CARD — revenue big + sparkline right + snapshot integrated
     html += '<div class="card card-hero animate-in" id="hero-card">' +
-      '<div class="hero-label" id="hero-label">💰 Ingresos ' + period.currentMonthName + '</div>' +
-      '<div class="stat-hero" id="hero-amount">' + fmtCur(current.totalRevenue) + '</div>' +
-      '<div class="hero-growth" id="hero-growth">' +
-        growthBadge(current.totalRevenue, lastSame.totalRevenue, '') +
-        '<span class="hero-vs">vs primeros ' + period.currentDay + ' días de ' + period.lastMonthName + '</span>' +
-      '</div>' +
-      '<div class="hero-projection" id="hero-projection"' + (current.projection > 0 ? '' : ' style="display:none"') + '>' +
-        '<span class="hero-proj-label">🎯 Previsión:</span>' +
-        '<span class="hero-proj-value">' + fmtCur(current.projection) + '</span>' +
+      '<div class="hero-layout">' +
+        '<div class="hero-left">' +
+          '<div class="hero-label" id="hero-label">' + svgIcon('dollar', 18, '#FF1F8E') + ' Ingresos ' + period.currentMonthName + '</div>' +
+          '<div class="stat-hero" id="hero-amount">' + fmtCur(current.totalRevenue) + '</div>' +
+          '<div class="hero-growth" id="hero-growth">' +
+            growthBadge(current.totalRevenue, lastSame.totalRevenue, '') +
+            '<span class="hero-vs">vs primeros ' + period.currentDay + ' días de ' + period.lastMonthName + '</span>' +
+          '</div>' +
+          '<div class="hero-snapshot" id="hero-snapshot">' + buildSnapshotText('month', current, lastSame) + '</div>' +
+          '<div class="hero-projection" id="hero-projection"' + (current.projection > 0 ? '' : ' style="display:none"') + '>' +
+            '<span class="hero-proj-label">🎯 Previsión:</span>' +
+            '<span class="hero-proj-value">' + fmtCur(current.projection) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="hero-right" id="hero-sparkline">' + buildMiniSparkline(current.dailyRevenue) + '</div>' +
       '</div>' +
     '</div>';
 
@@ -478,7 +545,9 @@
     // 5b. TOP FANS
     html += '<div id="top-fans-slot">' + renderTopFans(current.topFans) + '</div>';
 
-    // 6. Last update
+    // 5c. TODAY TIMELINE (hidden until Hoy tab active)
+    html += '<div id="today-timeline-slot" style="display:none"></div>';
+
     // 6. Last update (now shown in header too)
     html += '<div style="text-align:center;margin-top:1.5rem;color:var(--text-muted);font-size:0.7rem;opacity:0.6">' +
       'Datos de ' + new Date().toLocaleString('es-ES', {
@@ -564,10 +633,26 @@
     '</div>';
   }
 
+  // SVG icon helper — replaces emojis for cross-device consistency
+  function svgIcon(name, size, color) {
+    var s = size || 20, c = color || '#fff';
+    var paths = {
+      fans: '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="' + c + '"/>',
+      mail: '<path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="' + c + '"/>',
+      dollar: '<path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" fill="' + c + '"/>',
+      chat: '<path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z" fill="' + c + '"/>'
+    };
+    return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" style="vertical-align:middle">' + (paths[name] || '') + '</svg>';
+  }
+
   function miniStatCard(icon, value, label, accentColor) {
     var color = accentColor || '#fff';
+    // Map old emoji icons to SVG names
+    var iconMap = { '👥': 'fans', '✉️': 'mail', '💵': 'dollar', '💬': 'chat' };
+    var svgName = iconMap[icon];
+    var iconHtml = svgName ? svgIcon(svgName, 28, color) : icon;
     return '<div class="card mini-stat-card" style="border-top:3px solid ' + color + ';background:linear-gradient(180deg,' + color + '08 0%,transparent 40%)">' +
-      '<div class="mini-stat-icon">' + icon + '</div>' +
+      '<div class="mini-stat-icon">' + iconHtml + '</div>' +
       '<div class="mini-stat-value" style="color:' + color + '">' + value + '</div>' +
       '<div class="mini-stat-label">' + label + '</div>' +
     '</div>';
@@ -768,9 +853,20 @@
     var bestDaySlot = container.querySelector('#best-day-slot');
     if (!heroAmount) return;
 
-    // Update snapshot bar
-    var snapBar = container.querySelector('#snapshot-bar');
-    if (snapBar) snapBar.innerHTML = buildSnapshotText(period, s.current, s.lastSame);
+    // Update snapshot inside hero
+    var heroSnap = container.querySelector('#hero-snapshot');
+    if (heroSnap) heroSnap.innerHTML = buildSnapshotText(period, s.current, s.lastSame);
+
+    // Update sparkline visibility
+    var heroSparkline = container.querySelector('#hero-sparkline');
+    if (heroSparkline) heroSparkline.style.display = period === 'month' ? '' : 'none';
+
+    // Today timeline
+    var timelineSlot = container.querySelector('#today-timeline-slot');
+    if (timelineSlot) timelineSlot.style.display = period === 'today' ? '' : 'none';
+    if (period === 'today' && timelineSlot && timelineSlot.innerHTML === '') {
+      timelineSlot.innerHTML = renderTodayTimeline(c._rawTransactions || []);
+    }
 
     // Update top fans visibility
     var topFansSlot = container.querySelector('#top-fans-slot');
@@ -778,7 +874,7 @@
 
     if (period === 'today') {
       heroAmount.textContent = fmtCur(c.todayRevenue);
-      if (heroLabel) heroLabel.textContent = '💰 Ingresos de Hoy';
+      if (heroLabel) heroLabel.innerHTML = svgIcon('dollar', 18, '#FF1F8E') + ' Ingresos de Hoy';
       if (heroGrowth) heroGrowth.innerHTML = '<span class="hero-vs">Actualizado en tiempo real</span>';
       if (heroProjection) heroProjection.style.display = 'none';
       if (miniRow) miniRow.innerHTML =
@@ -788,7 +884,7 @@
         miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg', '#fbbf24');
     } else if (period === 'week') {
       heroAmount.textContent = fmtCur(c.weekRevenue);
-      if (heroLabel) heroLabel.textContent = '💰 Ingresos Semana';
+      if (heroLabel) heroLabel.innerHTML = svgIcon('dollar', 18, '#FF1F8E') + ' Ingresos Semana';
       if (heroGrowth) heroGrowth.innerHTML = '<span class="hero-vs">Últimos 7 días</span>';
       if (heroProjection) heroProjection.style.display = 'none';
       if (miniRow) miniRow.innerHTML =
@@ -798,7 +894,7 @@
         miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg', '#fbbf24');
     } else {
       heroAmount.textContent = fmtCur(c.totalRevenue);
-      if (heroLabel) heroLabel.textContent = '💰 Ingresos ' + s.period.currentMonthName;
+      if (heroLabel) heroLabel.innerHTML = svgIcon('dollar', 18, '#FF1F8E') + ' Ingresos ' + s.period.currentMonthName;
       if (heroGrowth) heroGrowth.innerHTML =
         growthBadge(c.totalRevenue, s.lastSame.totalRevenue, '') +
         '<span class="hero-vs">vs primeros ' + s.period.currentDay + ' días de ' + s.period.lastMonthName + '</span>';
@@ -1239,13 +1335,18 @@
         var num = item.num || item;
         var fecha = item.fecha || '';
         var fechaShort = '';
+        var urgencyClass = 'rec-urgency-new';
         if (fecha) {
           var d = new Date(fecha);
           if (!isNaN(d.getTime())) {
             fechaShort = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
+            var daysDiff = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
+            if (daysDiff > 30) urgencyClass = 'rec-urgency-old';
+            else if (daysDiff > 14) urgencyClass = 'rec-urgency-mid';
+            else urgencyClass = 'rec-urgency-new';
           }
         }
-        html += '<div class="rec-pending-item">' +
+        html += '<div class="rec-pending-item ' + urgencyClass + '">' +
           '<span class="rec-pending-num">#' + num + '</span>' +
           (fechaShort ? '<span class="rec-pending-date">' + fechaShort + '</span>' : '') +
         '</div>';
