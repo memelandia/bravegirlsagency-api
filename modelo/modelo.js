@@ -12,6 +12,33 @@
   if (!slug) { console.error('MODEL_SLUG not defined'); return; }
 
   var SESSION_KEY = 'bg-model-session';
+  var STATS_CACHE_KEY = 'bg-model-stats-' + slug;
+  var GOAL_KEY = 'bg-model-goal-' + slug;
+
+  // Admin: ?meta=5000 in URL saves custom goal to localStorage
+  (function checkGoalParam() {
+    var params = new URLSearchParams(window.location.search);
+    var metaVal = params.get('meta');
+    if (metaVal) {
+      var goal = parseFloat(metaVal);
+      if (!isNaN(goal) && goal > 0) {
+        localStorage.setItem(GOAL_KEY, String(goal));
+      } else if (metaVal === 'reset' || metaVal === '0') {
+        localStorage.removeItem(GOAL_KEY);
+      }
+      // Clean URL without reload
+      params.delete('meta');
+      var clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+      window.history.replaceState({}, '', clean);
+    }
+  })();
+
+  function getCustomGoal() {
+    try {
+      var val = localStorage.getItem(GOAL_KEY);
+      return val ? parseFloat(val) : null;
+    } catch(e) { return null; }
+  }
 
   function getModelConfig() {
     if (!window.CONFIG || !window.CONFIG.users) return null;
@@ -87,7 +114,42 @@
     });
     document.getElementById('dashboard-screen').appendChild(fab);
 
+    // Load cached stats instantly, then fresh data
+    var cached = loadStatsCache();
+    if (cached) {
+      var statsContainer = document.getElementById('stats-section');
+      renderFullStats(statsContainer, cached.current, cached.lastSame, cached.lastFull, cached.period);
+      updateHeaderTimestamp(cached.ts);
+    }
+
     loadAllData(cfg);
+  }
+
+  // ═══ STATS CACHE ═══
+  function saveStatsCache(current, lastSame, lastFull, period) {
+    try {
+      localStorage.setItem(STATS_CACHE_KEY, JSON.stringify({
+        current: current, lastSame: lastSame, lastFull: lastFull, period: period, ts: Date.now()
+      }));
+    } catch(e) {}
+  }
+  function loadStatsCache() {
+    try {
+      var raw = localStorage.getItem(STATS_CACHE_KEY);
+      if (!raw) return null;
+      var cached = JSON.parse(raw);
+      // Expire after 6 hours
+      if (Date.now() - cached.ts > 6 * 60 * 60 * 1000) return null;
+      return cached;
+    } catch(e) { return null; }
+  }
+
+  function updateHeaderTimestamp(ts) {
+    var el = document.getElementById('header-timestamp');
+    if (!el) return;
+    if (!ts) { el.textContent = ''; return; }
+    var d = typeof ts === 'number' ? new Date(ts) : new Date();
+    el.textContent = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   }
 
   // ═══ DATA LOADING ═══
@@ -156,6 +218,8 @@
       };
 
       renderFullStats(container, currentStats, lastSameStats, lastFullStats, periodInfo);
+      saveStatsCache(currentStats, lastSameStats, lastFullStats, periodInfo);
+      updateHeaderTimestamp(Date.now());
     } catch (err) {
       console.error('Stats error:', err);
       var errMsg = err.message || 'Error desconocido';
@@ -338,43 +402,35 @@
       '<button class="period-tab active" data-period="month" role="tab" aria-selected="true">Este Mes</button>' +
     '</div>';
 
+    // 0a. SNAPSHOT SUMMARY (quick glance)
+    var snapParts = [];
+    if (current.totalRevenue > 0) snapParts.push(fmtCur(current.totalRevenue));
+    var revG = calcGrowth(current.totalRevenue, lastSame.totalRevenue);
+    if (revG !== 0) snapParts.push((revG > 0 ? '+' : '') + revG.toFixed(0) + '%');
+    if (current.fansThisMonth > 0) snapParts.push(current.fansThisMonth + ' fans');
+    if (snapParts.length > 0) {
+      html += '<div class="snapshot-bar" id="snapshot-bar">' + snapParts.join(' · ') + '</div>';
+    }
+
     // 0b. MOTIVATIONAL (above hero, contextual)
     html += '<div id="motivational-slot">' + renderMotivational(current, lastSame, lastFull, period, 'month') + '</div>';
 
     // 1. HERO CARD — revenue big (no sparkline)
     html += '<div class="card card-hero animate-in" id="hero-card">' +
-      '<div class="hero-label">💰 Ingresos ' + period.currentMonthName + '</div>' +
+      '<div class="hero-label" id="hero-label">💰 Ingresos ' + period.currentMonthName + '</div>' +
       '<div class="stat-hero" id="hero-amount">' + fmtCur(current.totalRevenue) + '</div>' +
       '<div class="hero-growth" id="hero-growth">' +
         growthBadge(current.totalRevenue, lastSame.totalRevenue, '') +
         '<span class="hero-vs">vs primeros ' + period.currentDay + ' días de ' + period.lastMonthName + '</span>' +
       '</div>' +
-      (current.projection > 0 ?
-        '<div class="hero-projection">' +
+      '<div class="hero-projection" id="hero-projection"' + (current.projection > 0 ? '' : ' style="display:none"') + '>' +
         '<span class="hero-proj-label">🎯 Previsión:</span>' +
         '<span class="hero-proj-value">' + fmtCur(current.projection) + '</span>' +
-        '</div>' : '') +
+      '</div>' +
     '</div>';
 
-    // 1b. BEST DAY CARD (glow)
-    if (current.bestDay && current.bestDay.amount > 0) {
-      var bdDate = new Date(current.bestDay.date);
-      var isToday = bdDate.toDateString() === new Date().toDateString();
-      var bdFormatted = bdDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-      html += '<div class="card best-day-card' + (isToday ? ' best-day-today' : '') + '">' +
-        '<div class="best-day-trophy">🏆</div>' +
-        '<div class="best-day-info">' +
-          '<div class="best-day-label">' + (isToday ? '¡Tu mejor día es HOY!' : 'Tu mejor día') + '</div>' +
-          '<div class="best-day-value">' + fmtCur(current.bestDay.amount) + '</div>' +
-          '<div class="best-day-date">' + bdFormatted + '</div>' +
-        '</div>' +
-        (current.recentActivity > 0 ?
-          '<div class="live-dot-wrap">' +
-            '<span class="live-dot"></span>' +
-            '<span class="live-text">' + current.recentActivity + ' tx últimas 24h</span>' +
-          '</div>' : '') +
-      '</div>';
-    }
+    // 1b. BEST DAY CARD (glow) — rendered with id for tab reactivity
+    html += '<div id="best-day-slot">' + renderBestDay(current, 'month') + '</div>';
 
     // 2. MINI-STATS ROW (4 cards with avg msg price)
     html += '<div class="grid-4col animate-in" id="mini-stats-row">' +
@@ -384,7 +440,7 @@
       miniStatCard('💬', fmtCur(current.avgMessagePrice), 'Precio medio msg', '#fbbf24') +
     '</div>';
 
-    // 3 + 4. PROGRESS RING + DONUT side by side
+    // 3 + 4. PROGRESS RING + DONUT side by side (month only)
     html += '<div class="grid-2col" id="charts-row">' +
       renderProgressRing(current, lastFull, period) +
       renderIncomeDistribution(current) +
@@ -393,13 +449,14 @@
     // 4b. DAILY REVENUE LINE CHART (before comparison for visual flow)
     html += '<div id="daily-chart-slot">' + renderDailyChart(current.dailyRevenue, period) + '</div>';
 
-    // 5. COMPARISON CARDS
-    html += renderComparison(current, lastSame, lastFull, period);
+    // 5. COMPARISON CARDS (month only)
+    html += '<div id="comparison-slot">' + renderComparison(current, lastSame, lastFull, period) + '</div>';
 
     // 6. Last update
-    html += '<div style="text-align:center;margin-top:1.5rem;color:var(--text-muted);font-size:0.75rem">' +
-      '🔄 Actualizado: ' + new Date().toLocaleString('es-ES', {
-        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    // 6. Last update (now shown in header too)
+    html += '<div style="text-align:center;margin-top:1.5rem;color:var(--text-muted);font-size:0.7rem;opacity:0.6">' +
+      'Datos de ' + new Date().toLocaleString('es-ES', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
       }) + '</div>';
 
     container.innerHTML = html;
@@ -411,25 +468,74 @@
     animateCounters(container);
 
     // Detect chart scroll overflow for gradient indicator
+    wireChartScroll(container);
+  }
+
+  // Reusable chart scroll detection (avoids resize listener leak)
+  var _resizeHandler = null;
+  function wireChartScroll(container) {
+    if (_resizeHandler) window.removeEventListener('resize', _resizeHandler);
     var chartWrap = container.querySelector('.daily-chart-wrap');
-    if (chartWrap) {
-      var checkScroll = function() {
-        if (chartWrap.scrollWidth > chartWrap.clientWidth + 2) {
-          chartWrap.classList.add('has-scroll');
-        } else {
-          chartWrap.classList.remove('has-scroll');
+    if (!chartWrap) { _resizeHandler = null; return; }
+    var checkScroll = function() {
+      if (chartWrap.scrollWidth > chartWrap.clientWidth + 2) {
+        chartWrap.classList.add('has-scroll');
+      } else {
+        chartWrap.classList.remove('has-scroll');
+      }
+    };
+    checkScroll();
+    chartWrap.addEventListener('scroll', function() {
+      if (chartWrap.scrollLeft + chartWrap.clientWidth >= chartWrap.scrollWidth - 4) {
+        chartWrap.classList.remove('has-scroll');
+      } else {
+        chartWrap.classList.add('has-scroll');
+      }
+    });
+    _resizeHandler = checkScroll;
+    window.addEventListener('resize', _resizeHandler);
+  }
+
+  // Best day card renderer (reactive to tab)
+  function renderBestDay(stats, activeTab) {
+    // Hide best day for 'today' tab
+    if (activeTab === 'today') return '';
+    var bestDay = stats.bestDay;
+    if (!bestDay || bestDay.amount <= 0) return '';
+
+    // For week tab, compute best day from last 7 days only
+    if (activeTab === 'week') {
+      var now = new Date();
+      var weekStart = new Date(now);
+      weekStart.setDate(weekStart.getDate() - 7);
+      var weekBest = { date: null, amount: 0 };
+      var daily = stats.dailyRevenue || {};
+      for (var dk in daily) {
+        if (new Date(dk) >= weekStart && daily[dk] > weekBest.amount) {
+          weekBest = { date: dk, amount: daily[dk] };
         }
-      };
-      checkScroll();
-      chartWrap.addEventListener('scroll', function() {
-        if (chartWrap.scrollLeft + chartWrap.clientWidth >= chartWrap.scrollWidth - 4) {
-          chartWrap.classList.remove('has-scroll');
-        } else {
-          chartWrap.classList.add('has-scroll');
-        }
-      });
-      window.addEventListener('resize', checkScroll);
+      }
+      if (weekBest.amount <= 0) return '';
+      bestDay = weekBest;
     }
+
+    var bdDate = new Date(bestDay.date);
+    var isToday = bdDate.toDateString() === new Date().toDateString();
+    var bdFormatted = bdDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    var label = activeTab === 'week' ? 'Mejor día de la semana' : (isToday ? '¡Tu mejor día es HOY!' : 'Tu mejor día');
+    return '<div class="card best-day-card' + (isToday ? ' best-day-today' : '') + '">' +
+      '<div class="best-day-trophy">🏆</div>' +
+      '<div class="best-day-info">' +
+        '<div class="best-day-label">' + label + '</div>' +
+        '<div class="best-day-value">' + fmtCur(bestDay.amount) + '</div>' +
+        '<div class="best-day-date">' + bdFormatted + '</div>' +
+      '</div>' +
+      (stats.recentActivity > 0 ?
+        '<div class="live-dot-wrap">' +
+          '<span class="live-dot"></span>' +
+          '<span class="live-text">' + stats.recentActivity + ' tx últimas 24h</span>' +
+        '</div>' : '') +
+    '</div>';
   }
 
   function miniStatCard(icon, value, label, accentColor) {
@@ -614,15 +720,22 @@
     if (!s.current) return;
     var c = s.current;
     var heroAmount = container.querySelector('#hero-amount');
+    var heroLabel = container.querySelector('#hero-label');
     var heroGrowth = container.querySelector('#hero-growth');
+    var heroProjection = container.querySelector('#hero-projection');
     var miniRow = container.querySelector('#mini-stats-row');
     var motivSlot = container.querySelector('#motivational-slot');
     var dailySlot = container.querySelector('#daily-chart-slot');
+    var chartsRow = container.querySelector('#charts-row');
+    var cmpSlot = container.querySelector('#comparison-slot');
+    var bestDaySlot = container.querySelector('#best-day-slot');
     if (!heroAmount) return;
 
     if (period === 'today') {
       heroAmount.textContent = fmtCur(c.todayRevenue);
-      if (heroGrowth) heroGrowth.innerHTML = '<span class="hero-vs">Ingresos de hoy</span>';
+      if (heroLabel) heroLabel.textContent = '💰 Ingresos de Hoy';
+      if (heroGrowth) heroGrowth.innerHTML = '<span class="hero-vs">Actualizado en tiempo real</span>';
+      if (heroProjection) heroProjection.style.display = 'none';
       if (miniRow) miniRow.innerHTML =
         miniStatCard('👥', c.todayFans, 'Fans hoy', '#22d3ee') +
         miniStatCard('✉️', c.todayMsgCount.toLocaleString(), 'Msgs hoy', '#e879f9') +
@@ -630,7 +743,9 @@
         miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg', '#fbbf24');
     } else if (period === 'week') {
       heroAmount.textContent = fmtCur(c.weekRevenue);
+      if (heroLabel) heroLabel.textContent = '💰 Ingresos Semana';
       if (heroGrowth) heroGrowth.innerHTML = '<span class="hero-vs">Últimos 7 días</span>';
+      if (heroProjection) heroProjection.style.display = 'none';
       if (miniRow) miniRow.innerHTML =
         miniStatCard('👥', c.weekFans, 'Fans semana', '#22d3ee') +
         miniStatCard('✉️', c.weekMsgCount.toLocaleString(), 'Msgs semana', '#e879f9') +
@@ -638,9 +753,11 @@
         miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg', '#fbbf24');
     } else {
       heroAmount.textContent = fmtCur(c.totalRevenue);
+      if (heroLabel) heroLabel.textContent = '💰 Ingresos ' + s.period.currentMonthName;
       if (heroGrowth) heroGrowth.innerHTML =
         growthBadge(c.totalRevenue, s.lastSame.totalRevenue, '') +
         '<span class="hero-vs">vs primeros ' + s.period.currentDay + ' días de ' + s.period.lastMonthName + '</span>';
+      if (heroProjection) heroProjection.style.display = c.projection > 0 ? '' : 'none';
       if (miniRow) miniRow.innerHTML =
         miniStatCard('👥', c.fansThisMonth, 'Fans que pagaron', '#22d3ee') +
         miniStatCard('✉️', c.messageCount.toLocaleString(), 'Mensajes vendidos', '#e879f9') +
@@ -648,14 +765,24 @@
         miniStatCard('💬', fmtCur(c.avgMessagePrice), 'Precio medio msg', '#fbbf24');
     }
 
-    // Update daily chart: show daily for month, hide for today/week
+    // Charts/ring/donut: only show for month
+    if (chartsRow) chartsRow.style.display = period === 'month' ? '' : 'none';
+
+    // Daily chart: show for month only
     if (dailySlot) {
       if (period === 'month') {
         dailySlot.innerHTML = renderDailyChart(c.dailyRevenue, s.period);
+        wireChartScroll(container);
       } else {
         dailySlot.innerHTML = '';
       }
     }
+
+    // Comparison: show for month only
+    if (cmpSlot) cmpSlot.style.display = period === 'month' ? '' : 'none';
+
+    // Best day: reactive
+    if (bestDaySlot) bestDaySlot.innerHTML = renderBestDay(c, period);
 
     // Update motivational contextual to tab
     if (motivSlot) {
@@ -685,7 +812,6 @@
       }
     } else if (activeTab === 'week') {
       var weekRev = current.weekRevenue || 0;
-      var weekAvg = avgDaily * 7;
       var avgDaily = current.totalRevenue / Math.max(period.currentDay, 1);
       var weekTarget = avgDaily * 7;
       if (weekRev >= weekTarget) {
@@ -723,7 +849,9 @@
   // ═══ PROGRESS RING (SVG circle — integrated, gradient, big) ═══
   function renderProgressRing(current, lastFull, period) {
     var lastMonthRev = lastFull.totalRevenue;
-    var goal = lastMonthRev > 0 ? Math.round(lastMonthRev * 1.15) : (current.projection || 1);
+    var customGoal = getCustomGoal();
+    var goal = customGoal || (lastMonthRev > 0 ? Math.round(lastMonthRev * 1.15) : (current.projection || 1));
+    var goalSource = customGoal ? 'Meta personalizada' : 'Meta = ' + period.lastMonthName + ' + 15%';
     var pct = Math.min((current.totalRevenue / goal) * 100, 100);
     var remaining = Math.max(goal - current.totalRevenue, 0);
 
@@ -768,7 +896,7 @@
         '</svg>' +
       '</div>' +
       perDayHtml +
-      '<div class="ring-meta">Meta = ' + period.lastMonthName + ' + 15%</div>' +
+      '<div class="ring-meta">' + goalSource + '</div>' +
     '</div>';
   }
 
@@ -838,21 +966,23 @@
     var svgSize = 260, cx = 130, cy = 130, r = 100;
     var circ = 2 * Math.PI * r;
 
-    // Simple arc function with gradient
-    function arcGrad(value, offsetFrac, gradId, colors) {
+    // Shared defs for all arcs
+    var defsHtml = '<defs>' +
+      '<linearGradient id="dS2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06b6d4"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient>' +
+      '<linearGradient id="dP2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#c026d3"/><stop offset="100%" stop-color="#e879f9"/></linearGradient>' +
+      '<linearGradient id="dT2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#fbbf24"/></linearGradient>' +
+    '</defs>';
+
+    // Simple arc function (uses shared gradients)
+    function arcPiece(value, offsetFrac, gradId, colors) {
       var pct = total > 0 ? value / total : 0;
       var dash = pct * circ;
       if (dash < 2) return '';
-      // Micro-gap: subtract 4px from arc, add 4px gap
       var gapSize = 4;
       var arcLen = Math.max(dash - gapSize, 2);
       var gapLen = circ - arcLen;
       var offset = -(offsetFrac * circ + gapSize / 2);
-      return '<defs><linearGradient id="' + gradId + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
-        '<stop offset="0%" stop-color="' + colors[0] + '"/>' +
-        '<stop offset="100%" stop-color="' + colors[1] + '"/>' +
-      '</linearGradient></defs>' +
-      '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" ' +
+      return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" ' +
         'fill="none" stroke="url(#' + gradId + ')" stroke-width="22" ' +
         'class="donut-arc" ' +
         'stroke-dasharray="' + arcLen.toFixed(2) + ' ' + gapLen.toFixed(2) + '" ' +
@@ -866,10 +996,11 @@
 
     var svgDonut =
       '<svg width="' + svgSize + '" height="' + svgSize + '" viewBox="0 0 ' + svgSize + ' ' + svgSize + '">' +
+        defsHtml +
         '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="22"/>' +
-        arcGrad(subs, 0, 'dS2', ['#06b6d4','#22d3ee']) +
-        arcGrad(ppv, subsFrac, 'dP2', ['#c026d3','#e879f9']) +
-        arcGrad(tips, subsFrac + ppvFrac, 'dT2', ['#f59e0b','#fbbf24']) +
+        arcPiece(subs, 0, 'dS2', ['#06b6d4','#22d3ee']) +
+        arcPiece(ppv, subsFrac, 'dP2', ['#c026d3','#e879f9']) +
+        arcPiece(tips, subsFrac + ppvFrac, 'dT2', ['#f59e0b','#fbbf24']) +
         '<text x="' + cx + '" y="' + (cy - 10) + '" text-anchor="middle" fill="' + dominant.color + '" font-size="42" font-weight="900">' + domPct + '%</text>' +
         '<text x="' + cx + '" y="' + (cy + 14) + '" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="12" font-weight="600">' + dominant.label + '</text>' +
       '</svg>';
@@ -1096,12 +1227,6 @@
     return '<span class="growth-badge ' + cls + '">' + arrow + ' ' +
       (isZero ? '0' : (isUp ? '+' : '') + g.toFixed(1)) + '%</span>' +
       '<span class="stat-sub" style="margin-left:6px">' + esc(subtext) + '</span>';
-  }
-
-  function fanBlock(num, label) {
-    return '<div style="text-align:center;padding:0.5rem;border-radius:10px;background:rgba(255,255,255,0.03)">' +
-      '<div style="font-size:1.5rem;font-weight:800;color:#fff">' + num + '</div>' +
-      '<div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;margin-top:4px">' + label + '</div></div>';
   }
 
   function renderSkeletons(type) {

@@ -656,6 +656,24 @@ body {
 }
 
 /* ═══ MOTIVATIONAL BANNER ═══ */
+.snapshot-bar {
+  text-align: center;
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255,31,142,0.06), rgba(139,92,246,0.05));
+  border: 1px solid rgba(255,31,142,0.12);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+.header-timestamp {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
 .motivational-banner {
   display: flex;
   align-items: center;
