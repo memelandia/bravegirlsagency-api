@@ -331,13 +331,13 @@ async function handleCheck(req, res, body) {
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 5000);
                 const resp = await fetch(p.url, {
-                    method: 'GET',
+                    method: 'HEAD',
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)',
-                        'Accept': 'text/html'
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml'
                     },
                     signal: controller.signal,
-                    redirect: 'follow'
+                    redirect: 'manual'
                 });
                 clearTimeout(timeout);
 
@@ -345,12 +345,13 @@ async function handleCheck(req, res, body) {
                     return { id: p.id, url: p.url, status: 'ELIMINADO' };
                 }
 
-                if (resp.ok) {
-                    const html = await resp.text();
-                    if (html.includes("Sorry, this page isn't available") ||
-                        html.includes('Esta página no está disponible')) {
-                        return { id: p.id, url: p.url, status: 'ELIMINADO' };
-                    }
+                // Instagram redirects to /accounts/login/ for deleted/private profiles
+                const location = resp.headers.get('location') || '';
+                if (location.includes('/accounts/login')) {
+                    return { id: p.id, url: p.url, status: 'SIN_AVATAR', reason: 'Redirige a login (privado o eliminado)' };
+                }
+
+                if (resp.status >= 200 && resp.status < 400) {
                     return { id: p.id, url: p.url, status: 'ACTIVO' };
                 }
 
