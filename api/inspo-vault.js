@@ -123,7 +123,7 @@ async function handleList(req, res) {
 
 // ─── CREATE ───────────────────────────────────────────
 async function handleCreate(req, res, body) {
-    const { idea, mercado, link, vertical, paraModelo, branding, elementoViral, favorito } = body;
+    const { idea, mercado, link, vertical, paraModelo, branding, elementoViral, favorito, notas } = body;
 
     if (!idea || !idea.trim()) {
         return res.status(400).json({ error: 'El campo "idea" es obligatorio' });
@@ -140,6 +140,7 @@ async function handleCreate(req, res, body) {
     if (branding && branding.length) properties['Branding'] = { multi_select: branding.map(b => ({ name: b })) };
     if (elementoViral && elementoViral.length) properties['Elemento Viral'] = { multi_select: elementoViral.map(e => ({ name: e })) };
     if (favorito !== undefined) properties['Favorito'] = { checkbox: !!favorito };
+    if (notas !== undefined) properties['Notas'] = { rich_text: notas ? [{ text: { content: notas } }] : [] };
 
     const response = await notionFetch('https://api.notion.com/v1/pages', 'POST', {
         parent: { database_id: DATABASE_ID },
@@ -164,7 +165,7 @@ async function handleUpdate(req, res, body) {
         return res.status(400).json({ error: 'Invalid page id format' });
     }
 
-    const { idea, mercado, link, vertical, paraModelo, branding, elementoViral, favorito } = body;
+    const { idea, mercado, link, vertical, paraModelo, branding, elementoViral, favorito, notas } = body;
     const properties = {};
 
     if (idea !== undefined) properties['Idea'] = { title: [{ text: { content: idea.trim() } }] };
@@ -175,6 +176,7 @@ async function handleUpdate(req, res, body) {
     if (branding !== undefined) properties['Branding'] = { multi_select: (branding || []).map(b => ({ name: b })) };
     if (elementoViral !== undefined) properties['Elemento Viral'] = { multi_select: (elementoViral || []).map(e => ({ name: e })) };
     if (favorito !== undefined) properties['Favorito'] = { checkbox: !!favorito };
+    if (notas !== undefined) properties['Notas'] = { rich_text: notas ? [{ text: { content: notas } }] : [] };
 
     if (Object.keys(properties).length === 0) {
         return res.status(400).json({ error: 'No fields to update' });
@@ -500,6 +502,7 @@ function parseNotionPage(page) {
         estado: getSelect(p['Estado']),
         contextoBranding: getRichText(p['Contexto de Branding']),
         elementosVirales: getRichText(p['Elementos Virales']),
+        notas: getRichText(p['Notas']),
         favorito: getCheckbox(p['Favorito']),
         createdTime: page.created_time
     };
