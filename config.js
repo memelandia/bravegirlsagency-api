@@ -29,7 +29,8 @@ window.CONFIG = {
             'chatter5': { name: 'Kari Narvaez', gid: '1023806221' },
             'chatter7': { name: 'Carlo', gid: '1922350290' },
             'chatter8': { name: 'Leo', gid: '1346980441' },
-            'chatter9': { name: 'Genesys', gid: '524118032' }
+            'chatter9': { name: 'Genesys', gid: '524118032' },
+            'chatter10': { name: 'Camila', gid: '18239613' }
         }
     },
     
@@ -255,6 +256,15 @@ window.CONFIG = {
                 type: 'chatter',
                 onlyMonsterId: '166534',
                 assignedModels: ['model1', 'model2', 'model4'] // Carmen, Lucy, Lexi (reemplaza a Emely)
+            },
+            {
+                id: 'chatter10',
+                username: 'camila',
+                password: 'camial2026',
+                name: 'Camila',
+                type: 'chatter',
+                onlyMonsterId: '173798',
+                assignedModels: ['model1', 'model4', 'model8'] // Carmen, Lexi, KatieRose
             }
         ]
     },
