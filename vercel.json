@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "crons": [
+    {
+      "path": "/api/automations?action=daily-run",
+      "schedule": "0 5 * * *"
+    }
+  ],
   "redirects": [
     {
       "source": "/:path*",
@@ -14,7 +20,13 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/lms/:path*", "destination": "/api/lms?path=:path*" }
+    { "source": "/api/lms/:path*", "destination": "/api/lms?path=:path*" },
+    { "source": "/api/accounts", "destination": "/api/onlymonster/models-stats" },
+    { "source": "/api/supervision/checklist",   "destination": "/api/supervision?type=checklist" },
+    { "source": "/api/supervision/clear",       "destination": "/api/supervision?type=clear" },
+    { "source": "/api/supervision/errores",     "destination": "/api/supervision?type=errores" },
+    { "source": "/api/supervision/organigrama", "destination": "/api/supervision?type=organigrama" },
+    { "source": "/api/supervision/semanal",     "destination": "/api/supervision?type=semanal" }
   ],
   "headers": [
     {
@@ -78,6 +90,24 @@
       ]
     },
     {
+      "source": "/quiz/:path*",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }
+      ]
+    },
+    {
+      "source": "/admin/:path*",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }
+      ]
+    },
+    {
+      "source": "/admincrm/:path*",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }
+      ]
+    },
+    {
       "source": "/modelo/:path*",
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }
@@ -136,16 +166,50 @@
       ]
     },
     {
-      "source": "/api/accounts(.*)",
+      "source": "/api/automations(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,POST,PUT" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Accept" },
-        { "key": "Access-Control-Max-Age", "value": "86400" }
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,POST" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ]
+    },
+    {
+      "source": "/api/admin(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,POST,PATCH,DELETE" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, X-Admin-Token" }
+      ]
+    },
+    {
+      "source": "/admin/:path*",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }
+      ]
+    },
+    {
+      "source": "/assets/fonts/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.css",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
     }
-  ],
-  "env": {
-    "ONLYMONSTER_API_KEY": "om_token_37211a79c42556feab68a2fdfc74c49087008c48b5b81e5b677877fd2c2be9b5"
-  }
+  ]
 }

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Quiz Results — Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+      min-height: 100vh;
+    }
+    header {
+      background: #111827;
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 800; }
+    header .meta { font-size: 0.85rem; color: #9ca3af; }
+    main { max-width: 1280px; margin: 0 auto; padding: 24px; }
+
+    /* Login screen */
+    .login-card {
+      max-width: 420px;
+      margin: 80px auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      padding: 32px;
+    }
+    .login-card h2 { font-size: 1.25rem; margin-bottom: 8px; }
+    .login-card p { color: #6b7280; font-size: 0.9rem; margin-bottom: 24px; }
+    .login-card label { display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; font-weight: 700; margin-bottom: 6px; }
+    .login-card input {
+      width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px;
+      font-size: 1rem; margin-bottom: 16px;
+    }
+    .login-card input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
+    .login-card button {
+      width: 100%; padding: 12px; background: #3b82f6; color: white; border: none;
+      border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer;
+    }
+    .login-card button:hover { background: #2563eb; }
+    .login-card .err {
+      background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 8px;
+      font-size: 0.85rem; margin-bottom: 12px; display: none;
+    }
+    .login-card .err.show { display: block; }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat {
+      background: white; border-radius: 12px; padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e5e7eb;
+    }
+    .stat .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; font-weight: 700; }
+    .stat .value { font-size: 1.5rem; font-weight: 800; margin-top: 4px; color: #111827; }
+
+    /* Filters */
+    .filters {
+      display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;
+      background: white; border-radius: 12px; padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e5e7eb;
+    }
+    .filters input, .filters select {
+      padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;
+    }
+    .filters button {
+      padding: 8px 14px; border: 1px solid #d1d5db; background: white; border-radius: 6px;
+      cursor: pointer; font-size: 0.9rem; font-weight: 600;
+    }
+    .filters button:hover { background: #f9fafb; }
+    .filters button.primary { background: #3b82f6; color: white; border-color: #3b82f6; }
+    .filters button.primary:hover { background: #2563eb; }
+    .filters .count { margin-left: auto; font-size: 0.85rem; color: #6b7280; }
+
+    /* Table */
+    .table-wrap {
+      background: white; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e5e7eb;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th { text-align: left; padding: 12px 16px; background: #f9fafb; font-size: 0.75rem;
+         text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; font-weight: 700;
+         border-bottom: 1px solid #e5e7eb; }
+    td { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background: #f9fafb; }
+    .score-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-weight: 700; font-size: 0.85rem; }
+    .score-good { background: #d1fae5; color: #065f46; }
+    .score-mid  { background: #fef3c7; color: #92400e; }
+    .score-bad  { background: #fee2e2; color: #b91c1c; }
+    .tab-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-weight: 700; font-size: 0.85rem; }
+    .tab-zero { background: #e5e7eb; color: #4b5563; }
+    .tab-warn { background: #fef3c7; color: #92400e; }
+    .tab-bad  { background: #fee2e2; color: #b91c1c; }
+
+    /* Diploma button */
+    .btn-diploma {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      background: linear-gradient(135deg, #FF1F8E, #C2156B);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.05s;
+    }
+    .btn-diploma:hover { opacity: 0.9; }
+    .btn-diploma:active { transform: translateY(1px); }
+    .btn-diploma:disabled { opacity: 0.5; cursor: wait; }
+    .no-diploma { color: #d1d5db; font-size: 0.85rem; }
+
+    .empty { text-align: center; padding: 48px 16px; color: #6b7280; }
+    .loading { text-align: center; padding: 48px 16px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <!-- ──────── PANTALLA LOGIN ──────── -->
+  <div id="login-screen" class="login-card" style="display: none;">
+    <h2>🔒 Admin · Quiz Results</h2>
+    <p>Ingresá la password para ver los resultados.</p>
+    <div id="login-err" class="err"></div>
+    <form id="login-form">
+      <label for="pwd">Password</label>
+      <input type="password" id="pwd" autocomplete="current-password" required>
+      <button type="submit">Entrar</button>
+    </form>
+  </div>
+
+  <!-- ──────── PANTALLA ADMIN ──────── -->
+  <div id="admin-screen" style="display: none;">
+    <header>
+      <h1>📊 Quiz Results · BraveGirls</h1>
+      <div class="meta">
+        <span id="last-update"></span>
+        <button id="logout-btn" style="margin-left: 12px; background: transparent; color: white; border: 1px solid #374151; padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">Salir</button>
+      </div>
+    </header>
+
+    <main>
+      <div class="stats" id="stats"></div>
+
+      <div class="filters">
+        <input type="text" id="filter-name" placeholder="Filtrar por nombre…">
+        <select id="filter-account">
+          <option value="">Todas las cuentas</option>
+        </select>
+        <button id="refresh-btn">🔄 Refrescar</button>
+        <button id="export-btn" class="primary">📥 Exportar CSV</button>
+        <span class="count" id="count"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha/Hora</th>
+              <th>Nombre</th>
+              <th>Cuenta</th>
+              <th>Puntaje</th>
+              <th>Tiempo total</th>
+              <th>Cambios de pestaña</th>
+              <th>Diploma</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="7" class="loading">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="../quiz/diploma.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      const API_URL = 'https://bravegirlsagency-api.vercel.app/api/quiz?admin=1';
+      const TOKEN_KEY = 'quiz_admin_token';
+      const DIPLOMA_THRESHOLD = 15;
+
+      let allData = [];
+      let token = sessionStorage.getItem(TOKEN_KEY);
+
+      // ── DOM refs ──
+      const loginScreen = document.getElementById('login-screen');
+      const adminScreen = document.getElementById('admin-screen');
+      const loginForm = document.getElementById('login-form');
+      const loginErr = document.getElementById('login-err');
+      const pwdInput = document.getElementById('pwd');
+
+      // ── Helpers ──
+      function showLogin(errMsg) {
+        adminScreen.style.display = 'none';
+        loginScreen.style.display = 'block';
+        if (errMsg) {
+          loginErr.textContent = errMsg;
+          loginErr.classList.add('show');
+        } else {
+          loginErr.classList.remove('show');
+        }
+        setTimeout(() => pwdInput.focus(), 50);
+      }
+
+      function showAdmin() {
+        loginScreen.style.display = 'none';
+        adminScreen.style.display = 'block';
+      }
+
+      function fmtDateTime(iso) {
+        const d = new Date(iso);
+        return d.toLocaleString('es-AR', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        });
+      }
+
+      function fmtDuration(sec) {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${m}m ${s}s`;
+      }
+
+      function scoreClass(score, total) {
+        const pct = (score / total) * 100;
+        if (pct >= 70) return 'score-good';
+        if (pct >= 50) return 'score-mid';
+        return 'score-bad';
+      }
+
+      function tabClass(n) {
+        if (n === 0) return 'tab-zero';
+        if (n <= 3) return 'tab-warn';
+        return 'tab-bad';
+      }
+
+      function escHtml(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      }
+
+      // ── Fetch ──
+      async function load() {
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">Cargando…</td></tr>';
+
+        try {
+          const res = await fetch(API_URL, {
+            headers: { 'X-Admin-Token': token }
+          });
+          if (res.status === 401) {
+            sessionStorage.removeItem(TOKEN_KEY);
+            token = null;
+            showLogin('Password incorrecta o expirada.');
+            return;
+          }
+          if (!res.ok) {
+            throw new Error('HTTP ' + res.status);
+          }
+          const result = await res.json();
+          if (!result.success) throw new Error(result.error || 'Error');
+          allData = result.data || [];
+
+          populateAccountFilter();
+          render();
+          document.getElementById('last-update').textContent =
+            'Última actualización: ' + new Date().toLocaleTimeString('es-AR');
+        } catch (e) {
+          tbody.innerHTML = `<tr><td colspan="7" class="empty">⚠️ Error: ${escHtml(e.message)}</td></tr>`;
+        }
+      }
+
+      // ── Filters ──
+      function getFiltered() {
+        const name = (document.getElementById('filter-name').value || '').trim().toLowerCase();
+        const acc = document.getElementById('filter-account').value;
+        return allData.filter(r => {
+          if (name && !(r.chatterName || '').toLowerCase().includes(name)) return false;
+          if (acc && r.account !== acc) return false;
+          return true;
+        });
+      }
+
+      function populateAccountFilter() {
+        const accs = Array.from(new Set(allData.map(r => r.account))).sort();
+        const sel = document.getElementById('filter-account');
+        const current = sel.value;
+        sel.innerHTML = '<option value="">Todas las cuentas</option>' +
+          accs.map(a => `<option value="${escHtml(a)}">${escHtml(a)}</option>`).join('');
+        sel.value = current;
+      }
+
+      // ── Render ──
+      function render() {
+        const data = getFiltered();
+        const tbody = document.getElementById('tbody');
+
+        // Stats
+        const statsEl = document.getElementById('stats');
+        const total = data.length;
+        const avgScore = total
+          ? (data.reduce((s, r) => s + (r.score / r.totalQuestions), 0) / total) * 100
+          : 0;
+        const avgTime = total
+          ? Math.round(data.reduce((s, r) => s + r.totalSeconds, 0) / total)
+          : 0;
+        const tabSwitchers = data.filter(r => r.tabSwitches > 0).length;
+
+        statsEl.innerHTML = `
+          <div class="stat"><div class="label">Total Intentos</div><div class="value">${total}</div></div>
+          <div class="stat"><div class="label">Promedio Score</div><div class="value">${avgScore.toFixed(1)}%</div></div>
+          <div class="stat"><div class="label">Tiempo Promedio</div><div class="value">${fmtDuration(avgTime)}</div></div>
+          <div class="stat"><div class="label">Con Cambios de Pestaña</div><div class="value">${tabSwitchers}</div></div>
+        `;
+
+        document.getElementById('count').textContent = `${data.length} de ${allData.length}`;
+
+        if (data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty">Sin resultados.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data.map(r => {
+          const diplomaCell = r.score >= DIPLOMA_THRESHOLD
+            ? `<button class="btn-diploma" data-id="${r.id}">🏆 Descargar</button>`
+            : '<span class="no-diploma">—</span>';
+          return `
+          <tr>
+            <td>${escHtml(fmtDateTime(r.finishedAt))}</td>
+            <td><strong>${escHtml(r.chatterName)}</strong></td>
+            <td>${escHtml(r.account)}</td>
+            <td>
+              <span class="score-pill ${scoreClass(r.score, r.totalQuestions)}">
+                ${r.score} / ${r.totalQuestions}
+              </span>
+            </td>
+            <td>${fmtDuration(r.totalSeconds)}</td>
+            <td>
+              <span class="tab-pill ${tabClass(r.tabSwitches)}">${r.tabSwitches}</span>
+            </td>
+            <td>${diplomaCell}</td>
+          </tr>`;
+        }).join('');
+
+        // Wire up diploma buttons (delegation by data-id)
+        tbody.querySelectorAll('.btn-diploma').forEach(btn => {
+          btn.addEventListener('click', async function () {
+            const id = Number(btn.dataset.id);
+            const row = allData.find(r => r.id === id);
+            if (!row) return;
+            const original = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ Generando…';
+            try {
+              await BG_Diploma.download({
+                name: row.chatterName,
+                score: row.score,
+                total: row.totalQuestions,
+                date: row.finishedAt
+              });
+              btn.textContent = '✅ Descargado';
+              setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1500);
+            } catch (e) {
+              btn.textContent = '⚠️ Error';
+              console.error(e);
+              setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
+            }
+          });
+        });
+      }
+
+      // ── CSV export ──
+      function exportCSV() {
+        const data = getFiltered();
+        const headers = ['Fecha', 'Nombre', 'Cuenta', 'Score', 'TotalPreguntas', 'TiempoSegundos', 'CambiosPestaña', 'StartedAt'];
+        const csv = [headers.join(',')].concat(
+          data.map(r => [
+            fmtDateTime(r.finishedAt),
+            r.chatterName,
+            r.account,
+            r.score,
+            r.totalQuestions,
+            r.totalSeconds,
+            r.tabSwitches,
+            r.startedAt
+          ].map(v => {
+            const s = String(v == null ? '' : v);
+            return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+          }).join(','))
+        ).join('\n');
+
+        const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `quiz-results-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      // ── Wiring ──
+      loginForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const v = pwdInput.value.trim();
+        if (!v) return;
+        token = v;
+        sessionStorage.setItem(TOKEN_KEY, token);
+        showAdmin();
+        load();
+      });
+
+      document.getElementById('refresh-btn').addEventListener('click', load);
+      document.getElementById('export-btn').addEventListener('click', exportCSV);
+      document.getElementById('filter-name').addEventListener('input', render);
+      document.getElementById('filter-account').addEventListener('change', render);
+      document.getElementById('logout-btn').addEventListener('click', function () {
+        sessionStorage.removeItem(TOKEN_KEY);
+        token = null;
+        allData = [];
+        showLogin();
+      });
+
+      // Boot
+      if (token) {
+        showAdmin();
+        load();
+      } else {
+        showLogin();
+      }
+    })();
+  </script>
+</body>
+</html>
