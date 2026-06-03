@@ -81,6 +81,12 @@ function getRecentMonths(baseMes, count) {
   return out;
 }
 
+const FACT_MANUAL_CUTOFF_MES = '2026-05';
+function isMesBefore(a, b) {
+  if (!a || !b) return false;
+  return String(a) < String(b);
+}
+
 // ═══════════════════════════════════════════════════════════
 // Auth
 // ═══════════════════════════════════════════════════════════
@@ -579,13 +585,32 @@ module.exports = async function handler(req, res) {
           WHERE mes = ${mes}
           LIMIT 1
         `;
+        const detalle = await sql`
+          SELECT
+            c.id AS cuenta_id,
+            c.nombre_cuenta,
+            m.nombre AS modelo,
+            COALESCE(cm.suscripciones, 0) AS suscripciones
+          FROM cuentas c
+          JOIN modelos m ON m.id = c.modelo_id
+          LEFT JOIN cierre_cuenta_mes cm ON cm.cuenta_id = c.id AND cm.mes = ${mes}
+          WHERE c.activa = TRUE AND m.activa = TRUE
+          ORDER BY m.nombre ASC, c.nombre_cuenta ASC
+        `;
         const row = r.rows[0] || null;
         return res.status(200).json({
           success: true,
           data: {
             mes,
+            facturacion_manual_habilitada: isMesBefore(mes, FACT_MANUAL_CUTOFF_MES),
             facturacion_total_manual: row?.facturacion_total_manual != null ? Number(row.facturacion_total_manual) : null,
-            suscripciones_manual: row?.suscripciones_manual != null ? Number(row.suscripciones_manual) : null
+            suscripciones_manual: row?.suscripciones_manual != null ? Number(row.suscripciones_manual) : null,
+            suscripciones_por_cuenta: detalle.rows.map(d => ({
+              cuenta_id: d.cuenta_id,
+              cuenta: d.nombre_cuenta,
+              modelo: d.modelo,
+              suscripciones: Number(d.suscripciones || 0)
+            }))
           }
         });
       }
@@ -607,6 +632,13 @@ module.exports = async function handler(req, res) {
         }
         if (subs != null && (!Number.isFinite(subs) || subs < 0)) {
           return res.status(400).json({ success: false, error: 'suscripciones_manual inválido' });
+        }
+
+        if (fact != null && !isMesBefore(mes, FACT_MANUAL_CUTOFF_MES)) {
+          return res.status(400).json({
+            success: false,
+            error: `facturacion_total_manual solo se permite para meses anteriores a ${FACT_MANUAL_CUTOFF_MES}`
+          });
         }
 
         await sql`
@@ -708,13 +740,14 @@ module.exports = async function handler(req, res) {
       const equipo    = await sql`SELECT COALESCE(SUM(sueldo_mensual_usd), 0) AS sueldos FROM equipo_fijo WHERE activo = TRUE`;
 
       const totals = tot.rows[0];
-  const autoTotalCobrar = Number(totals.total_a_cobrar || 0);
-  const autoSubs = Number(totals.suscripciones || 0);
-  const manualTotalCobrar = ovRow.facturacion_total_manual != null ? Number(ovRow.facturacion_total_manual) : null;
-  const manualSubs = ovRow.suscripciones_manual != null ? Number(ovRow.suscripciones_manual) : null;
+        const autoTotalCobrar = Number(totals.total_a_cobrar || 0);
+        const autoSubs = Number(totals.suscripciones || 0);
+        const manualTotalCobrarRaw = ovRow.facturacion_total_manual != null ? Number(ovRow.facturacion_total_manual) : null;
+        const manualSubs = ovRow.suscripciones_manual != null ? Number(ovRow.suscripciones_manual) : null;
 
-  const ingresoBruto = manualTotalCobrar != null ? manualTotalCobrar : autoTotalCobrar;
-  const suscripcionesMes = manualSubs != null ? manualSubs : autoSubs;
+        const manualTotalCobrar = isMesBefore(mes, FACT_MANUAL_CUTOFF_MES) ? manualTotalCobrarRaw : null;
+        const ingresoBruto = manualTotalCobrar != null ? manualTotalCobrar : autoTotalCobrar;
+        const suscripcionesMes = manualSubs != null ? manualSubs : autoSubs;
       const gastosOtros = Number(gas.rows[0].gastos_total || 0);
       // Desde este punto, el OM agencia se carga manualmente en "gastos_mes".
       const omAgencia = 0;
@@ -725,26 +758,18 @@ module.exports = async function handler(req, res) {
       const gastosFijos = gastosOtros + omAgencia + pChatters + pSupervisor + pEquipo;
       const netoOwner = ingresoBruto - gastosFijos;
 
-      // Historial real (últimos 6 meses), con prioridad a override manual si existe
+      // Historial real de facturación emitida (últimos 6 meses)
       const mesesHist = getRecentMonths(mes, 6);
-      const histAutoRes = await sql`
-        SELECT mes, COALESCE(SUM(total_a_cobrar), 0) AS total
+      const histFactRes = await sql`
+        SELECT mes, COALESCE(SUM(fact_total), 0) AS total
         FROM cierre_cuenta_mes
         GROUP BY mes
       `;
-      const histOvRes = await sql`
-        SELECT mes, facturacion_total_manual
-        FROM resumen_mes_override
-        WHERE facturacion_total_manual IS NOT NULL
-      `;
+      const factMap = new Map(histFactRes.rows.map(rw => [String(rw.mes), Number(rw.total || 0)]));
 
-      const autoMap = new Map(histAutoRes.rows.map(rw => [String(rw.mes), Number(rw.total || 0)]));
-      const ovMap = new Map(histOvRes.rows.map(rw => [String(rw.mes), Number(rw.facturacion_total_manual || 0)]));
-
-      const ingresosHistorial = mesesHist.map(m => ({
+      const factEmitidasHistorial = mesesHist.map(m => ({
         mes: m,
-        total: ovMap.has(m) ? ovMap.get(m) : (autoMap.get(m) || 0),
-        origen: ovMap.has(m) ? 'manual' : 'auto'
+        total: factMap.get(m) || 0
       }));
 
       return res.status(200).json({
@@ -778,7 +803,7 @@ module.exports = async function handler(req, res) {
         },
         cobros: cobros.rows,
         gastos: gastosLista.rows,
-        ingresos_historial: ingresosHistorial
+        fact_emitidas_historial: factEmitidasHistorial
       });
     }
 
@@ -1371,7 +1396,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({
       success: false,
       error: 'unknown action',
-      hint: 'usa ?action=login | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl'
+      hint: 'usa ?action=login | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl'
     });
 
   } catch (error) {
