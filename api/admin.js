@@ -20,6 +20,25 @@
 const { sql } = require('@vercel/postgres');
 
 // ═══════════════════════════════════════════════════════════
+// Lazy table creation (sin migracion manual)
+// ═══════════════════════════════════════════════════════════
+let _ensuredAsignTable = false;
+async function ensureAsignTable() {
+  if (_ensuredAsignTable) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS chatter_cuenta_asignacion (
+      id SERIAL PRIMARY KEY,
+      chatter_id INTEGER NOT NULL REFERENCES chatters_admin(id) ON DELETE CASCADE,
+      cuenta_id  INTEGER NOT NULL REFERENCES cuentas(id) ON DELETE CASCADE,
+      activo BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (chatter_id, cuenta_id)
+    )
+  `;
+  _ensuredAsignTable = true;
+}
+
+// ═══════════════════════════════════════════════════════════
 // Auth
 // ═══════════════════════════════════════════════════════════
 function checkAuth(req) {
@@ -702,6 +721,49 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, data: r.rows });
     }
 
+    // ─── ASIGNACIONES chatter ↔ cuentas ──────────────────
+    // GET  ?action=chatter-cuentas[&chatter_id=N]  → lista todas o filtra por chatter
+    // POST ?action=chatter-cuentas  body: {chatter_id, cuenta_ids: [1,2,3]}  → reemplaza set
+    if (action === 'chatter-cuentas') {
+      const auth = checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureAsignTable();
+
+      if (req.method === 'GET') {
+        const chatterId = req.query.chatter_id ? Number(req.query.chatter_id) : null;
+        const r = chatterId
+          ? await sql`SELECT * FROM chatter_cuenta_asignacion WHERE chatter_id = ${chatterId} AND activo = TRUE`
+          : await sql`SELECT * FROM chatter_cuenta_asignacion WHERE activo = TRUE`;
+        return res.status(200).json({ success: true, data: r.rows });
+      }
+      if (req.method === 'POST') {
+        const b = req.body || {};
+        const chatterId = Number(b.chatter_id);
+        const cuentaIds = Array.isArray(b.cuenta_ids) ? b.cuenta_ids.map(Number).filter(Boolean) : [];
+        if (!chatterId) return res.status(400).json({ success: false, error: 'chatter_id requerido' });
+
+        await sql`BEGIN`;
+        try {
+          // Desactivar todas las asignaciones actuales
+          await sql`UPDATE chatter_cuenta_asignacion SET activo = FALSE WHERE chatter_id = ${chatterId}`;
+          // Reactivar/insertar las nuevas
+          for (const cuentaId of cuentaIds) {
+            await sql`
+              INSERT INTO chatter_cuenta_asignacion (chatter_id, cuenta_id, activo)
+              VALUES (${chatterId}, ${cuentaId}, TRUE)
+              ON CONFLICT (chatter_id, cuenta_id) DO UPDATE SET activo = TRUE
+            `;
+          }
+          await sql`COMMIT`;
+          return res.status(200).json({ success: true, count: cuentaIds.length });
+        } catch (e) {
+          await sql`ROLLBACK`;
+          throw e;
+        }
+      }
+      return res.status(405).json({ success: false, error: 'Method not allowed' });
+    }
+
     // ─── LIQUIDACIÓN del mes (todos los chatters) ──────────
     // GET ?action=liquidacion-mes&mes=YYYY-MM
     if (action === 'liquidacion-mes') {
@@ -709,6 +771,7 @@ module.exports = async function handler(req, res) {
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       const mes = req.query.mes;
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
+      await ensureAsignTable();
 
       const chatters = await sql`
         SELECT id, nombre, porcentaje_default, porcentaje_supervisor, rol, es_team_leader
@@ -718,12 +781,20 @@ module.exports = async function handler(req, res) {
       `;
 
       const cuentas = await sql`
-        SELECT cu.id, cu.nombre_cuenta, cu.tipo, m.nombre AS modelo_nombre
+        SELECT cu.id, cu.nombre_cuenta, cu.tipo, m.nombre AS modelo_nombre, m.id AS modelo_id
         FROM cuentas cu
         JOIN modelos m ON m.id = cu.modelo_id
         WHERE cu.activa = TRUE
         ORDER BY m.nombre, cu.nombre_cuenta
       `;
+
+      // Mapa de asignaciones: chatter_id → Set<cuenta_id>
+      const asign = await sql`SELECT chatter_id, cuenta_id FROM chatter_cuenta_asignacion WHERE activo = TRUE`;
+      const asignByChatter = {};
+      asign.rows.forEach(a => {
+        if (!asignByChatter[a.chatter_id]) asignByChatter[a.chatter_id] = [];
+        asignByChatter[a.chatter_id].push(a.cuenta_id);
+      });
 
       // Detalle por chatter × cuenta del mes (comision se calcula inline)
       const detalle = await sql`
@@ -761,6 +832,7 @@ module.exports = async function handler(req, res) {
         transaction_fee_pct: Number(fee),
         chatters: chatters.rows,
         cuentas: cuentas.rows,
+        asignaciones_by_chatter: asignByChatter,
         detalle_by_chatter: detByChatter,
         pagos_by_chatter: pagosByChatter,
         incentivo_mes: incRow
@@ -848,8 +920,7 @@ module.exports = async function handler(req, res) {
             envio_1 = EXCLUDED.envio_1, envio_2 = EXCLUDED.envio_2, envio_3 = EXCLUDED.envio_3,
             fecha_envio_1 = EXCLUDED.fecha_envio_1, fecha_envio_2 = EXCLUDED.fecha_envio_2, fecha_envio_3 = EXCLUDED.fecha_envio_3,
             falta_pagar = EXCLUDED.falta_pagar,
-            observaciones = EXCLUDED.observaciones,
-            updated_at = CURRENT_TIMESTAMP
+            observaciones = EXCLUDED.observaciones
         `;
 
         await sql`COMMIT`;
@@ -1114,7 +1185,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({
       success: false,
       error: 'unknown action',
-      hint: 'usa ?action=login | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-mes | gastos | tx-fee | liquidacion-mes | liquidacion-save | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl'
+      hint: 'usa ?action=login | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl'
     });
 
   } catch (error) {

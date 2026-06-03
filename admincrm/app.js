@@ -1356,6 +1356,7 @@
 
       const meta = {
         numero: numeroNext,
+        mes,
         fechaEmision,
         vencimiento,
         modeloNombreFiscal: modelo.nombre_fiscal || modelo.nombre,
@@ -1379,7 +1380,7 @@
         'top:0',
         'left:0',
         'width:720px',
-        'background:#fce7f3',
+        'background:#fff',
         'z-index:999999',
         'pointer-events:none',
         'box-shadow:0 0 0 9999px rgba(0,0,0,0.6)'
@@ -1394,10 +1395,10 @@
         await html2pdf().set({
           margin: [6, 6, 6, 6],
           filename: `Factura-${modelo.nombre.replace(/\s+/g, '')}-${mes}-${numeroNext}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
+          image: { type: 'png', quality: 1 },
           html2canvas: {
-            scale: 2,
-            backgroundColor: '#fce7f3',
+            scale: 2.5,
+            backgroundColor: '#fff',
             useCORS: true,
             logging: false
           },
@@ -1521,124 +1522,143 @@
     const fmt = (n) => n == null ? '' : sym + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const fechaFmt = (d) => d ? new Date(d + (d.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('es-AR') : '';
 
-    // SVG logo: silueta estilizada de mujer con pelo rosa (matching la imagen del ejemplo)
+    // Periodo facturado = mes del cierre (lo más legible para el cliente)
+    const periodoTexto = (() => {
+      if (!meta.mes) return '';
+      const [y, m] = meta.mes.split('-').map(Number);
+      const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      const lastDay = new Date(y, m, 0).getDate();
+      return `01 al ${lastDay} de ${meses[m-1]} ${y}`;
+    })();
+
+    // Logo SVG con COLORES SÓLIDOS (sin gradientes - html2canvas los renderiza mal)
     const logoSvg = `
-      <svg viewBox="0 0 110 110" width="110" height="110" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="hair" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#FF1F8E"/>
-            <stop offset="100%" stop-color="#9D174D"/>
-          </linearGradient>
-          <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#fce0d0"/>
-            <stop offset="100%" stop-color="#f5b89c"/>
-          </linearGradient>
-        </defs>
-        <!-- pelo trasero -->
-        <path d="M20,55 C20,30 40,15 60,18 C85,22 95,40 92,65 C90,82 80,95 70,98 L72,75 C72,65 65,60 60,60 L48,60 C42,60 38,65 38,72 L40,98 C30,92 22,80 20,55Z" fill="url(#hair)"/>
-        <!-- cara -->
-        <ellipse cx="58" cy="52" rx="18" ry="22" fill="url(#skin)"/>
-        <!-- cuello/torso -->
-        <path d="M48,70 L48,82 C48,86 52,90 58,90 C64,90 68,86 68,82 L68,70 Z" fill="url(#skin)"/>
-        <!-- flequillo/pelo frontal rosa -->
-        <path d="M40,45 C40,30 50,22 60,22 C72,22 80,32 80,42 C80,38 76,35 72,36 C68,28 56,28 50,36 C46,36 40,40 40,45Z" fill="url(#hair)"/>
-        <!-- mechón al costado -->
-        <path d="M76,40 C82,42 86,55 84,65 C82,75 75,82 70,84 L72,72 C72,65 78,55 76,40Z" fill="url(#hair)"/>
-        <!-- ojo -->
-        <ellipse cx="55" cy="52" rx="1.6" ry="2" fill="#1a1a1a"/>
-        <ellipse cx="65" cy="52" rx="1.6" ry="2" fill="#1a1a1a"/>
-        <!-- labios -->
-        <path d="M55,62 Q58,65 62,62" stroke="#be185d" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 120 120" width="100" height="100" xmlns="http://www.w3.org/2000/svg" style="display:block">
+        <!-- Pelo trasero rosa fuerte -->
+        <path d="M22,58 C22,32 42,16 62,18 C88,22 100,42 96,68 C93,86 82,98 70,102 L72,76 C72,66 65,60 58,60 L46,60 C40,60 36,66 36,74 L40,102 C30,94 22,82 22,58Z" fill="#FF1F8E"/>
+        <!-- Cara -->
+        <ellipse cx="58" cy="50" rx="19" ry="23" fill="#FBD3B8"/>
+        <!-- Cuello -->
+        <path d="M48,70 L48,84 C48,88 52,92 58,92 C64,92 68,88 68,84 L68,70 Z" fill="#FBD3B8"/>
+        <!-- Pelo frontal/flequillo -->
+        <path d="M40,46 C40,28 52,20 62,20 C76,20 84,32 84,46 C82,38 76,34 72,36 C68,26 54,28 48,38 C44,38 40,42 40,46Z" fill="#9D174D"/>
+        <!-- Mechón largo lateral derecho -->
+        <path d="M78,42 C86,46 88,60 86,72 C84,82 76,90 70,92 L72,76 C72,66 80,55 78,42Z" fill="#FF1F8E"/>
+        <!-- Mechón izquierdo (puntas onduladas) -->
+        <path d="M30,72 C24,80 24,92 28,100 L36,102 L34,80 Z" fill="#9D174D"/>
+        <!-- Hombros gradient pseudo -->
+        <path d="M30,98 L88,98 C92,98 96,104 96,110 L24,110 C24,104 26,98 30,98Z" fill="#FF1F8E"/>
+        <!-- Ojos -->
+        <ellipse cx="53" cy="50" rx="1.6" ry="2.2" fill="#1a1a1a"/>
+        <ellipse cx="65" cy="50" rx="1.6" ry="2.2" fill="#1a1a1a"/>
+        <!-- Labios -->
+        <path d="M54,60 Q59,64 64,60" stroke="#be185d" stroke-width="2.2" fill="none" stroke-linecap="round"/>
       </svg>
     `;
+
+    // Color para texto label (contraste fuerte sobre rosa claro)
+    const LABEL_COLOR = '#6b1c4a';   // pink-900, oscuro, muy legible
+    const VALUE_COLOR = '#0f172a';   // slate-950, casi negro
+    const ACCENT      = '#be185d';   // pink-700, magenta de marca
 
     const itemsHtml = items.map(it => {
       const s = itemLabelStyle(it.descripcion);
       return `
         <tr>
-          <td style="padding:10px 12px;background:${s.bg};color:${s.fg};font-weight:700;border:1px solid #fff;text-align:center">${escapeHtml(it.descripcion)}</td>
-          <td style="padding:10px 12px;text-align:right;color:#111;font-weight:600;border:1px solid #f3f4f6">${fmt(it.monto)}</td>
-          <td style="padding:10px 12px;text-align:center;color:#6b7280;border:1px solid #f3f4f6">${it.cantidad != null ? it.cantidad : ''}</td>
-          <td style="padding:10px 12px;color:#831843;font-weight:600;border:1px solid #f3f4f6;text-align:center">${escapeHtml(it.observ || '')}</td>
-          <td style="padding:10px 12px;text-align:right;color:#111;font-weight:700;border:1px solid #f3f4f6">${fmt(it.monto_agencia)}</td>
+          <td style="padding:10px 12px;background:${s.bg};color:${s.fg};font-weight:800;border:1px solid #fff;text-align:center;font-size:13px">${escapeHtml(it.descripcion)}</td>
+          <td style="padding:10px 12px;text-align:right;color:${VALUE_COLOR};font-weight:700;border:1px solid #e5e7eb;font-size:13px">${fmt(it.monto)}</td>
+          <td style="padding:10px 12px;text-align:center;color:${VALUE_COLOR};border:1px solid #e5e7eb;font-size:13px">${it.cantidad != null ? it.cantidad : ''}</td>
+          <td style="padding:10px 12px;color:${ACCENT};font-weight:700;border:1px solid #e5e7eb;text-align:center;font-size:12px">${escapeHtml(it.observ || '')}</td>
+          <td style="padding:10px 12px;text-align:right;color:${VALUE_COLOR};font-weight:800;border:1px solid #e5e7eb;font-size:13px">${fmt(it.monto_agencia)}</td>
         </tr>
       `;
     }).join('');
 
-    // Filas vacías para alcanzar mínimo 5 ítems (look idéntico al ejemplo)
-    const emptyRows = Math.max(0, 5 - items.length);
+    const emptyRows = Math.max(0, 4 - items.length);
     const emptyRowsHtml = Array(emptyRows).fill(0).map(() => `
       <tr>
-        <td style="padding:14px;background:#fff;border:1px solid #f3f4f6">&nbsp;</td>
-        <td style="padding:14px;background:#fff;border:1px solid #f3f4f6"></td>
-        <td style="padding:14px;background:#fff;border:1px solid #f3f4f6"></td>
-        <td style="padding:14px;background:#fff;border:1px solid #f3f4f6"></td>
-        <td style="padding:14px;background:#fff;border:1px solid #f3f4f6"></td>
+        <td style="padding:12px;background:#fafafa;border:1px solid #e5e7eb">&nbsp;</td>
+        <td style="padding:12px;background:#fff;border:1px solid #e5e7eb"></td>
+        <td style="padding:12px;background:#fff;border:1px solid #e5e7eb"></td>
+        <td style="padding:12px;background:#fff;border:1px solid #e5e7eb"></td>
+        <td style="padding:12px;background:#fff;border:1px solid #e5e7eb"></td>
       </tr>
     `).join('');
 
     return `
-<div style="font-family:Arial,sans-serif;background:#fce7f3;color:#111;padding:18px 22px;width:720px;box-sizing:border-box">
+<div style="font-family:Arial,Helvetica,sans-serif;background:#fff;color:${VALUE_COLOR};padding:24px 28px;width:720px;box-sizing:border-box">
 
-  <!-- HEADER: brand + logo -->
-  <table style="width:100%;border-collapse:collapse;margin-bottom:14px">
+  <!-- HEADER con borde rosa: brand izq + logo der -->
+  <table style="width:100%;border-collapse:collapse;margin-bottom:18px;background:#fdf2f8;border:2px solid ${ACCENT};border-radius:8px">
     <tr>
-      <td style="vertical-align:middle;padding:0">
-        <div style="font-size:30px;font-weight:800;color:#be185d;margin-bottom:6px;letter-spacing:-0.5px">BraveGirls Agency LLC</div>
-        <div style="font-size:12px;color:#374151;line-height:1.55;font-weight:600">
+      <td style="vertical-align:middle;padding:18px 22px">
+        <div style="font-size:26px;font-weight:900;color:${ACCENT};margin-bottom:6px;letter-spacing:-0.5px;line-height:1.1">BraveGirls Agency LLC</div>
+        <div style="font-size:11.5px;color:#374151;line-height:1.6;font-weight:600">
           1401 Pennsylvania Ave. STE 105,<br>
           19806 Wilmington. Delaware (EE.UU). EIN: 38-4349826<br>
           (34) 675 32 80 74 — N° de Licencia 20250971778.
         </div>
       </td>
-      <td style="width:130px;vertical-align:middle;text-align:right;padding:0">
+      <td style="width:120px;vertical-align:middle;text-align:right;padding:12px 22px 12px 0">
         ${logoSvg}
       </td>
     </tr>
   </table>
 
-  <!-- TÍTULO -->
-  <div style="font-size:36px;color:#be185d;margin:14px 0 14px;font-weight:800;letter-spacing:-1px">Gestión de cuenta</div>
-
-  <!-- INFO BOX -->
-  <table style="width:100%;border-collapse:collapse;border:1px solid #be185d;margin-bottom:14px;background:#fff;font-size:13px">
+  <!-- TÍTULO + PERIODO -->
+  <table style="width:100%;border-collapse:collapse;margin:0 0 14px">
     <tr>
-      <td colspan="3" style="padding:8px 12px;background:#fce7f3;color:#831843;font-weight:700">
-        Fecha de emisión: <span style="color:#be185d">${fechaFmt(meta.fechaEmision)}</span>
+      <td style="vertical-align:bottom">
+        <div style="font-size:34px;color:${ACCENT};font-weight:900;letter-spacing:-1px;line-height:1">Gestión de cuenta</div>
+      </td>
+      <td style="vertical-align:bottom;text-align:right;padding-bottom:4px">
+        ${periodoTexto ? `
+          <div style="display:inline-block;background:${ACCENT};color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase">
+            Período facturado · ${periodoTexto}
+          </div>` : ''}
       </td>
     </tr>
-    <tr style="background:#fce7f3;color:#831843">
-      <td style="padding:8px 12px;font-weight:700;border-top:1px solid #f9a8d4">A la atención de</td>
-      <td style="padding:8px 12px;font-weight:700;width:130px;border-top:1px solid #f9a8d4;border-left:1px solid #f9a8d4">Pago por</td>
-      <td style="padding:8px 12px;font-weight:700;width:140px;border-top:1px solid #f9a8d4;border-left:1px solid #f9a8d4">N.º de factura</td>
+  </table>
+
+  <!-- INFO BOX -->
+  <table style="width:100%;border-collapse:collapse;border:1.5px solid ${ACCENT};margin-bottom:14px;background:#fff;font-size:12.5px">
+    <tr>
+      <td colspan="3" style="padding:10px 14px;background:#fce7f3;color:${LABEL_COLOR};font-weight:800;font-size:13px;border-bottom:1px solid #f9a8d4">
+        Fecha de emisión: <span style="color:${ACCENT}">${fechaFmt(meta.fechaEmision)}</span>
+      </td>
     </tr>
-    <tr style="color:#831843;background:#fff">
-      <td style="padding:9px 12px;font-weight:700">${escapeHtml(meta.modeloNombreFiscal)}${meta.modeloIdentificador ? ' — ' + escapeHtml(meta.modeloIdentificador) : ''}</td>
-      <td style="padding:9px 12px;border-left:1px solid #f9a8d4;font-weight:600">${escapeHtml(meta.pagoPor)}</td>
-      <td style="padding:9px 12px;border-left:1px solid #f9a8d4;font-weight:600">${meta.numero}</td>
+    <tr style="background:#fce7f3">
+      <td style="padding:9px 14px;font-weight:800;color:${LABEL_COLOR};border-bottom:1px solid #f9a8d4">A la atención de</td>
+      <td style="padding:9px 14px;font-weight:800;color:${LABEL_COLOR};width:140px;border-bottom:1px solid #f9a8d4;border-left:1px solid #f9a8d4">Pago por</td>
+      <td style="padding:9px 14px;font-weight:800;color:${LABEL_COLOR};width:150px;border-bottom:1px solid #f9a8d4;border-left:1px solid #f9a8d4">N.º de factura</td>
     </tr>
-    ${meta.modeloDireccion ? `<tr style="background:#fff"><td colspan="3" style="padding:9px 12px;color:#831843;font-weight:600;border-top:1px solid #fce7f3">${escapeHtml(meta.modeloDireccion)}</td></tr>` : ''}
-    <tr style="background:#fce7f3;color:#831843">
-      <td style="padding:8px 12px;font-weight:700;border-top:1px solid #f9a8d4">En concepto de:</td>
-      <td style="padding:8px 12px;font-weight:700;border-top:1px solid #f9a8d4;border-left:1px solid #f9a8d4">% de fact</td>
-      <td style="padding:8px 12px;font-weight:700;border-top:1px solid #f9a8d4;border-left:1px solid #f9a8d4">Fecha de vencimiento</td>
+    <tr style="background:#fff">
+      <td style="padding:10px 14px;font-weight:700;color:${VALUE_COLOR};border-bottom:1px solid #fce7f3">${escapeHtml(meta.modeloNombreFiscal)}${meta.modeloIdentificador ? ' — ' + escapeHtml(meta.modeloIdentificador) : ''}</td>
+      <td style="padding:10px 14px;border-left:1px solid #f9a8d4;font-weight:700;color:${VALUE_COLOR};border-bottom:1px solid #fce7f3">${escapeHtml(meta.pagoPor)}</td>
+      <td style="padding:10px 14px;border-left:1px solid #f9a8d4;font-weight:800;color:${ACCENT};border-bottom:1px solid #fce7f3;font-size:14px">${meta.numero}</td>
     </tr>
-    <tr style="color:#831843;background:#fff">
-      <td style="padding:9px 12px;font-weight:700">${escapeHtml(meta.concepto)}</td>
-      <td style="padding:9px 12px;border-left:1px solid #f9a8d4;font-weight:600">${meta.porcentaje}%</td>
-      <td style="padding:9px 12px;border-left:1px solid #f9a8d4;font-weight:600">${fechaFmt(meta.vencimiento)}</td>
+    ${meta.modeloDireccion ? `<tr style="background:#fff"><td colspan="3" style="padding:9px 14px;color:${VALUE_COLOR};font-weight:600;border-bottom:1px solid #fce7f3">${escapeHtml(meta.modeloDireccion)}</td></tr>` : ''}
+    <tr style="background:#fce7f3">
+      <td style="padding:9px 14px;font-weight:800;color:${LABEL_COLOR};border-bottom:1px solid #f9a8d4">En concepto de:</td>
+      <td style="padding:9px 14px;font-weight:800;color:${LABEL_COLOR};border-bottom:1px solid #f9a8d4;border-left:1px solid #f9a8d4">% de fact</td>
+      <td style="padding:9px 14px;font-weight:800;color:${LABEL_COLOR};border-bottom:1px solid #f9a8d4;border-left:1px solid #f9a8d4">Fecha de vencimiento</td>
+    </tr>
+    <tr style="background:#fff">
+      <td style="padding:10px 14px;font-weight:700;color:${VALUE_COLOR}">${escapeHtml(meta.concepto)}</td>
+      <td style="padding:10px 14px;border-left:1px solid #f9a8d4;font-weight:800;color:${ACCENT}">${meta.porcentaje}%</td>
+      <td style="padding:10px 14px;border-left:1px solid #f9a8d4;font-weight:700;color:${VALUE_COLOR}">${fechaFmt(meta.vencimiento)}</td>
     </tr>
   </table>
 
   <!-- ITEMS TABLE -->
-  <table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px;border:1px solid #be185d">
+  <table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px;border:1.5px solid ${ACCENT}">
     <thead>
-      <tr style="background:#fce7f3">
-        <th style="padding:11px 12px;text-align:center;color:#be185d;font-size:14px;font-weight:800;border:1px solid #f9a8d4">Descripcion</th>
-        <th style="padding:11px 12px;text-align:center;color:#be185d;font-size:14px;font-weight:800;width:110px;border:1px solid #f9a8d4">Monto</th>
-        <th style="padding:11px 12px;text-align:center;color:#be185d;font-size:14px;font-weight:800;width:80px;border:1px solid #f9a8d4">Cantidad</th>
-        <th style="padding:11px 12px;text-align:center;color:#be185d;font-size:14px;font-weight:800;width:200px;border:1px solid #f9a8d4">OBSERV</th>
-        <th style="padding:11px 12px;text-align:center;color:#be185d;font-size:14px;font-weight:800;width:110px;border:1px solid #f9a8d4">% Agencia</th>
+      <tr style="background:${ACCENT}">
+        <th style="padding:12px;text-align:center;color:#fff;font-size:13px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase">Descripción</th>
+        <th style="padding:12px;text-align:center;color:#fff;font-size:13px;font-weight:800;width:100px;letter-spacing:0.04em;text-transform:uppercase">Monto</th>
+        <th style="padding:12px;text-align:center;color:#fff;font-size:13px;font-weight:800;width:72px;letter-spacing:0.04em;text-transform:uppercase">Cant.</th>
+        <th style="padding:12px;text-align:center;color:#fff;font-size:13px;font-weight:800;width:190px;letter-spacing:0.04em;text-transform:uppercase">Observ.</th>
+        <th style="padding:12px;text-align:center;color:#fff;font-size:13px;font-weight:800;width:110px;letter-spacing:0.04em;text-transform:uppercase">% Agencia</th>
       </tr>
     </thead>
     <tbody>
@@ -1648,29 +1668,34 @@
   </table>
 
   <!-- TOTALES -->
-  <table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:13px">
+  <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13px">
     <tr>
       <td style="width:55%"></td>
-      <td style="padding:8px 12px;text-align:right;color:#831843;font-weight:700;font-size:14px">Subtotal</td>
-      <td style="padding:8px 12px;text-align:right;color:#111;font-weight:800;width:120px;font-size:14px">${fmt(subtotal)}</td>
+      <td style="padding:8px 14px;text-align:right;color:${LABEL_COLOR};font-weight:800;font-size:14px;border-bottom:1px solid #fce7f3">Subtotal</td>
+      <td style="padding:8px 14px;text-align:right;color:${VALUE_COLOR};font-weight:800;width:130px;font-size:14px;border-bottom:1px solid #fce7f3">${fmt(subtotal)}</td>
     </tr>
     <tr>
       <td></td>
-      <td style="padding:6px 12px;text-align:right;color:#831843;font-weight:700">IVA</td>
-      <td style="padding:6px 12px;text-align:right;color:#111;font-weight:700">${fmt(iva)}</td>
+      <td style="padding:6px 14px;text-align:right;color:${LABEL_COLOR};font-weight:700;border-bottom:1px solid #fce7f3">IVA</td>
+      <td style="padding:6px 14px;text-align:right;color:${VALUE_COLOR};font-weight:700;border-bottom:1px solid #fce7f3">${fmt(iva)}</td>
     </tr>
     <tr>
       <td></td>
-      <td></td>
-      <td style="padding:10px 12px;text-align:right;color:#be185d;font-weight:800;font-size:28px;letter-spacing:-1px">${fmt(total)}</td>
+      <td style="padding:14px 14px 8px;text-align:right;color:${ACCENT};font-weight:900;font-size:18px;letter-spacing:0.02em;text-transform:uppercase">Total a pagar</td>
+      <td style="padding:14px 14px 8px;text-align:right;color:${ACCENT};font-weight:900;font-size:30px;letter-spacing:-1px;line-height:1">${fmt(total)}</td>
     </tr>
   </table>
 
   ${meta.serviciosPie ? `
-    <div style="margin-top:10px;padding:10px 14px;background:#fff;border:1px solid #f9a8d4;border-radius:6px;color:#831843;font-size:11px;line-height:1.5;font-weight:600">
-      <strong style="color:#be185d">Servicios incluidos:</strong> ${escapeHtml(meta.serviciosPie)}
+    <div style="margin-top:18px;padding:12px 16px;background:#fdf2f8;border-left:4px solid ${ACCENT};color:${LABEL_COLOR};font-size:11.5px;line-height:1.5;font-weight:600">
+      <strong style="color:${ACCENT};text-transform:uppercase;letter-spacing:0.06em;font-size:11px">Servicios incluidos:</strong><br>
+      ${escapeHtml(meta.serviciosPie)}
     </div>
   ` : ''}
+
+  <div style="margin-top:14px;text-align:center;color:#9ca3af;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase">
+    BraveGirls Agency LLC · Delaware · ${new Date().getFullYear()}
+  </div>
 
 </div>`;
   }
@@ -1729,7 +1754,7 @@
             const html = rr.data.pdf_html_snapshot;
             if (!html) { toast('Esta factura no tiene snapshot HTML', 'error'); return; }
             const wrapper = document.createElement('div');
-            wrapper.style.cssText = 'position:fixed;top:0;left:0;width:720px;background:#fce7f3;z-index:999999;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,0.6)';
+            wrapper.style.cssText = 'position:fixed;top:0;left:0;width:720px;background:#fff;z-index:999999;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,0.6)';
             wrapper.innerHTML = html;
             document.body.appendChild(wrapper);
             const prevOverflow = document.body.style.overflow;
@@ -1739,8 +1764,8 @@
               await html2pdf().set({
                 margin: [6, 6, 6, 6],
                 filename: `Factura-${rr.data.entidad_id}-${rr.data.mes}-${rr.data.numero}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, backgroundColor: '#fce7f3', useCORS: true },
+                image: { type: 'png', quality: 1 },
+                html2canvas: { scale: 2.5, backgroundColor: '#fff', useCORS: true },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
                 pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
               }).from(wrapper.firstElementChild).save();
@@ -1939,7 +1964,7 @@
 
   function drawLiquidacionMain(chatter) {
     const main = document.getElementById('liq-main');
-    const { cuentas, detalle_by_chatter, pagos_by_chatter, transaction_fee_pct, incentivo_mes } = liqState;
+    const { cuentas, detalle_by_chatter, pagos_by_chatter, transaction_fee_pct, incentivo_mes, asignaciones_by_chatter } = liqState;
     const detalle = detalle_by_chatter[chatter.id] || [];
     const pago = pagos_by_chatter[chatter.id] || {};
     const detByCuenta = {};
@@ -1948,7 +1973,13 @@
     const incIndiv = Array.isArray(pago.incentivos_individuales) ? pago.incentivos_individuales : [];
     const esGanadorIncentivoMes = incentivo_mes && incentivo_mes.chatter_id === chatter.id;
 
-    const cuentasRows = cuentas.map(cu => {
+    // Filtro por asignación del chatter. Si no hay asignaciones → mostrar todas (backward compat)
+    const asignSet = new Set(asignaciones_by_chatter?.[chatter.id] || []);
+    const cuentasFiltradas = asignSet.size > 0
+      ? cuentas.filter(c => asignSet.has(c.id))
+      : cuentas;
+
+    const cuentasRows = cuentasFiltradas.map(cu => {
       const d = detByCuenta[cu.id] || {};
       const fact = Number(d.fact_chatter || 0);
       const pct = Number(d.porcentaje_comision != null ? d.porcentaje_comision : (chatter.porcentaje_default || 15));
@@ -1979,18 +2010,21 @@
             <h2 style="margin:0;font-family:var(--font-display)">${chatter.nombre}</h2>
             <div class="muted" style="font-size:.9rem">% default ${chatter.porcentaje_default || 15} · % supervisor ${chatter.porcentaje_supervisor || 5} · ${chatter.rol || 'chatter'}${chatter.es_team_leader ? ' · Team Leader' : ''}</div>
           </div>
-          <button class="btn-primary" id="liq-save-btn" style="width:auto;padding:12px 22px;margin:0">💾 Guardar liquidación</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn-secondary" id="liq-assign-btn" style="width:auto;padding:12px 18px;margin:0" title="Elegir qué cuentas trabaja este chatter">⚙ Cuentas asignadas (${asignSet.size || 'todas'})</button>
+            <button class="btn-primary" id="liq-save-btn" style="width:auto;padding:12px 22px;margin:0">💾 Guardar liquidación</button>
+          </div>
         </div>
       </div>
 
       <div class="card">
-        <h3>Comisión por cuenta</h3>
+        <h3>Comisión por cuenta · <span class="muted" style="font-size:0.85rem;font-weight:400">${cuentasFiltradas.length} cuenta${cuentasFiltradas.length === 1 ? '' : 's'}</span></h3>
         <div class="table-wrap">
           <table class="liq-table">
             <thead>
               <tr><th>Cuenta</th><th>Facturación chatter</th><th>%</th><th style="text-align:right">Comisión</th><th>Observación</th></tr>
             </thead>
-            <tbody>${cuentasRows}</tbody>
+            <tbody>${cuentasRows || '<tr><td colspan="5" class="empty-state">Sin cuentas asignadas. Tocá "⚙ Cuentas asignadas" arriba para configurar.</td></tr>'}</tbody>
           </table>
         </div>
       </div>
@@ -2118,7 +2152,93 @@
 
     document.getElementById('liq-save-btn').addEventListener('click', () => saveLiquidacion(chatter));
     document.getElementById('liq-pdf-btn').addEventListener('click', () => generarLiquidacionPDF(chatter));
+    document.getElementById('liq-assign-btn').addEventListener('click', () => openAsignacionModal(chatter));
     recalc();
+  }
+
+  // Modal para asignar cuentas a un chatter
+  function openAsignacionModal(chatter) {
+    const { cuentas, asignaciones_by_chatter } = liqState;
+    const asignActuales = new Set(asignaciones_by_chatter?.[chatter.id] || []);
+    const hayAsignaciones = asignActuales.size > 0;
+
+    // Agrupar cuentas por modelo
+    const porModelo = {};
+    cuentas.forEach(c => {
+      if (!porModelo[c.modelo_nombre]) porModelo[c.modelo_nombre] = [];
+      porModelo[c.modelo_nombre].push(c);
+    });
+
+    const gruposHtml = Object.keys(porModelo).sort().map(modelo => {
+      const cuentasMod = porModelo[modelo];
+      const checkboxes = cuentasMod.map(c => {
+        const checked = asignActuales.has(c.id) || !hayAsignaciones ? 'checked' : '';
+        return `
+          <label class="asign-row">
+            <input type="checkbox" class="asign-chk" value="${c.id}" ${checked}>
+            <span class="asign-cuenta">${c.nombre_cuenta}${c.tipo ? ` <span class="pill mini">${c.tipo}</span>` : ''}</span>
+          </label>
+        `;
+      }).join('');
+      return `
+        <div class="asign-grupo">
+          <div class="asign-modelo">${modelo}</div>
+          ${checkboxes}
+        </div>
+      `;
+    }).join('');
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal" style="max-width:680px">
+        <div class="modal-header">
+          <div class="modal-title">⚙ Cuentas asignadas · ${chatter.nombre}</div>
+          <button class="modal-close" id="asign-close" type="button">✕</button>
+        </div>
+        <div style="padding:18px 22px 22px">
+          <p class="muted" style="font-size:0.9rem;margin:0 0 12px">
+            Tildá solo las cuentas en las que este chatter trabaja. Las desmarcadas no van a aparecer en su liquidación.
+            ${!hayAsignaciones ? '<br><strong style="color:var(--gold)">Hoy todas están activas por default.</strong>' : ''}
+          </p>
+
+          <div style="display:flex;gap:8px;margin:14px 0">
+            <button class="btn-ghost-small" id="asign-all" type="button">Tildar todas</button>
+            <button class="btn-ghost-small" id="asign-none" type="button">Destildar todas</button>
+          </div>
+
+          <div class="asign-list">${gruposHtml}</div>
+
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+            <button class="btn-secondary" id="asign-cancel" type="button" style="width:auto;padding:10px 18px;margin:0">Cancelar</button>
+            <button class="btn-primary" id="asign-save" type="button" style="width:auto;padding:10px 20px;margin:0">💾 Guardar asignaciones</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+
+    const close = () => backdrop.remove();
+    backdrop.querySelector('#asign-close').addEventListener('click', close);
+    backdrop.querySelector('#asign-cancel').addEventListener('click', close);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+
+    backdrop.querySelector('#asign-all').addEventListener('click', () => {
+      backdrop.querySelectorAll('.asign-chk').forEach(c => c.checked = true);
+    });
+    backdrop.querySelector('#asign-none').addEventListener('click', () => {
+      backdrop.querySelectorAll('.asign-chk').forEach(c => c.checked = false);
+    });
+
+    backdrop.querySelector('#asign-save').addEventListener('click', async () => {
+      const cuenta_ids = Array.from(backdrop.querySelectorAll('.asign-chk:checked')).map(c => Number(c.value));
+      try {
+        await api('chatter-cuentas', { method: 'POST', body: { chatter_id: chatter.id, cuenta_ids } });
+        toast(`${cuenta_ids.length} cuenta${cuenta_ids.length === 1 ? '' : 's'} asignada${cuenta_ids.length === 1 ? '' : 's'} a ${chatter.nombre}`, 'success');
+        close();
+        renderLiquidacion(document.getElementById('view'));
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    });
   }
 
   async function saveLiquidacion(chatter) {
@@ -2190,57 +2310,96 @@
     const fee = Number(liqState.transaction_fee_pct);
     const neto = bruto * (1 - fee / 100);
 
-    const html = `
-<div style="font-family:Inter,sans-serif;padding:30px;color:#1a1a1a;background:#fff;width:720px">
-  <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #be185d;padding-bottom:16px">
-    <div>
-      <div style="font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:800;color:#be185d">BraveGirls Agency</div>
-      <div style="color:#6b7280;font-size:0.85rem">Liquidación Chatter · Mes ${liqState.mes}</div>
-    </div>
-    <div style="text-align:right">
-      <div style="font-size:0.75rem;color:#9ca3af;text-transform:uppercase;letter-spacing:.1em">Chatter</div>
-      <div style="font-size:1.4rem;font-weight:800;color:#1a1a1a">${chatter.nombre}</div>
-    </div>
-  </div>
+    // Periodo
+    const [py, pm] = (liqState.mes || '').split('-').map(Number);
+    const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const periodoTxt = py && pm ? `${meses[pm-1]} ${py}` : (liqState.mes || '');
+    const lastDay = py && pm ? new Date(py, pm, 0).getDate() : 31;
+    const periodoFull = py && pm ? `01 al ${lastDay} de ${meses[pm-1]} ${py}` : '';
 
-  <table style="width:100%;border-collapse:collapse;margin-top:24px">
+    const fechaHoy = new Date().toLocaleDateString('es-AR');
+
+    const html = `
+<div style="font-family:Arial,Helvetica,sans-serif;padding:28px 32px;color:#0f172a;background:#fff;width:720px;box-sizing:border-box">
+
+  <!-- HEADER -->
+  <table style="width:100%;border-collapse:collapse;margin-bottom:18px;background:#fdf2f8;border:2px solid #be185d;border-radius:8px">
+    <tr>
+      <td style="vertical-align:middle;padding:18px 22px">
+        <div style="font-size:24px;font-weight:900;color:#be185d;letter-spacing:-0.5px;line-height:1.1">BraveGirls Agency LLC</div>
+        <div style="font-size:11px;color:#374151;margin-top:5px;font-weight:600">Liquidación de Chatter · Documento interno</div>
+      </td>
+      <td style="vertical-align:middle;text-align:right;padding:18px 22px;width:200px">
+        <div style="font-size:10px;color:#6b1c4a;text-transform:uppercase;letter-spacing:0.1em;font-weight:800">Emisión</div>
+        <div style="font-size:13px;color:#0f172a;font-weight:700;margin-top:2px">${fechaHoy}</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- TÍTULO + PERIODO + CHATTER -->
+  <table style="width:100%;border-collapse:collapse;margin-bottom:14px">
+    <tr>
+      <td style="vertical-align:bottom">
+        <div style="font-size:30px;color:#be185d;font-weight:900;letter-spacing:-1px;line-height:1">Liquidación</div>
+        <div style="font-size:13px;color:#0f172a;font-weight:700;margin-top:4px">Chatter: <strong style="color:#be185d">${escapeHtml(chatter.nombre)}</strong></div>
+      </td>
+      <td style="vertical-align:bottom;text-align:right">
+        <div style="display:inline-block;background:#be185d;color:#fff;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase">
+          Período · ${periodoFull || periodoTxt}
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- TABLA COMISIONES -->
+  <table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px;border:1.5px solid #be185d;margin-top:8px">
     <thead>
-      <tr style="background:#fce7f3;color:#be185d">
-        <th style="padding:10px;text-align:left;font-size:0.8rem">Cuenta</th>
-        <th style="padding:10px;text-align:right;font-size:0.8rem">Facturación</th>
-        <th style="padding:10px;text-align:right;font-size:0.8rem">%</th>
-        <th style="padding:10px;text-align:right;font-size:0.8rem">Comisión</th>
+      <tr style="background:#be185d">
+        <th style="padding:11px;text-align:left;color:#fff;font-size:12px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase">Cuenta</th>
+        <th style="padding:11px;text-align:right;color:#fff;font-size:12px;font-weight:800;width:120px;letter-spacing:0.04em;text-transform:uppercase">Facturación</th>
+        <th style="padding:11px;text-align:right;color:#fff;font-size:12px;font-weight:800;width:60px;letter-spacing:0.04em;text-transform:uppercase">%</th>
+        <th style="padding:11px;text-align:right;color:#fff;font-size:12px;font-weight:800;width:120px;letter-spacing:0.04em;text-transform:uppercase">Comisión</th>
       </tr>
     </thead>
     <tbody>
       ${rows.map(r => `
-        <tr style="border-bottom:1px solid #fbcfe8">
-          <td style="padding:10px;font-size:0.85rem">${r.cuenta}</td>
-          <td style="padding:10px;text-align:right;font-size:0.85rem">${fmtMoney(r.fact)}</td>
-          <td style="padding:10px;text-align:right;font-size:0.85rem">${r.pct}%</td>
-          <td style="padding:10px;text-align:right;font-weight:700;font-size:0.85rem">${fmtMoney(r.com)}</td>
+        <tr style="background:#fff;border-bottom:1px solid #fce7f3">
+          <td style="padding:10px 11px;font-size:12.5px;color:#0f172a;font-weight:600">${escapeHtml(r.cuenta)}</td>
+          <td style="padding:10px 11px;text-align:right;font-size:12.5px;color:#0f172a">${fmtMoney(r.fact)}</td>
+          <td style="padding:10px 11px;text-align:right;font-size:12.5px;color:#0f172a">${r.pct}%</td>
+          <td style="padding:10px 11px;text-align:right;font-weight:800;font-size:13px;color:#0f172a">${fmtMoney(r.com)}</td>
         </tr>
       `).join('')}
-      ${tl ? `<tr style="border-bottom:1px solid #fbcfe8"><td colspan="3" style="padding:10px;font-size:0.85rem">Team Leader (bonus fijo)</td><td style="padding:10px;text-align:right;font-weight:700;font-size:0.85rem">${fmtMoney(tl)}</td></tr>` : ''}
-      ${incs.map(i => `<tr style="border-bottom:1px solid #fbcfe8"><td colspan="3" style="padding:10px;font-size:0.85rem">${i.desc}</td><td style="padding:10px;text-align:right;font-weight:700;font-size:0.85rem">${fmtMoney(i.monto)}</td></tr>`).join('')}
-      ${incMes ? `<tr style="border-bottom:1px solid #fbcfe8"><td colspan="3" style="padding:10px;font-size:0.85rem">Incentivo del mes</td><td style="padding:10px;text-align:right;font-weight:700;font-size:0.85rem">${fmtMoney(incMes)}</td></tr>` : ''}
+      ${tl ? `<tr style="background:#fffbeb;border-bottom:1px solid #fde68a"><td colspan="3" style="padding:10px 11px;font-size:12.5px;color:#92400e;font-weight:700">⭐ Team Leader (bonus fijo)</td><td style="padding:10px 11px;text-align:right;font-weight:800;font-size:13px;color:#92400e">${fmtMoney(tl)}</td></tr>` : ''}
+      ${incs.map(i => `<tr style="background:#f5f3ff;border-bottom:1px solid #ddd6fe"><td colspan="3" style="padding:10px 11px;font-size:12.5px;color:#4c1d95;font-weight:700">🎁 ${escapeHtml(i.desc)}</td><td style="padding:10px 11px;text-align:right;font-weight:800;font-size:13px;color:#4c1d95">${fmtMoney(i.monto)}</td></tr>`).join('')}
+      ${incMes ? `<tr style="background:#ecfdf5;border-bottom:1px solid #a7f3d0"><td colspan="3" style="padding:10px 11px;font-size:12.5px;color:#064e3b;font-weight:700">🏆 Incentivo del mes</td><td style="padding:10px 11px;text-align:right;font-weight:800;font-size:13px;color:#064e3b">${fmtMoney(incMes)}</td></tr>` : ''}
+      ${rows.length === 0 && !tl && incs.length === 0 && !incMes ? `<tr><td colspan="4" style="padding:24px;text-align:center;color:#9ca3af;font-size:12px">Sin items facturables este período.</td></tr>` : ''}
     </tbody>
   </table>
 
-  <div style="margin-top:20px;background:#fce7f3;padding:18px;border-radius:8px">
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-      <span style="color:#6b7280">Total bruto</span>
-      <span style="font-weight:700">${fmtMoney(bruto)}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-      <span style="color:#6b7280">Transaction fee (${fee}%)</span>
-      <span style="font-weight:700;color:#dc2626">−${fmtMoney(bruto - neto)}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;border-top:2px solid #be185d;padding-top:12px;margin-top:10px">
-      <span style="font-size:1.2rem;font-weight:800;color:#be185d">NETO A PAGAR</span>
-      <span style="font-size:1.6rem;font-weight:800;color:#be185d">${fmtMoney(neto)}</span>
-    </div>
+  <!-- TOTALES -->
+  <table style="width:100%;border-collapse:collapse;margin-top:14px">
+    <tr>
+      <td style="width:55%"></td>
+      <td style="padding:8px 14px;text-align:right;color:#6b1c4a;font-weight:800;font-size:13px;border-bottom:1px solid #fce7f3">Total bruto</td>
+      <td style="padding:8px 14px;text-align:right;color:#0f172a;font-weight:800;width:130px;font-size:13px;border-bottom:1px solid #fce7f3">${fmtMoney(bruto)}</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td style="padding:6px 14px;text-align:right;color:#6b1c4a;font-weight:700;border-bottom:1px solid #fce7f3">Transaction fee (${fee}%)</td>
+      <td style="padding:6px 14px;text-align:right;color:#dc2626;font-weight:800;border-bottom:1px solid #fce7f3">−${fmtMoney(bruto - neto)}</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td style="padding:14px 14px 8px;text-align:right;color:#be185d;font-weight:900;font-size:16px;letter-spacing:0.02em;text-transform:uppercase">Neto a pagar</td>
+      <td style="padding:14px 14px 8px;text-align:right;color:#be185d;font-weight:900;font-size:28px;letter-spacing:-1px;line-height:1">${fmtMoney(neto)}</td>
+    </tr>
+  </table>
+
+  <div style="margin-top:14px;text-align:center;color:#9ca3af;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase">
+    Documento interno · BraveGirls Agency LLC · ${new Date().getFullYear()}
   </div>
+
 </div>`;
     const tmp = document.createElement('div');
     tmp.style.cssText = 'position:fixed;top:0;left:0;width:720px;background:#fff;z-index:999999;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,0.6)';
@@ -2252,8 +2411,8 @@
       window.html2pdf().from(tmp.firstElementChild).set({
         margin: 6,
         filename: `liquidacion_${chatter.nombre.replace(/\s+/g, '_')}_${liqState.mes}.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, backgroundColor: '#fff', useCORS: true },
+        image: { type: 'png', quality: 1 },
+        html2canvas: { scale: 2.5, backgroundColor: '#fff', useCORS: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       }).save().then(() => { tmp.remove(); document.body.style.overflow = prevOverflow; });
