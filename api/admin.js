@@ -725,9 +725,11 @@ module.exports = async function handler(req, res) {
         ORDER BY m.nombre, cu.nombre_cuenta
       `;
 
-      // Detalle por chatter × cuenta del mes
+      // Detalle por chatter × cuenta del mes (comision se calcula inline)
       const detalle = await sql`
-        SELECT chatter_id, cuenta_id, fact_chatter, porcentaje_comision, comision_calculada, observaciones
+        SELECT chatter_id, cuenta_id, fact_chatter, porcentaje_comision,
+               (COALESCE(fact_chatter,0) * COALESCE(porcentaje_comision,0) / 100) AS comision_calculada,
+               observaciones
         FROM cierre_chatter_cuenta_mes WHERE mes = ${mes}
       `;
       const detByChatter = {};
@@ -870,7 +872,8 @@ module.exports = async function handler(req, res) {
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
 
       const r = await sql`
-        SELECT c.id, c.mes, c.cuenta_id, c.total_a_cobrar, c.pago_recibido, c.pago_pendiente,
+        SELECT c.id, c.mes, c.cuenta_id, c.total_a_cobrar, c.pago_recibido,
+               (COALESCE(c.total_a_cobrar, 0) - COALESCE(c.pago_recibido, 0)) AS pago_pendiente,
                c.estado_resumen, c.medio_pago, c.moneda, c.observaciones,
                cu.nombre_cuenta, cu.tipo,
                m.id AS modelo_id, m.nombre AS modelo_nombre, m.moneda_default

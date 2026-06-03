@@ -151,6 +151,12 @@
     navigate(location.hash.replace('#', '') || 'resumen');
   }
 
+  // Cualquier cambio externo del hash (onclick="location.hash='X'", botón back, etc) navega
+  window.addEventListener('hashchange', () => {
+    if (document.getElementById('app').classList.contains('hidden')) return;
+    navigate(location.hash.replace('#', '') || 'resumen');
+  });
+
   document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const pwd = document.getElementById('pwd').value;
@@ -1364,32 +1370,43 @@
       const html = buildFacturaHtml(meta, items, subtotal, iva, total);
 
       // 4) Render PDF con html2pdf.js
-      // IMPORTANTE: el wrapper tiene que estar en el flujo del DOM con position:absolute
-      // (no fixed con top negativo) para que html2canvas lo capture correctamente.
+      // IMPORTANTE: el wrapper se renderiza visible (con scroll lock) por 250ms para que
+      // html2canvas pueda capturarlo correctamente. Posicionarlo off-screen genera bugs
+      // (contenido desplazado, recortado, blanco). Ancho 720px = matchea A4 portrait usable area.
       const wrapper = document.createElement('div');
-      wrapper.style.cssText = 'position:absolute;left:-99999px;top:0;width:794px;background:#fce7f3';
+      wrapper.style.cssText = [
+        'position:fixed',
+        'top:0',
+        'left:0',
+        'width:720px',
+        'background:#fce7f3',
+        'z-index:999999',
+        'pointer-events:none',
+        'box-shadow:0 0 0 9999px rgba(0,0,0,0.6)'
+      ].join(';');
       wrapper.innerHTML = html;
       document.body.appendChild(wrapper);
-      // Pequeño delay para que el browser haga layout antes de capturar
-      await new Promise(r => setTimeout(r, 120));
+      // Lock scroll briefly so el render no jumpea
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      await new Promise(r => setTimeout(r, 250));
       try {
         await html2pdf().set({
-          margin: [8, 8, 8, 8],
+          margin: [6, 6, 6, 6],
           filename: `Factura-${modelo.nombre.replace(/\s+/g, '')}-${mes}-${numeroNext}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: {
             scale: 2,
             backgroundColor: '#fce7f3',
             useCORS: true,
-            logging: false,
-            windowWidth: 794,
-            width: 794
+            logging: false
           },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
           pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         }).from(wrapper.firstElementChild).save();
       } finally {
         wrapper.remove();
+        document.body.style.overflow = prevOverflow;
       }
 
       // 5) Persistir factura en backend
@@ -1561,7 +1578,7 @@
     `).join('');
 
     return `
-<div style="font-family:Arial,sans-serif;background:#fce7f3;color:#111;padding:18px 22px;width:760px;box-sizing:border-box">
+<div style="font-family:Arial,sans-serif;background:#fce7f3;color:#111;padding:18px 22px;width:720px;box-sizing:border-box">
 
   <!-- HEADER: brand + logo -->
   <table style="width:100%;border-collapse:collapse;margin-bottom:14px">
@@ -1712,21 +1729,24 @@
             const html = rr.data.pdf_html_snapshot;
             if (!html) { toast('Esta factura no tiene snapshot HTML', 'error'); return; }
             const wrapper = document.createElement('div');
-            wrapper.style.cssText = 'position:absolute;left:-99999px;top:0;width:794px;background:#fce7f3';
+            wrapper.style.cssText = 'position:fixed;top:0;left:0;width:720px;background:#fce7f3;z-index:999999;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,0.6)';
             wrapper.innerHTML = html;
             document.body.appendChild(wrapper);
-            await new Promise(r => setTimeout(r, 120));
+            const prevOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            await new Promise(r => setTimeout(r, 250));
             try {
               await html2pdf().set({
-                margin: [8, 8, 8, 8],
+                margin: [6, 6, 6, 6],
                 filename: `Factura-${rr.data.entidad_id}-${rr.data.mes}-${rr.data.numero}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, backgroundColor: '#fce7f3', useCORS: true, windowWidth: 794, width: 794 },
+                html2canvas: { scale: 2, backgroundColor: '#fce7f3', useCORS: true },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
                 pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
               }).from(wrapper.firstElementChild).save();
             } finally {
               wrapper.remove();
+              document.body.style.overflow = prevOverflow;
             }
             toast('PDF descargado', 'success');
           } catch (e) {
@@ -2171,7 +2191,7 @@
     const neto = bruto * (1 - fee / 100);
 
     const html = `
-<div style="font-family:Inter,sans-serif;padding:36px;color:#1a1a1a;background:#fff;width:760px">
+<div style="font-family:Inter,sans-serif;padding:30px;color:#1a1a1a;background:#fff;width:720px">
   <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #be185d;padding-bottom:16px">
     <div>
       <div style="font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:800;color:#be185d">BraveGirls Agency</div>
@@ -2223,18 +2243,21 @@
   </div>
 </div>`;
     const tmp = document.createElement('div');
-    tmp.style.cssText = 'position:absolute;left:-99999px;top:0;width:794px;background:#fff';
+    tmp.style.cssText = 'position:fixed;top:0;left:0;width:720px;background:#fff;z-index:999999;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,0.6)';
     tmp.innerHTML = html;
     document.body.appendChild(tmp);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     setTimeout(() => {
       window.html2pdf().from(tmp.firstElementChild).set({
-        margin: 8,
+        margin: 6,
         filename: `liquidacion_${chatter.nombre.replace(/\s+/g, '_')}_${liqState.mes}.pdf`,
         image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, backgroundColor: '#fff' },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      }).save().then(() => tmp.remove());
-    }, 80);
+        html2canvas: { scale: 2, backgroundColor: '#fff', useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      }).save().then(() => { tmp.remove(); document.body.style.overflow = prevOverflow; });
+    }, 250);
   }
 
   // ═══════════════════════════════════════════════════════
@@ -2416,7 +2439,7 @@
       </tr>
     `).join('');
     const html = `
-<div style="font-family:Inter,sans-serif;padding:36px;color:#1a1a1a;background:#fff;width:760px">
+<div style="font-family:Inter,sans-serif;padding:30px;color:#1a1a1a;background:#fff;width:720px">
   <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #be185d;padding-bottom:16px">
     <div>
       <div style="font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:800;color:#be185d">BraveGirls Agency</div>
@@ -2451,18 +2474,21 @@
   </div>
 </div>`;
     const tmp = document.createElement('div');
-    tmp.style.cssText = 'position:absolute;left:-99999px;top:0;width:794px;background:#fff';
+    tmp.style.cssText = 'position:fixed;top:0;left:0;width:720px;background:#fff;z-index:999999;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,0.6)';
     tmp.innerHTML = html;
     document.body.appendChild(tmp);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     setTimeout(() => {
       window.html2pdf().from(tmp.firstElementChild).set({
-        margin: 8,
+        margin: 6,
         filename: `liquidacion_supervisor_${s.mes}.pdf`,
         image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, backgroundColor: '#fff' },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      }).save().then(() => tmp.remove());
-    }, 80);
+        html2canvas: { scale: 2, backgroundColor: '#fff', useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      }).save().then(() => { tmp.remove(); document.body.style.overflow = prevOverflow; });
+    }, 250);
   }
 
   // ═══════════════════════════════════════════════════════
@@ -2595,8 +2621,30 @@
   }
 
   // Cuando cambia el mes: guardar y re-renderizar la vista actual
+  function shiftMes(delta) {
+    const input = document.getElementById('mes-selector');
+    const current = input.value || new Date().toISOString().slice(0, 7);
+    const [y, m] = current.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    const newMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    input.value = newMes;
+    sessionStorage.setItem('admin_mes', newMes);
+    const route = location.hash.replace('#', '') || 'resumen';
+    navigate(route);
+  }
+
   document.getElementById('mes-selector').addEventListener('change', (e) => {
     sessionStorage.setItem('admin_mes', e.target.value);
+    const route = location.hash.replace('#', '') || 'resumen';
+    navigate(route);
+  });
+  document.getElementById('mes-prev').addEventListener('click', () => shiftMes(-1));
+  document.getElementById('mes-next').addEventListener('click', () => shiftMes(1));
+  document.getElementById('mes-today').addEventListener('click', () => {
+    const today = new Date().toISOString().slice(0, 7);
+    const input = document.getElementById('mes-selector');
+    input.value = today;
+    sessionStorage.setItem('admin_mes', today);
     const route = location.hash.replace('#', '') || 'resumen';
     navigate(route);
   });
