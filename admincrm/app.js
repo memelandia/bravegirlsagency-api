@@ -1696,54 +1696,120 @@
   //   complete el layout antes que html2canvas capture.
   // - Limpia el DOM en try/finally incluso si falla la captura.
   // - Útil para los 3 tipos de PDF: factura modelo, liquidación chatter, liquidación supervisor.
+  // Helper bulletproof: html2canvas + jsPDF directos (sin la capa html2pdf que
+  // mete su propio sizing y a veces shiftea el contenido cuando hay scroll
+  // horizontal en el dashboard). Paginación manual A4.
   async function renderHtmlToPdf(html, filename, opts = {}) {
-    const wrapper = document.createElement('div');
-    // 794px = ancho A4 a 96dpi (210mm). Coincide 1:1 con la página PDF.
-    wrapper.style.cssText = [
+    // Stage off-screen pero visible para que el browser renderice.
+    // Lo metemos en un container fixed que tape la pantalla y ponemos el
+    // wrapper dentro en position:static con un width fijo. Sin scroll issues.
+    const stage = document.createElement('div');
+    stage.setAttribute('data-pdf-stage', '1');
+    stage.style.cssText = [
       'position:fixed',
       'top:0',
       'left:0',
-      'width:794px',
-      'min-height:1px',
+      'width:100vw',
+      'height:100vh',
+      'background:rgba(0,0,0,0.78)',
+      'z-index:2147483600',
+      'overflow:auto',
+      'display:block'
+    ].join(';');
+
+    const wrapper = document.createElement('div');
+    // 760px de ancho → entra cómodo en A4 con margen 10mm de cada lado.
+    wrapper.style.cssText = [
+      'box-sizing:border-box',
+      'width:760px',
+      'margin:24px auto',
       'background:#fff',
       'color:#0f172a',
-      'z-index:2147483600',
-      'pointer-events:none',
-      'box-shadow:0 0 0 9999px rgba(0,0,0,0.65)',
-      'font-family:Arial,Helvetica,sans-serif'
+      'font-family:Arial,Helvetica,sans-serif',
+      'box-shadow:0 8px 40px rgba(0,0,0,0.5)'
     ].join(';');
     wrapper.innerHTML = html;
-    document.body.appendChild(wrapper);
-    const prevOverflow = document.body.style.overflow;
+    stage.appendChild(wrapper);
+    document.body.appendChild(stage);
+
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevScrollX = window.scrollX || window.pageXOffset || 0;
+    const prevScrollY = window.scrollY || window.pageYOffset || 0;
     document.body.style.overflow = 'hidden';
+    window.scrollTo(0, 0);
+
     try {
-      // Doble RAF + tick para garantizar layout + paint antes de capturar.
+      // Esperar layout + paint + fonts.
+      if (document.fonts && document.fonts.ready) {
+        try { await document.fonts.ready; } catch (_) {}
+      }
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 250));
+
       const target = wrapper.firstElementChild || wrapper;
-      await window.html2pdf().set({
-        margin: opts.margin || 0,
-        filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          backgroundColor: '#ffffff',
-          useCORS: true,
-          logging: false,
-          letterRendering: true,
-          windowWidth: 794,
-          ...(opts.html2canvas || {})
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
-        // SIN avoid-all → si el contenido es más largo que A4 hace pagebreak natural.
-        pagebreak: { mode: ['css', 'legacy'] }
-      }).from(target).save();
+      const rect = target.getBoundingClientRect();
+      const targetWidth = Math.ceil(rect.width) || 760;
+      const targetHeight = Math.ceil(rect.height) || target.scrollHeight || 1000;
+
+      // Render con html2canvas (incluido en bundle html2pdf).
+      const canvas = await window.html2canvas(target, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        letterRendering: true,
+        width: targetWidth,
+        height: targetHeight,
+        windowWidth: targetWidth,
+        windowHeight: targetHeight,
+        scrollX: 0,
+        scrollY: 0,
+        x: 0,
+        y: 0
+      });
+
+      // jsPDF (también incluido en bundle).
+      const JsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+      if (!JsPDFCtor) throw new Error('jsPDF no disponible');
+      const pdf = new JsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+
+      const pageW = pdf.internal.pageSize.getWidth();   // 210
+      const pageH = pdf.internal.pageSize.getHeight();  // 297
+      const margin = 8;
+      const usableW = pageW - margin * 2;
+      const usableH = pageH - margin * 2;
+
+      // Alto total de la imagen escalada al ancho útil.
+      const imgFullH = (canvas.height * usableW) / canvas.width;
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+      if (imgFullH <= usableH + 0.5) {
+        // Entra en una sola página.
+        pdf.addImage(imgData, 'JPEG', margin, margin, usableW, imgFullH, undefined, 'FAST');
+      } else {
+        // Paginación: pintar la misma imagen "completa" con offset negativo
+        // por página. Funciona aunque haya cortes en el medio de un párrafo.
+        let positionY = margin;
+        let heightLeft = imgFullH;
+        pdf.addImage(imgData, 'JPEG', margin, positionY, usableW, imgFullH, undefined, 'FAST');
+        heightLeft -= usableH;
+        while (heightLeft > 0) {
+          pdf.addPage();
+          positionY = margin - (imgFullH - heightLeft);
+          pdf.addImage(imgData, 'JPEG', margin, positionY, usableW, imgFullH, undefined, 'FAST');
+          heightLeft -= usableH;
+        }
+      }
+
+      pdf.save(filename);
     } catch (err) {
       console.error('PDF render error', err);
-      toast('Error generando PDF: ' + err.message, 'error');
+      toast('Error generando PDF: ' + (err && err.message ? err.message : err), 'error');
     } finally {
-      wrapper.remove();
-      document.body.style.overflow = prevOverflow;
+      stage.remove();
+      document.body.style.overflow = prevBodyOverflow;
+      window.scrollTo(prevScrollX, prevScrollY);
     }
   }
 
@@ -1798,7 +1864,7 @@
     }).join('');
 
     return `
-<div style="font-family:Arial,Helvetica,sans-serif;background:#fff;color:${VALUE};padding:18px 22px;width:794px;box-sizing:border-box">
+<div style="font-family:Arial,Helvetica,sans-serif;background:#fff;color:${VALUE};padding:18px 22px;width:100%;box-sizing:border-box">
 
   <table style="width:100%;border-collapse:collapse;margin-bottom:12px;background:${PINK_BG};border:2px solid ${ACCENT};border-radius:8px">
     <tr>
@@ -2539,7 +2605,7 @@
       <tr><td colspan="4" style="padding:20px;text-align:center;color:#9ca3af;font-size:11px;background:#fafafa">Sin ítems facturables este período.</td></tr>`);
 
     const html = `
-<div style="font-family:Arial,Helvetica,sans-serif;padding:20px 24px;color:${VALUE};background:#fff;width:794px;box-sizing:border-box">
+<div style="font-family:Arial,Helvetica,sans-serif;padding:20px 24px;color:${VALUE};background:#fff;width:100%;box-sizing:border-box">
 
   <table style="width:100%;border-collapse:collapse;margin-bottom:12px;background:${PINK_BG};border:2px solid ${ACCENT};border-radius:8px">
     <tr>
@@ -2830,7 +2896,7 @@
       </tr>`).join('');
 
     const html = `
-<div style="font-family:Arial,Helvetica,sans-serif;padding:20px 24px;color:${VALUE};background:#fff;width:794px;box-sizing:border-box">
+<div style="font-family:Arial,Helvetica,sans-serif;padding:20px 24px;color:${VALUE};background:#fff;width:100%;box-sizing:border-box">
 
   <table style="width:100%;border-collapse:collapse;margin-bottom:12px;background:${PINK_BG};border:2px solid ${ACCENT};border-radius:8px">
     <tr>
