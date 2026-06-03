@@ -38,6 +38,20 @@ async function ensureAsignTable() {
   _ensuredAsignTable = true;
 }
 
+let _ensuredSupervisorSubsTable = false;
+async function ensureSupervisorSubsTable() {
+  if (_ensuredSupervisorSubsTable) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS supervisor_suscripciones_mes (
+      mes CHAR(7) PRIMARY KEY,
+      suscripciones_totales NUMERIC(12,2) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  _ensuredSupervisorSubsTable = true;
+}
+
 // ═══════════════════════════════════════════════════════════
 // Auth
 // ═══════════════════════════════════════════════════════════
@@ -980,11 +994,37 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
-    // ─── SUPERVISOR (Jony) — autocálculo del mes ───────────
-    // GET ?action=supervisor-mes&mes=YYYY-MM
+    // ─── SUPERVISOR (Jony) — cálculo del mes ───────────────
+    // GET  ?action=supervisor-mes&mes=YYYY-MM
+    // POST ?action=supervisor-mes body: { mes, suscripciones_totales }
     if (action === 'supervisor-mes') {
       const auth = checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureSupervisorSubsTable();
+
+      if (req.method === 'POST') {
+        const b = req.body || {};
+        const mesBody = b.mes || req.query.mes;
+        const subsRaw = b.suscripciones_totales;
+        if (!mesBody) return res.status(400).json({ success: false, error: 'mes requerido' });
+        if (subsRaw === undefined || subsRaw === null || subsRaw === '') {
+          return res.status(400).json({ success: false, error: 'suscripciones_totales requerido' });
+        }
+        const subs = Number(subsRaw);
+        if (Number.isNaN(subs) || subs < 0) {
+          return res.status(400).json({ success: false, error: 'suscripciones_totales inválido' });
+        }
+
+        await sql`
+          INSERT INTO supervisor_suscripciones_mes (mes, suscripciones_totales, updated_at)
+          VALUES (${mesBody}, ${subs}, CURRENT_TIMESTAMP)
+          ON CONFLICT (mes) DO UPDATE SET
+            suscripciones_totales = EXCLUDED.suscripciones_totales,
+            updated_at = CURRENT_TIMESTAMP
+        `;
+        return res.status(200).json({ success: true, mes: mesBody, suscripciones_totales: subs });
+      }
+
       const mes = req.query.mes;
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
 
@@ -996,9 +1036,17 @@ module.exports = async function handler(req, res) {
       `;
       const supervisor = sup.rows[0] || null;
 
-      // Suscripciones totales del mes
+      // Suscripciones totales del mes (manual si existe, si no automático desde cierres)
       const subs = await sql`SELECT COALESCE(SUM(suscripciones), 0) AS subs FROM cierre_cuenta_mes WHERE mes = ${mes}`;
-      const suscripcionesTotales = Number(subs.rows[0].subs);
+      const subsManualRes = await sql`
+        SELECT suscripciones_totales
+        FROM supervisor_suscripciones_mes
+        WHERE mes = ${mes}
+      `;
+      const subsManual = subsManualRes.rows[0]?.suscripciones_totales;
+      const suscripcionesTotales = subsManual != null
+        ? Number(subsManual)
+        : Number(subs.rows[0].subs);
 
       // Comisión sobre ventas de chatters: SUM(fact_chatter × pct_supervisor del chatter)
       const ventas = await sql`
@@ -1061,6 +1109,8 @@ module.exports = async function handler(req, res) {
         supervisor,
         sfs_control: sfsControl,
         suscripciones_totales: suscripcionesTotales,
+        suscripciones_totales_manual: subsManual != null ? Number(subsManual) : null,
+        suscripciones_origen: subsManual != null ? 'manual' : 'auto',
         comision_suscripciones: comisionSubs,
         ventas_detalle: ventasDetail,
         comision_ventas_chatters: comisionVentas,
