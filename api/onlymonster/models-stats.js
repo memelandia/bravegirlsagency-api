@@ -30,6 +30,19 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
+  // ─── Compat shim: /api/accounts está reescrito acá vía vercel.json.
+  // Cuando viene accountId + start + end, se comporta como el viejo /api/accounts:
+  // proxy directo a OM /transactions y devuelve { items, cursor } sin envolver.
+  // Esto mantiene viva la página /modelo/{slug}/ sin tener que reconstruir el frontend.
+  if (req.query.accountId && req.query.start && req.query.end) {
+    return await handleRawTransactions(req, res);
+  }
+
+  // ─── Compat shim: /api/accounts sin params devuelve la lista de cuentas de OM ───
+  if (req.url && req.url.startsWith('/api/accounts') && !req.query.accountId) {
+    return await handleRawAccountsList(req, res);
+  }
+
   const { modelId, billing, days, start_date, end_date } = req.query;
 
   // ─── PARSEAR RANGO DE FECHAS (si se proveen) ───
@@ -411,5 +424,73 @@ async function fetchDailyBilling(modelId, days) {
   } catch (error) {
     console.error(`Error fetching billing for ${modelId}:`, error);
     return [];
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMPAT SHIMS para el viejo /api/accounts (ahora reescrito acá)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Proxy directo a OM /transactions de UNA cuenta.
+ * Soporta paginación con cursor.
+ * Devuelve { items, cursor } tal como lo hacía /api/accounts.
+ * Usado por modelo.js → fetchAllTransactions.
+ */
+async function handleRawTransactions(req, res) {
+  const { accountId, start, end, cursor } = req.query;
+  try {
+    let url = `${ONLYMONSTER_BASE_URL}/api/v0/platforms/onlyfans/accounts/${accountId}/transactions?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&limit=1000`;
+    if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'x-om-auth-token': ONLYMONSTER_API_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      console.error(`[compat /accounts] OM error ${response.status}:`, err);
+      return res.status(response.status).json({
+        error: err.message || 'Error al obtener datos de OnlyMonster',
+        status: response.status
+      });
+    }
+    const data = await response.json();
+    return res.status(200).json(data);
+  } catch (e) {
+    console.error('[compat /accounts] exception:', e);
+    return res.status(500).json({ error: 'Internal server error', message: e.message });
+  }
+}
+
+/**
+ * Lista cruda de cuentas (sin transformar) como devolvía el viejo /api/accounts sin params.
+ */
+async function handleRawAccountsList(req, res) {
+  try {
+    const url = `${ONLYMONSTER_BASE_URL}/api/v0/accounts?limit=100`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'x-om-auth-token': ONLYMONSTER_API_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      return res.status(response.status).json({
+        error: err.message || 'Error al obtener cuentas',
+        status: response.status
+      });
+    }
+    const data = await response.json();
+    return res.status(200).json(data);
+  } catch (e) {
+    return res.status(500).json({ error: 'Internal server error', message: e.message });
   }
 }

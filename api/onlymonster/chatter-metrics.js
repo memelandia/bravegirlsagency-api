@@ -74,26 +74,12 @@ module.exports = async function handler(req, res) {
       ? new Date(end_date + 'T23:59:59.999Z')
       : now;
 
-    // --- MODO BILLING POR MODELO: user_id + creator_id -> desglose por cuenta ---
+    // --- MODO BILLING POR MODELO: user_id + creator_id -> desglose real por (chatter, cuenta) ---
+    // Con la sintaxis correcta (creator_ids= sin corchetes) OM devuelve revenue restringido a esa cuenta.
     if (user_id && creator_id) {
-      console.log('[billing-v2] Params recibidos:', JSON.stringify({ user_id, creator_id, start_date, end_date }));
-
-      // Fetch with ONLY user_ids[] — OM ignora creator_ids[] en combinación
-      const metricsData = await fetchUserMetrics(startDate, endDate, null, [user_id]);
-
-      console.log('[billing-v2] OM returned items:', metricsData.length);
-      metricsData.forEach((m, i) => {
-        console.log(`[billing-v2] item[${i}]: user_id=${m.user_id} creator_ids=${JSON.stringify(m.creator_ids)} revenue=${m.revenue.total_net}`);
-      });
-
-      // Filter to the specific creator — compare as strings for safety
-      const matched = metricsData.filter(m => {
-        if (String(m.user_id) !== String(user_id)) return false;
-        const cids = (m.creator_ids || []).map(String);
-        return cids.includes(String(creator_id));
-      });
-
-      console.log(`[billing-v2] Matched ${matched.length} items for creator_id=${creator_id}`);
+      const metricsData = await fetchUserMetrics(startDate, endDate, [creator_id], [user_id]);
+      const matched = metricsData.filter(m => String(m.user_id) === String(user_id));
+      console.log(`[billing] user_id=${user_id} creator_id=${creator_id} => ${matched.length} item(s)`);
 
       return res.status(200).json({
         success: true,
@@ -154,18 +140,18 @@ async function fetchUserMetrics(startDate, endDate, creatorIds, userIds) {
 
   let url = `${ONLYMONSTER_BASE_URL}/api/v0/users/metrics?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&offset=0&limit=100`;
 
-  // Append creator_ids[] when filtering by account
+  // OM expects OpenAPI 3.0 array style (form, explode=true): creator_ids=A&creator_ids=B
+  // The PHP-style creator_ids[]= is silently ignored by the server.
   if (creatorIds && creatorIds.length > 0) {
     creatorIds.forEach(id => {
-      url += `&creator_ids[]=${encodeURIComponent(id)}`;
+      url += `&creator_ids=${encodeURIComponent(id)}`;
     });
     console.log('Fetching /users/metrics with creator_ids:', creatorIds);
   }
 
-  // Append user_ids[] when filtering by specific user (used for per-model breakdown)
   if (userIds && userIds.length > 0) {
     userIds.forEach(id => {
-      url += `&user_ids[]=${encodeURIComponent(id)}`;
+      url += `&user_ids=${encodeURIComponent(id)}`;
     });
     console.log('Fetching /users/metrics with user_ids:', userIds);
   }
@@ -323,7 +309,7 @@ async function fetchChatterHistory(userId, days) {
     const batchResults = await Promise.all(
       batch.map(async ({ date, from, to }) => {
         try {
-          const url = `${ONLYMONSTER_BASE_URL}/api/v0/users/metrics?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&user_ids[]=${userId}&offset=0&limit=10`;
+          const url = `${ONLYMONSTER_BASE_URL}/api/v0/users/metrics?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&user_ids=${encodeURIComponent(userId)}&offset=0&limit=10`;
           const response = await fetch(url, {
             method: 'GET',
             headers: {
