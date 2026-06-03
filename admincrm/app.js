@@ -1698,39 +1698,45 @@
   // - Útil para los 3 tipos de PDF: factura modelo, liquidación chatter, liquidación supervisor.
   async function renderHtmlToPdf(html, filename, opts = {}) {
     const wrapper = document.createElement('div');
+    // 794px = ancho A4 a 96dpi (210mm). Coincide 1:1 con la página PDF.
     wrapper.style.cssText = [
       'position:fixed',
       'top:0',
       'left:0',
-      'width:720px',
+      'width:794px',
+      'min-height:1px',
       'background:#fff',
-      'z-index:999999',
+      'color:#0f172a',
+      'z-index:2147483600',
       'pointer-events:none',
-      // Sombra externa actúa como overlay para tapar el dashboard mientras renderiza
-      'box-shadow:0 0 0 9999px rgba(0,0,0,0.55)'
+      'box-shadow:0 0 0 9999px rgba(0,0,0,0.65)',
+      'font-family:Arial,Helvetica,sans-serif'
     ].join(';');
     wrapper.innerHTML = html;
     document.body.appendChild(wrapper);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     try {
-      // Esperar a que el browser haga layout + render del wrapper
-      // (300ms es necesario para que SVG inline + fonts + tablas estén listos)
-      await new Promise(r => setTimeout(r, 300));
+      // Doble RAF + tick para garantizar layout + paint antes de capturar.
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await new Promise(r => setTimeout(r, 200));
       const target = wrapper.firstElementChild || wrapper;
       await window.html2pdf().set({
-        margin: opts.margin || [6, 6, 6, 6],
+        margin: opts.margin || 0,
         filename,
-        image: { type: 'png', quality: 1 },
+        image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
-          scale: 2.5,
-          backgroundColor: '#fff',
+          scale: 2,
+          backgroundColor: '#ffffff',
           useCORS: true,
           logging: false,
+          letterRendering: true,
+          windowWidth: 794,
           ...(opts.html2canvas || {})
         },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+        // SIN avoid-all → si el contenido es más largo que A4 hace pagebreak natural.
+        pagebreak: { mode: ['css', 'legacy'] }
       }).from(target).save();
     } catch (err) {
       console.error('PDF render error', err);
@@ -1759,7 +1765,6 @@
     const fmt = (n) => n == null ? '' : sym + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const fechaFmt = (d) => d ? new Date(d + (d.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('es-AR') : '';
 
-    // Periodo facturado = mes del cierre (lo más legible para el cliente)
     const periodoTexto = (() => {
       if (!meta.mes) return '';
       const [y, m] = meta.mes.split('-').map(Number);
@@ -1768,192 +1773,127 @@
       return `01 al ${lastDay} de ${meses[m-1]} ${y}`;
     })();
 
-    // Logo SVG — Silueta de mujer en perfil con pelo largo rosa flotante.
-    // Inspirado en el logo real de BraveGirls Agency. Colores sólidos (sin gradientes).
-    // Si subiste un logo PNG real, se usa ese en lugar de este SVG.
     const customLogo = (window.AGENCY_LOGO_DATA_URI || '').trim();
-    const logoSvg = customLogo
-      ? `<img src="${customLogo}" alt="BraveGirls Agency" width="110" height="110" style="display:block;object-fit:contain"/>`
-      : `
-      <svg viewBox="0 0 140 140" width="110" height="110" xmlns="http://www.w3.org/2000/svg" style="display:block">
-        <!-- Fondo rosa palo circular -->
-        <circle cx="70" cy="70" r="68" fill="#FCE7F3"/>
+    const logoHtml = customLogo
+      ? `<img src="${customLogo}" alt="BraveGirls" width="78" height="78" style="display:block;object-fit:contain;border-radius:10px"/>`
+      : `<div style="width:78px;height:78px;border-radius:14px;background:#be185d;color:#fff;text-align:center;line-height:78px;font-weight:900;font-size:22px;font-family:Arial,sans-serif;letter-spacing:0.04em">BG</div>`;
 
-        <!-- PELO BACK: melena larga ondulada que envuelve -->
-        <path d="M22,72 C18,52 26,28 42,18 C60,8 88,12 102,28 C118,46 122,70 116,90 C112,104 102,114 90,118 L92,98 C94,86 88,76 82,72 L82,90 C82,100 76,108 70,108 C64,108 60,100 60,90 L60,72 C56,76 52,86 56,98 L58,118 C44,114 30,102 26,88 C22,76 22,72 22,72 Z" fill="#1F0A14"/>
-
-        <!-- HAIR HIGHLIGHTS PINK strokes -->
-        <path d="M44,30 C50,20 60,16 72,16 C80,16 90,20 94,28 C90,24 84,22 78,24 C72,18 60,20 52,28 C48,28 44,30 44,30 Z" fill="#FF1F8E"/>
-        <path d="M104,40 C108,52 110,68 106,82 C104,90 98,96 92,98 L94,82 C96,72 102,55 104,40 Z" fill="#FF1F8E"/>
-        <path d="M30,82 C28,92 28,104 32,114 L40,116 L36,98 C34,90 32,86 30,82 Z" fill="#FF1F8E"/>
-        <path d="M82,108 C84,114 88,118 92,118 L88,108 Z" fill="#EC4899"/>
-
-        <!-- CARA (perfil mirando izquierda) -->
-        <path d="M52,46 C52,34 60,28 68,28 C76,28 82,34 82,46 L82,62 C82,68 78,72 74,72 C70,74 66,76 66,80 C66,82 62,82 60,80 L58,72 C54,72 52,68 52,62 Z" fill="#F8C9B0"/>
-
-        <!-- CEJA -->
-        <path d="M58,42 Q63,40 68,42" stroke="#1F0A14" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <!-- OJO (perfil) -->
-        <ellipse cx="62" cy="47" rx="2" ry="1.2" fill="#1F0A14"/>
-        <ellipse cx="62" cy="46" rx="0.8" ry="0.6" fill="#fff"/>
-        <!-- Pestañas -->
-        <path d="M59,46 L57,44 M65,46 L67,44" stroke="#1F0A14" stroke-width="1.2" stroke-linecap="round"/>
-        <!-- Nariz -->
-        <path d="M58,50 L55,56 L58,58" stroke="#1F0A14" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        <!-- Labios rosados -->
-        <path d="M56,62 Q60,64 62,62" stroke="#EC4899" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <path d="M56,64 Q60,66 62,64" stroke="#BE185D" stroke-width="2.2" fill="none" stroke-linecap="round"/>
-
-        <!-- CUELLO -->
-        <path d="M58,74 L58,86 C58,90 62,92 66,92 L66,80 Z" fill="#F8C9B0"/>
-
-        <!-- HOMBROS rosa marca -->
-        <path d="M40,100 C46,94 56,90 66,90 C76,90 88,94 96,102 C100,108 102,114 102,118 L36,118 C36,112 38,106 40,100 Z" fill="#FF1F8E"/>
-
-        <!-- Brillo en pelo (pequeño detalle estilizado) -->
-        <circle cx="100" cy="32" r="2" fill="#fff" opacity="0.85"/>
-        <circle cx="105" cy="38" r="1.2" fill="#fff" opacity="0.85"/>
-      </svg>
-    `;
-
-    // Color para texto label (contraste fuerte sobre rosa claro)
-    const LABEL_COLOR = '#6b1c4a';   // pink-900, oscuro, muy legible
-    const VALUE_COLOR = '#0f172a';   // slate-950, casi negro
-    const ACCENT      = '#be185d';   // pink-700, magenta de marca
+    const LABEL = '#6b1c4a';
+    const VALUE = '#0f172a';
+    const ACCENT = '#be185d';
+    const PINK_BG = '#fdf2f8';
+    const PINK_LINE = '#f9a8d4';
 
     const itemsHtml = items.map(it => {
       const s = itemLabelStyle(it.descripcion);
       return `
         <tr>
-          <td style="padding:10px 12px;background:${s.bg};color:${s.fg};font-weight:800;border:1px solid #fff;text-align:center;font-size:13px">${escapeHtml(it.descripcion)}</td>
-          <td style="padding:10px 12px;text-align:right;color:${VALUE_COLOR};font-weight:700;border:1px solid #e5e7eb;font-size:13px">${fmt(it.monto)}</td>
-          <td style="padding:10px 12px;text-align:center;color:${VALUE_COLOR};border:1px solid #e5e7eb;font-size:13px">${it.cantidad != null ? it.cantidad : ''}</td>
-          <td style="padding:10px 12px;color:${ACCENT};font-weight:700;border:1px solid #e5e7eb;text-align:center;font-size:12px">${escapeHtml(it.observ || '')}</td>
-          <td style="padding:10px 12px;text-align:right;color:${VALUE_COLOR};font-weight:800;border:1px solid #e5e7eb;font-size:13px">${fmt(it.monto_agencia)}</td>
+          <td style="padding:7px 9px;background:${s.bg};color:${s.fg};font-weight:800;border:1px solid #fff;text-align:center;font-size:11.5px;line-height:1.3">${escapeHtml(it.descripcion)}</td>
+          <td style="padding:7px 9px;text-align:right;color:${VALUE};font-weight:700;border:1px solid #e5e7eb;font-size:11.5px;background:#fff">${fmt(it.monto)}</td>
+          <td style="padding:7px 9px;text-align:center;color:${VALUE};border:1px solid #e5e7eb;font-size:11.5px;background:#fff">${it.cantidad != null ? it.cantidad : ''}</td>
+          <td style="padding:7px 9px;color:${ACCENT};font-weight:700;border:1px solid #e5e7eb;text-align:center;font-size:10.5px;background:#fff">${escapeHtml(it.observ || '')}</td>
+          <td style="padding:7px 9px;text-align:right;color:${VALUE};font-weight:800;border:1px solid #e5e7eb;font-size:11.5px;background:#fff">${fmt(it.monto_agencia)}</td>
         </tr>
       `;
     }).join('');
 
-    const emptyRows = Math.max(0, 4 - items.length);
-    const emptyRowsHtml = Array(emptyRows).fill(0).map(() => `
-      <tr>
-        <td style="padding:12px;background:#fafafa;border:1px solid #e5e7eb">&nbsp;</td>
-        <td style="padding:12px;background:#fff;border:1px solid #e5e7eb"></td>
-        <td style="padding:12px;background:#fff;border:1px solid #e5e7eb"></td>
-        <td style="padding:12px;background:#fff;border:1px solid #e5e7eb"></td>
-        <td style="padding:12px;background:#fff;border:1px solid #e5e7eb"></td>
-      </tr>
-    `).join('');
-
     return `
-<div style="font-family:Arial,Helvetica,sans-serif;background:#fff;color:${VALUE_COLOR};padding:24px 28px;width:720px;box-sizing:border-box">
+<div style="font-family:Arial,Helvetica,sans-serif;background:#fff;color:${VALUE};padding:18px 22px;width:794px;box-sizing:border-box">
 
-  <!-- HEADER con borde rosa: brand izq + logo der -->
-  <table style="width:100%;border-collapse:collapse;margin-bottom:18px;background:#fdf2f8;border:2px solid ${ACCENT};border-radius:8px">
+  <table style="width:100%;border-collapse:collapse;margin-bottom:12px;background:${PINK_BG};border:2px solid ${ACCENT};border-radius:8px">
     <tr>
-      <td style="vertical-align:middle;padding:18px 22px">
-        <div style="font-size:26px;font-weight:900;color:${ACCENT};margin-bottom:6px;letter-spacing:-0.5px;line-height:1.1">BraveGirls Agency LLC</div>
-        <div style="font-size:11.5px;color:#374151;line-height:1.6;font-weight:600">
-          1401 Pennsylvania Ave. STE 105,<br>
-          19806 Wilmington. Delaware (EE.UU). EIN: 38-4349826<br>
-          (34) 675 32 80 74 — N° de Licencia 20250971778.
+      <td style="vertical-align:middle;padding:12px 16px;width:60%">
+        <div style="font-size:21px;font-weight:900;color:${ACCENT};margin-bottom:4px;letter-spacing:-0.5px;line-height:1.1;font-family:Arial,sans-serif">BraveGirls Agency LLC</div>
+        <div style="font-size:10px;color:#374151;line-height:1.5;font-weight:600">
+          1401 Pennsylvania Ave. STE 105, 19806 Wilmington. Delaware (EE.UU).<br>
+          EIN: 38-4349826 · (34) 675 32 80 74 · N° de Licencia 20250971778.
         </div>
       </td>
-      <td style="width:120px;vertical-align:middle;text-align:right;padding:12px 22px 12px 0">
-        ${logoSvg}
+      <td style="vertical-align:middle;text-align:right;padding:10px 16px 10px 0;width:90px">
+        ${logoHtml}
       </td>
     </tr>
   </table>
 
-  <!-- TÍTULO + PERIODO -->
-  <table style="width:100%;border-collapse:collapse;margin:0 0 14px">
+  <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
     <tr>
       <td style="vertical-align:bottom">
-        <div style="font-size:34px;color:${ACCENT};font-weight:900;letter-spacing:-1px;line-height:1">Gestión de cuenta</div>
+        <div style="font-size:26px;color:${ACCENT};font-weight:900;letter-spacing:-1px;line-height:1;font-family:Arial,sans-serif">Gestión de cuenta</div>
       </td>
-      <td style="vertical-align:bottom;text-align:right;padding-bottom:4px">
-        ${periodoTexto ? `
-          <div style="display:inline-block;background:${ACCENT};color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase">
-            Período facturado · ${periodoTexto}
-          </div>` : ''}
+      <td style="vertical-align:bottom;text-align:right;padding-bottom:2px">
+        ${periodoTexto ? `<div style="display:inline-block;background:${ACCENT};color:#fff;padding:5px 12px;border-radius:5px;font-size:10.5px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;font-family:Arial,sans-serif">Período facturado · ${periodoTexto}</div>` : ''}
       </td>
     </tr>
   </table>
 
-  <!-- INFO BOX -->
-  <table style="width:100%;border-collapse:collapse;border:1.5px solid ${ACCENT};margin-bottom:14px;background:#fff;font-size:12.5px">
-    <tr>
-      <td colspan="3" style="padding:10px 14px;background:#fce7f3;color:${LABEL_COLOR};font-weight:800;font-size:13px;border-bottom:1px solid #f9a8d4">
-        Fecha de emisión: <span style="color:${ACCENT}">${fechaFmt(meta.fechaEmision)}</span>
-      </td>
+  <table style="width:100%;border-collapse:collapse;border:1.5px solid ${ACCENT};margin-bottom:10px;background:#fff;font-size:11.5px">
+    <tr style="background:#fce7f3">
+      <td colspan="3" style="padding:7px 12px;color:${LABEL};font-weight:800;font-size:11.5px;border-bottom:1px solid ${PINK_LINE}">Fecha de emisión: <span style="color:${ACCENT}">${fechaFmt(meta.fechaEmision)}</span></td>
     </tr>
     <tr style="background:#fce7f3">
-      <td style="padding:9px 14px;font-weight:800;color:${LABEL_COLOR};border-bottom:1px solid #f9a8d4">A la atención de</td>
-      <td style="padding:9px 14px;font-weight:800;color:${LABEL_COLOR};width:140px;border-bottom:1px solid #f9a8d4;border-left:1px solid #f9a8d4">Pago por</td>
-      <td style="padding:9px 14px;font-weight:800;color:${LABEL_COLOR};width:150px;border-bottom:1px solid #f9a8d4;border-left:1px solid #f9a8d4">N.º de factura</td>
+      <td style="padding:6px 12px;font-weight:800;color:${LABEL};border-bottom:1px solid ${PINK_LINE}">A la atención de</td>
+      <td style="padding:6px 12px;font-weight:800;color:${LABEL};width:130px;border-bottom:1px solid ${PINK_LINE};border-left:1px solid ${PINK_LINE}">Pago por</td>
+      <td style="padding:6px 12px;font-weight:800;color:${LABEL};width:130px;border-bottom:1px solid ${PINK_LINE};border-left:1px solid ${PINK_LINE}">N.º de factura</td>
     </tr>
     <tr style="background:#fff">
-      <td style="padding:10px 14px;font-weight:700;color:${VALUE_COLOR};border-bottom:1px solid #fce7f3">${escapeHtml(meta.modeloNombreFiscal)}${meta.modeloIdentificador ? ' — ' + escapeHtml(meta.modeloIdentificador) : ''}</td>
-      <td style="padding:10px 14px;border-left:1px solid #f9a8d4;font-weight:700;color:${VALUE_COLOR};border-bottom:1px solid #fce7f3">${escapeHtml(meta.pagoPor)}</td>
-      <td style="padding:10px 14px;border-left:1px solid #f9a8d4;font-weight:800;color:${ACCENT};border-bottom:1px solid #fce7f3;font-size:14px">${meta.numero}</td>
+      <td style="padding:7px 12px;font-weight:700;color:${VALUE};border-bottom:1px solid #fce7f3">${escapeHtml(meta.modeloNombreFiscal)}${meta.modeloIdentificador ? ' &mdash; ' + escapeHtml(meta.modeloIdentificador) : ''}</td>
+      <td style="padding:7px 12px;border-left:1px solid ${PINK_LINE};font-weight:700;color:${VALUE};border-bottom:1px solid #fce7f3">${escapeHtml(meta.pagoPor)}</td>
+      <td style="padding:7px 12px;border-left:1px solid ${PINK_LINE};font-weight:800;color:${ACCENT};border-bottom:1px solid #fce7f3;font-size:13px">${meta.numero}</td>
     </tr>
-    ${meta.modeloDireccion ? `<tr style="background:#fff"><td colspan="3" style="padding:9px 14px;color:${VALUE_COLOR};font-weight:600;border-bottom:1px solid #fce7f3">${escapeHtml(meta.modeloDireccion)}</td></tr>` : ''}
+    ${meta.modeloDireccion ? `<tr style="background:#fff"><td colspan="3" style="padding:6px 12px;color:${VALUE};font-weight:600;border-bottom:1px solid #fce7f3">${escapeHtml(meta.modeloDireccion)}</td></tr>` : ''}
     <tr style="background:#fce7f3">
-      <td style="padding:9px 14px;font-weight:800;color:${LABEL_COLOR};border-bottom:1px solid #f9a8d4">En concepto de:</td>
-      <td style="padding:9px 14px;font-weight:800;color:${LABEL_COLOR};border-bottom:1px solid #f9a8d4;border-left:1px solid #f9a8d4">% de fact</td>
-      <td style="padding:9px 14px;font-weight:800;color:${LABEL_COLOR};border-bottom:1px solid #f9a8d4;border-left:1px solid #f9a8d4">Fecha de vencimiento</td>
+      <td style="padding:6px 12px;font-weight:800;color:${LABEL};border-bottom:1px solid ${PINK_LINE}">En concepto de</td>
+      <td style="padding:6px 12px;font-weight:800;color:${LABEL};border-bottom:1px solid ${PINK_LINE};border-left:1px solid ${PINK_LINE}">% de fact</td>
+      <td style="padding:6px 12px;font-weight:800;color:${LABEL};border-bottom:1px solid ${PINK_LINE};border-left:1px solid ${PINK_LINE}">Vencimiento</td>
     </tr>
     <tr style="background:#fff">
-      <td style="padding:10px 14px;font-weight:700;color:${VALUE_COLOR}">${escapeHtml(meta.concepto)}</td>
-      <td style="padding:10px 14px;border-left:1px solid #f9a8d4;font-weight:800;color:${ACCENT}">${meta.porcentaje}%</td>
-      <td style="padding:10px 14px;border-left:1px solid #f9a8d4;font-weight:700;color:${VALUE_COLOR}">${fechaFmt(meta.vencimiento)}</td>
+      <td style="padding:7px 12px;font-weight:700;color:${VALUE}">${escapeHtml(meta.concepto)}</td>
+      <td style="padding:7px 12px;border-left:1px solid ${PINK_LINE};font-weight:800;color:${ACCENT}">${meta.porcentaje}%</td>
+      <td style="padding:7px 12px;border-left:1px solid ${PINK_LINE};font-weight:700;color:${VALUE}">${fechaFmt(meta.vencimiento)}</td>
     </tr>
   </table>
 
-  <!-- ITEMS TABLE -->
-  <table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px;border:1.5px solid ${ACCENT}">
+  <table style="width:100%;border-collapse:collapse;background:#fff;font-size:11.5px;border:1.5px solid ${ACCENT}">
     <thead>
       <tr style="background:${ACCENT}">
-        <th style="padding:12px;text-align:center;color:#fff;font-size:13px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase">Descripción</th>
-        <th style="padding:12px;text-align:center;color:#fff;font-size:13px;font-weight:800;width:100px;letter-spacing:0.04em;text-transform:uppercase">Monto</th>
-        <th style="padding:12px;text-align:center;color:#fff;font-size:13px;font-weight:800;width:72px;letter-spacing:0.04em;text-transform:uppercase">Cant.</th>
-        <th style="padding:12px;text-align:center;color:#fff;font-size:13px;font-weight:800;width:190px;letter-spacing:0.04em;text-transform:uppercase">Observ.</th>
-        <th style="padding:12px;text-align:center;color:#fff;font-size:13px;font-weight:800;width:110px;letter-spacing:0.04em;text-transform:uppercase">% Agencia</th>
+        <th style="padding:8px 6px;text-align:center;color:#fff;font-size:11px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase">Descripción</th>
+        <th style="padding:8px 6px;text-align:center;color:#fff;font-size:11px;font-weight:800;width:90px;letter-spacing:0.04em;text-transform:uppercase">Monto</th>
+        <th style="padding:8px 6px;text-align:center;color:#fff;font-size:11px;font-weight:800;width:55px;letter-spacing:0.04em;text-transform:uppercase">Cant.</th>
+        <th style="padding:8px 6px;text-align:center;color:#fff;font-size:11px;font-weight:800;width:170px;letter-spacing:0.04em;text-transform:uppercase">Observ.</th>
+        <th style="padding:8px 6px;text-align:center;color:#fff;font-size:11px;font-weight:800;width:100px;letter-spacing:0.04em;text-transform:uppercase">% Agencia</th>
       </tr>
     </thead>
     <tbody>
-      ${itemsHtml}
-      ${emptyRowsHtml}
+      ${itemsHtml || `<tr><td colspan="5" style="padding:18px;text-align:center;color:#9ca3af;background:#fafafa;font-size:11px">Sin ítems para facturar este período.</td></tr>`}
     </tbody>
   </table>
 
-  <!-- TOTALES -->
-  <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13px">
+  <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:11.5px">
     <tr>
-      <td style="width:55%"></td>
-      <td style="padding:8px 14px;text-align:right;color:${LABEL_COLOR};font-weight:800;font-size:14px;border-bottom:1px solid #fce7f3">Subtotal</td>
-      <td style="padding:8px 14px;text-align:right;color:${VALUE_COLOR};font-weight:800;width:130px;font-size:14px;border-bottom:1px solid #fce7f3">${fmt(subtotal)}</td>
+      <td style="width:60%"></td>
+      <td style="padding:6px 12px;text-align:right;color:${LABEL};font-weight:800;font-size:12px;border-bottom:1px solid #fce7f3">Subtotal</td>
+      <td style="padding:6px 12px;text-align:right;color:${VALUE};font-weight:800;width:120px;font-size:12px;border-bottom:1px solid #fce7f3">${fmt(subtotal)}</td>
     </tr>
     <tr>
       <td></td>
-      <td style="padding:6px 14px;text-align:right;color:${LABEL_COLOR};font-weight:700;border-bottom:1px solid #fce7f3">IVA</td>
-      <td style="padding:6px 14px;text-align:right;color:${VALUE_COLOR};font-weight:700;border-bottom:1px solid #fce7f3">${fmt(iva)}</td>
+      <td style="padding:5px 12px;text-align:right;color:${LABEL};font-weight:700;border-bottom:1px solid #fce7f3">IVA</td>
+      <td style="padding:5px 12px;text-align:right;color:${VALUE};font-weight:700;border-bottom:1px solid #fce7f3">${fmt(iva)}</td>
     </tr>
     <tr>
       <td></td>
-      <td style="padding:14px 14px 8px;text-align:right;color:${ACCENT};font-weight:900;font-size:18px;letter-spacing:0.02em;text-transform:uppercase">Total a pagar</td>
-      <td style="padding:14px 14px 8px;text-align:right;color:${ACCENT};font-weight:900;font-size:30px;letter-spacing:-1px;line-height:1">${fmt(total)}</td>
+      <td style="padding:10px 12px 4px;text-align:right;color:${ACCENT};font-weight:900;font-size:14px;letter-spacing:0.02em;text-transform:uppercase">Total a pagar</td>
+      <td style="padding:10px 12px 4px;text-align:right;color:${ACCENT};font-weight:900;font-size:22px;letter-spacing:-0.5px;line-height:1">${fmt(total)}</td>
     </tr>
   </table>
 
   ${meta.serviciosPie ? `
-    <div style="margin-top:18px;padding:12px 16px;background:#fdf2f8;border-left:4px solid ${ACCENT};color:${LABEL_COLOR};font-size:11.5px;line-height:1.5;font-weight:600">
-      <strong style="color:${ACCENT};text-transform:uppercase;letter-spacing:0.06em;font-size:11px">Servicios incluidos:</strong><br>
+    <div style="margin-top:12px;padding:10px 13px;background:${PINK_BG};border-left:4px solid ${ACCENT};color:${LABEL};font-size:10px;line-height:1.5;font-weight:600">
+      <strong style="color:${ACCENT};text-transform:uppercase;letter-spacing:0.06em;font-size:9.5px">Servicios incluidos:</strong><br>
       ${escapeHtml(meta.serviciosPie)}
     </div>
   ` : ''}
 
-  <div style="margin-top:14px;text-align:center;color:#9ca3af;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase">
+  <div style="margin-top:10px;text-align:center;color:#9ca3af;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase">
     BraveGirls Agency LLC · Delaware · ${new Date().getFullYear()}
   </div>
 
@@ -2548,10 +2488,9 @@
     });
     const incMes = document.getElementById('liq-inc-mes').checked ? Number(document.getElementById('liq-inc-mes-monto').value || 0) : 0;
     const bruto = rows.reduce((s, r) => s + r.com, 0) + tl + incs.reduce((s, i) => s + i.monto, 0) + incMes;
-    const fee = Number(liqState.transaction_fee_pct);
+    const fee = Number(liqState.transaction_fee_pct) || 0;
     const neto = bruto * (1 - fee / 100);
 
-    // Periodo
     const [py, pm] = (liqState.mes || '').split('-').map(Number);
     const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const periodoTxt = py && pm ? `${meses[pm-1]} ${py}` : (liqState.mes || '');
@@ -2560,90 +2499,105 @@
 
     const fechaHoy = new Date().toLocaleDateString('es-AR');
 
-    const customLogoLiq = (window.AGENCY_LOGO_DATA_URI || '').trim();
-    const logoLiqHtml = customLogoLiq
-      ? `<img src="${customLogoLiq}" alt="Logo" width="84" height="84" style="display:block;object-fit:contain;margin-left:auto"/>`
-      : `<div style="width:84px;height:84px;border-radius:14px;background:#be185d;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:24px;margin-left:auto;letter-spacing:0.04em">BG</div>`;
+    const customLogo = (window.AGENCY_LOGO_DATA_URI || '').trim();
+    const logoHtml = customLogo
+      ? `<img src="${customLogo}" alt="BraveGirls" width="78" height="78" style="display:block;object-fit:contain;border-radius:10px"/>`
+      : `<div style="width:78px;height:78px;border-radius:14px;background:#be185d;color:#fff;text-align:center;line-height:78px;font-weight:900;font-size:22px;font-family:Arial,sans-serif;letter-spacing:0.04em">BG</div>`;
+
+    const ACCENT = '#be185d';
+    const LABEL = '#6b1c4a';
+    const VALUE = '#0f172a';
+    const PINK_BG = '#fdf2f8';
+    const PINK_LINE = '#f9a8d4';
+
+    const bodyRows = [];
+    rows.forEach(r => {
+      bodyRows.push(`
+        <tr style="background:#fff">
+          <td style="padding:8px 10px;font-size:11.5px;color:${VALUE};font-weight:600;border-bottom:1px solid #fce7f3">${escapeHtml(r.cuenta)}</td>
+          <td style="padding:8px 10px;text-align:right;font-size:11.5px;color:${VALUE};border-bottom:1px solid #fce7f3">${fmtMoney(r.fact)}</td>
+          <td style="padding:8px 10px;text-align:right;font-size:11.5px;color:${VALUE};border-bottom:1px solid #fce7f3">${r.pct}%</td>
+          <td style="padding:8px 10px;text-align:right;font-weight:800;font-size:12px;color:${VALUE};border-bottom:1px solid #fce7f3">${fmtMoney(r.com)}</td>
+        </tr>`);
+    });
+    if (tl) bodyRows.push(`
+      <tr style="background:#fffbeb">
+        <td colspan="3" style="padding:8px 10px;font-size:11.5px;color:#92400e;font-weight:700;border-bottom:1px solid #fde68a">Team Leader (bonus fijo)</td>
+        <td style="padding:8px 10px;text-align:right;font-weight:800;font-size:12px;color:#92400e;border-bottom:1px solid #fde68a">${fmtMoney(tl)}</td>
+      </tr>`);
+    incs.forEach(i => bodyRows.push(`
+      <tr style="background:#f5f3ff">
+        <td colspan="3" style="padding:8px 10px;font-size:11.5px;color:#4c1d95;font-weight:700;border-bottom:1px solid #ddd6fe">${escapeHtml(i.desc)}</td>
+        <td style="padding:8px 10px;text-align:right;font-weight:800;font-size:12px;color:#4c1d95;border-bottom:1px solid #ddd6fe">${fmtMoney(i.monto)}</td>
+      </tr>`));
+    if (incMes) bodyRows.push(`
+      <tr style="background:#ecfdf5">
+        <td colspan="3" style="padding:8px 10px;font-size:11.5px;color:#064e3b;font-weight:700;border-bottom:1px solid #a7f3d0">Incentivo del mes</td>
+        <td style="padding:8px 10px;text-align:right;font-weight:800;font-size:12px;color:#064e3b;border-bottom:1px solid #a7f3d0">${fmtMoney(incMes)}</td>
+      </tr>`);
+    if (bodyRows.length === 0) bodyRows.push(`
+      <tr><td colspan="4" style="padding:20px;text-align:center;color:#9ca3af;font-size:11px;background:#fafafa">Sin ítems facturables este período.</td></tr>`);
 
     const html = `
-<div style="font-family:Arial,Helvetica,sans-serif;padding:28px 32px;color:#0f172a;background:#fff;width:720px;box-sizing:border-box">
+<div style="font-family:Arial,Helvetica,sans-serif;padding:20px 24px;color:${VALUE};background:#fff;width:794px;box-sizing:border-box">
 
-  <!-- HEADER -->
-  <table style="width:100%;border-collapse:collapse;margin-bottom:18px;background:#fdf2f8;border:2px solid #be185d;border-radius:8px">
+  <table style="width:100%;border-collapse:collapse;margin-bottom:12px;background:${PINK_BG};border:2px solid ${ACCENT};border-radius:8px">
     <tr>
-      <td style="vertical-align:middle;padding:18px 22px">
-        <div style="font-size:24px;font-weight:900;color:#be185d;letter-spacing:-0.5px;line-height:1.1">BraveGirls Agency LLC</div>
-        <div style="font-size:11px;color:#374151;margin-top:5px;font-weight:600">Liquidación de Chatter · Documento interno</div>
-        <div style="font-size:10px;color:#6b1c4a;text-transform:uppercase;letter-spacing:0.08em;font-weight:800;margin-top:8px">Emisión: <span style="color:#0f172a">${fechaHoy}</span></div>
+      <td style="vertical-align:middle;padding:12px 16px;width:60%">
+        <div style="font-size:21px;font-weight:900;color:${ACCENT};letter-spacing:-0.5px;line-height:1.1;font-family:Arial,sans-serif">BraveGirls Agency LLC</div>
+        <div style="font-size:10px;color:#374151;margin-top:3px;font-weight:600">Liquidación de Chatter &middot; Documento interno</div>
+        <div style="font-size:9.5px;color:${LABEL};text-transform:uppercase;letter-spacing:0.08em;font-weight:800;margin-top:6px">Emisión: <span style="color:${VALUE}">${fechaHoy}</span></div>
       </td>
-      <td style="vertical-align:middle;padding:18px 22px;width:110px">
-        ${logoLiqHtml}
+      <td style="vertical-align:middle;text-align:right;padding:10px 16px 10px 0;width:90px">
+        ${logoHtml}
       </td>
     </tr>
   </table>
 
-  <!-- TÍTULO + PERIODO + CHATTER -->
-  <table style="width:100%;border-collapse:collapse;margin-bottom:14px">
+  <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
     <tr>
       <td style="vertical-align:bottom">
-        <div style="font-size:30px;color:#be185d;font-weight:900;letter-spacing:-1px;line-height:1">Liquidación</div>
-        <div style="font-size:13px;color:#0f172a;font-weight:700;margin-top:4px">Chatter: <strong style="color:#be185d">${escapeHtml(chatter.nombre)}</strong></div>
+        <div style="font-size:26px;color:${ACCENT};font-weight:900;letter-spacing:-1px;line-height:1;font-family:Arial,sans-serif">Liquidación</div>
+        <div style="font-size:12px;color:${VALUE};font-weight:700;margin-top:4px">Chatter: <strong style="color:${ACCENT}">${escapeHtml(chatter.nombre)}</strong></div>
       </td>
       <td style="vertical-align:bottom;text-align:right">
-        <div style="display:inline-block;background:#be185d;color:#fff;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase">
-          Período · ${periodoFull || periodoTxt}
-        </div>
+        <div style="display:inline-block;background:${ACCENT};color:#fff;padding:5px 12px;border-radius:5px;font-size:10.5px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;font-family:Arial,sans-serif">Período &middot; ${periodoFull || periodoTxt}</div>
       </td>
     </tr>
   </table>
 
-  <!-- TABLA COMISIONES -->
-  <table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px;border:1.5px solid #be185d;margin-top:8px">
+  <table style="width:100%;border-collapse:collapse;background:#fff;font-size:11.5px;border:1.5px solid ${ACCENT};margin-top:6px">
     <thead>
-      <tr style="background:#be185d">
-        <th style="padding:11px;text-align:left;color:#fff;font-size:12px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase">Cuenta</th>
-        <th style="padding:11px;text-align:right;color:#fff;font-size:12px;font-weight:800;width:120px;letter-spacing:0.04em;text-transform:uppercase">Facturación</th>
-        <th style="padding:11px;text-align:right;color:#fff;font-size:12px;font-weight:800;width:60px;letter-spacing:0.04em;text-transform:uppercase">%</th>
-        <th style="padding:11px;text-align:right;color:#fff;font-size:12px;font-weight:800;width:120px;letter-spacing:0.04em;text-transform:uppercase">Comisión</th>
+      <tr style="background:${ACCENT}">
+        <th style="padding:9px;text-align:left;color:#fff;font-size:11px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase">Cuenta</th>
+        <th style="padding:9px;text-align:right;color:#fff;font-size:11px;font-weight:800;width:110px;letter-spacing:0.04em;text-transform:uppercase">Facturación</th>
+        <th style="padding:9px;text-align:right;color:#fff;font-size:11px;font-weight:800;width:60px;letter-spacing:0.04em;text-transform:uppercase">%</th>
+        <th style="padding:9px;text-align:right;color:#fff;font-size:11px;font-weight:800;width:120px;letter-spacing:0.04em;text-transform:uppercase">Comisión</th>
       </tr>
     </thead>
-    <tbody>
-      ${rows.map(r => `
-        <tr style="background:#fff;border-bottom:1px solid #fce7f3">
-          <td style="padding:10px 11px;font-size:12.5px;color:#0f172a;font-weight:600">${escapeHtml(r.cuenta)}</td>
-          <td style="padding:10px 11px;text-align:right;font-size:12.5px;color:#0f172a">${fmtMoney(r.fact)}</td>
-          <td style="padding:10px 11px;text-align:right;font-size:12.5px;color:#0f172a">${r.pct}%</td>
-          <td style="padding:10px 11px;text-align:right;font-weight:800;font-size:13px;color:#0f172a">${fmtMoney(r.com)}</td>
-        </tr>
-      `).join('')}
-      ${tl ? `<tr style="background:#fffbeb;border-bottom:1px solid #fde68a"><td colspan="3" style="padding:10px 11px;font-size:12.5px;color:#92400e;font-weight:700">⭐ Team Leader (bonus fijo)</td><td style="padding:10px 11px;text-align:right;font-weight:800;font-size:13px;color:#92400e">${fmtMoney(tl)}</td></tr>` : ''}
-      ${incs.map(i => `<tr style="background:#f5f3ff;border-bottom:1px solid #ddd6fe"><td colspan="3" style="padding:10px 11px;font-size:12.5px;color:#4c1d95;font-weight:700">🎁 ${escapeHtml(i.desc)}</td><td style="padding:10px 11px;text-align:right;font-weight:800;font-size:13px;color:#4c1d95">${fmtMoney(i.monto)}</td></tr>`).join('')}
-      ${incMes ? `<tr style="background:#ecfdf5;border-bottom:1px solid #a7f3d0"><td colspan="3" style="padding:10px 11px;font-size:12.5px;color:#064e3b;font-weight:700">🏆 Incentivo del mes</td><td style="padding:10px 11px;text-align:right;font-weight:800;font-size:13px;color:#064e3b">${fmtMoney(incMes)}</td></tr>` : ''}
-      ${rows.length === 0 && !tl && incs.length === 0 && !incMes ? `<tr><td colspan="4" style="padding:24px;text-align:center;color:#9ca3af;font-size:12px">Sin items facturables este período.</td></tr>` : ''}
-    </tbody>
+    <tbody>${bodyRows.join('')}</tbody>
   </table>
 
-  <!-- TOTALES -->
-  <table style="width:100%;border-collapse:collapse;margin-top:14px">
+  <table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:12px">
     <tr>
       <td style="width:55%"></td>
-      <td style="padding:8px 14px;text-align:right;color:#6b1c4a;font-weight:800;font-size:13px;border-bottom:1px solid #fce7f3">Total bruto</td>
-      <td style="padding:8px 14px;text-align:right;color:#0f172a;font-weight:800;width:130px;font-size:13px;border-bottom:1px solid #fce7f3">${fmtMoney(bruto)}</td>
+      <td style="padding:7px 12px;text-align:right;color:${LABEL};font-weight:800;font-size:12px;border-bottom:1px solid #fce7f3">Total bruto</td>
+      <td style="padding:7px 12px;text-align:right;color:${VALUE};font-weight:800;width:130px;font-size:12px;border-bottom:1px solid #fce7f3">${fmtMoney(bruto)}</td>
     </tr>
     <tr>
       <td></td>
-      <td style="padding:6px 14px;text-align:right;color:#6b1c4a;font-weight:700;border-bottom:1px solid #fce7f3">Transaction fee (${fee}%)</td>
-      <td style="padding:6px 14px;text-align:right;color:#dc2626;font-weight:800;border-bottom:1px solid #fce7f3">−${fmtMoney(bruto - neto)}</td>
+      <td style="padding:5px 12px;text-align:right;color:${LABEL};font-weight:700;border-bottom:1px solid #fce7f3">Transaction fee (${fee}%)</td>
+      <td style="padding:5px 12px;text-align:right;color:#dc2626;font-weight:800;border-bottom:1px solid #fce7f3">&minus;${fmtMoney(bruto - neto)}</td>
     </tr>
     <tr>
       <td></td>
-      <td style="padding:14px 14px 8px;text-align:right;color:#be185d;font-weight:900;font-size:16px;letter-spacing:0.02em;text-transform:uppercase">Neto a pagar</td>
-      <td style="padding:14px 14px 8px;text-align:right;color:#be185d;font-weight:900;font-size:28px;letter-spacing:-1px;line-height:1">${fmtMoney(neto)}</td>
+      <td style="padding:12px 12px 4px;text-align:right;color:${ACCENT};font-weight:900;font-size:14px;letter-spacing:0.02em;text-transform:uppercase">Neto a pagar</td>
+      <td style="padding:12px 12px 4px;text-align:right;color:${ACCENT};font-weight:900;font-size:24px;letter-spacing:-0.5px;line-height:1">${fmtMoney(neto)}</td>
     </tr>
   </table>
 
-  <div style="margin-top:14px;text-align:center;color:#9ca3af;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase">
-    Documento interno · BraveGirls Agency LLC · ${new Date().getFullYear()}
+  <div style="margin-top:14px;text-align:center;color:#9ca3af;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase">
+    Documento interno &middot; BraveGirls Agency LLC &middot; ${new Date().getFullYear()}
   </div>
 
 </div>`;
@@ -2852,56 +2806,108 @@
   async function generarSupervisorPDF(s) {
     const supName = s.supervisor ? s.supervisor.nombre : 'Supervisor';
     const subsTag = s.suscripciones_origen === 'manual' ? 'manual' : 'automatico';
-    const rows = s.ventas_detalle.map(v => `
-      <tr style="border-bottom:1px solid #fbcfe8">
-        <td style="padding:10px">${v.chatter}</td>
-        <td style="padding:10px;text-align:right">${fmtMoney(v.fact_chatter)}</td>
-        <td style="padding:10px;text-align:right">${v.porcentaje_supervisor}%</td>
-        <td style="padding:10px;text-align:right;font-weight:700">${fmtMoney(v.comision)}</td>
-      </tr>
-    `).join('');
-    const customLogoSup = (window.AGENCY_LOGO_DATA_URI || '').trim();
-    const logoSupHtml = customLogoSup
-      ? `<img src="${customLogoSup}" alt="Logo" width="72" height="72" style="display:block;object-fit:contain"/>`
-      : `<div style="width:72px;height:72px;border-radius:14px;background:#be185d;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;letter-spacing:0.04em">BG</div>`;
+
+    const customLogo = (window.AGENCY_LOGO_DATA_URI || '').trim();
+    const logoHtml = customLogo
+      ? `<img src="${customLogo}" alt="BraveGirls" width="78" height="78" style="display:block;object-fit:contain;border-radius:10px"/>`
+      : `<div style="width:78px;height:78px;border-radius:14px;background:#be185d;color:#fff;text-align:center;line-height:78px;font-weight:900;font-size:22px;font-family:Arial,sans-serif;letter-spacing:0.04em">BG</div>`;
+
+    const ACCENT = '#be185d';
+    const LABEL = '#6b1c4a';
+    const VALUE = '#0f172a';
+    const PINK_BG = '#fdf2f8';
+
+    const [py, pm] = (s.mes || '').split('-').map(Number);
+    const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const periodoTxt = py && pm ? `${meses[pm-1]} ${py}` : (s.mes || '');
+
+    const ventasRows = (s.ventas_detalle || []).map(v => `
+      <tr style="background:#fff">
+        <td style="padding:8px 10px;font-size:11.5px;color:${VALUE};font-weight:600;border-bottom:1px solid #fce7f3">${escapeHtml(v.chatter || '')}</td>
+        <td style="padding:8px 10px;text-align:right;font-size:11.5px;color:${VALUE};border-bottom:1px solid #fce7f3">${fmtMoney(v.fact_chatter)}</td>
+        <td style="padding:8px 10px;text-align:right;font-size:11.5px;color:${VALUE};border-bottom:1px solid #fce7f3">${v.porcentaje_supervisor}%</td>
+        <td style="padding:8px 10px;text-align:right;font-weight:800;font-size:12px;color:${VALUE};border-bottom:1px solid #fce7f3">${fmtMoney(v.comision)}</td>
+      </tr>`).join('');
 
     const html = `
-<div style="font-family:Arial,Helvetica,sans-serif;padding:30px;color:#0f172a;background:#fff;width:720px;box-sizing:border-box">
-  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #be185d;padding-bottom:18px">
-    <div style="display:flex;align-items:center;gap:14px">
-      ${logoSupHtml}
-      <div>
-        <div style="font-family:Arial,sans-serif;font-size:22px;font-weight:900;color:#be185d;letter-spacing:-0.5px">BraveGirls Agency LLC</div>
-        <div style="color:#6b7280;font-size:12px;font-weight:600;margin-top:2px">Liquidación Supervisor · Mes ${s.mes}</div>
-      </div>
-    </div>
-    <div style="text-align:right">
-      <div style="font-size:10px;color:#6b1c4a;text-transform:uppercase;letter-spacing:0.1em;font-weight:800">Supervisor</div>
-      <div style="font-size:18px;font-weight:900;color:#0f172a;margin-top:2px">${supName}</div>
-    </div>
-  </div>
-  <div style="margin-top:20px">
-    <div style="display:flex;justify-content:space-between;padding:6px 0"><span>SFS Control</span><strong>${fmtMoney(s.sfs_control)}</strong></div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0"><span>5% de suscripciones (${fmtMoney(s.suscripciones_totales)}) · ${subsTag}</span><strong>${fmtMoney(s.comision_suscripciones)}</strong></div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0"><span>Comisión sobre ventas chatters</span><strong>${fmtMoney(s.comision_ventas_chatters)}</strong></div>
-  </div>
-  <table style="width:100%;border-collapse:collapse;margin-top:16px">
-    <thead><tr style="background:#fce7f3;color:#be185d">
-      <th style="padding:10px;text-align:left">Chatter</th>
-      <th style="padding:10px;text-align:right">Facturación</th>
-      <th style="padding:10px;text-align:right">% Sup</th>
-      <th style="padding:10px;text-align:right">Comisión</th>
-    </tr></thead>
-    <tbody>${rows}</tbody>
+<div style="font-family:Arial,Helvetica,sans-serif;padding:20px 24px;color:${VALUE};background:#fff;width:794px;box-sizing:border-box">
+
+  <table style="width:100%;border-collapse:collapse;margin-bottom:12px;background:${PINK_BG};border:2px solid ${ACCENT};border-radius:8px">
+    <tr>
+      <td style="vertical-align:middle;padding:12px 16px;width:60%">
+        <div style="font-size:21px;font-weight:900;color:${ACCENT};letter-spacing:-0.5px;line-height:1.1;font-family:Arial,sans-serif">BraveGirls Agency LLC</div>
+        <div style="font-size:10px;color:#374151;margin-top:3px;font-weight:600">Liquidación Supervisor &middot; Documento interno</div>
+        <div style="font-size:9.5px;color:${LABEL};text-transform:uppercase;letter-spacing:0.08em;font-weight:800;margin-top:6px">Período: <span style="color:${VALUE}">${periodoTxt}</span></div>
+      </td>
+      <td style="vertical-align:middle;text-align:right;padding:10px 16px 10px 0;width:90px">
+        ${logoHtml}
+      </td>
+    </tr>
   </table>
-  <div style="margin-top:20px;background:#fce7f3;padding:18px;border-radius:8px">
-    <div style="display:flex;justify-content:space-between"><span>Total bruto</span><strong>${fmtMoney(s.total_bruto)}</strong></div>
-    <div style="display:flex;justify-content:space-between;color:#dc2626"><span>Fee ${s.transaction_fee_pct}%</span><strong>−${fmtMoney(s.total_bruto - s.neto_a_pagar)}</strong></div>
-    <div style="display:flex;justify-content:space-between;border-top:2px solid #be185d;padding-top:12px;margin-top:10px">
-      <span style="font-size:1.2rem;font-weight:800;color:#be185d">NETO</span>
-      <span style="font-size:1.6rem;font-weight:800;color:#be185d">${fmtMoney(s.neto_a_pagar)}</span>
-    </div>
+
+  <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
+    <tr>
+      <td style="vertical-align:bottom">
+        <div style="font-size:26px;color:${ACCENT};font-weight:900;letter-spacing:-1px;line-height:1;font-family:Arial,sans-serif">Liquidación</div>
+        <div style="font-size:12px;color:${VALUE};font-weight:700;margin-top:4px">Supervisor: <strong style="color:${ACCENT}">${escapeHtml(supName)}</strong></div>
+      </td>
+      <td style="vertical-align:bottom;text-align:right">
+        <div style="display:inline-block;background:${ACCENT};color:#fff;padding:5px 12px;border-radius:5px;font-size:10.5px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;font-family:Arial,sans-serif">Período &middot; ${periodoTxt}</div>
+      </td>
+    </tr>
+  </table>
+
+  <table style="width:100%;border-collapse:collapse;background:#fff;font-size:11.5px;border:1.5px solid ${ACCENT};margin-top:6px;margin-bottom:10px">
+    <tbody>
+      <tr style="background:#fff">
+        <td style="padding:8px 12px;font-size:11.5px;color:${VALUE};font-weight:600;border-bottom:1px solid #fce7f3">SFS Control</td>
+        <td style="padding:8px 12px;text-align:right;font-weight:800;font-size:12px;color:${VALUE};border-bottom:1px solid #fce7f3;width:140px">${fmtMoney(s.sfs_control)}</td>
+      </tr>
+      <tr style="background:#fff">
+        <td style="padding:8px 12px;font-size:11.5px;color:${VALUE};font-weight:600;border-bottom:1px solid #fce7f3">5% de suscripciones (${fmtMoney(s.suscripciones_totales)}) &middot; ${subsTag}</td>
+        <td style="padding:8px 12px;text-align:right;font-weight:800;font-size:12px;color:${VALUE};border-bottom:1px solid #fce7f3">${fmtMoney(s.comision_suscripciones)}</td>
+      </tr>
+      <tr style="background:#fff">
+        <td style="padding:8px 12px;font-size:11.5px;color:${VALUE};font-weight:600">Comisión sobre ventas chatters</td>
+        <td style="padding:8px 12px;text-align:right;font-weight:800;font-size:12px;color:${VALUE}">${fmtMoney(s.comision_ventas_chatters)}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table style="width:100%;border-collapse:collapse;background:#fff;font-size:11.5px;border:1.5px solid ${ACCENT}">
+    <thead>
+      <tr style="background:${ACCENT}">
+        <th style="padding:9px;text-align:left;color:#fff;font-size:11px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase">Chatter</th>
+        <th style="padding:9px;text-align:right;color:#fff;font-size:11px;font-weight:800;width:130px;letter-spacing:0.04em;text-transform:uppercase">Facturación</th>
+        <th style="padding:9px;text-align:right;color:#fff;font-size:11px;font-weight:800;width:80px;letter-spacing:0.04em;text-transform:uppercase">% Sup</th>
+        <th style="padding:9px;text-align:right;color:#fff;font-size:11px;font-weight:800;width:130px;letter-spacing:0.04em;text-transform:uppercase">Comisión</th>
+      </tr>
+    </thead>
+    <tbody>${ventasRows || `<tr><td colspan="4" style="padding:20px;text-align:center;color:#9ca3af;font-size:11px;background:#fafafa">Sin datos de chatters este mes.</td></tr>`}</tbody>
+  </table>
+
+  <table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:12px">
+    <tr>
+      <td style="width:55%"></td>
+      <td style="padding:7px 12px;text-align:right;color:${LABEL};font-weight:800;font-size:12px;border-bottom:1px solid #fce7f3">Total bruto</td>
+      <td style="padding:7px 12px;text-align:right;color:${VALUE};font-weight:800;width:130px;font-size:12px;border-bottom:1px solid #fce7f3">${fmtMoney(s.total_bruto)}</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td style="padding:5px 12px;text-align:right;color:${LABEL};font-weight:700;border-bottom:1px solid #fce7f3">Transaction fee (${s.transaction_fee_pct}%)</td>
+      <td style="padding:5px 12px;text-align:right;color:#dc2626;font-weight:800;border-bottom:1px solid #fce7f3">&minus;${fmtMoney(s.total_bruto - s.neto_a_pagar)}</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td style="padding:12px 12px 4px;text-align:right;color:${ACCENT};font-weight:900;font-size:14px;letter-spacing:0.02em;text-transform:uppercase">Neto a pagar</td>
+      <td style="padding:12px 12px 4px;text-align:right;color:${ACCENT};font-weight:900;font-size:24px;letter-spacing:-0.5px;line-height:1">${fmtMoney(s.neto_a_pagar)}</td>
+    </tr>
+  </table>
+
+  <div style="margin-top:14px;text-align:center;color:#9ca3af;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase">
+    Documento interno &middot; BraveGirls Agency LLC &middot; ${new Date().getFullYear()}
   </div>
+
 </div>`;
     await renderHtmlToPdf(html, `liquidacion_supervisor_${s.mes}.pdf`);
   }
