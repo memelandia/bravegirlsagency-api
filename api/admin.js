@@ -87,6 +87,16 @@ function isMesBefore(a, b) {
   return String(a) < String(b);
 }
 
+function getPreviousMes(baseMes) {
+  const [yy, mm] = String(baseMes).split('-').map(Number);
+  if (!yy || !mm) return null;
+  const d = new Date(Date.UTC(yy, mm - 1, 1));
+  d.setUTCMonth(d.getUTCMonth() - 1);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
 // ═══════════════════════════════════════════════════════════
 // Auth
 // ═══════════════════════════════════════════════════════════
@@ -387,10 +397,31 @@ module.exports = async function handler(req, res) {
         };
       });
 
+      const mesAnterior = getPreviousMes(mes);
+      let ultimoMesAnterior = null;
+      if (mesAnterior) {
+        const lastPrev = await sql`
+          SELECT numero
+          FROM facturas_emitidas
+          WHERE tipo = 'factura_modelo'
+            AND entidad_tipo = 'modelo'
+            AND entidad_id = ${modeloId}
+            AND mes = ${mesAnterior}
+          ORDER BY numero DESC
+          LIMIT 1
+        `;
+        ultimoMesAnterior = lastPrev.rows[0]?.numero != null ? Number(lastPrev.rows[0].numero) : null;
+      }
+
       return res.status(200).json({
         success: true,
         modelo,
-        cuentas: cuentasConCierre
+        cuentas: cuentasConCierre,
+        factura_ref: {
+          mes_anterior: mesAnterior,
+          ultimo_numero_mes_anterior: ultimoMesAnterior,
+          ultimo_numero_global: Number(modelo.factura_numero_actual || 0)
+        }
       });
     }
 
@@ -426,9 +457,9 @@ module.exports = async function handler(req, res) {
         const pagoRecibido = Number(c.pago_recibido || 0);
         const observaciones = c.observaciones || null;
 
-        // Calcular total_a_cobrar (mismo cálculo que el frontend pero validado server-side)
-        const diferencia = factTotal - suscripciones - masivos;
-        const gananciaAgencia = diferencia * porcentaje / 100;
+        // Calcular total_a_cobrar (facturación: base sobre fact_total)
+        const baseComision = factTotal;
+        const gananciaAgencia = baseComision * porcentaje / 100;
         const totalACobrar = gananciaAgencia + softwareOm + ventasPorFuera + ig
           + (c.otros_extras || []).reduce((s, x) => s + Number(x.monto || 0), 0);
 
@@ -485,21 +516,40 @@ module.exports = async function handler(req, res) {
       const modeloId = Number(b.modelo_id);
       if (!modeloId) return res.status(400).json({ success: false, error: 'modelo_id requerido' });
 
-      // Próximo número = factura_numero_actual + 1, atómico
+      const numeroManualRaw = b.numero;
+      const usaManual = numeroManualRaw !== undefined && numeroManualRaw !== null && numeroManualRaw !== '';
+
+      let numeroManual = null;
+      if (usaManual) {
+        numeroManual = Number(numeroManualRaw);
+        if (!Number.isInteger(numeroManual) || numeroManual <= 0) {
+          return res.status(400).json({ success: false, error: 'numero manual inválido' });
+        }
+      }
+
+      // Número de factura: manual (si viene) o autoincremental
       await sql`BEGIN`;
       try {
-        const upd = await sql`
-          UPDATE modelos
-          SET factura_numero_actual = COALESCE(factura_numero_actual, 0) + 1,
-              updated_at = CURRENT_TIMESTAMP
-          WHERE id = ${modeloId}
-          RETURNING factura_numero_actual
-        `;
+        const upd = usaManual
+          ? await sql`
+            UPDATE modelos
+            SET factura_numero_actual = GREATEST(COALESCE(factura_numero_actual, 0), ${numeroManual}),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${modeloId}
+            RETURNING factura_numero_actual
+          `
+          : await sql`
+            UPDATE modelos
+            SET factura_numero_actual = COALESCE(factura_numero_actual, 0) + 1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${modeloId}
+            RETURNING factura_numero_actual
+          `;
         if (upd.rows.length === 0) {
           await sql`ROLLBACK`;
           return res.status(404).json({ success: false, error: 'modelo no encontrada' });
         }
-        const numero = Number(upd.rows[0].factura_numero_actual);
+        const numero = usaManual ? numeroManual : Number(upd.rows[0].factura_numero_actual);
 
         const ins = await sql`
           INSERT INTO facturas_emitidas (
@@ -524,6 +574,9 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ success: true, data: ins.rows[0] });
       } catch (e) {
         await sql`ROLLBACK`;
+        if (e && e.code === '23505') {
+          return res.status(409).json({ success: false, error: 'Ese número de factura ya existe para esta modelo' });
+        }
         throw e;
       }
     }
