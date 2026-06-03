@@ -563,12 +563,6 @@ module.exports = async function handler(req, res) {
         FROM gastos_mes WHERE mes = ${mes}
       `;
 
-      // OM fee agencia (de modelos activas)
-      const om = await sql`
-        SELECT COALESCE(SUM(gasto_om_agencia_default), 0) AS om_agencia
-        FROM modelos WHERE activa = TRUE
-      `;
-
       // Cobros por modelo
       const cobros = await sql`
         SELECT
@@ -610,7 +604,8 @@ module.exports = async function handler(req, res) {
       const totals = tot.rows[0];
       const ingresoBruto = Number(totals.total_a_cobrar);
       const gastosOtros = Number(gas.rows[0].gastos_total || 0);
-      const omAgencia = Number(om.rows[0].om_agencia || 0);
+      // Desde este punto, el OM agencia se carga manualmente en "gastos_mes".
+      const omAgencia = 0;
       const pChatters = Number(pagosChat.rows[0].pagos);
       const pSupervisor = Number(pagosSup.rows[0].pagos);
       const pEquipo = Number(equipo.rows[0].sueldos);
@@ -1186,7 +1181,6 @@ module.exports = async function handler(req, res) {
       const pagosChat = await sql`SELECT COALESCE(SUM(neto_a_pagar), 0) AS pagos FROM chatter_pagos_mes WHERE mes = ${mes}`;
       const pagosSup = await sql`SELECT COALESCE(SUM(neto_a_pagar), 0) AS pagos FROM supervisor_comision_mes WHERE mes = ${mes}`;
       const equipo = await sql`SELECT COALESCE(SUM(sueldo_mensual_usd), 0) AS sueldos FROM equipo_fijo WHERE activo = TRUE`;
-      const omAg = await sql`SELECT COALESCE(SUM(gasto_om_agencia_default), 0) AS om FROM modelos WHERE activa = TRUE`;
       const gastos = await sql`SELECT COALESCE(SUM(monto), 0) AS otros FROM gastos_mes WHERE mes = ${mes}`;
 
       const c = cierres.rows[0];
@@ -1194,7 +1188,8 @@ module.exports = async function handler(req, res) {
       const pChat = Number(pagosChat.rows[0].pagos);
       const pSup = Number(pagosSup.rows[0].pagos);
       const pEq = Number(equipo.rows[0].sueldos);
-      const pOm = Number(omAg.rows[0].om);
+      // Desde este punto, el OM agencia se carga manualmente en "gastos_mes".
+      const pOm = 0;
       const pGas = Number(gastos.rows[0].otros);
       const netoOwner = ingreso - pChat - pSup - pEq - pOm - pGas;
 
