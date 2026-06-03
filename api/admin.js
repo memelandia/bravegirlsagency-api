@@ -52,6 +52,35 @@ async function ensureSupervisorSubsTable() {
   _ensuredSupervisorSubsTable = true;
 }
 
+let _ensuredResumenOverridesTable = false;
+async function ensureResumenOverridesTable() {
+  if (_ensuredResumenOverridesTable) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS resumen_mes_override (
+      mes CHAR(7) PRIMARY KEY,
+      facturacion_total_manual NUMERIC(12,2),
+      suscripciones_manual NUMERIC(12,2),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  _ensuredResumenOverridesTable = true;
+}
+
+function getRecentMonths(baseMes, count) {
+  const [yy, mm] = String(baseMes).split('-').map(Number);
+  if (!yy || !mm) return [];
+  const out = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(yy, mm - 1, 1));
+    d.setUTCMonth(d.getUTCMonth() - i);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    out.push(`${y}-${m}`);
+  }
+  return out;
+}
+
 // ═══════════════════════════════════════════════════════════
 // Auth
 // ═══════════════════════════════════════════════════════════
@@ -533,11 +562,79 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, data: r.rows[0] });
     }
 
+    // ─── OVERRIDES DEL RESUMEN (manual por mes) ────
+    // GET  ?action=resumen-override&mes=YYYY-MM
+    // POST ?action=resumen-override body: { mes, facturacion_total_manual, suscripciones_manual }
+    if (action === 'resumen-override') {
+      const auth = checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureResumenOverridesTable();
+
+      if (req.method === 'GET') {
+        const mes = req.query.mes;
+        if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
+        const r = await sql`
+          SELECT mes, facturacion_total_manual, suscripciones_manual
+          FROM resumen_mes_override
+          WHERE mes = ${mes}
+          LIMIT 1
+        `;
+        const row = r.rows[0] || null;
+        return res.status(200).json({
+          success: true,
+          data: {
+            mes,
+            facturacion_total_manual: row?.facturacion_total_manual != null ? Number(row.facturacion_total_manual) : null,
+            suscripciones_manual: row?.suscripciones_manual != null ? Number(row.suscripciones_manual) : null
+          }
+        });
+      }
+
+      if (req.method === 'POST') {
+        const b = req.body || {};
+        const mes = String(b.mes || '').trim();
+        if (!/^\d{4}-\d{2}$/.test(mes)) {
+          return res.status(400).json({ success: false, error: 'mes inválido (YYYY-MM)' });
+        }
+
+        const factRaw = b.facturacion_total_manual;
+        const subsRaw = b.suscripciones_manual;
+        const fact = (factRaw === '' || factRaw == null) ? null : Number(factRaw);
+        const subs = (subsRaw === '' || subsRaw == null) ? null : Number(subsRaw);
+
+        if (fact != null && (!Number.isFinite(fact) || fact < 0)) {
+          return res.status(400).json({ success: false, error: 'facturacion_total_manual inválido' });
+        }
+        if (subs != null && (!Number.isFinite(subs) || subs < 0)) {
+          return res.status(400).json({ success: false, error: 'suscripciones_manual inválido' });
+        }
+
+        await sql`
+          INSERT INTO resumen_mes_override (mes, facturacion_total_manual, suscripciones_manual, updated_at)
+          VALUES (${mes}, ${fact}, ${subs}, CURRENT_TIMESTAMP)
+          ON CONFLICT (mes) DO UPDATE SET
+            facturacion_total_manual = EXCLUDED.facturacion_total_manual,
+            suscripciones_manual = EXCLUDED.suscripciones_manual,
+            updated_at = CURRENT_TIMESTAMP
+        `;
+
+        return res.status(200).json({
+          success: true,
+          mes,
+          facturacion_total_manual: fact,
+          suscripciones_manual: subs
+        });
+      }
+
+      return res.status(405).json({ success: false, error: 'Method not allowed' });
+    }
+
     // ─── RESUMEN DEL MES (para vista Resumen del dashboard) ────
     // GET ?action=resumen-mes&mes=YYYY-MM
     if (action === 'resumen-mes') {
       const auth = checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureResumenOverridesTable();
 
       const mes = req.query.mes;
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
@@ -588,6 +685,15 @@ module.exports = async function handler(req, res) {
         ORDER BY monto DESC NULLS LAST
       `;
 
+      // Overrides manuales (si existen)
+      const ov = await sql`
+        SELECT facturacion_total_manual, suscripciones_manual
+        FROM resumen_mes_override
+        WHERE mes = ${mes}
+        LIMIT 1
+      `;
+      const ovRow = ov.rows[0] || {};
+
       // Conteos generales
       const cnt = await sql`
         SELECT
@@ -602,7 +708,13 @@ module.exports = async function handler(req, res) {
       const equipo    = await sql`SELECT COALESCE(SUM(sueldo_mensual_usd), 0) AS sueldos FROM equipo_fijo WHERE activo = TRUE`;
 
       const totals = tot.rows[0];
-      const ingresoBruto = Number(totals.total_a_cobrar);
+  const autoTotalCobrar = Number(totals.total_a_cobrar || 0);
+  const autoSubs = Number(totals.suscripciones || 0);
+  const manualTotalCobrar = ovRow.facturacion_total_manual != null ? Number(ovRow.facturacion_total_manual) : null;
+  const manualSubs = ovRow.suscripciones_manual != null ? Number(ovRow.suscripciones_manual) : null;
+
+  const ingresoBruto = manualTotalCobrar != null ? manualTotalCobrar : autoTotalCobrar;
+  const suscripcionesMes = manualSubs != null ? manualSubs : autoSubs;
       const gastosOtros = Number(gas.rows[0].gastos_total || 0);
       // Desde este punto, el OM agencia se carga manualmente en "gastos_mes".
       const omAgencia = 0;
@@ -613,15 +725,43 @@ module.exports = async function handler(req, res) {
       const gastosFijos = gastosOtros + omAgencia + pChatters + pSupervisor + pEquipo;
       const netoOwner = ingresoBruto - gastosFijos;
 
+      // Historial real (últimos 6 meses), con prioridad a override manual si existe
+      const mesesHist = getRecentMonths(mes, 6);
+      const histAutoRes = await sql`
+        SELECT mes, COALESCE(SUM(total_a_cobrar), 0) AS total
+        FROM cierre_cuenta_mes
+        GROUP BY mes
+      `;
+      const histOvRes = await sql`
+        SELECT mes, facturacion_total_manual
+        FROM resumen_mes_override
+        WHERE facturacion_total_manual IS NOT NULL
+      `;
+
+      const autoMap = new Map(histAutoRes.rows.map(rw => [String(rw.mes), Number(rw.total || 0)]));
+      const ovMap = new Map(histOvRes.rows.map(rw => [String(rw.mes), Number(rw.facturacion_total_manual || 0)]));
+
+      const ingresosHistorial = mesesHist.map(m => ({
+        mes: m,
+        total: ovMap.has(m) ? ovMap.get(m) : (autoMap.get(m) || 0),
+        origen: ovMap.has(m) ? 'manual' : 'auto'
+      }));
+
       return res.status(200).json({
         success: true,
         mes,
         kpis: {
           fact_total:     Number(totals.fact_total),
-          suscripciones:  Number(totals.suscripciones),
+          suscripciones:  suscripcionesMes,
           fact_sin_subs:  Number(totals.fact_sin_subs),
           ganancia_bruta: Number(totals.ganancia_bruta),
           total_a_cobrar: ingresoBruto,
+          total_a_cobrar_auto: autoTotalCobrar,
+          total_a_cobrar_manual: manualTotalCobrar,
+          total_a_cobrar_origen: manualTotalCobrar != null ? 'manual' : 'auto',
+          suscripciones_auto: autoSubs,
+          suscripciones_manual: manualSubs,
+          suscripciones_origen: manualSubs != null ? 'manual' : 'auto',
           pago_recibido:  Number(totals.pago_recibido),
           pago_pendiente: Number(totals.pago_pendiente),
           gastos_fijos:   gastosFijos,
@@ -637,7 +777,8 @@ module.exports = async function handler(req, res) {
           cuentas_con_cierre: Number(totals.cuentas_con_cierre)
         },
         cobros: cobros.rows,
-        gastos: gastosLista.rows
+        gastos: gastosLista.rows,
+        ingresos_historial: ingresosHistorial
       });
     }
 

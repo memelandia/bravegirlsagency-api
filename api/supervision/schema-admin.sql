@@ -229,6 +229,15 @@ CREATE TABLE IF NOT EXISTS supervisor_suscripciones_mes (
   updated_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 16) Override manual del resumen (facturación y suscripciones no comisionables)
+CREATE TABLE IF NOT EXISTS resumen_mes_override (
+  mes                       CHAR(7) PRIMARY KEY,
+  facturacion_total_manual  NUMERIC(12,2),
+  suscripciones_manual      NUMERIC(12,2),
+  created_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ═══════════════════════════════════════════════════════════════
 -- ÍNDICES
 -- ═══════════════════════════════════════════════════════════════
