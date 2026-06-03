@@ -304,8 +304,6 @@
                 <span class="row-name">${c.modelo}</span>
               </div>
             </td>
-            <td class="muted">${c.cuenta || '—'}</td>
-            <td>${c.plan ? `<span class="pill">${c.plan}</span>` : '<span class="muted">—</span>'}</td>
             <td>${fmtMoney(c.total_a_cobrar, c.moneda)}</td>
             <td class="muted">${fmtMoney(c.pago_recibido, c.moneda)}</td>
             <td>${fmtMoney(c.pendiente, c.moneda)}</td>
@@ -381,9 +379,9 @@
                 </div>
                 <div class="table-wrap-inner">
                   <table>
-                    <thead><tr><th>Modelo</th><th>Cuenta</th><th>Plan</th><th>Total a cobrar</th><th>Pagado</th><th>Pendiente</th><th>Estado</th></tr></thead>
-                    <tbody>${cobrosRows || '<tr><td colspan="7" class="empty-state center">Sin cierres este mes.</td></tr>'}</tbody>
-                    <tfoot><tr class="tbl-footer"><td colspan="7">Mostrando ${(r.cobros || []).length} modelo${(r.cobros || []).length !== 1 ? 's' : ''}</td></tr></tfoot>
+                    <thead><tr><th>Modelo</th><th>Total a cobrar</th><th>Pagado</th><th>Pendiente</th><th>Estado</th></tr></thead>
+                    <tbody>${cobrosRows || '<tr><td colspan="5" class="empty-state center">Sin cierres este mes.</td></tr>'}</tbody>
+                    <tfoot><tr class="tbl-footer"><td colspan="5">Mostrando ${(r.cobros || []).length} modelo${(r.cobros || []).length !== 1 ? 's' : ''}</td></tr></tfoot>
                   </table>
                 </div>
               </div>
