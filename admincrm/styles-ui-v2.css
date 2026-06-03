@@ -465,8 +465,11 @@ label { font-size: 0.67rem; letter-spacing: 0.1em; color: rgba(107,107,122,0.9);
    STICKY ACTION BAR
    ═══════════════════════════════════════════════ */
 .sticky-actionbar {
-  background: rgba(14,14,26,0.96); border: 1px solid rgba(255,31,142,0.22); border-radius: 18px;
-  padding: 20px 26px; box-shadow: 0 8px 40px rgba(0,0,0,0.5); position: relative; overflow: hidden;
+  background: rgba(14,14,26,0.96); border: 1px solid rgba(255,31,142,0.32); border-radius: 18px;
+  padding: 18px 24px; box-shadow: 0 12px 42px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,31,142,0.05);
+  position: sticky; bottom: 16px; z-index: 50;
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  margin-top: 12px !important; overflow: hidden;
 }
 .sticky-actionbar::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #FF1F8E 40%, #FFD700 70%, transparent); }
 
