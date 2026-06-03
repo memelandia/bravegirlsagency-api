@@ -758,18 +758,28 @@ module.exports = async function handler(req, res) {
       const gastosFijos = gastosOtros + omAgencia + pChatters + pSupervisor + pEquipo;
       const netoOwner = ingresoBruto - gastosFijos;
 
-      // Historial real de facturación emitida (últimos 6 meses)
-      const mesesHist = getRecentMonths(mes, 6);
+      // Historial real de facturación emitida (últimos 12 meses desde el mes actual)
+      const now = new Date();
+      const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const mesesHist = getRecentMonths(mesActual, 12);
       const histFactRes = await sql`
         SELECT mes, COALESCE(SUM(fact_total), 0) AS total
         FROM cierre_cuenta_mes
         GROUP BY mes
       `;
+      const histManualRes = await sql`
+        SELECT mes, facturacion_total_manual
+        FROM resumen_mes_override
+        WHERE facturacion_total_manual IS NOT NULL
+      `;
       const factMap = new Map(histFactRes.rows.map(rw => [String(rw.mes), Number(rw.total || 0)]));
+      const manualMap = new Map(histManualRes.rows.map(rw => [String(rw.mes), Number(rw.facturacion_total_manual || 0)]));
 
       const factEmitidasHistorial = mesesHist.map(m => ({
         mes: m,
-        total: factMap.get(m) || 0
+        total: (factMap.get(m) || 0) > 0
+          ? (factMap.get(m) || 0)
+          : (isMesBefore(m, FACT_MANUAL_CUTOFF_MES) ? (manualMap.get(m) || 0) : 0)
       }));
 
       return res.status(200).json({
