@@ -251,6 +251,24 @@
     return sym + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  function parseMoneyInput(raw) {
+    if (raw == null) return null;
+    const txt = String(raw).trim();
+    if (!txt) return null;
+    const normalized = txt.replace(/\./g, '').replace(',', '.');
+    const val = Number(normalized);
+    if (!Number.isFinite(val) || val < 0) return null;
+    return val;
+  }
+
+  function formatMesLabel(yyyyMm) {
+    if (!yyyyMm || !yyyyMm.includes('-')) return yyyyMm || '';
+    const [y, m] = yyyyMm.split('-');
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const idx = Number(m) - 1;
+    return `${meses[idx] || m} ${String(y).slice(2)}`;
+  }
+
   async function renderResumen(view) {
     const mes = currentMes();
     view.innerHTML = `<div class="spinner"></div>`;
@@ -329,7 +347,7 @@
                 <div class="card-inner-pad card-head-row">
                   <div>
                     <div class="card-title">Evolución de ingresos</div>
-                    <div class="card-sub">Facturación total del mes</div>
+                    <div class="card-sub">Total Fact. Emitidas (últimos 12 meses)</div>
                   </div>
                 </div>
                 <div class="chart-area card-inner-pad">
@@ -454,12 +472,9 @@
         const prevChart = window.Chart.getChart(ctx);
         if (prevChart) prevChart.destroy();
 
-        const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-        const mesIdx = parseInt(mes.split('-')[1]) - 1;
-        const labels = Array.from({length: 6}, (_, i) => meses[(mesIdx - 5 + i + 12) % 12]);
-        const currentVal = k.total_a_cobrar || 0;
-        const data = Array.from({length: 5}, () => Math.round(currentVal * (0.6 + Math.random() * 0.6)));
-        data.push(currentVal);
+        const historial = Array.isArray(r.fact_emitidas_historial) ? r.fact_emitidas_historial : [];
+        const labels = historial.map(h => formatMesLabel(h.mes));
+        const data = historial.map(h => Number(h.total || 0));
         new window.Chart(ctx, {
           type: 'line',
           data: {
@@ -788,7 +803,10 @@
         // invalidar caches
         if (entity === 'modelos') modelosCache = null;
         if (entity === 'planes') planesCache = null;
-        showEntityList(entity);
+        // Re-renderizar la vista actual (catalogo, facturacion, etc.)
+        const route = location.hash.replace('#', '') || 'resumen';
+        if (route === 'catalogo') showEntityList(entity);
+        else navigate(route);
       } catch (e) {
         toast('Error: ' + e.message, 'error');
       }
@@ -830,14 +848,29 @@
     const mes = currentMes();
     view.innerHTML = `<div class="spinner"></div>`;
     try {
-      const [feeRes, histRes, statsRes] = await Promise.all([
+      const [feeRes, histRes, statsRes, overrideRes] = await Promise.all([
         api('tx-fee',         { params: { mes } }),
         api('tx-fee-history'),
-        api('stats')
+        api('stats'),
+        api('resumen-override', { params: { mes } })
       ]);
       const feeActual = Number(feeRes.porcentaje || 0);
       const historial = histRes.data || [];
       const counts = statsRes.counts || {};
+      const ov = overrideRes.data || {};
+      const factManualInput = ov.facturacion_total_manual != null
+        ? Number(ov.facturacion_total_manual).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : '';
+      const subsManualInput = ov.suscripciones_manual != null
+        ? Number(ov.suscripciones_manual).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : '';
+      const subsRows = (ov.suscripciones_por_cuenta || []).map(s => `
+        <tr>
+          <td>${s.modelo}</td>
+          <td>${s.cuenta}</td>
+          <td style="text-align:right">${fmtMoney(s.suscripciones)}</td>
+        </tr>
+      `).join('');
 
       const histRows = historial.map(h => `
         <tr data-mes="${h.mes}">
@@ -894,6 +927,71 @@
             ${kpiMini('Chatters', counts.chatters || 0)}
             ${kpiMini('Equipo',   counts.equipo   || 0)}
             ${kpiMini('Facturas', counts.facturas || 0)}
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <div class="card-title">🧮 Ajustes de facturación y suscripciones</div>
+          <p class="card-sub">Control manual centralizado fuera de Resumen. Facturación manual solo para meses anteriores a mayo 2026.</p>
+
+          <div class="grid-2col" style="margin-top:14px">
+            <div>
+              <label>Mes para ajuste manual</label>
+              <input type="month" id="ajustes-ov-mes" value="${mes}">
+            </div>
+            <div class="muted" style="font-size:0.82rem;display:flex;align-items:end">
+              ${ov.facturacion_manual_habilitada ? 'Este mes permite facturación manual.' : 'Este mes NO permite facturación manual (mayo 2026 en adelante = automático).'}
+            </div>
+          </div>
+
+          <div class="grid-2col" style="margin-top:12px">
+            <div>
+              <label>Facturación total final (manual)</label>
+              <input type="text" id="ajustes-ov-fact" placeholder="ej: 29.538,46" value="${factManualInput}" ${ov.facturacion_manual_habilitada ? '' : 'disabled'}>
+              <p class="muted" style="font-size:0.78rem;margin-top:6px">Se guarda en SQL y solo impacta meses anteriores a mayo 2026.</p>
+            </div>
+            <div>
+              <label>Suscripciones no comisionables (manual)</label>
+              <input type="text" id="ajustes-ov-subs" placeholder="ej: 3.800,00" value="${subsManualInput}">
+              <p class="muted" style="font-size:0.78rem;margin-top:6px">Sobrescribe el total de suscripciones del mes en Resumen.</p>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+            <button class="btn-primary" id="ajustes-ov-save" style="width:auto;padding:10px 18px;margin:0">💾 Guardar ajustes del mes</button>
+            <button class="btn-secondary" id="ajustes-ov-clear" style="width:auto;padding:10px 18px;margin:0">🧹 Limpiar valores manuales</button>
+          </div>
+
+          <div class="table-wrap" style="margin-top:18px">
+            <div class="table-toolbar">
+              <h3>Suscripciones pagas por cuenta <span class="count">${(ov.suscripciones_por_cuenta || []).length}</span></h3>
+            </div>
+            <table>
+              <thead><tr><th>Modelo</th><th>Cuenta</th><th style="text-align:right">Suscripciones</th></tr></thead>
+              <tbody>${subsRows || '<tr><td colspan="3" class="empty-state">Sin datos de cierres para este mes.</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <div class="card-title">🖼️ Logo de la agencia</div>
+          <p class="card-sub">Imagen que aparece en TODAS las facturas y liquidaciones PDF. Subí un PNG o JPG (max 500KB). Se guarda en el navegador.</p>
+          <div style="display:flex;gap:20px;align-items:center;margin-top:18px">
+            <div style="width:120px;height:120px;border-radius:14px;background:#fff;border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+              ${window.AGENCY_LOGO_DATA_URI
+                ? `<img src="${window.AGENCY_LOGO_DATA_URI}" alt="Logo actual" style="max-width:100%;max-height:100%;object-fit:contain"/>`
+                : `<div style="font-size:0.8rem;color:var(--text-mute);text-align:center;padding:10px">Sin logo<br>(SVG default)</div>`}
+            </div>
+            <div style="flex:1">
+              <label style="font-size:0.78rem;color:var(--text-mute);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:8px;display:block">Subir nuevo logo</label>
+              <input type="file" id="logo-input" accept="image/png,image/jpeg,image/svg+xml" style="width:100%;padding:10px 12px">
+              <p class="muted" style="font-size:0.78rem;margin-top:8px">Recomendado: cuadrado, fondo transparente o rosa pálido, ~500x500px.</p>
+              <div style="display:flex;gap:8px;margin-top:10px">
+                ${window.AGENCY_LOGO_DATA_URI
+                  ? `<button class="btn-secondary" id="logo-remove" style="width:auto;padding:8px 14px;margin:0;font-size:0.85rem">🗑️ Quitar logo (volver al SVG default)</button>`
+                  : ''}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -958,6 +1056,34 @@
         renderAjustes(view);
       });
 
+      // Logo upload
+      const logoInput = document.getElementById('logo-input');
+      if (logoInput) {
+        logoInput.addEventListener('change', (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          if (f.size > 500_000) { toast('Imagen muy grande (max 500KB)', 'error'); return; }
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const dataUri = ev.target.result;
+            saveAgencyLogo(dataUri);
+            toast(`Logo guardado (${(f.size / 1024).toFixed(0)} KB) — aparecerá en próximas facturas`, 'success');
+            renderAjustes(view);
+          };
+          reader.onerror = () => toast('Error leyendo el archivo', 'error');
+          reader.readAsDataURL(f);
+        });
+      }
+      const logoRemove = document.getElementById('logo-remove');
+      if (logoRemove) {
+        logoRemove.addEventListener('click', () => {
+          if (!confirm('¿Quitar el logo custom? Las facturas volverán a usar el SVG default.')) return;
+          saveAgencyLogo('');
+          toast('Logo eliminado', 'success');
+          renderAjustes(view);
+        });
+      }
+
       document.getElementById('ajustes-export').addEventListener('click', async () => {
         try {
           const [m, c, ch, e, p] = await Promise.all([
@@ -994,6 +1120,66 @@
         token = null;
         showLogin();
       });
+
+      document.getElementById('ajustes-ov-mes').addEventListener('change', () => {
+        const newMes = document.getElementById('ajustes-ov-mes').value;
+        if (!newMes) return;
+        document.getElementById('mes-selector').value = newMes;
+        sessionStorage.setItem('admin_mes', newMes);
+        renderAjustes(view);
+      });
+
+      document.getElementById('ajustes-ov-save').addEventListener('click', async () => {
+        const mesOv = document.getElementById('ajustes-ov-mes').value;
+        const inFact = document.getElementById('ajustes-ov-fact');
+        const inSubs = document.getElementById('ajustes-ov-subs');
+        const fact = parseMoneyInput(inFact ? inFact.value : null);
+        const subs = parseMoneyInput(inSubs ? inSubs.value : null);
+        const hasFact = inFact && String(inFact.value || '').trim() !== '';
+        const hasSubs = inSubs && String(inSubs.value || '').trim() !== '';
+
+        if (hasFact && fact == null) {
+          toast('Facturación manual inválida. Formato sugerido: 29.538,46', 'error');
+          return;
+        }
+        if (hasSubs && subs == null) {
+          toast('Suscripciones manuales inválidas. Formato sugerido: 3.800,00', 'error');
+          return;
+        }
+
+        try {
+          await api('resumen-override', {
+            method: 'POST',
+            body: {
+              mes: mesOv,
+              facturacion_total_manual: hasFact ? fact : null,
+              suscripciones_manual: hasSubs ? subs : null
+            }
+          });
+          toast('Ajustes manuales guardados', 'success');
+          renderAjustes(view);
+        } catch (err) {
+          toast('Error: ' + (err.message || 'No se pudo guardar'), 'error');
+        }
+      });
+
+      document.getElementById('ajustes-ov-clear').addEventListener('click', async () => {
+        const mesOv = document.getElementById('ajustes-ov-mes').value;
+        try {
+          await api('resumen-override', {
+            method: 'POST',
+            body: {
+              mes: mesOv,
+              facturacion_total_manual: null,
+              suscripciones_manual: null
+            }
+          });
+          toast('Ajustes manuales limpiados', 'success');
+          renderAjustes(view);
+        } catch (err) {
+          toast('Error: ' + (err.message || 'No se pudo limpiar'), 'error');
+        }
+      });
     } catch (e) {
       view.innerHTML = `<div class="card center muted">⚠️ ${e.message}</div>`;
     }
@@ -1009,6 +1195,21 @@
   }
 
   // (mes-selector listener consolidado más abajo en Fase 2)
+
+  // ───────── Logo de agencia (custom upload, persistido en localStorage) ─────────
+  const AGENCY_LOGO_KEY = 'admin_agency_logo';
+  function loadAgencyLogo() {
+    try { window.AGENCY_LOGO_DATA_URI = localStorage.getItem(AGENCY_LOGO_KEY) || ''; }
+    catch (_) { window.AGENCY_LOGO_DATA_URI = ''; }
+  }
+  function saveAgencyLogo(dataUri) {
+    try {
+      if (dataUri) localStorage.setItem(AGENCY_LOGO_KEY, dataUri);
+      else         localStorage.removeItem(AGENCY_LOGO_KEY);
+      window.AGENCY_LOGO_DATA_URI = dataUri || '';
+    } catch (e) { console.error(e); }
+  }
+  loadAgencyLogo();
 
   // ───────── Boot ─────────
   async function boot() {
@@ -1069,7 +1270,7 @@
     detail.innerHTML = `<div class="spinner"></div>`;
     try {
       const r = await api('cierre-modelo', { params: { modelo_id: modeloId, mes } });
-      currentFactState = { modelo: r.modelo, cuentas: r.cuentas, mes };
+      currentFactState = { modelo: r.modelo, cuentas: r.cuentas, mes, facturaRef: r.factura_ref || {} };
       renderFacturacionForm(detail);
     } catch (e) {
       detail.innerHTML = `<div class="card center muted">⚠️ ${e.message}</div>`;
@@ -1077,7 +1278,7 @@
   }
 
   function renderFacturacionForm(container) {
-    const { modelo, cuentas, mes } = currentFactState;
+    const { modelo, cuentas, mes, facturaRef } = currentFactState;
     if (cuentas.length === 0) {
       container.innerHTML = `
         <div class="card center" style="padding:48px">
@@ -1096,15 +1297,28 @@
         <div class="sab-grid">
           <div class="sab-meta">
             <div class="sab-row"><span class="sab-lbl">Modelo</span><span class="sab-val">${modelo.nombre}</span></div>
-            <div class="sab-row"><span class="sab-lbl">Fiscal</span><span class="sab-val muted">${modelo.nombre_fiscal || '—'}</span></div>
+            <div class="sab-row">
+              <span class="sab-lbl">Fiscal</span>
+              <span class="sab-val ${modelo.nombre_fiscal ? '' : 'muted'}" style="display:flex;align-items:center;gap:6px">
+                ${modelo.nombre_fiscal || '<span style="color:var(--warning,#FB923C)">⚠️ falta cargar</span>'}
+                <button id="edit-fiscal-btn" class="btn-ghost-small" title="Editar datos fiscales de ${modelo.nombre}" style="padding:2px 8px;font-size:.7rem;height:auto">✎</button>
+              </span>
+            </div>
+            ${modelo.identificador ? `<div class="sab-row"><span class="sab-lbl">ID</span><span class="sab-val muted" style="font-size:.75rem">${modelo.identificador}</span></div>` : ''}
           </div>
           <div class="sab-meta">
             <div class="sab-row"><span class="sab-lbl">Plan</span><span class="sab-val">${modelo.porcentaje || modelo.plan_porcentaje}%</span></div>
             <div class="sab-row"><span class="sab-lbl">Moneda</span><span class="sab-val">${modelo.moneda_default} · ${modelo.medio_pago_default || '—'}</span></div>
           </div>
           <div class="sab-meta">
-            <div class="sab-row"><span class="sab-lbl">Próx. factura</span><span class="sab-val sab-num">#${(modelo.factura_numero_actual || 0) + 1}</span></div>
+            <div class="sab-row"><span class="sab-lbl">Última mes anterior</span><span class="sab-val sab-num">${facturaRef?.ultimo_numero_mes_anterior ? '#' + facturaRef.ultimo_numero_mes_anterior : '—'}</span></div>
+            <div class="sab-row"><span class="sab-lbl">N° sugerido</span><span class="sab-val sab-num" id="fact-num-sugerido">#${(modelo.factura_numero_actual || 0) + 1}</span></div>
             <div class="sab-row"><span class="sab-lbl">Mes</span><span class="sab-val">${mes}</span></div>
+          </div>
+          <div class="sab-meta">
+            <label style="font-size:.75rem;letter-spacing:.08em;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;display:block">N° factura manual</label>
+            <input type="number" step="1" min="1" id="fact-num-manual" value="${(modelo.factura_numero_actual || 0) + 1}" style="padding:10px 12px">
+            <div class="muted" style="font-size:.72rem;margin-top:6px">Se puede editar antes de generar el PDF</div>
           </div>
           <div class="sab-total">
             <div class="sab-total-lbl">Total a cobrar</div>
@@ -1126,6 +1340,18 @@
 
     document.getElementById('save-cierre-btn').addEventListener('click', saveCierres);
     document.getElementById('gen-factura-btn').addEventListener('click', generarFactura);
+    const editFiscalBtn = document.getElementById('edit-fiscal-btn');
+    if (editFiscalBtn) {
+      editFiscalBtn.addEventListener('click', async () => {
+        try {
+          // Asegurar cache de planes para el selector
+          if (!planesCache) {
+            try { planesCache = (await api('catalog', { params: { entity: 'planes' } })).data; } catch {}
+          }
+          openEditModal('modelos', modelo);
+        } catch (e) { toast('Error: ' + e.message, 'error'); }
+      });
+    }
   }
 
   function renderCuentaForm(cc, idx) {
@@ -1145,18 +1371,10 @@
           <div class="muted" style="font-size:.85rem">Cierre #${idx + 1}</div>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px">
           <div>
             <label>Facturación total</label>
             <input type="number" step="0.01" data-field="fact_total" value="${c.fact_total || 0}">
-          </div>
-          <div>
-            <label>Suscripciones</label>
-            <input type="number" step="0.01" data-field="suscripciones" value="${c.suscripciones || 0}">
-          </div>
-          <div>
-            <label>Masivos</label>
-            <input type="number" step="0.01" data-field="masivos" value="${c.masivos || 0}">
           </div>
           <div>
             <label>% aplicado</label>
@@ -1296,8 +1514,8 @@
 
   function recalcCuentaTotal(idx) {
     const cc = currentFactState.cuentas[idx].cierre;
-    const dif = (cc.fact_total || 0) - (cc.suscripciones || 0) - (cc.masivos || 0);
-    const gan = dif * (cc.porcentaje_aplicado || 0) / 100;
+    const base = (cc.fact_total || 0);
+    const gan = base * (cc.porcentaje_aplicado || 0) / 100;
     const extrasSum = (cc.otros_extras || []).reduce((s, x) => s + Number(x.monto || 0), 0);
     const tot = gan + (cc.software_om_fee || 0) + (cc.ventas_por_fuera || 0) + (cc.pago_verificado_ig || 0) + extrasSum;
     cc.total_a_cobrar = tot;
@@ -1305,7 +1523,7 @@
     const moneda = currentFactState.modelo.moneda_default;
     const sumEl = document.querySelector(`[data-summary="${idx}"]`);
     const totEl = document.querySelector(`[data-cuenta-total="${idx}"]`);
-    if (sumEl) sumEl.textContent = `Diferencia: ${fmtMoney(dif, moneda)} · Ganancia agencia: ${fmtMoney(gan, moneda)}`;
+    if (sumEl) sumEl.textContent = `Base comisión: ${fmtMoney(base, moneda)} · Ganancia agencia: ${fmtMoney(gan, moneda)}`;
     if (totEl) totEl.textContent = fmtMoney(tot, moneda);
   }
 
@@ -1352,10 +1570,14 @@
       const conceptoBase = (modelo.plan_servicios ? modelo.plan_servicios.split('.')[0] : 'Plan de Gestión');
       const porcentaje = Number(modelo.porcentaje || modelo.plan_porcentaje || 0);
       const concepto = `Plan ${porcentaje >= 60 ? 'Premium - Gestion Completa' : porcentaje >= 50 ? 'Avanzado - Gestion y Trafico' : 'Inicial - Solo Gestion'}`;
-      const numeroNext = (Number(modelo.factura_numero_actual) || 0) + 1;
+      const numInput = document.getElementById('fact-num-manual');
+      const numeroManual = Number(numInput ? numInput.value : 0);
+      if (!Number.isInteger(numeroManual) || numeroManual <= 0) {
+        throw new Error('Número de factura manual inválido');
+      }
 
       const meta = {
-        numero: numeroNext,
+        numero: numeroManual,
         mes,
         fechaEmision,
         vencimiento,
@@ -1370,51 +1592,15 @@
       };
       const html = buildFacturaHtml(meta, items, subtotal, iva, total);
 
-      // 4) Render PDF con html2pdf.js
-      // IMPORTANTE: el wrapper se renderiza visible (con scroll lock) por 250ms para que
-      // html2canvas pueda capturarlo correctamente. Posicionarlo off-screen genera bugs
-      // (contenido desplazado, recortado, blanco). Ancho 720px = matchea A4 portrait usable area.
-      const wrapper = document.createElement('div');
-      wrapper.style.cssText = [
-        'position:fixed',
-        'top:0',
-        'left:0',
-        'width:720px',
-        'background:#fff',
-        'z-index:999999',
-        'pointer-events:none',
-        'box-shadow:0 0 0 9999px rgba(0,0,0,0.6)'
-      ].join(';');
-      wrapper.innerHTML = html;
-      document.body.appendChild(wrapper);
-      // Lock scroll briefly so el render no jumpea
-      const prevOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      await new Promise(r => setTimeout(r, 250));
-      try {
-        await html2pdf().set({
-          margin: [6, 6, 6, 6],
-          filename: `Factura-${modelo.nombre.replace(/\s+/g, '')}-${mes}-${numeroNext}.pdf`,
-          image: { type: 'png', quality: 1 },
-          html2canvas: {
-            scale: 2.5,
-            backgroundColor: '#fff',
-            useCORS: true,
-            logging: false
-          },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-        }).from(wrapper.firstElementChild).save();
-      } finally {
-        wrapper.remove();
-        document.body.style.overflow = prevOverflow;
-      }
+      // 4) Render PDF con html2pdf.js (helper unificado)
+      await renderHtmlToPdf(html, `Factura-${modelo.nombre.replace(/\s+/g, '')}-${mes}-${numeroManual}.pdf`);
 
       // 5) Persistir factura en backend
       await api('factura-create', {
         method: 'POST',
         body: {
           modelo_id: modelo.id,
+          numero: numeroManual,
           mes,
           fecha_emision: fechaEmision,
           fecha_vencimiento: vencimiento,
@@ -1432,12 +1618,13 @@
       });
 
       // Actualizar cache local
-      modelo.factura_numero_actual = numeroNext;
-      modelosCache = modelosCache.map(m => m.id === modelo.id ? { ...m, factura_numero_actual: numeroNext } : m);
-      const nextEl = document.querySelector('#fact-detail .card div[style*="color:var(--gold)"]');
-      if (nextEl) nextEl.textContent = '#' + (numeroNext + 1);
+      modelo.factura_numero_actual = Math.max(Number(modelo.factura_numero_actual || 0), numeroManual);
+      modelosCache = modelosCache.map(m => m.id === modelo.id ? { ...m, factura_numero_actual: Math.max(Number(m.factura_numero_actual || 0), numeroManual) } : m);
+      const nextEl = document.getElementById('fact-num-sugerido');
+      if (nextEl) nextEl.textContent = '#' + (Number(modelo.factura_numero_actual || 0) + 1);
+      if (numInput) numInput.value = String(Number(modelo.factura_numero_actual || 0) + 1);
 
-      toast(`Factura #${numeroNext} generada y descargada`, 'success');
+      toast(`Factura #${numeroManual} generada y descargada`, 'success');
     } catch (e) {
       toast('Error: ' + e.message, 'error');
     }
@@ -1449,8 +1636,8 @@
     cuentas.forEach(cc => {
       const cuenta = cc.cuenta;
       const c = cc.cierre;
-      const dif = (c.fact_total || 0) - (c.suscripciones || 0) - (c.masivos || 0);
-      const gan = dif * (c.porcentaje_aplicado || 0) / 100;
+      const base = (c.fact_total || 0);
+      const gan = base * (c.porcentaje_aplicado || 0) / 100;
 
       // Línea de Gestión
       if (c.fact_total > 0) {
@@ -1504,6 +1691,56 @@
     return items;
   }
 
+  // Helper unificado: toma HTML string + filename, genera PDF descargado.
+  // - Wrapper visible en pantalla (top-left, z-index alto) por 300ms para que el browser
+  //   complete el layout antes que html2canvas capture.
+  // - Limpia el DOM en try/finally incluso si falla la captura.
+  // - Útil para los 3 tipos de PDF: factura modelo, liquidación chatter, liquidación supervisor.
+  async function renderHtmlToPdf(html, filename, opts = {}) {
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = [
+      'position:fixed',
+      'top:0',
+      'left:0',
+      'width:720px',
+      'background:#fff',
+      'z-index:999999',
+      'pointer-events:none',
+      // Sombra externa actúa como overlay para tapar el dashboard mientras renderiza
+      'box-shadow:0 0 0 9999px rgba(0,0,0,0.55)'
+    ].join(';');
+    wrapper.innerHTML = html;
+    document.body.appendChild(wrapper);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    try {
+      // Esperar a que el browser haga layout + render del wrapper
+      // (300ms es necesario para que SVG inline + fonts + tablas estén listos)
+      await new Promise(r => setTimeout(r, 300));
+      const target = wrapper.firstElementChild || wrapper;
+      await window.html2pdf().set({
+        margin: opts.margin || [6, 6, 6, 6],
+        filename,
+        image: { type: 'png', quality: 1 },
+        html2canvas: {
+          scale: 2.5,
+          backgroundColor: '#fff',
+          useCORS: true,
+          logging: false,
+          ...(opts.html2canvas || {})
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      }).from(target).save();
+    } catch (err) {
+      console.error('PDF render error', err);
+      toast('Error generando PDF: ' + err.message, 'error');
+    } finally {
+      wrapper.remove();
+      document.body.style.overflow = prevOverflow;
+    }
+  }
+
   // Paleta de colores por tipo de ítem (matching factura ejemplo)
   function itemLabelStyle(descripcion) {
     const d = (descripcion || '').toLowerCase();
@@ -1531,28 +1768,51 @@
       return `01 al ${lastDay} de ${meses[m-1]} ${y}`;
     })();
 
-    // Logo SVG con COLORES SÓLIDOS (sin gradientes - html2canvas los renderiza mal)
-    const logoSvg = `
-      <svg viewBox="0 0 120 120" width="100" height="100" xmlns="http://www.w3.org/2000/svg" style="display:block">
-        <!-- Pelo trasero rosa fuerte -->
-        <path d="M22,58 C22,32 42,16 62,18 C88,22 100,42 96,68 C93,86 82,98 70,102 L72,76 C72,66 65,60 58,60 L46,60 C40,60 36,66 36,74 L40,102 C30,94 22,82 22,58Z" fill="#FF1F8E"/>
-        <!-- Cara -->
-        <ellipse cx="58" cy="50" rx="19" ry="23" fill="#FBD3B8"/>
-        <!-- Cuello -->
-        <path d="M48,70 L48,84 C48,88 52,92 58,92 C64,92 68,88 68,84 L68,70 Z" fill="#FBD3B8"/>
-        <!-- Pelo frontal/flequillo -->
-        <path d="M40,46 C40,28 52,20 62,20 C76,20 84,32 84,46 C82,38 76,34 72,36 C68,26 54,28 48,38 C44,38 40,42 40,46Z" fill="#9D174D"/>
-        <!-- Mechón largo lateral derecho -->
-        <path d="M78,42 C86,46 88,60 86,72 C84,82 76,90 70,92 L72,76 C72,66 80,55 78,42Z" fill="#FF1F8E"/>
-        <!-- Mechón izquierdo (puntas onduladas) -->
-        <path d="M30,72 C24,80 24,92 28,100 L36,102 L34,80 Z" fill="#9D174D"/>
-        <!-- Hombros gradient pseudo -->
-        <path d="M30,98 L88,98 C92,98 96,104 96,110 L24,110 C24,104 26,98 30,98Z" fill="#FF1F8E"/>
-        <!-- Ojos -->
-        <ellipse cx="53" cy="50" rx="1.6" ry="2.2" fill="#1a1a1a"/>
-        <ellipse cx="65" cy="50" rx="1.6" ry="2.2" fill="#1a1a1a"/>
-        <!-- Labios -->
-        <path d="M54,60 Q59,64 64,60" stroke="#be185d" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    // Logo SVG — Silueta de mujer en perfil con pelo largo rosa flotante.
+    // Inspirado en el logo real de BraveGirls Agency. Colores sólidos (sin gradientes).
+    // Si subiste un logo PNG real, se usa ese en lugar de este SVG.
+    const customLogo = (window.AGENCY_LOGO_DATA_URI || '').trim();
+    const logoSvg = customLogo
+      ? `<img src="${customLogo}" alt="BraveGirls Agency" width="110" height="110" style="display:block;object-fit:contain"/>`
+      : `
+      <svg viewBox="0 0 140 140" width="110" height="110" xmlns="http://www.w3.org/2000/svg" style="display:block">
+        <!-- Fondo rosa palo circular -->
+        <circle cx="70" cy="70" r="68" fill="#FCE7F3"/>
+
+        <!-- PELO BACK: melena larga ondulada que envuelve -->
+        <path d="M22,72 C18,52 26,28 42,18 C60,8 88,12 102,28 C118,46 122,70 116,90 C112,104 102,114 90,118 L92,98 C94,86 88,76 82,72 L82,90 C82,100 76,108 70,108 C64,108 60,100 60,90 L60,72 C56,76 52,86 56,98 L58,118 C44,114 30,102 26,88 C22,76 22,72 22,72 Z" fill="#1F0A14"/>
+
+        <!-- HAIR HIGHLIGHTS PINK strokes -->
+        <path d="M44,30 C50,20 60,16 72,16 C80,16 90,20 94,28 C90,24 84,22 78,24 C72,18 60,20 52,28 C48,28 44,30 44,30 Z" fill="#FF1F8E"/>
+        <path d="M104,40 C108,52 110,68 106,82 C104,90 98,96 92,98 L94,82 C96,72 102,55 104,40 Z" fill="#FF1F8E"/>
+        <path d="M30,82 C28,92 28,104 32,114 L40,116 L36,98 C34,90 32,86 30,82 Z" fill="#FF1F8E"/>
+        <path d="M82,108 C84,114 88,118 92,118 L88,108 Z" fill="#EC4899"/>
+
+        <!-- CARA (perfil mirando izquierda) -->
+        <path d="M52,46 C52,34 60,28 68,28 C76,28 82,34 82,46 L82,62 C82,68 78,72 74,72 C70,74 66,76 66,80 C66,82 62,82 60,80 L58,72 C54,72 52,68 52,62 Z" fill="#F8C9B0"/>
+
+        <!-- CEJA -->
+        <path d="M58,42 Q63,40 68,42" stroke="#1F0A14" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <!-- OJO (perfil) -->
+        <ellipse cx="62" cy="47" rx="2" ry="1.2" fill="#1F0A14"/>
+        <ellipse cx="62" cy="46" rx="0.8" ry="0.6" fill="#fff"/>
+        <!-- Pestañas -->
+        <path d="M59,46 L57,44 M65,46 L67,44" stroke="#1F0A14" stroke-width="1.2" stroke-linecap="round"/>
+        <!-- Nariz -->
+        <path d="M58,50 L55,56 L58,58" stroke="#1F0A14" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- Labios rosados -->
+        <path d="M56,62 Q60,64 62,62" stroke="#EC4899" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M56,64 Q60,66 62,64" stroke="#BE185D" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+
+        <!-- CUELLO -->
+        <path d="M58,74 L58,86 C58,90 62,92 66,92 L66,80 Z" fill="#F8C9B0"/>
+
+        <!-- HOMBROS rosa marca -->
+        <path d="M40,100 C46,94 56,90 66,90 C76,90 88,94 96,102 C100,108 102,114 102,118 L36,118 C36,112 38,106 40,100 Z" fill="#FF1F8E"/>
+
+        <!-- Brillo en pelo (pequeño detalle estilizado) -->
+        <circle cx="100" cy="32" r="2" fill="#fff" opacity="0.85"/>
+        <circle cx="105" cy="38" r="1.2" fill="#fff" opacity="0.85"/>
       </svg>
     `;
 
@@ -1753,26 +2013,7 @@
             const rr = await api('factura-get', { params: { id } });
             const html = rr.data.pdf_html_snapshot;
             if (!html) { toast('Esta factura no tiene snapshot HTML', 'error'); return; }
-            const wrapper = document.createElement('div');
-            wrapper.style.cssText = 'position:fixed;top:0;left:0;width:720px;background:#fff;z-index:999999;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,0.6)';
-            wrapper.innerHTML = html;
-            document.body.appendChild(wrapper);
-            const prevOverflow = document.body.style.overflow;
-            document.body.style.overflow = 'hidden';
-            await new Promise(r => setTimeout(r, 250));
-            try {
-              await html2pdf().set({
-                margin: [6, 6, 6, 6],
-                filename: `Factura-${rr.data.entidad_id}-${rr.data.mes}-${rr.data.numero}.pdf`,
-                image: { type: 'png', quality: 1 },
-                html2canvas: { scale: 2.5, backgroundColor: '#fff', useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-              }).from(wrapper.firstElementChild).save();
-            } finally {
-              wrapper.remove();
-              document.body.style.overflow = prevOverflow;
-            }
+            await renderHtmlToPdf(html, `Factura-${rr.data.entidad_id}-${rr.data.mes}-${rr.data.numero}.pdf`);
             toast('PDF descargado', 'success');
           } catch (e) {
             toast('Error: ' + e.message, 'error');
@@ -2289,7 +2530,7 @@
     } catch (e) { toast('Error: ' + e.message, 'error'); }
   }
 
-  function generarLiquidacionPDF(chatter) {
+  async function generarLiquidacionPDF(chatter) {
     const main = document.getElementById('liq-main');
     const rows = [];
     main.querySelectorAll('tr[data-cuenta-id]').forEach(tr => {
@@ -2319,6 +2560,11 @@
 
     const fechaHoy = new Date().toLocaleDateString('es-AR');
 
+    const customLogoLiq = (window.AGENCY_LOGO_DATA_URI || '').trim();
+    const logoLiqHtml = customLogoLiq
+      ? `<img src="${customLogoLiq}" alt="Logo" width="84" height="84" style="display:block;object-fit:contain;margin-left:auto"/>`
+      : `<div style="width:84px;height:84px;border-radius:14px;background:#be185d;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:24px;margin-left:auto;letter-spacing:0.04em">BG</div>`;
+
     const html = `
 <div style="font-family:Arial,Helvetica,sans-serif;padding:28px 32px;color:#0f172a;background:#fff;width:720px;box-sizing:border-box">
 
@@ -2328,10 +2574,10 @@
       <td style="vertical-align:middle;padding:18px 22px">
         <div style="font-size:24px;font-weight:900;color:#be185d;letter-spacing:-0.5px;line-height:1.1">BraveGirls Agency LLC</div>
         <div style="font-size:11px;color:#374151;margin-top:5px;font-weight:600">Liquidación de Chatter · Documento interno</div>
+        <div style="font-size:10px;color:#6b1c4a;text-transform:uppercase;letter-spacing:0.08em;font-weight:800;margin-top:8px">Emisión: <span style="color:#0f172a">${fechaHoy}</span></div>
       </td>
-      <td style="vertical-align:middle;text-align:right;padding:18px 22px;width:200px">
-        <div style="font-size:10px;color:#6b1c4a;text-transform:uppercase;letter-spacing:0.1em;font-weight:800">Emisión</div>
-        <div style="font-size:13px;color:#0f172a;font-weight:700;margin-top:2px">${fechaHoy}</div>
+      <td style="vertical-align:middle;padding:18px 22px;width:110px">
+        ${logoLiqHtml}
       </td>
     </tr>
   </table>
@@ -2401,22 +2647,7 @@
   </div>
 
 </div>`;
-    const tmp = document.createElement('div');
-    tmp.style.cssText = 'position:fixed;top:0;left:0;width:720px;background:#fff;z-index:999999;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,0.6)';
-    tmp.innerHTML = html;
-    document.body.appendChild(tmp);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    setTimeout(() => {
-      window.html2pdf().from(tmp.firstElementChild).set({
-        margin: 6,
-        filename: `liquidacion_${chatter.nombre.replace(/\s+/g, '_')}_${liqState.mes}.pdf`,
-        image: { type: 'png', quality: 1 },
-        html2canvas: { scale: 2.5, backgroundColor: '#fff', useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      }).save().then(() => { tmp.remove(); document.body.style.overflow = prevOverflow; });
-    }, 250);
+    await renderHtmlToPdf(html, `liquidacion_${chatter.nombre.replace(/\s+/g, '_')}_${liqState.mes}.pdf`);
   }
 
   // ═══════════════════════════════════════════════════════
@@ -2532,6 +2763,7 @@
     try {
       const s = await api('supervisor-mes', { params: { mes } });
       const supName = s.supervisor ? s.supervisor.nombre : '— sin supervisor configurado —';
+      const subsSource = s.suscripciones_origen === 'manual' ? 'manual' : 'automatico';
       const ventasRows = s.ventas_detalle.map(v => `
         <tr>
           <td>${v.chatter}</td>
@@ -2546,9 +2778,22 @@
           <div class="flex-between">
             <div>
               <h2 style="margin:0;font-family:var(--font-display)">★ Supervisor · ${supName}</h2>
-              <div class="muted">Mes ${mes} · cálculo automático</div>
+              <div class="muted">Mes ${mes} · suscripciones ${subsSource}</div>
             </div>
             <button class="btn-primary" id="sup-pdf" style="width:auto;padding:12px 22px;margin:0">📥 Liquidación PDF</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <div class="flex-between" style="gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div>
+              <h3 style="margin:0">Suscripciones totales del mes</h3>
+              <div class="muted">Podés setear un valor manual para cerrar números del supervisor.</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;min-width:320px">
+              <input type="number" step="0.01" min="0" id="sup-subs-input" value="${Number(s.suscripciones_totales || 0).toFixed(2)}" style="flex:1">
+              <button class="btn-secondary" id="sup-subs-save" style="width:auto;padding:10px 16px;margin:0">Guardar</button>
+            </div>
           </div>
         </div>
 
@@ -2582,13 +2827,31 @@
         </div>
       `;
       document.getElementById('sup-pdf').addEventListener('click', () => generarSupervisorPDF(s));
+      document.getElementById('sup-subs-save').addEventListener('click', async () => {
+        const val = Number(document.getElementById('sup-subs-input').value || 0);
+        if (Number.isNaN(val) || val < 0) {
+          toast('Suscripciones inválidas', 'error');
+          return;
+        }
+        try {
+          await api('supervisor-mes', {
+            method: 'POST',
+            body: { mes, suscripciones_totales: val }
+          });
+          toast('Suscripciones manuales guardadas', 'success');
+          renderSupervisor(view);
+        } catch (e) {
+          toast('Error: ' + e.message, 'error');
+        }
+      });
     } catch (e) {
       view.innerHTML = `<div class="card center muted">⚠️ ${e.message}</div>`;
     }
   }
 
-  function generarSupervisorPDF(s) {
+  async function generarSupervisorPDF(s) {
     const supName = s.supervisor ? s.supervisor.nombre : 'Supervisor';
+    const subsTag = s.suscripciones_origen === 'manual' ? 'manual' : 'automatico';
     const rows = s.ventas_detalle.map(v => `
       <tr style="border-bottom:1px solid #fbcfe8">
         <td style="padding:10px">${v.chatter}</td>
@@ -2597,21 +2860,29 @@
         <td style="padding:10px;text-align:right;font-weight:700">${fmtMoney(v.comision)}</td>
       </tr>
     `).join('');
+    const customLogoSup = (window.AGENCY_LOGO_DATA_URI || '').trim();
+    const logoSupHtml = customLogoSup
+      ? `<img src="${customLogoSup}" alt="Logo" width="72" height="72" style="display:block;object-fit:contain"/>`
+      : `<div style="width:72px;height:72px;border-radius:14px;background:#be185d;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;letter-spacing:0.04em">BG</div>`;
+
     const html = `
-<div style="font-family:Inter,sans-serif;padding:30px;color:#1a1a1a;background:#fff;width:720px">
-  <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #be185d;padding-bottom:16px">
-    <div>
-      <div style="font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:800;color:#be185d">BraveGirls Agency</div>
-      <div style="color:#6b7280;font-size:0.85rem">Liquidación Supervisor · Mes ${s.mes}</div>
+<div style="font-family:Arial,Helvetica,sans-serif;padding:30px;color:#0f172a;background:#fff;width:720px;box-sizing:border-box">
+  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #be185d;padding-bottom:18px">
+    <div style="display:flex;align-items:center;gap:14px">
+      ${logoSupHtml}
+      <div>
+        <div style="font-family:Arial,sans-serif;font-size:22px;font-weight:900;color:#be185d;letter-spacing:-0.5px">BraveGirls Agency LLC</div>
+        <div style="color:#6b7280;font-size:12px;font-weight:600;margin-top:2px">Liquidación Supervisor · Mes ${s.mes}</div>
+      </div>
     </div>
     <div style="text-align:right">
-      <div style="font-size:0.75rem;color:#9ca3af;text-transform:uppercase;letter-spacing:.1em">Supervisor</div>
-      <div style="font-size:1.4rem;font-weight:800">${supName}</div>
+      <div style="font-size:10px;color:#6b1c4a;text-transform:uppercase;letter-spacing:0.1em;font-weight:800">Supervisor</div>
+      <div style="font-size:18px;font-weight:900;color:#0f172a;margin-top:2px">${supName}</div>
     </div>
   </div>
   <div style="margin-top:20px">
     <div style="display:flex;justify-content:space-between;padding:6px 0"><span>SFS Control</span><strong>${fmtMoney(s.sfs_control)}</strong></div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0"><span>5% de suscripciones (${fmtMoney(s.suscripciones_totales)})</span><strong>${fmtMoney(s.comision_suscripciones)}</strong></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0"><span>5% de suscripciones (${fmtMoney(s.suscripciones_totales)}) · ${subsTag}</span><strong>${fmtMoney(s.comision_suscripciones)}</strong></div>
     <div style="display:flex;justify-content:space-between;padding:6px 0"><span>Comisión sobre ventas chatters</span><strong>${fmtMoney(s.comision_ventas_chatters)}</strong></div>
   </div>
   <table style="width:100%;border-collapse:collapse;margin-top:16px">
@@ -2632,22 +2903,7 @@
     </div>
   </div>
 </div>`;
-    const tmp = document.createElement('div');
-    tmp.style.cssText = 'position:fixed;top:0;left:0;width:720px;background:#fff;z-index:999999;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,0.6)';
-    tmp.innerHTML = html;
-    document.body.appendChild(tmp);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    setTimeout(() => {
-      window.html2pdf().from(tmp.firstElementChild).set({
-        margin: 6,
-        filename: `liquidacion_supervisor_${s.mes}.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, backgroundColor: '#fff', useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      }).save().then(() => { tmp.remove(); document.body.style.overflow = prevOverflow; });
-    }, 250);
+    await renderHtmlToPdf(html, `liquidacion_supervisor_${s.mes}.pdf`);
   }
 
   // ═══════════════════════════════════════════════════════
