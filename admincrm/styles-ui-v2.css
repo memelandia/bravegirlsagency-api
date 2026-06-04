@@ -404,6 +404,13 @@ label { font-size: 0.67rem; letter-spacing: 0.1em; color: rgba(107,107,122,0.9);
 .pill.amber { background: rgba(251,146,60,0.12); border-color: rgba(251,146,60,0.3); color: #FDBA74; }
 .pill.pink  { background: rgba(255,31,142,0.12); border-color: rgba(255,31,142,0.32); color: #FF1F8E; }
 .pill.gold  { background: rgba(255,215,0,0.1);  border-color: rgba(255,215,0,0.28);  color: #FFD700; }
+/* Pills por categoría de gasto */
+.pill.cat-publicidad  { background: rgba(255,31,142,0.14);  border-color: rgba(255,31,142,0.36);  color: #FF6BB4; }
+.pill.cat-herramientas{ background: rgba(56,189,248,0.14);  border-color: rgba(56,189,248,0.36);  color: #7DD3FC; }
+.pill.cat-ia          { background: rgba(167,139,250,0.16); border-color: rgba(167,139,250,0.38); color: #C4B5FD; }
+.pill.cat-om          { background: rgba(239,68,68,0.14);   border-color: rgba(239,68,68,0.36);   color: #FCA5A5; }
+.pill.cat-incentivos  { background: rgba(16,185,129,0.14);  border-color: rgba(16,185,129,0.36);  color: #34D399; }
+.pill.cat-otros       { background: rgba(148,163,184,0.12); border-color: rgba(148,163,184,0.32); color: #CBD5E1; }
 
 /* ═══════════════════════════════════════════════
    MODAL
@@ -479,6 +486,10 @@ label { font-size: 0.67rem; letter-spacing: 0.1em; color: rgba(107,107,122,0.9);
 /* ═══════════════════════════════════════════════
    LIQUIDACION
    ═══════════════════════════════════════════════ */
+.liq-sum-table input { padding: 6px 10px; font-size: 0.85rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text); }
+.liq-sum-table input:focus { border-color: rgba(255,31,142,0.5); outline: none; }
+.liq-sum-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+.liq-sum-table .pill.mini { font-size: 0.62rem; padding: 2px 7px; }
 .liq-sidebar { background: linear-gradient(145deg, rgba(16,16,28,0.97) 0%, rgba(11,11,20,0.99) 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; }
 .liq-chip { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; transition: all 0.18s var(--ease); }
 .liq-chip:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.14); }

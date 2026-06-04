@@ -2048,8 +2048,9 @@
       const rows = (r.data || []).map(g => `
         <tr>
           <td><strong>${escapeHtml(g.descripcion || '—')}</strong></td>
-          <td>${g.categoria ? `<span class="pill">${escapeHtml(g.categoria)}</span>` : '—'}</td>
+          <td>${g.categoria ? `<span class="pill cat-${escapeHtml(g.categoria)}">${escapeHtml(g.categoria)}</span>` : '<span class="muted">—</span>'}</td>
           <td>${escapeHtml(g.paga || 'AGENCIA')}</td>
+          <td class="muted" style="max-width:280px;white-space:normal">${escapeHtml(g.observaciones || '—')}</td>
           <td style="text-align:right"><strong>${fmtMoney(g.monto)}</strong></td>
           <td style="text-align:right">
             <button class="btn-danger" data-del-gasto="${g.id}">Eliminar</button>
@@ -2087,8 +2088,8 @@
             </div>
           </div>
           <table>
-            <thead><tr><th>Descripción</th><th>Categoría</th><th>Paga</th><th style="text-align:right">Monto</th><th style="text-align:right">Acciones</th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="5" class="empty-state">Aún no hay gastos registrados este mes.</td></tr>'}</tbody>
+            <thead><tr><th>Descripción</th><th>Categoría</th><th>Paga</th><th>Observación</th><th style="text-align:right">Monto</th><th style="text-align:right">Acciones</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="6" class="empty-state">Aún no hay gastos registrados este mes.</td></tr>'}</tbody>
           </table>
         </div>
       `;
@@ -2167,7 +2168,71 @@
       `;
     }).join('');
 
+    // Tabla resumen: todos los chatters con totales + envíos editables inline.
+    const sumRows = chatters.map(c => {
+      const p = liqState.pagos_by_chatter[c.id] || {};
+      const neto = Number(p.neto_a_pagar || 0);
+      const e1 = Number(p.envio_1 || 0), e2 = Number(p.envio_2 || 0), e3 = Number(p.envio_3 || 0);
+      const falta = neto - e1 - e2 - e3;
+      const pagadoTotal = e1 + e2 + e3;
+      const estado = neto <= 0 ? 'sin-datos' : (falta <= 0.01 ? 'pagado' : (pagadoTotal > 0 ? 'parcial' : 'pendiente'));
+      const estadoLbl = { 'sin-datos': '—', 'pagado': '✓ Pagado', 'parcial': '◐ Parcial', 'pendiente': '○ Pendiente' }[estado];
+      const estadoClass = { 'sin-datos': 'muted', 'pagado': 'pill green', 'parcial': 'pill amber', 'pendiente': 'pill red' }[estado];
+      return `
+        <tr data-sum-chatter="${c.id}">
+          <td><strong class="row-name">${escapeHtml(c.nombre)}</strong>${c.es_team_leader ? ' <span class="pill gold mini">TL</span>' : ''}</td>
+          <td style="text-align:right;font-weight:700;color:var(--gold)">${fmtMoney(neto)}</td>
+          <td><input type="number" step="0.01" class="sum-e1" value="${e1 || ''}" placeholder="0" style="max-width:110px;text-align:right"></td>
+          <td><input type="number" step="0.01" class="sum-e2" value="${e2 || ''}" placeholder="0" style="max-width:110px;text-align:right"></td>
+          <td><input type="number" step="0.01" class="sum-e3" value="${e3 || ''}" placeholder="0" style="max-width:110px;text-align:right"></td>
+          <td style="text-align:right;font-weight:700" class="sum-falta-cell">${fmtMoney(falta)}</td>
+          <td><span class="${estadoClass}">${estadoLbl}</span></td>
+          <td style="text-align:right">
+            <button class="btn-ghost-small sum-save" type="button" title="Guardar envíos">💾</button>
+            <button class="btn-ghost-small sum-detail" type="button" title="Abrir detalle">→</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    const totalNeto = chatters.reduce((s, c) => s + Number(liqState.pagos_by_chatter[c.id]?.neto_a_pagar || 0), 0);
+    const totalEnviado = chatters.reduce((s, c) => {
+      const p = liqState.pagos_by_chatter[c.id] || {};
+      return s + Number(p.envio_1 || 0) + Number(p.envio_2 || 0) + Number(p.envio_3 || 0);
+    }, 0);
+    const totalFalta = totalNeto - totalEnviado;
+
     view.innerHTML = `
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-head-row">
+          <div class="card-title-row">
+            <span class="card-title">▣ Resumen de envíos · ${mes}</span>
+            <span class="count-badge">${chatters.length}</span>
+          </div>
+          <div style="display:flex;gap:18px;align-items:center">
+            <div><span class="muted mini">Neto total</span> <strong style="color:var(--gold);font-family:var(--font-display);font-size:1.05rem;margin-left:6px">${fmtMoney(totalNeto)}</strong></div>
+            <div><span class="muted mini">Enviado</span> <strong style="color:var(--green);font-family:var(--font-display);font-size:1.05rem;margin-left:6px">${fmtMoney(totalEnviado)}</strong></div>
+            <div><span class="muted mini">Falta</span> <strong style="color:${totalFalta > 0.01 ? 'var(--red)' : 'var(--green)'};font-family:var(--font-display);font-size:1.05rem;margin-left:6px">${fmtMoney(totalFalta)}</strong></div>
+          </div>
+        </div>
+        <div class="table-wrap-inner" style="margin-top:10px">
+          <table id="liq-sum-table" class="liq-sum-table">
+            <thead>
+              <tr>
+                <th>Chatter</th>
+                <th style="text-align:right">Total a pagar</th>
+                <th>1° envío</th>
+                <th>2° envío</th>
+                <th>3° envío</th>
+                <th style="text-align:right">Falta pagar</th>
+                <th>Estado</th>
+                <th style="text-align:right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>${sumRows}</tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="liq-layout">
         <aside class="liq-sidebar">
           <div class="liq-sidebar-head">
@@ -2186,6 +2251,36 @@
         <main class="liq-main" id="liq-main"></main>
       </div>
     `;
+
+    // Handlers tabla resumen: guardar envíos + abrir detalle
+    view.querySelectorAll('.sum-save').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const tr = btn.closest('tr');
+        const chId = Number(tr.dataset.sumChatter);
+        const e1 = Number(tr.querySelector('.sum-e1').value || 0);
+        const e2 = Number(tr.querySelector('.sum-e2').value || 0);
+        const e3 = Number(tr.querySelector('.sum-e3').value || 0);
+        try {
+          const r = await api('envios-update', { method: 'POST', body: { mes, chatter_id: chId, envio_1: e1, envio_2: e2, envio_3: e3 } });
+          // Reflejar en liqState para que la próxima render quede coherente
+          const pago = liqState.pagos_by_chatter[chId] || {};
+          pago.envio_1 = e1; pago.envio_2 = e2; pago.envio_3 = e3;
+          pago.falta_pagar = r.falta;
+          liqState.pagos_by_chatter[chId] = pago;
+          // Update inline
+          tr.querySelector('.sum-falta-cell').textContent = fmtMoney(r.falta);
+          toast('Envíos actualizados', 'success');
+        } catch (e) { toast('Error: ' + e.message, 'error'); }
+      });
+    });
+    view.querySelectorAll('.sum-detail').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const chId = Number(btn.closest('tr').dataset.sumChatter);
+        liqState.selected = chId;
+        drawLiquidacion(view);
+        document.getElementById('liq-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
 
     view.querySelectorAll('.liq-chip').forEach(el => {
       el.addEventListener('click', () => {

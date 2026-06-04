@@ -1078,6 +1078,46 @@ module.exports = async function handler(req, res) {
     }
 
     // ─── GUARDAR LIQUIDACIÓN de un chatter ─────────────────
+    // POST ?action=envios-update
+    // body: { mes, chatter_id, envio_1, envio_2, envio_3, fecha_envio_1..3 }
+    // Actualiza solo los envíos sin tocar detalle/comisiones. Recalcula falta_pagar = neto - sum(envíos).
+    if (action === 'envios-update') {
+      const auth = checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+      const b = req.body || {};
+      const mes = b.mes;
+      const chatterId = Number(b.chatter_id);
+      if (!mes || !chatterId) return res.status(400).json({ success: false, error: 'mes y chatter_id requeridos' });
+
+      const e1 = Number(b.envio_1 || 0), e2 = Number(b.envio_2 || 0), e3 = Number(b.envio_3 || 0);
+      const existing = await sql`SELECT neto_a_pagar FROM chatter_pagos_mes WHERE mes = ${mes} AND chatter_id = ${chatterId}`;
+      const neto = Number(existing.rows[0]?.neto_a_pagar || 0);
+      const falta = neto - e1 - e2 - e3;
+
+      await sql`
+        INSERT INTO chatter_pagos_mes (
+          mes, chatter_id, envio_1, envio_2, envio_3,
+          fecha_envio_1, fecha_envio_2, fecha_envio_3, falta_pagar,
+          comisiones_total, team_leader_bonus, total_bruto, transaction_fee_pct, neto_a_pagar
+        )
+        VALUES (
+          ${mes}, ${chatterId}, ${e1}, ${e2}, ${e3},
+          ${b.fecha_envio_1 || null}, ${b.fecha_envio_2 || null}, ${b.fecha_envio_3 || null}, ${falta},
+          0, 0, 0, 0, 0
+        )
+        ON CONFLICT (mes, chatter_id) DO UPDATE SET
+          envio_1 = EXCLUDED.envio_1,
+          envio_2 = EXCLUDED.envio_2,
+          envio_3 = EXCLUDED.envio_3,
+          fecha_envio_1 = EXCLUDED.fecha_envio_1,
+          fecha_envio_2 = EXCLUDED.fecha_envio_2,
+          fecha_envio_3 = EXCLUDED.fecha_envio_3,
+          falta_pagar = chatter_pagos_mes.neto_a_pagar - EXCLUDED.envio_1 - EXCLUDED.envio_2 - EXCLUDED.envio_3
+      `;
+      return res.status(200).json({ success: true, neto, falta });
+    }
+
     // POST ?action=liquidacion-save
     // body: { mes, chatter_id, detalles: [{cuenta_id, fact_chatter, porcentaje_comision, observaciones}],
     //         team_leader_bonus, incentivos_individuales, incentivo_mes_ganado, incentivo_mes_monto,
@@ -1459,7 +1499,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({
       success: false,
       error: 'unknown action',
-      hint: 'usa ?action=login | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl'
+      hint: 'usa ?action=login | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | envios-update | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl'
     });
 
   } catch (error) {
