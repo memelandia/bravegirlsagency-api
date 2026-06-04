@@ -462,6 +462,47 @@ label { font-size: 0.67rem; letter-spacing: 0.1em; color: rgba(107,107,122,0.9);
 .pill.cat-incentivos  { background: rgba(16,185,129,0.14);  border-color: rgba(16,185,129,0.36);  color: #34D399; }
 .pill.cat-otros       { background: rgba(148,163,184,0.12); border-color: rgba(148,163,184,0.32); color: #CBD5E1; }
 
+/* Pills por tipo de cuenta */
+.pill.tipo-free       { background: rgba(56,189,248,0.16);  border-color: rgba(56,189,248,0.4);   color: #7DD3FC; }
+.pill.tipo-paid       { background: rgba(250,204,21,0.16);  border-color: rgba(250,204,21,0.4);   color: #FDE047; }
+.pill.tipo-bizum      { background: rgba(16,185,129,0.16);  border-color: rgba(16,185,129,0.4);   color: #34D399; }
+.pill.tipo-americana  { background: rgba(244,114,182,0.16); border-color: rgba(244,114,182,0.4);  color: #F9A8D4; }
+.pill.tipo-españa     { background: rgba(251,146,60,0.16);  border-color: rgba(251,146,60,0.4);   color: #FDBA74; }
+.pill.tipo-eng        { background: rgba(167,139,250,0.16); border-color: rgba(167,139,250,0.4);  color: #C4B5FD; }
+
+/* Pills por plan (% comisión agencia) */
+.pill.pill-plan.plan-inicial  { background: rgba(56,189,248,0.14);  border-color: rgba(56,189,248,0.4);  color: #7DD3FC; }
+.pill.pill-plan.plan-avanzado { background: rgba(255,31,142,0.14);  border-color: rgba(255,31,142,0.4);  color: #FF6BB4; }
+.pill.pill-plan.plan-premium  { background: rgba(255,215,0,0.14);   border-color: rgba(255,215,0,0.4);   color: #FFD700; }
+
+/* Pill entity: color único por hash de nombre (modelo/chatter) */
+.pill-entity {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.74rem; font-weight: 700; letter-spacing: 0.02em;
+  padding: 3px 11px; border-radius: 999px;
+  background: hsla(var(--ent-hue, 320), 60%, 55%, 0.14);
+  border: 1px solid hsla(var(--ent-hue, 320), 60%, 55%, 0.4);
+  color: hsl(var(--ent-hue, 320), 75%, 78%);
+}
+.pill-entity::before {
+  content: ''; width: 7px; height: 7px; border-radius: 50%;
+  background: hsl(var(--ent-hue, 320), 70%, 60%);
+  box-shadow: 0 0 6px hsla(var(--ent-hue, 320), 70%, 60%, 0.7);
+  flex-shrink: 0;
+}
+.pill-entity strong { font-weight: 700; color: inherit; }
+
+/* Estado de cobros: el <select> hereda el color del estado seleccionado */
+.cob-estado {
+  font-weight: 700; transition: all 0.18s var(--ease); cursor: pointer;
+  border-width: 1px; border-style: solid; border-radius: 8px;
+  padding: 8px 10px;
+}
+.cob-estado.state-pendiente  { background: rgba(239,68,68,0.10);  border-color: rgba(239,68,68,0.45);  color: #FCA5A5; }
+.cob-estado.state-enviado    { background: rgba(251,146,60,0.10); border-color: rgba(251,146,60,0.45); color: #FDBA74; }
+.cob-estado.state-confirmado { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.45); color: #34D399; }
+.cob-estado option { background: #0e0e1a; color: #fff; }
+
 /* ═══════════════════════════════════════════════
    MODAL
    ═══════════════════════════════════════════════ */

@@ -77,6 +77,8 @@ async function ensureEnviosColumns() {
   await sql`ALTER TABLE equipo_pagos_mes ADD COLUMN IF NOT EXISTS fecha_envio_1 DATE`;
   await sql`ALTER TABLE equipo_pagos_mes ADD COLUMN IF NOT EXISTS fecha_envio_2 DATE`;
   await sql`ALTER TABLE equipo_pagos_mes ADD COLUMN IF NOT EXISTS fecha_envio_3 DATE`;
+  // Email para equipo fijo (chatters_admin ya tiene email del schema base)
+  await sql`ALTER TABLE equipo_fijo ADD COLUMN IF NOT EXISTS email TEXT`;
   _ensuredEnviosColumns = true;
 }
 
@@ -189,8 +191,8 @@ const ENTITY_CONFIG = {
   equipo: {
     table: 'equipo_fijo',
     activeColumn: 'activo',
-    listColumns: ['id', 'nombre', 'rol', 'sueldo_mensual_usd', 'fecha_inicio', 'activo'],
-    upsertColumns: ['nombre', 'rol', 'sueldo_mensual_usd', 'fecha_inicio', 'activo']
+    listColumns: ['id', 'nombre', 'rol', 'email', 'sueldo_mensual_usd', 'fecha_inicio', 'activo'],
+    upsertColumns: ['nombre', 'rol', 'email', 'sueldo_mensual_usd', 'fecha_inicio', 'activo']
   }
 };
 
@@ -313,6 +315,8 @@ module.exports = async function handler(req, res) {
     if (action === 'catalog') {
       const auth = checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      // Asegurar columnas opcionales antes de cualquier SELECT
+      await ensureEnviosColumns();
 
       const entity = req.query.entity;
       if (!entity || !ENTITY_CONFIG[entity]) {
@@ -1040,7 +1044,7 @@ module.exports = async function handler(req, res) {
       await ensureAsignTable();
 
       const chatters = await sql`
-        SELECT id, nombre, porcentaje_default, porcentaje_supervisor, rol, es_team_leader
+        SELECT id, nombre, email, porcentaje_default, porcentaje_supervisor, rol, es_team_leader
         FROM chatters_admin
         WHERE activo = TRUE AND COALESCE(rol, 'chatter') <> 'supervisor'
         ORDER BY nombre
@@ -1095,7 +1099,7 @@ module.exports = async function handler(req, res) {
       // Supervisor (chatter con rol=supervisor) + su pago del mes (si existe)
       await ensureEnviosColumns();
       const supRow = await sql`
-        SELECT id, nombre, porcentaje_supervisor
+        SELECT id, nombre, email, porcentaje_supervisor
         FROM chatters_admin
         WHERE activo = TRUE AND rol = 'supervisor'
         ORDER BY nombre
@@ -1109,7 +1113,7 @@ module.exports = async function handler(req, res) {
       }
 
       // Equipo fijo + sus pagos del mes
-      const equipo = await sql`SELECT id, nombre, rol, sueldo_mensual_usd FROM equipo_fijo WHERE activo = TRUE ORDER BY nombre`;
+      const equipo = await sql`SELECT id, nombre, rol, sueldo_mensual_usd, email FROM equipo_fijo WHERE activo = TRUE ORDER BY nombre`;
       const equipoPagosRows = await sql`SELECT * FROM equipo_pagos_mes WHERE mes = ${mes}`;
       const pagosByEquipo = {};
       equipoPagosRows.rows.forEach(p => { pagosByEquipo[p.equipo_id] = p; });

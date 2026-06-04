@@ -66,7 +66,7 @@
         { key: 'es_team_leader', label: 'Team Leader', type: 'bool' },
         { key: 'activo', label: 'Activo', type: 'bool' }
       ],
-      tableColumns: ['nombre', 'porcentaje_default', 'porcentaje_supervisor', 'rol', 'es_team_leader', 'activo']
+      tableColumns: ['nombre', 'email', 'porcentaje_default', 'porcentaje_supervisor', 'rol', 'es_team_leader', 'activo']
     },
     equipo: {
       label: 'Equipo Fijo',
@@ -74,11 +74,12 @@
       columns: [
         { key: 'nombre', label: 'Nombre', type: 'text', required: true },
         { key: 'rol', label: 'Rol', type: 'text', placeholder: 'Account Manager, Editor…' },
+        { key: 'email', label: 'Email', type: 'email' },
         { key: 'sueldo_mensual_usd', label: 'Sueldo USD/mes', type: 'number', step: '0.01' },
         { key: 'fecha_inicio', label: 'Fecha inicio', type: 'date' },
         { key: 'activo', label: 'Activo', type: 'bool' }
       ],
-      tableColumns: ['nombre', 'rol', 'sueldo_mensual_usd', 'activo']
+      tableColumns: ['nombre', 'rol', 'email', 'sueldo_mensual_usd', 'activo']
     },
     planes: {
       label: 'Planes de Servicio',
@@ -294,16 +295,10 @@
       const svgCrown    = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/><path d="M5 20h14"/></svg>`;
 
       const cobrosRows = (r.cobros || []).map(c => {
-        const ini = (c.modelo || '?').trim().charAt(0).toUpperCase();
         const hue = [...(c.modelo || '')].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 360;
         return `
           <tr>
-            <td>
-              <div class="tbl-cell-avatar">
-                <div class="tbl-avatar" style="--av-hue:${hue}">${ini}</div>
-                <span class="row-name">${c.modelo}</span>
-              </div>
-            </td>
+            <td><span class="pill-entity" style="--ent-hue:${hue}"><strong>${escapeHtml(c.modelo)}</strong></span></td>
             <td>${fmtMoney(c.total_a_cobrar, c.moneda)}</td>
             <td class="muted">${fmtMoney(c.pago_recibido, c.moneda)}</td>
             <td>${fmtMoney(c.pendiente, c.moneda)}</td>
@@ -314,7 +309,7 @@
       const gastosRows = (r.gastos || []).slice(0, 6).map(g => `
         <tr>
           <td><span class="row-name">${g.descripcion || '—'}</span></td>
-          <td class="muted">${g.categoria || ''}</td>
+          <td>${g.categoria ? `<span class="pill cat-${g.categoria}">${g.categoria}</span>` : '<span class="muted">—</span>'}</td>
           <td class="text-right"><strong>${fmtMoney(g.monto)}</strong></td>
         </tr>
       `).join('');
@@ -716,11 +711,24 @@
     }
     if (key === 'plan_id') {
       const p = planesCache && planesCache.find(x => x.id === value);
-      return p ? `<span class="pill pink">${p.nombre}</span>` : `#${value}`;
+      const pct = p ? Number(p.porcentaje || 0) : 0;
+      const cls = pct >= 60 ? 'plan-premium' : pct >= 50 ? 'plan-avanzado' : pct >= 40 ? 'plan-inicial' : '';
+      return p ? `<span class="pill pill-plan ${cls}">${p.nombre}</span>` : `#${value}`;
     }
     if (key === 'modelo_id') {
       const m = modelosCache && modelosCache.find(x => x.id === value);
-      return m ? `<span class="pill pink">${m.nombre}</span>` : `#${value}`;
+      if (!m) return `#${value}`;
+      return `<span class="pill-entity" style="--ent-hue:${hueOfName(m.nombre)}">${escapeHtml(m.nombre)}</span>`;
+    }
+    if (key === 'tipo') {
+      return `<span class="pill tipo-${String(value).toLowerCase()}">${value}</span>`;
+    }
+    if (key === 'rol') {
+      const cls = value === 'supervisor' ? 'pill pink' : value === 'team_leader' ? 'pill gold' : 'pill';
+      return `<span class="${cls}">${value}</span>`;
+    }
+    if (key === 'email') {
+      return `<a href="mailto:${escapeHtml(value)}" style="color:var(--text);text-decoration:none;border-bottom:1px dashed rgba(255,255,255,0.2)">${escapeHtml(value)}</a>`;
     }
     if (key === 'porcentaje' || key === 'porcentaje_default' || key === 'porcentaje_supervisor') {
       return `<strong>${value}%</strong>`;
@@ -731,8 +739,12 @@
     if (key === 'moneda_default') {
       return value === 'EUR' ? '<span class="pill gold">€ EUR</span>' : '<span class="pill green">$ USD</span>';
     }
+    if (key === 'nombre' && (entity === 'modelos' || entity === 'chatters')) {
+      return `<span class="pill-entity" style="--ent-hue:${hueOfName(value)}"><strong>${escapeHtml(value)}</strong></span>`;
+    }
     return String(value);
   }
+  function hueOfName(n) { return [...(String(n) || '')].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 360; }
 
   // ───────── Modal de edición/creación ─────────
   async function openEditModal(entity, row) {
@@ -1450,7 +1462,7 @@
           <div>
             <div style="display:flex;align-items:center;gap:12px">
               <div class="pill pink" style="padding:6px 14px;font-size:0.85rem">${cuenta.nombre_cuenta}</div>
-              ${cuenta.tipo ? `<div class="pill">${cuenta.tipo}</div>` : ''}
+              ${cuenta.tipo ? `<div class="pill tipo-${String(cuenta.tipo).toLowerCase()}">${cuenta.tipo}</div>` : ''}
               ${cuenta.of_username ? `<div class="muted" style="font-size:0.85rem">@${cuenta.of_username}</div>` : ''}
             </div>
           </div>
@@ -2245,9 +2257,10 @@
       const neto = p ? Number(p.neto_a_pagar) : 0;
       const falta = p ? Number(p.falta_pagar) : 0;
       const isActive = c.id === selected;
+      const chHue = hueOfName(c.nombre);
       return `
-        <div class="liq-chip${isActive ? ' active' : ''}" data-chatter-id="${c.id}">
-          <div class="liq-chip-name">${c.nombre}${c.es_team_leader ? ' <span class="pill gold mini">TL</span>' : ''}</div>
+        <div class="liq-chip${isActive ? ' active' : ''}" data-chatter-id="${c.id}" style="--ent-hue:${chHue}">
+          <div class="liq-chip-name"><span class="pill-entity" style="--ent-hue:${chHue}">${c.nombre}</span>${c.es_team_leader ? ' <span class="pill gold mini">TL</span>' : ''}</div>
           <div class="liq-chip-amounts">
             <span class="liq-chip-neto">${fmtMoney(neto)}</span>
             <span class="liq-chip-falta ${falta > 0 ? 'pending' : 'ok'}">${falta > 0 ? '−' + fmtMoney(falta) : '✓'}</span>
@@ -2265,11 +2278,18 @@
       const estado = neto <= 0 ? 'sin-datos' : (falta <= 0.01 ? 'pagado' : (pagadoTotal > 0 ? 'parcial' : 'pendiente'));
       const estadoLbl = { 'sin-datos': '—', 'pagado': '✓ Pagado', 'parcial': '◐ Parcial', 'pendiente': '○ Pendiente' }[estado];
       const estadoClass = { 'sin-datos': 'muted', 'pagado': 'pill green', 'parcial': 'pill amber', 'pendiente': 'pill red' }[estado];
-      const tag = cfg.tag ? ` <span class="pill mini" style="margin-left:6px">${cfg.tag}</span>` : '';
+      const tag = cfg.tag ? ` ${cfg.tag}` : '';
       const detailBtn = cfg.detail ? `<button class="btn-ghost-small sum-detail" type="button" title="Abrir detalle">→</button>` : '';
+      const emailHtml = cfg.email
+        ? `<button class="btn-ghost-small email-copy" type="button" data-email="${escapeHtml(cfg.email)}" title="Copiar ${escapeHtml(cfg.email)}" style="padding:3px 10px;font-size:.7rem;margin-left:4px">✉ copiar</button>`
+        : '<span class="muted mini" style="margin-left:4px;font-size:.7rem">sin email</span>';
+      const hue = hueOf(cfg.nombre);
       return `
         <tr data-sum-kind="${cfg.kind}" data-sum-id="${cfg.entityId || ''}">
-          <td><strong class="row-name">${escapeHtml(cfg.nombre)}</strong>${tag}</td>
+          <td>
+            <span class="pill-entity" style="--ent-hue:${hue}">${escapeHtml(cfg.nombre)}</span>${tag}
+            ${emailHtml}
+          </td>
           <td style="text-align:right;font-weight:700;color:var(--gold)">${fmtMoney(neto)}</td>
           <td><input type="number" step="0.01" class="sum-e1" value="${e1 || ''}" placeholder="0" style="max-width:110px;text-align:right"></td>
           <td><input type="number" step="0.01" class="sum-e2" value="${e2 || ''}" placeholder="0" style="max-width:110px;text-align:right"></td>
@@ -2283,6 +2303,7 @@
         </tr>
       `;
     };
+    const hueOf = (n) => [...(n || '')].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 360;
 
     // Chatters
     const chatterRows = chatters.map(c => {
@@ -2291,6 +2312,7 @@
         kind: 'chatter',
         entityId: c.id,
         nombre: c.nombre,
+        email: c.email,
         tag: c.es_team_leader ? '<span class="pill gold mini">TL</span>' : '',
         neto: p.neto_a_pagar,
         e1: p.envio_1, e2: p.envio_2, e3: p.envio_3,
@@ -2305,6 +2327,7 @@
       kind: 'supervisor',
       entityId: sup.id,
       nombre: sup.nombre,
+      email: sup.email,
       tag: '<span class="pill pink mini">SUP</span>',
       neto: supPago.neto_a_pagar,
       e1: supPago.envio_1, e2: supPago.envio_2, e3: supPago.envio_3,
@@ -2319,6 +2342,7 @@
         kind: 'equipo',
         entityId: e.id,
         nombre: e.nombre,
+        email: e.email,
         tag: `<span class="pill mini" style="background:rgba(56,189,248,0.14);border-color:rgba(56,189,248,0.36);color:#7DD3FC">${escapeHtml(e.rol || 'Equipo')}</span>`,
         neto: monto,
         e1: p.envio_1, e2: p.envio_2, e3: p.envio_3,
@@ -2436,6 +2460,19 @@
         document.getElementById('liq-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     });
+    // Copiar email al clipboard
+    view.querySelectorAll('.email-copy').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const email = btn.dataset.email;
+        try {
+          await navigator.clipboard.writeText(email);
+          toast(`✉ ${email} copiado`, 'success');
+        } catch (err) {
+          toast('No se pudo copiar', 'error');
+        }
+      });
+    });
 
     view.querySelectorAll('.liq-chip').forEach(el => {
       el.addEventListener('click', () => {
@@ -2504,6 +2541,7 @@
           <div>
             <h2 style="margin:0;font-family:var(--font-display)">${chatter.nombre}</h2>
             <div class="muted" style="font-size:.9rem">% default ${chatter.porcentaje_default || 15} · % supervisor ${chatter.porcentaje_supervisor || 5} · ${chatter.rol || 'chatter'}${chatter.es_team_leader ? ' · Team Leader' : ''}</div>
+            ${chatter.email ? `<div style="margin-top:8px;display:flex;align-items:center;gap:8px;font-size:.85rem"><span class="muted">📧</span><code style="background:rgba(255,255,255,0.05);padding:3px 8px;border-radius:6px;color:var(--text)">${escapeHtml(chatter.email)}</code><button class="btn-ghost-small email-copy-detail" data-email="${escapeHtml(chatter.email)}" style="padding:3px 10px;font-size:.7rem">✉ copiar</button></div>` : '<div class="muted" style="font-size:.78rem;margin-top:6px;color:rgba(251,146,60,0.7)">⚠️ Email no cargado · editá el chatter en Catálogo</div>'}
           </div>
           <div style="display:flex;gap:8px">
             <button class="btn-secondary" id="liq-assign-btn" style="width:auto;padding:12px 18px;margin:0" title="Elegir qué cuentas trabaja este chatter">⚙ Cuentas asignadas (${asignSet.size || 'todas'})</button>
@@ -2648,6 +2686,13 @@
     document.getElementById('liq-save-btn').addEventListener('click', () => saveLiquidacion(chatter));
     document.getElementById('liq-pdf-btn').addEventListener('click', () => generarLiquidacionPDF(chatter));
     document.getElementById('liq-assign-btn').addEventListener('click', () => openAsignacionModal(chatter));
+    main.querySelectorAll('.email-copy-detail').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const email = btn.dataset.email;
+        try { await navigator.clipboard.writeText(email); toast(`✉ ${email} copiado`, 'success'); }
+        catch (_) { toast('No se pudo copiar', 'error'); }
+      });
+    });
     recalc();
   }
 
@@ -2671,7 +2716,7 @@
         return `
           <label class="asign-row">
             <input type="checkbox" class="asign-chk" value="${c.id}" ${checked}>
-            <span class="asign-cuenta">${c.nombre_cuenta}${c.tipo ? ` <span class="pill mini">${c.tipo}</span>` : ''}</span>
+            <span class="asign-cuenta">${c.nombre_cuenta}${c.tipo ? ` <span class="pill mini tipo-${String(c.tipo).toLowerCase()}">${c.tipo}</span>` : ''}</span>
           </label>
         `;
       }).join('');
@@ -2936,6 +2981,7 @@
 
       const groupsHtml = Object.keys(groups).map(mid => {
         const g = groups[mid];
+        const modeloHue = hueOfName(g.modelo);
         let totalCobrar = 0, totalRecibido = 0, totalComision = 0, totalPendiente = 0;
         const rowsHtml = g.items.map(c => {
           const recibido = Number(c.pago_recibido || 0);
@@ -2949,7 +2995,7 @@
           totalPendiente += pendiente;
           return `
             <tr data-cierre-id="${c.id}">
-              <td><strong>${c.nombre_cuenta}</strong> ${c.tipo ? `<span class="pill mini">${c.tipo}</span>` : ''}</td>
+              <td><strong>${c.nombre_cuenta}</strong> ${c.tipo ? `<span class="pill mini tipo-${String(c.tipo).toLowerCase()}">${c.tipo}</span>` : ''}</td>
               <td style="text-align:right">${fmtMoney(totalC, c.moneda)}</td>
               <td><input type="number" step="0.01" class="cob-recibido" value="${recibido || 0}" style="max-width:130px"></td>
               <td>
@@ -2962,10 +3008,10 @@
               <td style="text-align:right" class="cob-pendiente">${fmtMoney(pendiente, c.moneda)}</td>
               <td><input type="text" class="cob-medio" value="${c.medio_pago || ''}" placeholder="${c.moneda} · Transf"></td>
               <td>
-                <select class="cob-estado">
-                  <option value="pendiente"  ${c.estado_resumen === 'pendiente' ? 'selected' : ''}>Pendiente</option>
-                  <option value="enviado"    ${c.estado_resumen === 'enviado' ? 'selected' : ''}>Enviado</option>
-                  <option value="confirmado" ${c.estado_resumen === 'confirmado' ? 'selected' : ''}>Confirmado</option>
+                <select class="cob-estado state-${c.estado_resumen || 'pendiente'}" data-state="${c.estado_resumen || 'pendiente'}">
+                  <option value="pendiente"  ${c.estado_resumen === 'pendiente' ? 'selected' : ''}>○ Pendiente</option>
+                  <option value="enviado"    ${c.estado_resumen === 'enviado' ? 'selected' : ''}>◐ Enviado</option>
+                  <option value="confirmado" ${c.estado_resumen === 'confirmado' ? 'selected' : ''}>✓ Confirmado</option>
                 </select>
               </td>
               <td><button class="btn-ghost-small cob-save" data-cierre-id="${c.id}">💾</button></td>
@@ -2974,11 +3020,11 @@
         }).join('');
         const pctTotalCom = totalCobrar > 0 ? (totalComision / totalCobrar) * 100 : 0;
         return `
-          <div class="card">
+          <div class="card" style="border-left:3px solid hsl(${modeloHue},70%,55%)">
             <div class="flex-between" style="margin-bottom:14px">
               <div>
-                <h3 style="margin:0">${g.modelo}</h3>
-                <div class="muted" style="font-size:.85rem">${g.moneda}</div>
+                <span class="pill-entity" style="--ent-hue:${modeloHue};font-size:.95rem;padding:5px 14px"><strong>${g.modelo}</strong></span>
+                <div class="muted" style="font-size:.85rem;margin-top:4px">${g.moneda}</div>
               </div>
               <div style="display:flex;gap:18px;flex-wrap:wrap">
                 <div><div class="muted mini">A cobrar</div><div style="font-weight:700">${fmtMoney(totalCobrar, g.moneda)}</div></div>
@@ -3036,6 +3082,14 @@
       view.querySelectorAll('tr[data-cierre-id]').forEach(tr => {
         tr.querySelector('.cob-recibido')?.addEventListener('input', () => recalcRow(tr));
         tr.querySelector('.cob-comision')?.addEventListener('input', () => recalcRow(tr));
+      });
+      // Sincronizar color del select de estado al cambiar
+      view.querySelectorAll('.cob-estado').forEach(sel => {
+        sel.addEventListener('change', () => {
+          sel.classList.remove('state-pendiente','state-enviado','state-confirmado');
+          sel.classList.add('state-' + sel.value);
+          sel.dataset.state = sel.value;
+        });
       });
 
       // "= dif" → comision = total - recibido (cierra el cobro marcando todo el faltante como fee)
