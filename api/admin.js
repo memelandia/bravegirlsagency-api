@@ -52,6 +52,15 @@ async function ensureSupervisorSubsTable() {
   _ensuredSupervisorSubsTable = true;
 }
 
+let _ensuredCobroComisionColumn = false;
+async function ensureCobroComisionColumn() {
+  if (_ensuredCobroComisionColumn) return;
+  // Comisión de transacción cobrada por la plataforma de envío (Paxum, Binance, etc).
+  // Lo que descuenta el banco/wallet entre lo que la modelo paga y lo que llega.
+  await sql`ALTER TABLE cierre_cuenta_mes ADD COLUMN IF NOT EXISTS comision_transaccion NUMERIC(12,2) DEFAULT 0`;
+  _ensuredCobroComisionColumn = true;
+}
+
 let _ensuredEnviosColumns = false;
 async function ensureEnviosColumns() {
   if (_ensuredEnviosColumns) return;
@@ -1317,10 +1326,12 @@ module.exports = async function handler(req, res) {
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       const mes = req.query.mes;
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
+      await ensureCobroComisionColumn();
 
       const r = await sql`
         SELECT c.id, c.mes, c.cuenta_id, c.total_a_cobrar, c.pago_recibido,
-               (COALESCE(c.total_a_cobrar, 0) - COALESCE(c.pago_recibido, 0)) AS pago_pendiente,
+               COALESCE(c.comision_transaccion, 0) AS comision_transaccion,
+               (COALESCE(c.total_a_cobrar, 0) - COALESCE(c.pago_recibido, 0) - COALESCE(c.comision_transaccion, 0)) AS pago_pendiente,
                c.estado_resumen, c.medio_pago, c.moneda, c.observaciones,
                cu.nombre_cuenta, cu.tipo,
                m.id AS modelo_id, m.nombre AS modelo_nombre, m.moneda_default
@@ -1334,11 +1345,12 @@ module.exports = async function handler(req, res) {
     }
 
     // ─── ACTUALIZAR pago de un cierre (cobros) ─────────────
-    // POST ?action=cobros-update body: { cierre_id, estado_resumen, pago_recibido, medio_pago, observaciones }
+    // POST ?action=cobros-update body: { cierre_id, estado_resumen, pago_recibido, comision_transaccion, medio_pago, observaciones }
     if (action === 'cobros-update') {
       const auth = checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+      await ensureCobroComisionColumn();
 
       const b = req.body || {};
       const id = Number(b.cierre_id);
@@ -1346,11 +1358,12 @@ module.exports = async function handler(req, res) {
 
       await sql`
         UPDATE cierre_cuenta_mes
-        SET estado_resumen = COALESCE(${b.estado_resumen || null}, estado_resumen),
-            pago_recibido  = COALESCE(${b.pago_recibido != null ? Number(b.pago_recibido) : null}, pago_recibido),
-            medio_pago     = COALESCE(${b.medio_pago || null}, medio_pago),
-            observaciones  = COALESCE(${b.observaciones || null}, observaciones),
-            updated_at     = CURRENT_TIMESTAMP
+        SET estado_resumen       = COALESCE(${b.estado_resumen || null}, estado_resumen),
+            pago_recibido        = COALESCE(${b.pago_recibido != null ? Number(b.pago_recibido) : null}, pago_recibido),
+            comision_transaccion = COALESCE(${b.comision_transaccion != null ? Number(b.comision_transaccion) : null}, comision_transaccion),
+            medio_pago           = COALESCE(${b.medio_pago || null}, medio_pago),
+            observaciones        = COALESCE(${b.observaciones || null}, observaciones),
+            updated_at           = CURRENT_TIMESTAMP
         WHERE id = ${id}
       `;
       return res.status(200).json({ success: true });

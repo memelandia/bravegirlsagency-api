@@ -2936,17 +2936,30 @@
 
       const groupsHtml = Object.keys(groups).map(mid => {
         const g = groups[mid];
-        let totalCobrar = 0, totalRecibido = 0, totalPendiente = 0;
+        let totalCobrar = 0, totalRecibido = 0, totalComision = 0, totalPendiente = 0;
         const rowsHtml = g.items.map(c => {
-          totalCobrar += Number(c.total_a_cobrar || 0);
-          totalRecibido += Number(c.pago_recibido || 0);
-          totalPendiente += Number(c.pago_pendiente || 0);
+          const recibido = Number(c.pago_recibido || 0);
+          const comision = Number(c.comision_transaccion || 0);
+          const totalC = Number(c.total_a_cobrar || 0);
+          const pendiente = totalC - recibido - comision;
+          const pctComision = totalC > 0 ? (comision / totalC) * 100 : 0;
+          totalCobrar += totalC;
+          totalRecibido += recibido;
+          totalComision += comision;
+          totalPendiente += pendiente;
           return `
             <tr data-cierre-id="${c.id}">
               <td><strong>${c.nombre_cuenta}</strong> ${c.tipo ? `<span class="pill mini">${c.tipo}</span>` : ''}</td>
-              <td style="text-align:right">${fmtMoney(c.total_a_cobrar, c.moneda)}</td>
-              <td><input type="number" step="0.01" class="cob-recibido" value="${c.pago_recibido || 0}" style="max-width:140px"></td>
-              <td style="text-align:right" class="cob-pendiente">${fmtMoney(c.pago_pendiente, c.moneda)}</td>
+              <td style="text-align:right">${fmtMoney(totalC, c.moneda)}</td>
+              <td><input type="number" step="0.01" class="cob-recibido" value="${recibido || 0}" style="max-width:130px"></td>
+              <td>
+                <div style="display:flex;gap:4px;align-items:center">
+                  <input type="number" step="0.01" class="cob-comision" value="${comision || 0}" style="max-width:100px" title="Fee de la transacción (Paxum/Binance/etc)">
+                  <button type="button" class="btn-ghost-small cob-comision-auto" title="Marcar diferencia como comisión" style="padding:4px 8px;font-size:.7rem">= dif</button>
+                </div>
+                <div class="cob-comision-pct muted mini" style="margin-top:2px;font-size:.7rem">${comision > 0 ? pctComision.toFixed(2) + '%' : ''}</div>
+              </td>
+              <td style="text-align:right" class="cob-pendiente">${fmtMoney(pendiente, c.moneda)}</td>
               <td><input type="text" class="cob-medio" value="${c.medio_pago || ''}" placeholder="${c.moneda} · Transf"></td>
               <td>
                 <select class="cob-estado">
@@ -2959,6 +2972,7 @@
             </tr>
           `;
         }).join('');
+        const pctTotalCom = totalCobrar > 0 ? (totalComision / totalCobrar) * 100 : 0;
         return `
           <div class="card">
             <div class="flex-between" style="margin-bottom:14px">
@@ -2966,10 +2980,11 @@
                 <h3 style="margin:0">${g.modelo}</h3>
                 <div class="muted" style="font-size:.85rem">${g.moneda}</div>
               </div>
-              <div style="display:flex;gap:18px">
+              <div style="display:flex;gap:18px;flex-wrap:wrap">
                 <div><div class="muted mini">A cobrar</div><div style="font-weight:700">${fmtMoney(totalCobrar, g.moneda)}</div></div>
                 <div><div class="muted mini">Recibido</div><div style="font-weight:700;color:var(--green)">${fmtMoney(totalRecibido, g.moneda)}</div></div>
-                <div><div class="muted mini">Pendiente</div><div style="font-weight:700;color:${totalPendiente > 0 ? 'var(--red)' : 'var(--green)'}">${fmtMoney(totalPendiente, g.moneda)}</div></div>
+                <div><div class="muted mini">Comisión ${totalComision > 0 ? `(${pctTotalCom.toFixed(1)}%)` : ''}</div><div style="font-weight:700;color:var(--gold)">${fmtMoney(totalComision, g.moneda)}</div></div>
+                <div><div class="muted mini">Pendiente</div><div style="font-weight:700;color:${totalPendiente > 0.01 ? 'var(--red)' : 'var(--green)'}">${fmtMoney(totalPendiente, g.moneda)}</div></div>
               </div>
             </div>
             <div class="table-wrap">
@@ -2979,6 +2994,7 @@
                     <th>Cuenta</th>
                     <th style="text-align:right">A cobrar</th>
                     <th>Recibido</th>
+                    <th>Comisión transacción</th>
                     <th style="text-align:right">Pendiente</th>
                     <th>Medio pago</th>
                     <th>Estado</th>
@@ -3000,6 +3016,42 @@
         ${groupsHtml || '<div class="card center muted">No hay cierres cargados para este mes. Andá a Facturación a Modelos.</div>'}
       `;
 
+      // Recalculo inline de Pendiente al editar Recibido o Comisión
+      const recalcRow = (tr) => {
+        const cob = Number(tr.querySelector('.cob-recibido').value || 0);
+        const com = Number(tr.querySelector('.cob-comision').value || 0);
+        // total_a_cobrar está en la 2da celda; lo extraigo de los datos del row original
+        const cierreId = tr.dataset.cierreId;
+        const data = rows.find(x => String(x.id) === String(cierreId));
+        const total = data ? Number(data.total_a_cobrar || 0) : 0;
+        const pendiente = total - cob - com;
+        const pctCell = tr.querySelector('.cob-comision-pct');
+        if (pctCell) pctCell.textContent = com > 0 && total > 0 ? ((com / total) * 100).toFixed(2) + '%' : '';
+        const pendCell = tr.querySelector('.cob-pendiente');
+        if (pendCell) {
+          pendCell.textContent = fmtMoney(pendiente, data?.moneda);
+          pendCell.style.color = Math.abs(pendiente) < 0.01 ? 'var(--green)' : (pendiente > 0 ? 'var(--red)' : 'var(--gold)');
+        }
+      };
+      view.querySelectorAll('tr[data-cierre-id]').forEach(tr => {
+        tr.querySelector('.cob-recibido')?.addEventListener('input', () => recalcRow(tr));
+        tr.querySelector('.cob-comision')?.addEventListener('input', () => recalcRow(tr));
+      });
+
+      // "= dif" → comision = total - recibido (cierra el cobro marcando todo el faltante como fee)
+      view.querySelectorAll('.cob-comision-auto').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tr = btn.closest('tr');
+          const cierreId = tr.dataset.cierreId;
+          const data = rows.find(x => String(x.id) === String(cierreId));
+          const total = data ? Number(data.total_a_cobrar || 0) : 0;
+          const cob = Number(tr.querySelector('.cob-recibido').value || 0);
+          const dif = Math.max(0, total - cob);
+          tr.querySelector('.cob-comision').value = dif.toFixed(2);
+          recalcRow(tr);
+        });
+      });
+
       view.querySelectorAll('.cob-save').forEach(b => {
         b.addEventListener('click', async () => {
           const id = Number(b.dataset.cierreId);
@@ -3007,6 +3059,7 @@
           const body = {
             cierre_id: id,
             pago_recibido: Number(tr.querySelector('.cob-recibido').value || 0),
+            comision_transaccion: Number(tr.querySelector('.cob-comision').value || 0),
             medio_pago: tr.querySelector('.cob-medio').value || null,
             estado_resumen: tr.querySelector('.cob-estado').value
           };
