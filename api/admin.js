@@ -97,6 +97,45 @@ async function ensureResumenOverridesTable() {
   _ensuredResumenOverridesTable = true;
 }
 
+let _ensuredSessionsTable = false;
+async function ensureSessionsTable() {
+  if (_ensuredSessionsTable) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS admin_sessions (
+      token TEXT PRIMARY KEY,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      expires_at TIMESTAMP NOT NULL,
+      last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      ip TEXT
+    )
+  `;
+  _ensuredSessionsTable = true;
+}
+
+let _ensuredGastosSoftDelete = false;
+async function ensureGastosSoftDelete() {
+  if (_ensuredGastosSoftDelete) return;
+  await sql`ALTER TABLE gastos_mes ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`;
+  _ensuredGastosSoftDelete = true;
+}
+
+let _ensuredFrontendErrors = false;
+async function ensureFrontendErrorsTable() {
+  if (_ensuredFrontendErrors) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS frontend_errors (
+      id BIGSERIAL PRIMARY KEY,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      message TEXT,
+      stack TEXT,
+      url TEXT,
+      user_agent TEXT,
+      route TEXT
+    )
+  `;
+  _ensuredFrontendErrors = true;
+}
+
 function getRecentMonths(baseMes, count) {
   const [yy, mm] = String(baseMes).split('-').map(Number);
   if (!yy || !mm) return [];
@@ -130,16 +169,89 @@ function getPreviousMes(baseMes) {
 // ═══════════════════════════════════════════════════════════
 // Auth
 // ═══════════════════════════════════════════════════════════
-function checkAuth(req) {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) {
-    return { ok: false, status: 500, msg: 'ADMIN_PASSWORD no configurada en Vercel' };
+const crypto = require('crypto');
+const SESSION_TTL_DAYS = 60;
+
+// In-memory cache de tokens válidos para evitar query DB en cada request.
+// Cold start lo vacía; eso solo cuesta un round-trip DB en la primera request.
+const TOKEN_CACHE = new Map(); // token -> expiresAtMs
+
+// In-memory rate limiter para /login (por IP). Resetea por cold start (suficiente).
+const LOGIN_ATTEMPTS = new Map(); // ip -> { count, resetAt }
+const LOGIN_WINDOW_MS = 10 * 60 * 1000; // 10 min
+const LOGIN_MAX_ATTEMPTS = 8;
+
+function clientIp(req) {
+  const xff = req.headers['x-forwarded-for'];
+  if (xff) return String(xff).split(',')[0].trim();
+  return req.headers['x-real-ip'] || req.socket?.remoteAddress || 'unknown';
+}
+
+function rateLimitLogin(ip) {
+  const now = Date.now();
+  const rec = LOGIN_ATTEMPTS.get(ip);
+  if (!rec || rec.resetAt < now) {
+    LOGIN_ATTEMPTS.set(ip, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
+    return { ok: true };
   }
-  const token = req.headers['x-admin-token'];
-  if (!token || token !== expected) {
-    return { ok: false, status: 401, msg: 'unauthorized' };
+  rec.count++;
+  if (rec.count > LOGIN_MAX_ATTEMPTS) {
+    const retryInS = Math.ceil((rec.resetAt - now) / 1000);
+    return { ok: false, retryInS };
   }
   return { ok: true };
+}
+
+async function checkAuth(req) {
+  const token = req.headers['x-admin-token'];
+  if (!token) return { ok: false, status: 401, msg: 'unauthorized' };
+
+  // Compat: si el token es la ADMIN_PASSWORD literal (sesión vieja del esquema anterior),
+  // lo aceptamos UNA vez para que el frontend re-loguee sin error.
+  const expected = process.env.ADMIN_PASSWORD;
+  if (expected && token === expected) return { ok: true };
+
+  // Cache hit
+  const cachedExpiry = TOKEN_CACHE.get(token);
+  if (cachedExpiry && cachedExpiry > Date.now()) return { ok: true };
+
+  // Verify against DB
+  try {
+    await ensureSessionsTable();
+    const r = await sql`
+      SELECT expires_at FROM admin_sessions
+      WHERE token = ${token} AND expires_at > CURRENT_TIMESTAMP
+      LIMIT 1
+    `;
+    if (r.rows.length === 0) {
+      TOKEN_CACHE.delete(token);
+      return { ok: false, status: 401, msg: 'unauthorized' };
+    }
+    TOKEN_CACHE.set(token, new Date(r.rows[0].expires_at).getTime());
+    // best-effort update (no await fail propaga)
+    sql`UPDATE admin_sessions SET last_used_at = CURRENT_TIMESTAMP WHERE token = ${token}`.catch(() => {});
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, status: 500, msg: 'auth check failed' };
+  }
+}
+
+// Lista blanca de orígenes para CORS. Si no hay origen (curl, server-to-server) no se setea Access-Control-Allow-Origin.
+const CORS_ALLOWED_ORIGINS = new Set([
+  'https://bravegirlsagency.com',
+  'https://www.bravegirlsagency.com',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5500'
+]);
+function applyCors(req, res) {
+  const origin = req.headers.origin;
+  if (origin && CORS_ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -284,9 +396,7 @@ async function deleteEntity(entity, id) {
 // HANDLER
 // ═══════════════════════════════════════════════════════════
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token');
+  applyCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const action = req.query.action || '';
@@ -297,23 +407,57 @@ module.exports = async function handler(req, res) {
       if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
       const expected = process.env.ADMIN_PASSWORD;
       if (!expected) return res.status(500).json({ success: false, error: 'ADMIN_PASSWORD no configurada' });
+
+      const ip = clientIp(req);
+      const rl = rateLimitLogin(ip);
+      if (!rl.ok) {
+        return res.status(429).json({ success: false, error: `Demasiados intentos. Probá en ${Math.ceil(rl.retryInS / 60)} min.` });
+      }
+
       const { password } = req.body || {};
       if (!password) return res.status(400).json({ success: false, error: 'password requerido' });
       if (password !== expected) return res.status(401).json({ success: false, error: 'password incorrecta' });
-      // Token es la misma password (estilo quiz admin) — el frontend la guarda en sessionStorage
-      return res.status(200).json({ success: true, token: password });
+
+      // Genera token de sesión opaco (no es la password). TTL 60 días.
+      await ensureSessionsTable();
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
+      await sql`
+        INSERT INTO admin_sessions (token, expires_at, ip)
+        VALUES (${token}, ${expiresAt.toISOString()}, ${ip})
+      `;
+      TOKEN_CACHE.set(token, expiresAt.getTime());
+
+      // Purga oportunista de sesiones expiradas (no bloqueante)
+      sql`DELETE FROM admin_sessions WHERE expires_at < CURRENT_TIMESTAMP - INTERVAL '7 days'`.catch(() => {});
+
+      // Login exitoso → reset rate limit para esa IP
+      LOGIN_ATTEMPTS.delete(ip);
+
+      return res.status(200).json({ success: true, token, expires_at: expiresAt.toISOString() });
+    }
+
+    // ─── LOGOUT ──────────────────────────────────────────
+    if (action === 'logout') {
+      const token = req.headers['x-admin-token'];
+      if (token) {
+        TOKEN_CACHE.delete(token);
+        await ensureSessionsTable();
+        await sql`DELETE FROM admin_sessions WHERE token = ${token}`;
+      }
+      return res.status(200).json({ success: true });
     }
 
     // ─── VERIFY ──────────────────────────────────────────
     if (action === 'verify') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       return res.status(200).json({ success: true });
     }
 
     // ─── CATALOG (CRUD genérico) ────────────────────────
     if (action === 'catalog') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       // Asegurar columnas opcionales antes de cualquier SELECT
       await ensureEnviosColumns();
@@ -366,7 +510,7 @@ module.exports = async function handler(req, res) {
     // ─── CIERRE de una modelo en un mes (joined con cuentas) ────
     // GET ?action=cierre-modelo&modelo_id=N&mes=YYYY-MM
     if (action === 'cierre-modelo') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
 
       const modeloId = Number(req.query.modelo_id);
@@ -460,7 +604,7 @@ module.exports = async function handler(req, res) {
     // ─── UPSERT de cierres (un array por cuenta) ────
     // POST ?action=cierre-save body: { mes, cierres: [{cuenta_id, ...}] }
     if (action === 'cierre-save') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
 
       if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
@@ -540,7 +684,7 @@ module.exports = async function handler(req, res) {
     // ─── CREAR FACTURA (snapshot inmutable) ────
     // POST ?action=factura-create body: { modelo_id, mes, items, ...metadatos }
     if (action === 'factura-create') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
 
       if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
@@ -616,7 +760,7 @@ module.exports = async function handler(req, res) {
     // ─── LISTAR FACTURAS (con filtros) ────
     // GET ?action=facturas-list[&modelo_id=N&mes=YYYY-MM]
     if (action === 'facturas-list') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
 
       const modeloId = req.query.modelo_id ? Number(req.query.modelo_id) : null;
@@ -643,7 +787,7 @@ module.exports = async function handler(req, res) {
 
     // ─── OBTENER UNA FACTURA (con su HTML snapshot para reimprimir PDF) ────
     if (action === 'factura-get') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
 
       const id = Number(req.query.id);
@@ -657,7 +801,7 @@ module.exports = async function handler(req, res) {
     // GET  ?action=resumen-override&mes=YYYY-MM
     // POST ?action=resumen-override body: { mes, facturacion_total_manual, suscripciones_manual }
     if (action === 'resumen-override') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       await ensureResumenOverridesTable();
 
@@ -670,18 +814,6 @@ module.exports = async function handler(req, res) {
           WHERE mes = ${mes}
           LIMIT 1
         `;
-        const detalle = await sql`
-          SELECT
-            c.id AS cuenta_id,
-            c.nombre_cuenta,
-            m.nombre AS modelo,
-            COALESCE(cm.suscripciones, 0) AS suscripciones
-          FROM cuentas c
-          JOIN modelos m ON m.id = c.modelo_id
-          LEFT JOIN cierre_cuenta_mes cm ON cm.cuenta_id = c.id AND cm.mes = ${mes}
-          WHERE c.activa = TRUE AND m.activa = TRUE
-          ORDER BY m.nombre ASC, c.nombre_cuenta ASC
-        `;
         const row = r.rows[0] || null;
         return res.status(200).json({
           success: true,
@@ -689,13 +821,7 @@ module.exports = async function handler(req, res) {
             mes,
             facturacion_manual_habilitada: isMesBefore(mes, FACT_MANUAL_CUTOFF_MES),
             facturacion_total_manual: row?.facturacion_total_manual != null ? Number(row.facturacion_total_manual) : null,
-            suscripciones_manual: row?.suscripciones_manual != null ? Number(row.suscripciones_manual) : null,
-            suscripciones_por_cuenta: detalle.rows.map(d => ({
-              cuenta_id: d.cuenta_id,
-              cuenta: d.nombre_cuenta,
-              modelo: d.modelo,
-              suscripciones: Number(d.suscripciones || 0)
-            }))
+            suscripciones_manual: row?.suscripciones_manual != null ? Number(row.suscripciones_manual) : null
           }
         });
       }
@@ -749,7 +875,7 @@ module.exports = async function handler(req, res) {
     // ─── RESUMEN DEL MES (para vista Resumen del dashboard) ────
     // GET ?action=resumen-mes&mes=YYYY-MM
     if (action === 'resumen-mes') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       await ensureResumenOverridesTable();
 
@@ -771,10 +897,10 @@ module.exports = async function handler(req, res) {
         WHERE mes = ${mes}
       `;
 
-      // Gastos del mes
+      // Gastos del mes (excluye papelera)
       const gas = await sql`
         SELECT COALESCE(SUM(monto), 0) AS gastos_total, count(*) AS gastos_count
-        FROM gastos_mes WHERE mes = ${mes}
+        FROM gastos_mes WHERE mes = ${mes} AND deleted_at IS NULL
       `;
 
       // Cobros por modelo
@@ -795,10 +921,10 @@ module.exports = async function handler(req, res) {
         ORDER BY total_a_cobrar DESC NULLS LAST
       `;
 
-      // Lista de gastos
+      // Lista de gastos (excluye papelera)
       const gastosLista = await sql`
         SELECT id, descripcion, categoria, monto, paga
-        FROM gastos_mes WHERE mes = ${mes}
+        FROM gastos_mes WHERE mes = ${mes} AND deleted_at IS NULL
         ORDER BY monto DESC NULLS LAST
       `;
 
@@ -903,25 +1029,49 @@ module.exports = async function handler(req, res) {
     }
 
     // ─── GASTOS CRUD ────
-    // GET ?action=gastos&mes=YYYY-MM
+    // GET  ?action=gastos&mes=YYYY-MM          → lista del mes (no borrados)
+    // GET  ?action=gastos&op=trash             → papelera (borrados últimos 30 días, todos los meses)
     // POST ?action=gastos body: { mes, descripcion, categoria, monto, paga }
-    // POST ?action=gastos&id=N&op=delete
+    // POST ?action=gastos&id=N                 → update
+    // POST ?action=gastos&id=N&op=delete       → soft delete (queda 30 días en papelera)
+    // POST ?action=gastos&id=N&op=restore      → restaurar de papelera
     if (action === 'gastos') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureGastosSoftDelete();
+
+      // Purga oportunista de papelera > 30 días (best-effort)
+      sql`DELETE FROM gastos_mes WHERE deleted_at IS NOT NULL AND deleted_at < CURRENT_TIMESTAMP - INTERVAL '30 days'`.catch(() => {});
 
       const mes = req.query.mes;
+      const op = req.query.op || null;
 
       if (req.method === 'GET') {
+        if (op === 'trash') {
+          const r = await sql`
+            SELECT *, EXTRACT(DAY FROM (CURRENT_TIMESTAMP - deleted_at))::int AS dias_en_papelera
+            FROM gastos_mes
+            WHERE deleted_at IS NOT NULL
+            ORDER BY deleted_at DESC
+          `;
+          return res.status(200).json({ success: true, data: r.rows });
+        }
         if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
-        const r = await sql`SELECT * FROM gastos_mes WHERE mes = ${mes} ORDER BY id DESC`;
+        const r = await sql`SELECT * FROM gastos_mes WHERE mes = ${mes} AND deleted_at IS NULL ORDER BY id DESC`;
         return res.status(200).json({ success: true, data: r.rows });
       }
       if (req.method === 'POST') {
         const id = req.query.id ? Number(req.query.id) : null;
-        const op = req.query.op || null;
         if (op === 'delete' && id) {
-          await sql`DELETE FROM gastos_mes WHERE id = ${id}`;
+          await sql`UPDATE gastos_mes SET deleted_at = CURRENT_TIMESTAMP WHERE id = ${id} AND deleted_at IS NULL`;
+          return res.status(200).json({ success: true });
+        }
+        if (op === 'restore' && id) {
+          await sql`UPDATE gastos_mes SET deleted_at = NULL WHERE id = ${id}`;
+          return res.status(200).json({ success: true });
+        }
+        if (op === 'purge' && id) {
+          await sql`DELETE FROM gastos_mes WHERE id = ${id} AND deleted_at IS NOT NULL`;
           return res.status(200).json({ success: true });
         }
         const b = req.body || {};
@@ -957,7 +1107,7 @@ module.exports = async function handler(req, res) {
     // ─── TRANSACTION FEE del mes ───────────────────────────
     // GET/POST ?action=tx-fee&mes=YYYY-MM
     if (action === 'tx-fee') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       const mes = req.query.mes;
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
@@ -985,7 +1135,7 @@ module.exports = async function handler(req, res) {
 
     // ─── TX FEE HISTORY (lista todos los meses configurados) ───
     if (action === 'tx-fee-history') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       const r = await sql`SELECT mes, porcentaje FROM transaction_fee_mes ORDER BY mes DESC LIMIT 36`;
       return res.status(200).json({ success: true, data: r.rows });
@@ -995,7 +1145,7 @@ module.exports = async function handler(req, res) {
     // GET  ?action=chatter-cuentas[&chatter_id=N]  → lista todas o filtra por chatter
     // POST ?action=chatter-cuentas  body: {chatter_id, cuenta_ids: [1,2,3]}  → reemplaza set
     if (action === 'chatter-cuentas') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       await ensureAsignTable();
 
@@ -1037,7 +1187,7 @@ module.exports = async function handler(req, res) {
     // ─── LIQUIDACIÓN del mes (todos los chatters) ──────────
     // GET ?action=liquidacion-mes&mes=YYYY-MM
     if (action === 'liquidacion-mes') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       const mes = req.query.mes;
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
@@ -1142,7 +1292,7 @@ module.exports = async function handler(req, res) {
     //   - kind='supervisor': sin entity_id → tabla supervisor_comision_mes (1 fila por mes)
     //   - kind='equipo': requiere equipo_id (o entity_id) → tabla equipo_pagos_mes
     if (action === 'envios-update') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
       await ensureEnviosColumns();
@@ -1234,7 +1384,7 @@ module.exports = async function handler(req, res) {
     //         team_leader_bonus, incentivos_individuales, incentivo_mes_ganado, incentivo_mes_monto,
     //         envio_1, envio_2, envio_3, fecha_envio_1..3, observaciones }
     if (action === 'liquidacion-save') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
 
@@ -1326,7 +1476,7 @@ module.exports = async function handler(req, res) {
     // ─── COBROS A MODELOS (detalle del mes) ────────────────
     // GET ?action=cobros-mes&mes=YYYY-MM
     if (action === 'cobros-mes') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       const mes = req.query.mes;
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
@@ -1351,7 +1501,7 @@ module.exports = async function handler(req, res) {
     // ─── ACTUALIZAR pago de un cierre (cobros) ─────────────
     // POST ?action=cobros-update body: { cierre_id, estado_resumen, pago_recibido, comision_transaccion, medio_pago, observaciones }
     if (action === 'cobros-update') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
       await ensureCobroComisionColumn();
@@ -1377,7 +1527,7 @@ module.exports = async function handler(req, res) {
     // GET  ?action=supervisor-mes&mes=YYYY-MM
     // POST ?action=supervisor-mes body: { mes, suscripciones_totales }
     if (action === 'supervisor-mes') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       await ensureSupervisorSubsTable();
 
@@ -1504,7 +1654,7 @@ module.exports = async function handler(req, res) {
     // POST ?action=incentivos body: { mes, chatter_id, monto, motivo }   (upsert)
     // POST ?action=incentivos&op=delete&mes=YYYY-MM
     if (action === 'incentivos') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
 
       if (req.method === 'GET') {
@@ -1548,7 +1698,7 @@ module.exports = async function handler(req, res) {
     // ─── P&L MENSUAL ───────────────────────────────────────
     // GET ?action=pnl&mes=YYYY-MM
     if (action === 'pnl') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       const mes = req.query.mes;
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
@@ -1565,7 +1715,7 @@ module.exports = async function handler(req, res) {
       const pagosChat = await sql`SELECT COALESCE(SUM(neto_a_pagar), 0) AS pagos FROM chatter_pagos_mes WHERE mes = ${mes}`;
       const pagosSup = await sql`SELECT COALESCE(SUM(neto_a_pagar), 0) AS pagos FROM supervisor_comision_mes WHERE mes = ${mes}`;
       const equipo = await sql`SELECT COALESCE(SUM(sueldo_mensual_usd), 0) AS sueldos FROM equipo_fijo WHERE activo = TRUE`;
-      const gastos = await sql`SELECT COALESCE(SUM(monto), 0) AS otros FROM gastos_mes WHERE mes = ${mes}`;
+      const gastos = await sql`SELECT COALESCE(SUM(monto), 0) AS otros FROM gastos_mes WHERE mes = ${mes} AND deleted_at IS NULL`;
 
       const c = cierres.rows[0];
       const ingreso = Number(c.ingreso_bruto);
@@ -1596,7 +1746,7 @@ module.exports = async function handler(req, res) {
 
     // ─── DB STATS (chequeo rápido para debug) ──────────
     if (action === 'stats') {
-      const auth = checkAuth(req);
+      const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
 
       const r = await sql`
@@ -1611,10 +1761,59 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, counts: r.rows[0] });
     }
 
+    // ─── LOG DE ERRORES DEL FRONTEND ────
+    // POST ?action=log-error  body: { message, stack?, url?, route?, user_agent? }
+    // GET  ?action=log-error                  → últimos 100
+    // POST ?action=log-error&op=clear         → borrar todos
+    if (action === 'log-error') {
+      await ensureFrontendErrorsTable();
+
+      // POST sin auth para que también funcione desde login-screen.
+      // GET y op=clear requieren auth.
+      if (req.method === 'POST' && !req.query.op) {
+        const b = req.body || {};
+        const msg = String(b.message || '').slice(0, 2000);
+        if (!msg) return res.status(400).json({ success: false, error: 'message requerido' });
+        await sql`
+          INSERT INTO frontend_errors (message, stack, url, user_agent, route)
+          VALUES (
+            ${msg},
+            ${String(b.stack || '').slice(0, 8000) || null},
+            ${String(b.url || '').slice(0, 500) || null},
+            ${String(b.user_agent || req.headers['user-agent'] || '').slice(0, 500) || null},
+            ${String(b.route || '').slice(0, 100) || null}
+          )
+        `;
+        // Purga oportunista: > 60 días
+        sql`DELETE FROM frontend_errors WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '60 days'`.catch(() => {});
+        return res.status(200).json({ success: true });
+      }
+
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+
+      if (req.method === 'POST' && req.query.op === 'clear') {
+        await sql`DELETE FROM frontend_errors`;
+        return res.status(200).json({ success: true });
+      }
+
+      if (req.method === 'GET') {
+        const r = await sql`
+          SELECT id, created_at, message, stack, url, user_agent, route
+          FROM frontend_errors
+          ORDER BY id DESC
+          LIMIT 100
+        `;
+        return res.status(200).json({ success: true, data: r.rows });
+      }
+
+      return res.status(405).json({ success: false, error: 'Method not allowed' });
+    }
+
     return res.status(400).json({
       success: false,
       error: 'unknown action',
-      hint: 'usa ?action=login | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | envios-update | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl'
+      hint: 'usa ?action=login | logout | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | envios-update | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl | log-error'
     });
 
   } catch (error) {

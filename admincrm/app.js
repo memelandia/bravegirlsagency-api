@@ -11,7 +11,13 @@
 
   const API = 'https://bravegirlsagency-api.vercel.app/api/admin';
   const TOKEN_KEY = 'admin_token';
-  let token = sessionStorage.getItem(TOKEN_KEY);
+  // Token vive en localStorage (sesión persistente 60 días, el server lo revoca al expirar).
+  // Migración: leer sessionStorage si existe (sesión vieja) y promoverlo.
+  let token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+  if (token && !localStorage.getItem(TOKEN_KEY)) {
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY);
+  }
 
   // ───────── Configuración de entidades del catálogo ─────────
   const ENTITY_DEFS = {
@@ -98,6 +104,37 @@
   let modelosCache = null;
   let planesCache = null;
 
+  // ───────── Logger de errores del frontend ─────────
+  // Envía a /api/admin?action=log-error y se ve en Ajustes → "Errores recientes".
+  const ERR_REPORT_THROTTLE_MS = 5000;
+  let _lastErrSentAt = 0;
+  function reportError(err, extra = {}) {
+    const now = Date.now();
+    if (now - _lastErrSentAt < ERR_REPORT_THROTTLE_MS) return; // throttle
+    _lastErrSentAt = now;
+    const body = {
+      message: String(err?.message || err || 'unknown').slice(0, 2000),
+      stack: err?.stack ? String(err.stack).slice(0, 8000) : null,
+      url: String(location.href).slice(0, 500),
+      route: location.hash.replace('#', '') || 'resumen',
+      user_agent: navigator.userAgent.slice(0, 500),
+      ...extra
+    };
+    fetch(`${API}?action=log-error`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      keepalive: true
+    }).catch(() => {});
+  }
+  window.addEventListener('error', (e) => {
+    if (e.error) reportError(e.error);
+    else reportError(e.message || 'window error');
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    reportError(e.reason || 'unhandled rejection');
+  });
+
   // ───────── Toast ─────────
   function toast(msg, type = '') {
     const t = document.getElementById('toast');
@@ -121,7 +158,7 @@
     let json = null;
     try { json = await res.json(); } catch (_) { json = {}; }
     if (res.status === 401) {
-      sessionStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY);
       token = null;
       showLogin('Tu sesión expiró. Iniciá de nuevo.');
       throw new Error('unauthorized');
@@ -179,7 +216,7 @@
         return;
       }
       token = j.token;
-      sessionStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(TOKEN_KEY, token);
       showApp();
     } catch (e) {
       errEl.textContent = 'No se pudo contactar al servidor';
@@ -187,8 +224,12 @@
     }
   });
 
-  document.getElementById('logout-btn').addEventListener('click', () => {
-    sessionStorage.removeItem(TOKEN_KEY);
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    // Revoca el token en el server (best-effort)
+    if (token) {
+      try { await fetch(`${API}?action=logout`, { method: 'POST', headers: { 'X-Admin-Token': token } }); } catch (_) {}
+    }
+    localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY);
     token = null;
     modelosCache = null;
     planesCache = null;
@@ -633,13 +674,6 @@
     }
   }
 
-  function stateP(s) {
-    if (!s) return '<span class="pill">sin estado</span>';
-    if (s.includes('confirmado')) return '<span class="pill green">✓ Confirmado</span>';
-    if (s.includes('enviado'))    return '<span class="pill amber">→ Enviado</span>';
-    return '<span class="pill">⋯ Pendiente</span>';
-  }
-
   // ───────── Vista: Catálogo (sub-tabs + tabla + modal CRUD) ─────────
   function renderCatalogo(view) {
     const entities = Object.keys(ENTITY_DEFS);
@@ -888,30 +922,26 @@
     const mes = currentMes();
     view.innerHTML = `<div class="spinner"></div>`;
     try {
-      const [feeRes, histRes, statsRes, overrideRes] = await Promise.all([
+      const [feeRes, histRes, statsRes, overrideRes, errorsRes, trashRes] = await Promise.all([
         api('tx-fee',         { params: { mes } }),
         api('tx-fee-history'),
         api('stats'),
-        api('resumen-override', { params: { mes } })
+        api('resumen-override', { params: { mes } }),
+        api('log-error').catch(() => ({ data: [] })),
+        api('gastos', { params: { op: 'trash' } }).catch(() => ({ data: [] }))
       ]);
       const feeActual = Number(feeRes.porcentaje || 0);
       const historial = histRes.data || [];
       const counts = statsRes.counts || {};
       const ov = overrideRes.data || {};
+      const errores = errorsRes.data || [];
+      const papelera = trashRes.data || [];
       const factManualInput = ov.facturacion_total_manual != null
         ? Number(ov.facturacion_total_manual).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         : '';
       const subsManualInput = ov.suscripciones_manual != null
         ? Number(ov.suscripciones_manual).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         : '';
-      const subsRows = (ov.suscripciones_por_cuenta || []).map(s => `
-        <tr>
-          <td>${s.modelo}</td>
-          <td>${s.cuenta}</td>
-          <td style="text-align:right">${fmtMoney(s.suscripciones)}</td>
-        </tr>
-      `).join('');
-
       const histRows = historial.map(h => `
         <tr data-mes="${h.mes}">
           <td><strong>${h.mes}</strong></td>
@@ -1036,8 +1066,59 @@
         </div>
 
         <div class="card" style="margin-top:18px">
+          <div class="card-title">🗑 Papelera de gastos <span class="count">${papelera.length}</span></div>
+          <p class="card-sub">Gastos borrados en los últimos 30 días. Se purgan automáticamente luego de ese plazo.</p>
+          ${papelera.length === 0
+            ? `<div class="empty-state" style="padding:20px 0">Sin gastos en papelera.</div>`
+            : `<div class="table-wrap" style="margin-top:14px">
+                 <table>
+                   <thead><tr><th>Mes</th><th>Descripción</th><th style="text-align:right">Monto</th><th>Borrado</th><th></th></tr></thead>
+                   <tbody>
+                     ${papelera.map(g => `
+                       <tr>
+                         <td><strong>${g.mes}</strong></td>
+                         <td>${(g.descripcion || '').replace(/[<>]/g, '')}</td>
+                         <td style="text-align:right">${fmtMoney(g.monto)}</td>
+                         <td><span class="muted" style="font-size:0.78rem">hace ${g.dias_en_papelera ?? 0} d</span></td>
+                         <td style="text-align:right;white-space:nowrap">
+                           <button class="btn-ghost-small gasto-restore" data-id="${g.id}" title="Restaurar">↩ Restaurar</button>
+                           <button class="btn-danger" data-purge="${g.id}" title="Borrar definitivamente">✕</button>
+                         </td>
+                       </tr>
+                     `).join('')}
+                   </tbody>
+                 </table>
+               </div>`}
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <div class="card-title">⚠️ Errores recientes del frontend <span class="count">${errores.length}</span></div>
+          <p class="card-sub">Últimos errores capturados automáticamente. Se purgan a los 60 días.</p>
+          <div style="display:flex;gap:10px;margin-top:10px">
+            <button class="btn-secondary" id="errors-refresh" style="width:auto;padding:8px 14px;margin:0">🔄 Refrescar</button>
+            ${errores.length ? `<button class="btn-danger" id="errors-clear" style="width:auto;padding:8px 14px;margin:0">🧹 Vaciar log</button>` : ''}
+          </div>
+          ${errores.length === 0
+            ? `<div class="empty-state" style="padding:20px 0;margin-top:10px">Sin errores recientes. ✅</div>`
+            : `<div class="table-wrap" style="margin-top:14px">
+                 <table>
+                   <thead><tr><th>Cuándo</th><th>Ruta</th><th>Mensaje</th></tr></thead>
+                   <tbody>
+                     ${errores.slice(0, 30).map(e => {
+                       const when = new Date(e.created_at).toLocaleString('es-AR');
+                       const safeMsg = String(e.message || '').replace(/[<>]/g, c => c === '<' ? '&lt;' : '&gt;');
+                       const safeRoute = String(e.route || '—').replace(/[<>]/g, '');
+                       const stackHint = e.stack ? `<details style="margin-top:4px"><summary style="cursor:pointer;font-size:0.75rem;color:var(--text-mute)">stack</summary><pre style="font-size:0.7rem;white-space:pre-wrap;margin:6px 0 0;color:var(--text-mute);max-height:200px;overflow:auto">${String(e.stack).replace(/[<>]/g, c => c === '<' ? '&lt;' : '&gt;')}</pre></details>` : '';
+                       return `<tr><td style="white-space:nowrap;font-size:0.78rem">${when}</td><td><span class="muted" style="font-size:0.78rem">${safeRoute}</span></td><td><div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.78rem">${safeMsg}</div>${stackHint}</td></tr>`;
+                     }).join('')}
+                   </tbody>
+                 </table>
+               </div>`}
+        </div>
+
+        <div class="card" style="margin-top:18px">
           <div class="card-title">🔐 Sesión</div>
-          <p class="card-sub">El token está guardado en sessionStorage del navegador.</p>
+          <p class="card-sub">Sesión persistente de 60 días. El token es opaco (no es la contraseña) y se puede revocar cerrando sesión.</p>
           <button class="btn-secondary" id="logout-also" style="width:auto;padding:10px 18px;margin-top:14px">Cerrar sesión</button>
         </div>
       `;
@@ -1145,10 +1226,45 @@
         } catch (err) { toast('Backend NO responde: ' + err.message, 'error'); }
       });
 
-      document.getElementById('logout-also').addEventListener('click', () => {
-        sessionStorage.removeItem(TOKEN_KEY);
+      document.getElementById('logout-also').addEventListener('click', async () => {
+        if (token) {
+          try { await fetch(`${API}?action=logout`, { method: 'POST', headers: { 'X-Admin-Token': token } }); } catch (_) {}
+        }
+        localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY);
         token = null;
         showLogin();
+      });
+
+      // Errores recientes
+      document.getElementById('errors-refresh')?.addEventListener('click', () => renderAjustes(view));
+      document.getElementById('errors-clear')?.addEventListener('click', async () => {
+        if (!confirm('¿Vaciar el log de errores del frontend?')) return;
+        try {
+          await api('log-error', { method: 'POST', params: { op: 'clear' } });
+          toast('Log de errores vaciado', 'success');
+          renderAjustes(view);
+        } catch (e) { toast('Error: ' + e.message, 'error'); }
+      });
+
+      // Papelera de gastos
+      view.querySelectorAll('.gasto-restore').forEach(b => {
+        b.addEventListener('click', async () => {
+          try {
+            await api('gastos', { method: 'POST', params: { id: b.dataset.id, op: 'restore' } });
+            toast('Gasto restaurado', 'success');
+            renderAjustes(view);
+          } catch (e) { toast('Error: ' + e.message, 'error'); }
+        });
+      });
+      view.querySelectorAll('[data-purge]').forEach(b => {
+        b.addEventListener('click', async () => {
+          if (!confirm('¿Borrar definitivamente este gasto? No se puede recuperar.')) return;
+          try {
+            await api('gastos', { method: 'POST', params: { id: b.dataset.purge, op: 'purge' } });
+            toast('Gasto borrado definitivamente', 'success');
+            renderAjustes(view);
+          } catch (e) { toast('Error: ' + e.message, 'error'); }
+        });
       });
 
       document.getElementById('ajustes-ov-mes').addEventListener('change', () => {
@@ -1249,7 +1365,7 @@
       await api('verify');
       showApp();
     } catch {
-      sessionStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY);
       token = null;
       showLogin();
     }
@@ -2833,6 +2949,9 @@
       fecha_envio_3: document.getElementById('liq-fe3').value || null,
       observaciones: document.getElementById('liq-obs').value || null
     };
+    const btn = document.getElementById('liq-save-btn');
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Guardando…'; }
     try {
       await api('liquidacion-save', { method: 'POST', body });
       // Si marcó "ganador del mes", guardar también en incentivos_historico
@@ -2846,7 +2965,10 @@
       }
       toast('Liquidación guardada', 'success');
       renderLiquidacion(document.getElementById('view'));
-    } catch (e) { toast('Error: ' + e.message, 'error'); }
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
+    }
   }
 
   async function generarLiquidacionPDF(chatter) {
@@ -3609,13 +3731,21 @@
       renderPickerGrid();
     });
   });
-  document.getElementById('mes-prev').addEventListener('click', () => { shiftMes(-1); refreshMesDisplay(); });
-  document.getElementById('mes-next').addEventListener('click', () => { shiftMes(1); refreshMesDisplay(); });
+  // Sincroniza el grid del picker con el mes actualmente seleccionado.
+  // Resetea el año mostrado en el picker para que coincida con el mes activo.
+  function syncPickerToSelected() {
+    pickerYearState = null;
+    const p = document.getElementById('mes-picker');
+    if (p?.classList.contains('open')) renderPickerGrid();
+  }
+  document.getElementById('mes-prev').addEventListener('click', () => { shiftMes(-1); refreshMesDisplay(); syncPickerToSelected(); });
+  document.getElementById('mes-next').addEventListener('click', () => { shiftMes(1); refreshMesDisplay(); syncPickerToSelected(); });
   document.getElementById('mes-today').addEventListener('click', () => {
     const today = new Date().toISOString().slice(0, 7);
     document.getElementById('mes-selector').value = today;
     sessionStorage.setItem('admin_mes', today);
     refreshMesDisplay();
+    syncPickerToSelected();
     const route = location.hash.replace('#', '') || 'resumen';
     navigate(route);
   });
