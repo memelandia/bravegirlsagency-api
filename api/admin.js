@@ -52,6 +52,25 @@ async function ensureSupervisorSubsTable() {
   _ensuredSupervisorSubsTable = true;
 }
 
+let _ensuredEnviosColumns = false;
+async function ensureEnviosColumns() {
+  if (_ensuredEnviosColumns) return;
+  // Asegurar columnas de envíos en supervisor_comision_mes (no las tenía) y en equipo_pagos_mes (le faltaba envio_3).
+  await sql`ALTER TABLE supervisor_comision_mes ADD COLUMN IF NOT EXISTS envio_1 NUMERIC(10,2) DEFAULT 0`;
+  await sql`ALTER TABLE supervisor_comision_mes ADD COLUMN IF NOT EXISTS envio_2 NUMERIC(10,2) DEFAULT 0`;
+  await sql`ALTER TABLE supervisor_comision_mes ADD COLUMN IF NOT EXISTS envio_3 NUMERIC(10,2) DEFAULT 0`;
+  await sql`ALTER TABLE supervisor_comision_mes ADD COLUMN IF NOT EXISTS fecha_envio_1 DATE`;
+  await sql`ALTER TABLE supervisor_comision_mes ADD COLUMN IF NOT EXISTS fecha_envio_2 DATE`;
+  await sql`ALTER TABLE supervisor_comision_mes ADD COLUMN IF NOT EXISTS fecha_envio_3 DATE`;
+  await sql`ALTER TABLE supervisor_comision_mes ADD COLUMN IF NOT EXISTS falta_pagar NUMERIC(12,2)`;
+
+  await sql`ALTER TABLE equipo_pagos_mes ADD COLUMN IF NOT EXISTS envio_3 NUMERIC(10,2) DEFAULT 0`;
+  await sql`ALTER TABLE equipo_pagos_mes ADD COLUMN IF NOT EXISTS fecha_envio_1 DATE`;
+  await sql`ALTER TABLE equipo_pagos_mes ADD COLUMN IF NOT EXISTS fecha_envio_2 DATE`;
+  await sql`ALTER TABLE equipo_pagos_mes ADD COLUMN IF NOT EXISTS fecha_envio_3 DATE`;
+  _ensuredEnviosColumns = true;
+}
+
 let _ensuredResumenOverridesTable = false;
 async function ensureResumenOverridesTable() {
   if (_ensuredResumenOverridesTable) return;
@@ -1064,6 +1083,28 @@ module.exports = async function handler(req, res) {
       const inc = await sql`SELECT * FROM incentivos_historico WHERE mes = ${mes}`;
       const incRow = inc.rows[0] || null;
 
+      // Supervisor (chatter con rol=supervisor) + su pago del mes (si existe)
+      await ensureEnviosColumns();
+      const supRow = await sql`
+        SELECT id, nombre, porcentaje_supervisor
+        FROM chatters_admin
+        WHERE activo = TRUE AND rol = 'supervisor'
+        ORDER BY nombre
+        LIMIT 1
+      `;
+      const supervisor = supRow.rows[0] || null;
+      let supervisorPago = null;
+      if (supervisor) {
+        const sp = await sql`SELECT * FROM supervisor_comision_mes WHERE mes = ${mes}`;
+        supervisorPago = sp.rows[0] || null;
+      }
+
+      // Equipo fijo + sus pagos del mes
+      const equipo = await sql`SELECT id, nombre, rol, sueldo_mensual_usd FROM equipo_fijo WHERE activo = TRUE ORDER BY nombre`;
+      const equipoPagosRows = await sql`SELECT * FROM equipo_pagos_mes WHERE mes = ${mes}`;
+      const pagosByEquipo = {};
+      equipoPagosRows.rows.forEach(p => { pagosByEquipo[p.equipo_id] = p; });
+
       return res.status(200).json({
         success: true,
         mes,
@@ -1073,49 +1114,106 @@ module.exports = async function handler(req, res) {
         asignaciones_by_chatter: asignByChatter,
         detalle_by_chatter: detByChatter,
         pagos_by_chatter: pagosByChatter,
-        incentivo_mes: incRow
+        incentivo_mes: incRow,
+        supervisor,
+        supervisor_pago: supervisorPago,
+        equipo: equipo.rows,
+        pagos_by_equipo: pagosByEquipo
       });
     }
 
     // ─── GUARDAR LIQUIDACIÓN de un chatter ─────────────────
     // POST ?action=envios-update
-    // body: { mes, chatter_id, envio_1, envio_2, envio_3, fecha_envio_1..3 }
-    // Actualiza solo los envíos sin tocar detalle/comisiones. Recalcula falta_pagar = neto - sum(envíos).
+    // body: { mes, kind: 'chatter'|'supervisor'|'equipo', entity_id?, envio_1..3, fecha_envio_1..3 }
+    //   - kind='chatter': requiere chatter_id (o entity_id) → tabla chatter_pagos_mes
+    //   - kind='supervisor': sin entity_id → tabla supervisor_comision_mes (1 fila por mes)
+    //   - kind='equipo': requiere equipo_id (o entity_id) → tabla equipo_pagos_mes
     if (action === 'envios-update') {
       const auth = checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+      await ensureEnviosColumns();
       const b = req.body || {};
       const mes = b.mes;
-      const chatterId = Number(b.chatter_id);
-      if (!mes || !chatterId) return res.status(400).json({ success: false, error: 'mes y chatter_id requeridos' });
-
+      const kind = b.kind || 'chatter';
+      if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
       const e1 = Number(b.envio_1 || 0), e2 = Number(b.envio_2 || 0), e3 = Number(b.envio_3 || 0);
-      const existing = await sql`SELECT neto_a_pagar FROM chatter_pagos_mes WHERE mes = ${mes} AND chatter_id = ${chatterId}`;
-      const neto = Number(existing.rows[0]?.neto_a_pagar || 0);
-      const falta = neto - e1 - e2 - e3;
+      const f1 = b.fecha_envio_1 || null, f2 = b.fecha_envio_2 || null, f3 = b.fecha_envio_3 || null;
 
-      await sql`
-        INSERT INTO chatter_pagos_mes (
-          mes, chatter_id, envio_1, envio_2, envio_3,
-          fecha_envio_1, fecha_envio_2, fecha_envio_3, falta_pagar,
-          comisiones_total, team_leader_bonus, total_bruto, transaction_fee_pct, neto_a_pagar
-        )
-        VALUES (
-          ${mes}, ${chatterId}, ${e1}, ${e2}, ${e3},
-          ${b.fecha_envio_1 || null}, ${b.fecha_envio_2 || null}, ${b.fecha_envio_3 || null}, ${falta},
-          0, 0, 0, 0, 0
-        )
-        ON CONFLICT (mes, chatter_id) DO UPDATE SET
-          envio_1 = EXCLUDED.envio_1,
-          envio_2 = EXCLUDED.envio_2,
-          envio_3 = EXCLUDED.envio_3,
-          fecha_envio_1 = EXCLUDED.fecha_envio_1,
-          fecha_envio_2 = EXCLUDED.fecha_envio_2,
-          fecha_envio_3 = EXCLUDED.fecha_envio_3,
-          falta_pagar = chatter_pagos_mes.neto_a_pagar - EXCLUDED.envio_1 - EXCLUDED.envio_2 - EXCLUDED.envio_3
-      `;
-      return res.status(200).json({ success: true, neto, falta });
+      if (kind === 'chatter') {
+        const chatterId = Number(b.chatter_id || b.entity_id);
+        if (!chatterId) return res.status(400).json({ success: false, error: 'chatter_id requerido' });
+        const existing = await sql`SELECT neto_a_pagar FROM chatter_pagos_mes WHERE mes = ${mes} AND chatter_id = ${chatterId}`;
+        const neto = Number(existing.rows[0]?.neto_a_pagar || 0);
+        const falta = neto - e1 - e2 - e3;
+        await sql`
+          INSERT INTO chatter_pagos_mes (
+            mes, chatter_id, envio_1, envio_2, envio_3,
+            fecha_envio_1, fecha_envio_2, fecha_envio_3, falta_pagar,
+            comisiones_total, team_leader_bonus, total_bruto, transaction_fee_pct, neto_a_pagar
+          )
+          VALUES (
+            ${mes}, ${chatterId}, ${e1}, ${e2}, ${e3},
+            ${f1}, ${f2}, ${f3}, ${falta},
+            0, 0, 0, 0, 0
+          )
+          ON CONFLICT (mes, chatter_id) DO UPDATE SET
+            envio_1 = EXCLUDED.envio_1, envio_2 = EXCLUDED.envio_2, envio_3 = EXCLUDED.envio_3,
+            fecha_envio_1 = EXCLUDED.fecha_envio_1, fecha_envio_2 = EXCLUDED.fecha_envio_2, fecha_envio_3 = EXCLUDED.fecha_envio_3,
+            falta_pagar = chatter_pagos_mes.neto_a_pagar - EXCLUDED.envio_1 - EXCLUDED.envio_2 - EXCLUDED.envio_3
+        `;
+        return res.status(200).json({ success: true, neto, falta });
+      }
+
+      if (kind === 'supervisor') {
+        const existing = await sql`SELECT neto_a_pagar FROM supervisor_comision_mes WHERE mes = ${mes}`;
+        const neto = Number(existing.rows[0]?.neto_a_pagar || 0);
+        const falta = neto - e1 - e2 - e3;
+        await sql`
+          INSERT INTO supervisor_comision_mes (
+            mes, sfs_control, comision_suscripciones, comision_ventas_chatters,
+            total_bruto, transaction_fee_pct, neto_a_pagar,
+            envio_1, envio_2, envio_3, fecha_envio_1, fecha_envio_2, fecha_envio_3, falta_pagar
+          )
+          VALUES (
+            ${mes}, 0, 0, 0, 0, 0, 0,
+            ${e1}, ${e2}, ${e3}, ${f1}, ${f2}, ${f3}, ${falta}
+          )
+          ON CONFLICT (mes) DO UPDATE SET
+            envio_1 = EXCLUDED.envio_1, envio_2 = EXCLUDED.envio_2, envio_3 = EXCLUDED.envio_3,
+            fecha_envio_1 = EXCLUDED.fecha_envio_1, fecha_envio_2 = EXCLUDED.fecha_envio_2, fecha_envio_3 = EXCLUDED.fecha_envio_3,
+            falta_pagar = supervisor_comision_mes.neto_a_pagar - EXCLUDED.envio_1 - EXCLUDED.envio_2 - EXCLUDED.envio_3
+        `;
+        return res.status(200).json({ success: true, neto, falta });
+      }
+
+      if (kind === 'equipo') {
+        const equipoId = Number(b.equipo_id || b.entity_id);
+        if (!equipoId) return res.status(400).json({ success: false, error: 'equipo_id requerido' });
+        // Para equipo, el "monto" base = sueldo_mensual_usd del equipo_fijo si no hay override
+        const eqRow = await sql`SELECT sueldo_mensual_usd FROM equipo_fijo WHERE id = ${equipoId}`;
+        const sueldo = Number(eqRow.rows[0]?.sueldo_mensual_usd || 0);
+        const existing = await sql`SELECT monto FROM equipo_pagos_mes WHERE mes = ${mes} AND equipo_id = ${equipoId}`;
+        const monto = Number(existing.rows[0]?.monto || sueldo);
+        const falta = monto - e1 - e2 - e3;
+        await sql`
+          INSERT INTO equipo_pagos_mes (
+            mes, equipo_id, monto, envio_1, envio_2, envio_3,
+            fecha_envio_1, fecha_envio_2, fecha_envio_3, falta_pagar
+          )
+          VALUES (
+            ${mes}, ${equipoId}, ${monto}, ${e1}, ${e2}, ${e3},
+            ${f1}, ${f2}, ${f3}, ${falta}
+          )
+          ON CONFLICT (mes, equipo_id) DO UPDATE SET
+            envio_1 = EXCLUDED.envio_1, envio_2 = EXCLUDED.envio_2, envio_3 = EXCLUDED.envio_3,
+            fecha_envio_1 = EXCLUDED.fecha_envio_1, fecha_envio_2 = EXCLUDED.fecha_envio_2, fecha_envio_3 = EXCLUDED.fecha_envio_3,
+            falta_pagar = equipo_pagos_mes.monto - EXCLUDED.envio_1 - EXCLUDED.envio_2 - EXCLUDED.envio_3
+        `;
+        return res.status(200).json({ success: true, neto: monto, falta });
+      }
+
+      return res.status(400).json({ success: false, error: 'kind invalido' });
     }
 
     // POST ?action=liquidacion-save

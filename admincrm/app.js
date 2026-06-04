@@ -1232,34 +1232,122 @@
     const mes = currentMes();
     view.innerHTML = `<div class="spinner"></div>`;
 
-    // Cargar modelos
     if (!modelosCache) {
       try { modelosCache = (await api('catalog', { params: { entity: 'modelos' } })).data; }
       catch (e) { view.innerHTML = `<div class="card center muted">⚠️ ${e.message}</div>`; return; }
     }
     const activos = modelosCache.filter(m => m.activa);
 
+    const planClass = (p) => {
+      const pct = Number(p) || 0;
+      if (pct >= 60) return 'plan-premium';
+      if (pct >= 50) return 'plan-avanzado';
+      if (pct >= 40) return 'plan-inicial';
+      return 'plan-otro';
+    };
+    const planLabel = (p) => {
+      const pct = Number(p) || 0;
+      if (pct >= 60) return `GESTIÓN ${pct}%`;
+      if (pct >= 50) return `GESTIÓN ${pct}%`;
+      if (pct >= 40) return `GESTIÓN ${pct}%`;
+      return `${pct}%`;
+    };
+    const initialOf = (n) => (n || '?').trim().charAt(0).toUpperCase();
+    const hueOf = (n) => [...(n || '')].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 360;
+
+    const cardsHtml = activos.map(m => {
+      const pct = Number(m.porcentaje || m.plan_porcentaje || 0);
+      const cls = planClass(pct);
+      const lbl = planLabel(pct);
+      const ult = Number(m.factura_numero_actual || 0);
+      const nxt = ult + 1;
+      return `
+        <div class="modelo-card ${cls}" data-modelo-id="${m.id}" tabindex="0" role="button" aria-label="Seleccionar ${m.nombre}">
+          <div class="mc-head">
+            <div class="mc-avatar" style="--av-hue:${hueOf(m.nombre)}">${initialOf(m.nombre)}</div>
+            <div class="mc-meta">
+              <div class="mc-name">${escapeHtml(m.nombre)}</div>
+              <span class="mc-plan-pill">${lbl}</span>
+            </div>
+          </div>
+          <div class="mc-stats">
+            <div class="mc-stat">
+              <div class="mc-stat-lbl">Última factura</div>
+              <div class="mc-stat-val">${ult ? '#' + String(ult).padStart(4, '0') : '<span class="muted">sin emitir</span>'}</div>
+            </div>
+            <div class="mc-stat">
+              <div class="mc-stat-lbl">N° próxima</div>
+              <div class="mc-stat-val mc-num-next">#${String(nxt).padStart(4, '0')}</div>
+            </div>
+          </div>
+          ${m.nombre_fiscal ? `<div class="mc-fiscal" title="${escapeHtml(m.nombre_fiscal)}">${escapeHtml(m.nombre_fiscal)}</div>` : `<div class="mc-fiscal muted">Sin datos fiscales</div>`}
+          <button class="btn-primary mc-action" data-modelo-id="${m.id}">📥 Generar factura</button>
+        </div>
+      `;
+    }).join('');
+
     view.innerHTML = `
-      <div class="card">
-        <div class="flex-between" style="margin-bottom:18px">
+      <div class="card" style="margin-bottom:16px">
+        <div class="flex-between">
           <div>
             <div class="card-title">▤ Facturación a Modelos</div>
-            <div class="card-sub">Cargá el cierre del mes <strong>${mes}</strong> y generá la factura en PDF</div>
+            <div class="card-sub">Elegí una modelo para generar la factura del mes <strong>${mes}</strong></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="fact-search" type="search" placeholder="Buscar modelo…" style="min-width:240px">
+            <button class="btn-ghost-small" id="fact-back" style="display:none">← Volver al listado</button>
           </div>
         </div>
-        <label>Elegir modelo</label>
-        <select id="fact-modelo" style="font-size:1rem;padding:14px">
-          <option value="">— Seleccionar modelo —</option>
-          ${activos.map(m => `<option value="${m.id}">${m.nombre}${m.nombre_fiscal ? ' — ' + m.nombre_fiscal : ''}</option>`).join('')}
-        </select>
       </div>
-      <div id="fact-detail" style="margin-top:18px"></div>
+
+      <div id="fact-grid-wrap">
+        <div class="modelos-grid" id="modelos-grid">${cardsHtml || '<div class="empty-state center">No hay modelos activas. Andá a Catálogo → Modelos.</div>'}</div>
+      </div>
+
+      <div id="fact-detail" style="margin-top:18px;display:none"></div>
     `;
 
-    document.getElementById('fact-modelo').addEventListener('change', async (e) => {
-      const id = Number(e.target.value);
-      if (!id) { document.getElementById('fact-detail').innerHTML = ''; return; }
+    const grid = document.getElementById('modelos-grid');
+    const detail = document.getElementById('fact-detail');
+    const gridWrap = document.getElementById('fact-grid-wrap');
+    const backBtn = document.getElementById('fact-back');
+    const search = document.getElementById('fact-search');
+
+    const openModelo = async (id) => {
+      gridWrap.style.display = 'none';
+      detail.style.display = '';
+      backBtn.style.display = '';
       await loadFacturacionModelo(id, mes);
+      detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    grid?.querySelectorAll('.modelo-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.mc-action')) return;
+        openModelo(Number(card.dataset.modeloId));
+      });
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModelo(Number(card.dataset.modeloId)); }
+      });
+    });
+    grid?.querySelectorAll('.mc-action').forEach(btn => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); openModelo(Number(btn.dataset.modeloId)); });
+    });
+
+    backBtn.addEventListener('click', () => {
+      detail.style.display = 'none';
+      detail.innerHTML = '';
+      gridWrap.style.display = '';
+      backBtn.style.display = 'none';
+    });
+
+    search?.addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      grid.querySelectorAll('.modelo-card').forEach(card => {
+        const name = card.querySelector('.mc-name')?.textContent.toLowerCase() || '';
+        const fiscal = card.querySelector('.mc-fiscal')?.textContent.toLowerCase() || '';
+        card.style.display = (!q || name.includes(q) || fiscal.includes(q)) ? '' : 'none';
+      });
     });
   }
 
@@ -2168,19 +2256,20 @@
       `;
     }).join('');
 
-    // Tabla resumen: todos los chatters con totales + envíos editables inline.
-    const sumRows = chatters.map(c => {
-      const p = liqState.pagos_by_chatter[c.id] || {};
-      const neto = Number(p.neto_a_pagar || 0);
-      const e1 = Number(p.envio_1 || 0), e2 = Number(p.envio_2 || 0), e3 = Number(p.envio_3 || 0);
+    // Constructor de fila genérico: tipo + entity_id + nombre + monto + envíos.
+    const buildSumRow = (cfg) => {
+      const e1 = Number(cfg.e1 || 0), e2 = Number(cfg.e2 || 0), e3 = Number(cfg.e3 || 0);
+      const neto = Number(cfg.neto || 0);
       const falta = neto - e1 - e2 - e3;
       const pagadoTotal = e1 + e2 + e3;
       const estado = neto <= 0 ? 'sin-datos' : (falta <= 0.01 ? 'pagado' : (pagadoTotal > 0 ? 'parcial' : 'pendiente'));
       const estadoLbl = { 'sin-datos': '—', 'pagado': '✓ Pagado', 'parcial': '◐ Parcial', 'pendiente': '○ Pendiente' }[estado];
       const estadoClass = { 'sin-datos': 'muted', 'pagado': 'pill green', 'parcial': 'pill amber', 'pendiente': 'pill red' }[estado];
+      const tag = cfg.tag ? ` <span class="pill mini" style="margin-left:6px">${cfg.tag}</span>` : '';
+      const detailBtn = cfg.detail ? `<button class="btn-ghost-small sum-detail" type="button" title="Abrir detalle">→</button>` : '';
       return `
-        <tr data-sum-chatter="${c.id}">
-          <td><strong class="row-name">${escapeHtml(c.nombre)}</strong>${c.es_team_leader ? ' <span class="pill gold mini">TL</span>' : ''}</td>
+        <tr data-sum-kind="${cfg.kind}" data-sum-id="${cfg.entityId || ''}">
+          <td><strong class="row-name">${escapeHtml(cfg.nombre)}</strong>${tag}</td>
           <td style="text-align:right;font-weight:700;color:var(--gold)">${fmtMoney(neto)}</td>
           <td><input type="number" step="0.01" class="sum-e1" value="${e1 || ''}" placeholder="0" style="max-width:110px;text-align:right"></td>
           <td><input type="number" step="0.01" class="sum-e2" value="${e2 || ''}" placeholder="0" style="max-width:110px;text-align:right"></td>
@@ -2189,17 +2278,71 @@
           <td><span class="${estadoClass}">${estadoLbl}</span></td>
           <td style="text-align:right">
             <button class="btn-ghost-small sum-save" type="button" title="Guardar envíos">💾</button>
-            <button class="btn-ghost-small sum-detail" type="button" title="Abrir detalle">→</button>
+            ${detailBtn}
           </td>
         </tr>
       `;
-    }).join('');
-    const totalNeto = chatters.reduce((s, c) => s + Number(liqState.pagos_by_chatter[c.id]?.neto_a_pagar || 0), 0);
-    const totalEnviado = chatters.reduce((s, c) => {
+    };
+
+    // Chatters
+    const chatterRows = chatters.map(c => {
       const p = liqState.pagos_by_chatter[c.id] || {};
-      return s + Number(p.envio_1 || 0) + Number(p.envio_2 || 0) + Number(p.envio_3 || 0);
-    }, 0);
+      return buildSumRow({
+        kind: 'chatter',
+        entityId: c.id,
+        nombre: c.nombre,
+        tag: c.es_team_leader ? '<span class="pill gold mini">TL</span>' : '',
+        neto: p.neto_a_pagar,
+        e1: p.envio_1, e2: p.envio_2, e3: p.envio_3,
+        detail: true
+      });
+    }).join('');
+
+    // Supervisor (si existe)
+    const sup = liqState.supervisor;
+    const supPago = liqState.supervisor_pago || {};
+    const supRow = sup ? buildSumRow({
+      kind: 'supervisor',
+      entityId: sup.id,
+      nombre: sup.nombre,
+      tag: '<span class="pill pink mini">SUP</span>',
+      neto: supPago.neto_a_pagar,
+      e1: supPago.envio_1, e2: supPago.envio_2, e3: supPago.envio_3,
+      detail: false
+    }) : '';
+
+    // Equipo fijo
+    const equipoRows = (liqState.equipo || []).map(e => {
+      const p = (liqState.pagos_by_equipo || {})[e.id] || {};
+      const monto = Number(p.monto != null ? p.monto : e.sueldo_mensual_usd || 0);
+      return buildSumRow({
+        kind: 'equipo',
+        entityId: e.id,
+        nombre: e.nombre,
+        tag: `<span class="pill mini" style="background:rgba(56,189,248,0.14);border-color:rgba(56,189,248,0.36);color:#7DD3FC">${escapeHtml(e.rol || 'Equipo')}</span>`,
+        neto: monto,
+        e1: p.envio_1, e2: p.envio_2, e3: p.envio_3,
+        detail: false
+      });
+    }).join('');
+
+    // Totales globales
+    const sumEnv = (p) => Number(p?.envio_1 || 0) + Number(p?.envio_2 || 0) + Number(p?.envio_3 || 0);
+    let totalNeto = chatters.reduce((s, c) => s + Number(liqState.pagos_by_chatter[c.id]?.neto_a_pagar || 0), 0);
+    let totalEnviado = chatters.reduce((s, c) => s + sumEnv(liqState.pagos_by_chatter[c.id]), 0);
+    if (sup) { totalNeto += Number(supPago.neto_a_pagar || 0); totalEnviado += sumEnv(supPago); }
+    (liqState.equipo || []).forEach(e => {
+      const p = (liqState.pagos_by_equipo || {})[e.id] || {};
+      const monto = Number(p.monto != null ? p.monto : e.sueldo_mensual_usd || 0);
+      totalNeto += monto;
+      totalEnviado += sumEnv(p);
+    });
     const totalFalta = totalNeto - totalEnviado;
+
+    const sectionHead = (txt) => `<tr class="sum-section-head"><td colspan="8"><span class="muted" style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;font-weight:800">${txt}</span></td></tr>`;
+    const sumRows = chatterRows
+      + (supRow ? sectionHead('Supervisor') + supRow : '')
+      + (equipoRows ? sectionHead('Equipo fijo') + equipoRows : '');
 
     view.innerHTML = `
       <div class="card" style="margin-bottom:18px">
@@ -2256,18 +2399,30 @@
     view.querySelectorAll('.sum-save').forEach(btn => {
       btn.addEventListener('click', async () => {
         const tr = btn.closest('tr');
-        const chId = Number(tr.dataset.sumChatter);
+        const kind = tr.dataset.sumKind;
+        const entityId = Number(tr.dataset.sumId);
         const e1 = Number(tr.querySelector('.sum-e1').value || 0);
         const e2 = Number(tr.querySelector('.sum-e2').value || 0);
         const e3 = Number(tr.querySelector('.sum-e3').value || 0);
+        const body = { mes, kind, envio_1: e1, envio_2: e2, envio_3: e3 };
+        if (kind === 'chatter') body.chatter_id = entityId;
+        else if (kind === 'equipo') body.equipo_id = entityId;
         try {
-          const r = await api('envios-update', { method: 'POST', body: { mes, chatter_id: chId, envio_1: e1, envio_2: e2, envio_3: e3 } });
+          const r = await api('envios-update', { method: 'POST', body });
           // Reflejar en liqState para que la próxima render quede coherente
-          const pago = liqState.pagos_by_chatter[chId] || {};
-          pago.envio_1 = e1; pago.envio_2 = e2; pago.envio_3 = e3;
-          pago.falta_pagar = r.falta;
-          liqState.pagos_by_chatter[chId] = pago;
-          // Update inline
+          if (kind === 'chatter') {
+            const p = liqState.pagos_by_chatter[entityId] || {};
+            p.envio_1 = e1; p.envio_2 = e2; p.envio_3 = e3; p.falta_pagar = r.falta;
+            liqState.pagos_by_chatter[entityId] = p;
+          } else if (kind === 'supervisor') {
+            const p = liqState.supervisor_pago || {};
+            p.envio_1 = e1; p.envio_2 = e2; p.envio_3 = e3; p.falta_pagar = r.falta;
+            liqState.supervisor_pago = p;
+          } else if (kind === 'equipo') {
+            const p = (liqState.pagos_by_equipo[entityId] || {});
+            p.envio_1 = e1; p.envio_2 = e2; p.envio_3 = e3; p.falta_pagar = r.falta;
+            liqState.pagos_by_equipo[entityId] = p;
+          }
           tr.querySelector('.sum-falta-cell').textContent = fmtMoney(r.falta);
           toast('Envíos actualizados', 'success');
         } catch (e) { toast('Error: ' + e.message, 'error'); }
@@ -2275,7 +2430,7 @@
     });
     view.querySelectorAll('.sum-detail').forEach(btn => {
       btn.addEventListener('click', () => {
-        const chId = Number(btn.closest('tr').dataset.sumChatter);
+        const chId = Number(btn.closest('tr').dataset.sumId);
         liqState.selected = chId;
         drawLiquidacion(view);
         document.getElementById('liq-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
