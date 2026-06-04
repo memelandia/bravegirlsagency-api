@@ -565,6 +565,22 @@ label { font-size: 0.67rem; letter-spacing: 0.1em; color: rgba(107,107,122,0.9);
 }
 .pill-entity strong { font-weight: 700; color: inherit; }
 
+/* Iconos modernos para títulos de secciones (mismo estilo que KPI cards) */
+.section-ico {
+  width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: box-shadow 0.2s var(--ease);
+}
+.section-ico--pink   { background: rgba(255,31,142,0.14); color: #FF1F8E; box-shadow: 0 3px 12px rgba(255,31,142,0.2); }
+.section-ico--blue   { background: rgba(56,189,248,0.14); color: #38BDF8; box-shadow: 0 3px 12px rgba(56,189,248,0.18); }
+.section-ico--amber  { background: rgba(251,146,60,0.14); color: #FB923C; box-shadow: 0 3px 12px rgba(251,146,60,0.18); }
+.section-ico--green  { background: rgba(34,197,94,0.14);  color: #22C55E; box-shadow: 0 3px 12px rgba(34,197,94,0.18); }
+.section-ico--red    { background: rgba(239,68,68,0.14);  color: #EF4444; box-shadow: 0 3px 12px rgba(239,68,68,0.18); }
+.section-ico--gold   { background: rgba(255,215,0,0.12);  color: #FFD700; box-shadow: 0 3px 12px rgba(255,215,0,0.18); }
+.section-ico--violet { background: rgba(167,139,250,0.14); color: #A78BFA; box-shadow: 0 3px 12px rgba(167,139,250,0.18); }
+.section-ico--cyan   { background: rgba(34,211,238,0.14);  color: #22D3EE; box-shadow: 0 3px 12px rgba(34,211,238,0.18); }
+.card-title-row { display: flex; align-items: center; gap: 10px; }
+
 /* Supervisor · header compacto con KPIs */
 .sup-head {
   display: grid; grid-template-columns: minmax(220px, 1fr) 2.4fr auto;
@@ -898,15 +914,20 @@ label { font-size: 0.67rem; letter-spacing: 0.1em; color: rgba(107,107,122,0.9);
 /* Recent facturas list */
 .recent-facturas { display: flex; flex-direction: column; gap: 0; }
 .recent-factura-row {
-  display: grid; grid-template-columns: 1fr auto auto; align-items: center;
-  gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center;
+  gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border);
 }
 .recent-factura-row:last-child { border-bottom: none; }
 .rf-num  { font-size: 0.76rem; color: var(--text-mute); min-width: 80px; }
-.rf-name { font-size: 0.85rem; font-weight: 600; color: var(--text); min-width: 0; overflow: hidden; }
-.rf-name .pill-entity { font-size: 0.72rem; padding: 2px 9px; max-width: 100%; }
-.rf-monto { font-size: 0.84rem; font-weight: 700; color: var(--gold); white-space: nowrap; font-family: var(--font-display); }
-.recent-factura-row .pill { white-space: nowrap; }
+.rf-name { font-size: 0.85rem; font-weight: 600; color: var(--text); min-width: 0; }
+.rf-name .pill-entity {
+  font-size: 0.7rem; padding: 2px 8px;
+  max-width: 100%; display: inline-flex;
+  overflow: hidden;
+}
+.rf-name .pill-entity strong { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.rf-monto { font-size: 0.82rem; font-weight: 700; color: var(--gold); white-space: nowrap; font-family: var(--font-display); }
+.recent-factura-row .pill { white-space: nowrap; font-size: 0.68rem; padding: 2px 8px; }
 
 /* Incentivo card */
 .rs-incentivo { background: linear-gradient(145deg, rgba(255,31,142,0.07) 0%, rgba(14,14,24,1) 100%) !important; border-color: var(--border-brand) !important; }

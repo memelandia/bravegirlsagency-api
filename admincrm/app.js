@@ -343,9 +343,14 @@
             <div class="charts-row">
               <div class="card resumen-card-chart">
                 <div class="card-inner-pad card-head-row">
-                  <div>
-                    <div class="card-title">Evolución de ingresos</div>
-                    <div class="card-sub">Total Fact. Emitidas hasta el mes anterior</div>
+                  <div class="card-title-row">
+                    <div class="section-ico section-ico--pink">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    <div>
+                      <div class="card-title">Evolución de ingresos</div>
+                      <div class="card-sub">Total Fact. Emitidas hasta el mes anterior</div>
+                    </div>
                   </div>
                 </div>
                 <div class="chart-area card-inner-pad">
@@ -355,9 +360,14 @@
 
               <div class="card resumen-card-donut">
                 <div class="card-inner-pad card-head-row">
-                  <div>
-                    <div class="card-title">Distribución</div>
-                    <div class="card-sub">${mes.replace('-', ' · ')}</div>
+                  <div class="card-title-row">
+                    <div class="section-ico section-ico--violet">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v10l5.5 5.5"/></svg>
+                    </div>
+                    <div>
+                      <div class="card-title">Distribución</div>
+                      <div class="card-sub">${mes.replace('-', ' · ')}</div>
+                    </div>
                   </div>
                 </div>
                 <div class="donut-wrap">
@@ -371,7 +381,9 @@
               <div class="card resumen-card-table">
                 <div class="card-inner-pad card-head-row">
                   <div class="card-title-row">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="card-title-ico"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                    <div class="section-ico section-ico--green">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
                     <span class="card-title">Cobros a Modelos</span>
                     <span class="count-badge">${(r.cobros || []).length}</span>
                   </div>
@@ -389,7 +401,9 @@
               <div class="card resumen-card-table">
                 <div class="card-inner-pad card-head-row">
                   <div class="card-title-row">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="card-title-ico"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+                    <div class="section-ico section-ico--red">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+                    </div>
                     <span class="card-title">Gastos del mes</span>
                     <span class="count-badge">${(r.gastos || []).length}</span>
                   </div>
@@ -412,7 +426,9 @@
             <div class="card rs-card">
               <div class="card-inner-pad card-head-row">
                 <div class="card-title-row">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="card-title-ico"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+                  <div class="section-ico section-ico--amber">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  </div>
                   <span class="card-title">Facturas recientes</span>
                 </div>
                 <button class="btn-ghost-small" onclick="location.hash='facturas'">Ver todas →</button>
@@ -426,8 +442,10 @@
 
             <div class="card rs-card rs-incentivo">
               <div class="card-inner-pad">
-                <div class="rs-incentivo-head">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                <div class="rs-incentivo-head" style="gap:10px">
+                  <div class="section-ico section-ico--green">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                  </div>
                   <span class="card-title">Ganancia neta del mes</span>
                 </div>
                 <div class="rs-incentivo-val" style="color:var(--success)">${fmtMoney(k.neto_owner || 0)} <span class="rs-incentivo-meta">de ${fmtMoney(k.ganancia_bruta || 0)} bruto</span></div>
