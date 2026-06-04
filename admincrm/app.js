@@ -148,7 +148,10 @@
     // setear el mes actual
     const now = new Date();
     const mes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    document.getElementById('mes-selector').value = mes;
+    const savedMes = sessionStorage.getItem('admin_mes') || mes;
+    document.getElementById('mes-selector').value = savedMes;
+    const t = document.getElementById('mes-display-text');
+    if (t) t.textContent = fmtMesNice(savedMes);
     navigate(location.hash.replace('#', '') || 'resumen');
   }
 
@@ -296,13 +299,15 @@
 
       const cobrosRows = (r.cobros || []).map(c => {
         const hue = [...(c.modelo || '')].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 360;
+        const pendiente = Number(c.pendiente || 0);
+        const recibido = Number(c.pago_recibido || 0);
+        const pendColor = pendiente > 0.01 ? '#FCA5A5' : '#34D399';
         return `
           <tr>
             <td><span class="pill-entity" style="--ent-hue:${hue}"><strong>${escapeHtml(c.modelo)}</strong></span></td>
-            <td>${fmtMoney(c.total_a_cobrar, c.moneda)}</td>
-            <td class="muted">${fmtMoney(c.pago_recibido, c.moneda)}</td>
-            <td>${fmtMoney(c.pendiente, c.moneda)}</td>
-            <td>${stateP(c.estados)}</td>
+            <td class="text-right" style="color:#FDE047;font-weight:700">${fmtMoney(c.total_a_cobrar, c.moneda)}</td>
+            <td class="text-right" style="color:#34D399;font-weight:700">${fmtMoney(recibido, c.moneda)}</td>
+            <td class="text-right" style="color:${pendColor};font-weight:700">${fmtMoney(pendiente, c.moneda)}</td>
           </tr>`;
       }).join('');
 
@@ -374,9 +379,9 @@
                 </div>
                 <div class="table-wrap-inner">
                   <table>
-                    <thead><tr><th>Modelo</th><th>Total a cobrar</th><th>Pagado</th><th>Pendiente</th><th>Estado</th></tr></thead>
-                    <tbody>${cobrosRows || '<tr><td colspan="5" class="empty-state center">Sin cierres este mes.</td></tr>'}</tbody>
-                    <tfoot><tr class="tbl-footer"><td colspan="5">Mostrando ${(r.cobros || []).length} modelo${(r.cobros || []).length !== 1 ? 's' : ''}</td></tr></tfoot>
+                    <thead><tr><th>Modelo</th><th class="text-right">Total</th><th class="text-right">Pagado</th><th class="text-right">Pendiente</th></tr></thead>
+                    <tbody>${cobrosRows || '<tr><td colspan="4" class="empty-state center">Sin cierres este mes.</td></tr>'}</tbody>
+                    <tfoot><tr class="tbl-footer"><td colspan="4">Mostrando ${(r.cobros || []).length} modelo${(r.cobros || []).length !== 1 ? 's' : ''}</td></tr></tfoot>
                   </table>
                 </div>
               </div>
@@ -724,8 +729,9 @@
       return `<span class="pill tipo-${String(value).toLowerCase()}">${value}</span>`;
     }
     if (key === 'rol') {
-      const cls = value === 'supervisor' ? 'pill pink' : value === 'team_leader' ? 'pill gold' : 'pill';
-      return `<span class="${cls}">${value}</span>`;
+      // Slug del rol para mapear a CSS (Account Manager → "account-manager", etc.)
+      const slug = String(value).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      return `<span class="pill pill-rol rol-${slug}">${value}</span>`;
     }
     if (key === 'email') {
       return `<a href="mailto:${escapeHtml(value)}" style="color:var(--text);text-decoration:none;border-bottom:1px dashed rgba(255,255,255,0.2)">${escapeHtml(value)}</a>`;
@@ -970,16 +976,6 @@
           <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
             <button class="btn-primary" id="ajustes-ov-save" style="width:auto;padding:10px 18px;margin:0">💾 Guardar ajustes del mes</button>
             <button class="btn-secondary" id="ajustes-ov-clear" style="width:auto;padding:10px 18px;margin:0">🧹 Limpiar valores manuales</button>
-          </div>
-
-          <div class="table-wrap" style="margin-top:18px">
-            <div class="table-toolbar">
-              <h3>Suscripciones pagas por cuenta <span class="count">${(ov.suscripciones_por_cuenta || []).length}</span></h3>
-            </div>
-            <table>
-              <thead><tr><th>Modelo</th><th>Cuenta</th><th style="text-align:right">Suscripciones</th></tr></thead>
-              <tbody>${subsRows || '<tr><td colspan="3" class="empty-state">Sin datos de cierres para este mes.</td></tr>'}</tbody>
-            </table>
           </div>
         </div>
 
@@ -1273,12 +1269,13 @@
       const lbl = planLabel(pct);
       const ult = Number(m.factura_numero_actual || 0);
       const nxt = ult + 1;
+      const mHue = hueOf(m.nombre);
       return `
-        <div class="modelo-card ${cls}" data-modelo-id="${m.id}" tabindex="0" role="button" aria-label="Seleccionar ${m.nombre}">
+        <div class="modelo-card ${cls}" data-modelo-id="${m.id}" tabindex="0" role="button" aria-label="Seleccionar ${m.nombre}" style="--ent-hue:${mHue}">
           <div class="mc-head">
-            <div class="mc-avatar" style="--av-hue:${hueOf(m.nombre)}">${initialOf(m.nombre)}</div>
+            <div class="mc-avatar" style="--av-hue:${mHue}">${initialOf(m.nombre)}</div>
             <div class="mc-meta">
-              <div class="mc-name">${escapeHtml(m.nombre)}</div>
+              <div class="mc-name"><span class="pill-entity" style="--ent-hue:${mHue};font-size:0.95rem;padding:4px 12px"><strong>${escapeHtml(m.nombre)}</strong></span></div>
               <span class="mc-plan-pill">${lbl}</span>
             </div>
           </div>
@@ -1390,41 +1387,39 @@
     }
 
     const cuentasHtml = cuentas.map((cc, idx) => renderCuentaForm(cc, idx)).join('');
+    const mHue = hueOfName(modelo.nombre);
     container.innerHTML = `
-      <div class="sticky-actionbar">
-        <div class="sab-grid">
-          <div class="sab-meta">
-            <div class="sab-row"><span class="sab-lbl">Modelo</span><span class="sab-val">${modelo.nombre}</span></div>
-            <div class="sab-row">
-              <span class="sab-lbl">Fiscal</span>
-              <span class="sab-val ${modelo.nombre_fiscal ? '' : 'muted'}" style="display:flex;align-items:center;gap:6px">
-                ${modelo.nombre_fiscal || '<span style="color:var(--warning,#FB923C)">⚠️ falta cargar</span>'}
-                <button id="edit-fiscal-btn" class="btn-ghost-small" title="Editar datos fiscales de ${modelo.nombre}" style="padding:2px 8px;font-size:.7rem;height:auto">✎</button>
-              </span>
-            </div>
-            ${modelo.identificador ? `<div class="sab-row"><span class="sab-lbl">ID</span><span class="sab-val muted" style="font-size:.75rem">${modelo.identificador}</span></div>` : ''}
+      <div class="sticky-actionbar fact-bar">
+        <div class="fact-bar-top">
+          <div class="fact-bar-title">
+            <span class="pill-entity" style="--ent-hue:${mHue};font-size:1rem;padding:5px 14px"><strong>${escapeHtml(modelo.nombre)}</strong></span>
+            <span class="muted" style="font-size:.82rem;margin-left:6px">${mes}</span>
           </div>
-          <div class="sab-meta">
-            <div class="sab-row"><span class="sab-lbl">Plan</span><span class="sab-val">${modelo.porcentaje || modelo.plan_porcentaje}%</span></div>
-            <div class="sab-row"><span class="sab-lbl">Moneda</span><span class="sab-val">${modelo.moneda_default} · ${modelo.medio_pago_default || '—'}</span></div>
-          </div>
-          <div class="sab-meta">
-            <div class="sab-row"><span class="sab-lbl">Última mes anterior</span><span class="sab-val sab-num">${facturaRef?.ultimo_numero_mes_anterior ? '#' + facturaRef.ultimo_numero_mes_anterior : '—'}</span></div>
-            <div class="sab-row"><span class="sab-lbl">N° sugerido</span><span class="sab-val sab-num" id="fact-num-sugerido">#${(modelo.factura_numero_actual || 0) + 1}</span></div>
-            <div class="sab-row"><span class="sab-lbl">Mes</span><span class="sab-val">${mes}</span></div>
-          </div>
-          <div class="sab-meta">
-            <label style="font-size:.75rem;letter-spacing:.08em;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;display:block">N° factura manual</label>
-            <input type="number" step="1" min="1" id="fact-num-manual" value="${(modelo.factura_numero_actual || 0) + 1}" style="padding:10px 12px">
-            <div class="muted" style="font-size:.72rem;margin-top:6px">Se puede editar antes de generar el PDF</div>
-          </div>
-          <div class="sab-total">
-            <div class="sab-total-lbl">Total a cobrar</div>
-            <div class="sab-total-val" id="grand-total">${fmtMoney(0, modelo.moneda_default)}</div>
-          </div>
-          <div class="sab-actions">
+          <div class="fact-bar-actions">
             <button class="btn-secondary" id="save-cierre-btn">💾 Guardar</button>
             <button class="btn-primary sab-pdf" id="gen-factura-btn">📥 Generar PDF</button>
+          </div>
+        </div>
+        <div class="fact-bar-grid">
+          <div class="fact-bar-cell">
+            <div class="fact-bar-lbl">Fiscal</div>
+            <div class="fact-bar-val" style="display:flex;align-items:center;gap:6px">
+              ${modelo.nombre_fiscal ? escapeHtml(modelo.nombre_fiscal) : '<span style="color:#FB923C">⚠ falta cargar</span>'}
+              <button id="edit-fiscal-btn" class="btn-ghost-small" title="Editar datos fiscales" style="padding:2px 8px;font-size:.7rem;height:auto">✎</button>
+            </div>
+          </div>
+          ${modelo.identificador ? `<div class="fact-bar-cell"><div class="fact-bar-lbl">ID Fiscal</div><div class="fact-bar-val">${escapeHtml(modelo.identificador)}</div></div>` : ''}
+          <div class="fact-bar-cell"><div class="fact-bar-lbl">Plan</div><div class="fact-bar-val">${modelo.porcentaje || modelo.plan_porcentaje}%</div></div>
+          <div class="fact-bar-cell"><div class="fact-bar-lbl">Moneda</div><div class="fact-bar-val">${modelo.moneda_default} · ${modelo.medio_pago_default || '—'}</div></div>
+          <div class="fact-bar-cell"><div class="fact-bar-lbl">Última factura</div><div class="fact-bar-val sab-num">${facturaRef?.ultimo_numero_mes_anterior ? '#' + facturaRef.ultimo_numero_mes_anterior : '—'}</div></div>
+          <div class="fact-bar-cell">
+            <div class="fact-bar-lbl">N° factura</div>
+            <input type="number" step="1" min="1" id="fact-num-manual" value="${(modelo.factura_numero_actual || 0) + 1}" style="padding:7px 10px;font-size:0.92rem;font-weight:700;color:#FF1F8E">
+            <div class="muted" style="font-size:.65rem;margin-top:4px">Sugerido <span id="fact-num-sugerido">#${(modelo.factura_numero_actual || 0) + 1}</span></div>
+          </div>
+          <div class="fact-bar-cell fact-bar-total">
+            <div class="fact-bar-lbl">Total a cobrar</div>
+            <div class="fact-bar-total-val" id="grand-total">${fmtMoney(0, modelo.moneda_default)}</div>
           </div>
         </div>
       </div>
@@ -2335,6 +2330,7 @@
     }) : '';
 
     // Equipo fijo
+    const rolSlug = (r) => String(r || 'equipo').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const equipoRows = (liqState.equipo || []).map(e => {
       const p = (liqState.pagos_by_equipo || {})[e.id] || {};
       const monto = Number(p.monto != null ? p.monto : e.sueldo_mensual_usd || 0);
@@ -2343,7 +2339,7 @@
         entityId: e.id,
         nombre: e.nombre,
         email: e.email,
-        tag: `<span class="pill mini" style="background:rgba(56,189,248,0.14);border-color:rgba(56,189,248,0.36);color:#7DD3FC">${escapeHtml(e.rol || 'Equipo')}</span>`,
+        tag: `<span class="pill pill-rol mini rol-${rolSlug(e.rol)}">${escapeHtml(e.rol || 'Equipo')}</span>`,
         neto: monto,
         e1: p.envio_1, e2: p.envio_2, e3: p.envio_3,
         detail: false
@@ -3475,21 +3471,43 @@
     navigate(route);
   }
 
+  function fmtMesNice(value) {
+    if (!value) return '—';
+    const [y, m] = value.split('-').map(Number);
+    if (!y || !m) return value;
+    const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    return `${meses[m-1]} ${y}`;
+  }
+  function refreshMesDisplay() {
+    const v = document.getElementById('mes-selector').value;
+    const t = document.getElementById('mes-display-text');
+    if (t) t.textContent = fmtMesNice(v);
+  }
   document.getElementById('mes-selector').addEventListener('change', (e) => {
     sessionStorage.setItem('admin_mes', e.target.value);
+    refreshMesDisplay();
     const route = location.hash.replace('#', '') || 'resumen';
     navigate(route);
   });
-  document.getElementById('mes-prev').addEventListener('click', () => shiftMes(-1));
-  document.getElementById('mes-next').addEventListener('click', () => shiftMes(1));
+  // El botón "mes-display" abre el picker nativo del input month escondido.
+  document.getElementById('mes-display')?.addEventListener('click', () => {
+    const input = document.getElementById('mes-selector');
+    if (input.showPicker) input.showPicker();
+    else input.click();
+  });
+  document.getElementById('mes-prev').addEventListener('click', () => { shiftMes(-1); refreshMesDisplay(); });
+  document.getElementById('mes-next').addEventListener('click', () => { shiftMes(1); refreshMesDisplay(); });
   document.getElementById('mes-today').addEventListener('click', () => {
     const today = new Date().toISOString().slice(0, 7);
     const input = document.getElementById('mes-selector');
     input.value = today;
     sessionStorage.setItem('admin_mes', today);
+    refreshMesDisplay();
     const route = location.hash.replace('#', '') || 'resumen';
     navigate(route);
   });
+  // Inicial al arrancar
+  setTimeout(refreshMesDisplay, 0);
 
   boot();
 })();

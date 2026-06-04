@@ -236,6 +236,19 @@ body::after {
 .month-selector:hover { border-color: var(--border-brand); }
 .month-selector label { margin: 0; color: var(--text-mute); font-size: 0.62rem; letter-spacing: 0.1em; font-weight: 700; text-transform: uppercase; }
 .month-selector input { color: rgba(255,255,255,0.95); font-weight: 600; font-family: var(--font-sans); }
+/* v2: botón custom que abre el picker nativo y muestra el mes prolijo (sin label MES, sin recuadro feo) */
+.month-selector-v2 { padding: 4px 8px; position: relative; }
+.month-display {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: transparent; border: 0; cursor: pointer;
+  padding: 6px 14px; color: var(--text); font-weight: 700;
+  font-family: var(--font-sans); font-size: 0.92rem;
+  border-radius: 8px; transition: background 0.16s var(--ease), color 0.16s var(--ease);
+  letter-spacing: 0.01em; text-transform: capitalize;
+}
+.month-display:hover { background: rgba(255,31,142,0.14); color: #fff; }
+.month-display svg { color: var(--text-mute); transition: color 0.16s var(--ease); }
+.month-display:hover svg { color: #FF1F8E; }
 .month-nav-btn {
   width: 28px; height: 28px; border-radius: 8px;
   background: rgba(255,255,255,0.04); border: 1px solid var(--border);
@@ -475,6 +488,15 @@ label { font-size: 0.67rem; letter-spacing: 0.1em; color: rgba(107,107,122,0.9);
 .pill.pill-plan.plan-avanzado { background: rgba(255,31,142,0.14);  border-color: rgba(255,31,142,0.4);  color: #FF6BB4; }
 .pill.pill-plan.plan-premium  { background: rgba(255,215,0,0.14);   border-color: rgba(255,215,0,0.4);   color: #FFD700; }
 
+/* Pills por rol (chatter / supervisor / team_leader / account-manager / editor / etc.) */
+.pill.pill-rol.rol-chatter         { background: rgba(56,189,248,0.14);  border-color: rgba(56,189,248,0.38);  color: #7DD3FC; }
+.pill.pill-rol.rol-supervisor      { background: rgba(255,31,142,0.14);  border-color: rgba(255,31,142,0.4);   color: #FF6BB4; }
+.pill.pill-rol.rol-team_leader,
+.pill.pill-rol.rol-team-leader     { background: rgba(255,215,0,0.14);   border-color: rgba(255,215,0,0.4);    color: #FFD700; }
+.pill.pill-rol.rol-account-manager { background: rgba(167,139,250,0.16); border-color: rgba(167,139,250,0.4);  color: #C4B5FD; }
+.pill.pill-rol.rol-editor          { background: rgba(251,146,60,0.14);  border-color: rgba(251,146,60,0.4);   color: #FDBA74; }
+.pill.pill-rol.rol-editor-de-reels { background: rgba(251,146,60,0.14);  border-color: rgba(251,146,60,0.4);   color: #FDBA74; }
+
 /* Pill entity: color único por hash de nombre (modelo/chatter) */
 .pill-entity {
   display: inline-flex; align-items: center; gap: 6px;
@@ -491,6 +513,24 @@ label { font-size: 0.67rem; letter-spacing: 0.1em; color: rgba(107,107,122,0.9);
   flex-shrink: 0;
 }
 .pill-entity strong { font-weight: 700; color: inherit; }
+
+/* Facturación · barra superior reorganizada (limpia, sin overflow) */
+.fact-bar { display: flex; flex-direction: column; gap: 14px; padding: 16px 22px; }
+.fact-bar-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.fact-bar-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.fact-bar-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.fact-bar-actions .btn-primary, .fact-bar-actions .btn-secondary { width: auto; padding: 9px 16px; margin: 0; font-size: 0.86rem; white-space: nowrap; }
+.fact-bar-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.07);
+}
+.fact-bar-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.fact-bar-cell input { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,31,142,0.25); border-radius: 8px; }
+.fact-bar-lbl { font-size: 0.62rem; letter-spacing: 0.1em; font-weight: 700; color: var(--text-mute); text-transform: uppercase; }
+.fact-bar-val { font-size: 0.88rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fact-bar-val.sab-num { color: #FF1F8E; font-family: var(--font-display); }
+.fact-bar-total { grid-column: span 2; min-width: 180px; }
+.fact-bar-total-val { font-family: var(--font-display); font-size: 1.7rem; font-weight: 800; background: var(--grad-text); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1.1; }
 
 /* Estado de cobros: el <select> hereda el color del estado seleccionado */
 .cob-estado {
@@ -762,6 +802,14 @@ label { font-size: 0.67rem; letter-spacing: 0.1em; color: rgba(107,107,122,0.9);
 .table-wrap-inner table { font-size: 0.84rem; }
 .table-wrap-inner th  { padding: 10px 16px; font-size: 0.63rem; }
 .table-wrap-inner td  { padding: 11px 16px; }
+/* Resumen Cobros: tabla compacta sin scroll horizontal */
+.resumen-card-table .table-wrap-inner { overflow-x: visible; }
+.resumen-card-table .table-wrap-inner table { font-size: 0.78rem; table-layout: fixed; width: 100%; }
+.resumen-card-table .table-wrap-inner th,
+.resumen-card-table .table-wrap-inner td { padding: 9px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.resumen-card-table .table-wrap-inner th:first-child,
+.resumen-card-table .table-wrap-inner td:first-child { width: 38%; }
+.resumen-card-table .pill-entity { font-size: 0.72rem; padding: 2px 8px; }
 
 /* Right sidebar cards */
 .rs-card { border-radius: var(--radius-lg); }
