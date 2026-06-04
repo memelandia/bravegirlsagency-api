@@ -345,7 +345,7 @@
                 <div class="card-inner-pad card-head-row">
                   <div>
                     <div class="card-title">Evolución de ingresos</div>
-                    <div class="card-sub">Total Fact. Emitidas (últimos 12 meses)</div>
+                    <div class="card-sub">Total Fact. Emitidas hasta el mes anterior</div>
                   </div>
                 </div>
                 <div class="chart-area card-inner-pad">
@@ -410,12 +410,14 @@
           <aside class="resumen-sidebar">
 
             <div class="card rs-card">
-              <div class="card-inner-pad">
-                <div class="card-title-row" style="margin-bottom:14px">
+              <div class="card-inner-pad card-head-row">
+                <div class="card-title-row">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="card-title-ico"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
                   <span class="card-title">Facturas recientes</span>
-                  <button class="btn-link" onclick="location.hash='facturas'">Ver todas</button>
                 </div>
+                <button class="btn-ghost-small" onclick="location.hash='facturas'">Ver todas →</button>
+              </div>
+              <div class="card-inner-pad" style="padding-top:0">
                 <div class="recent-facturas" id="recent-facturas-list">
                   <div class="empty-state center" style="padding:24px 0">Cargando...</div>
                 </div>
@@ -470,7 +472,10 @@
         const prevChart = window.Chart.getChart(ctx);
         if (prevChart) prevChart.destroy();
 
-        const historial = Array.isArray(r.fact_emitidas_historial) ? r.fact_emitidas_historial : [];
+        const historialFull = Array.isArray(r.fact_emitidas_historial) ? r.fact_emitidas_historial : [];
+        // Excluir el mes corriente del gráfico (suele estar incompleto y muestra falsa caída a 0)
+        const nowMes = new Date().toISOString().slice(0, 7);
+        const historial = historialFull.filter(h => h.mes < nowMes);
         const labels = historial.map(h => formatMesLabel(h.mes));
         const data = historial.map(h => Number(h.total || 0));
         new window.Chart(ctx, {
@@ -588,13 +593,14 @@
         const cobros = (r.cobros || []).slice(0, 6);
         if (cobros.length) {
           rfList.innerHTML = cobros.map(c => {
-            const estadoClass = (c.estados || '').includes('confirmado') || (c.estados || '').includes('pagado')
-              ? 'green' : (c.estados || '').includes('enviado') ? 'amber' : '';
-            const estadoLabel = (c.estados || '').includes('confirmado') ? 'Pagada'
-              : (c.estados || '').includes('enviado') ? 'Enviado' : 'Pendiente';
+            const estado = (c.estados || '').includes('confirmado') ? 'pagada'
+              : (c.estados || '').includes('enviado') ? 'enviada' : 'pendiente';
+            const estadoClass = estado === 'pagada' ? 'green' : estado === 'enviada' ? 'amber' : 'red';
+            const estadoLabel = estado === 'pagada' ? '✓ Pagada' : estado === 'enviada' ? '→ Enviado' : '○ Pendiente';
+            const hue = [...(c.modelo || '')].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 360;
             return `
               <div class="recent-factura-row">
-                <span class="rf-name">${c.modelo || '—'}</span>
+                <span class="rf-name"><span class="pill-entity" style="--ent-hue:${hue}">${c.modelo || '—'}</span></span>
                 <span class="rf-monto">${fmtMoney(c.total_a_cobrar || 0, c.moneda)}</span>
                 <span class="pill ${estadoClass}">${estadoLabel}</span>
               </div>`;
@@ -3135,50 +3141,56 @@
       const s = await api('supervisor-mes', { params: { mes } });
       const supName = s.supervisor ? s.supervisor.nombre : '— sin supervisor configurado —';
       const subsSource = s.suscripciones_origen === 'manual' ? 'manual' : 'automatico';
-      const ventasRows = s.ventas_detalle.map(v => `
+      const supHue = hueOfName(supName);
+      const ventasRows = s.ventas_detalle.map(v => {
+        const chHue = hueOfName(v.chatter);
+        return `
         <tr>
-          <td>${v.chatter}</td>
-          <td style="text-align:right">${fmtMoney(v.fact_chatter)}</td>
-          <td style="text-align:right">${v.porcentaje_supervisor}%</td>
-          <td style="text-align:right;font-weight:700">${fmtMoney(v.comision)}</td>
-        </tr>
-      `).join('');
+          <td><span class="pill-entity" style="--ent-hue:${chHue}">${v.chatter}</span></td>
+          <td style="text-align:right;color:#FDE047;font-weight:700">${fmtMoney(v.fact_chatter)}</td>
+          <td style="text-align:right;color:var(--text-mute)">${v.porcentaje_supervisor}%</td>
+          <td style="text-align:right;font-weight:800;color:#34D399">${fmtMoney(v.comision)}</td>
+        </tr>`;
+      }).join('');
 
       view.innerHTML = `
-        <div class="card">
-          <div class="flex-between">
-            <div>
-              <h2 style="margin:0;font-family:var(--font-display)">★ Supervisor · ${supName}</h2>
-              <div class="muted">Mes ${mes} · suscripciones ${subsSource}</div>
+        <div class="sup-head card">
+          <div class="sup-head-left">
+            <span class="pill-entity" style="--ent-hue:${supHue};font-size:1rem;padding:6px 14px"><strong>★ ${supName}</strong></span>
+            <div class="muted" style="font-size:0.82rem;margin-top:6px">Supervisor del mes · suscripciones <strong>${subsSource}</strong></div>
+          </div>
+          <div class="sup-head-stats">
+            <div class="sup-stat">
+              <div class="sup-stat-lbl">SFS Control</div>
+              <div class="sup-stat-val" style="color:#7DD3FC">${fmtMoney(s.sfs_control)}</div>
             </div>
-            <button class="btn-primary" id="sup-pdf" style="width:auto;padding:12px 22px;margin:0">📥 Liquidación PDF</button>
+            <div class="sup-stat sup-stat-input">
+              <div class="sup-stat-lbl">Suscripciones</div>
+              <div class="sup-stat-input-wrap">
+                <input type="number" step="0.01" min="0" id="sup-subs-input" value="${Number(s.suscripciones_totales || 0).toFixed(2)}">
+                <button class="btn-ghost-small" id="sup-subs-save" title="Guardar suscripciones manuales">💾</button>
+              </div>
+            </div>
+            <div class="sup-stat">
+              <div class="sup-stat-lbl">5% s/ subs</div>
+              <div class="sup-stat-val" style="color:#FDE047">${fmtMoney(s.comision_suscripciones)}</div>
+            </div>
+            <div class="sup-stat">
+              <div class="sup-stat-lbl">% s/ ventas chatters</div>
+              <div class="sup-stat-val" style="color:#34D399">${fmtMoney(s.comision_ventas_chatters)}</div>
+            </div>
+          </div>
+          <div class="sup-head-actions">
+            <button class="btn-primary" id="sup-pdf">📥 Liquidación PDF</button>
           </div>
         </div>
 
-        <div class="card" style="margin-top:18px">
-          <div class="flex-between" style="gap:12px;align-items:flex-end;flex-wrap:wrap">
-            <div>
-              <h3 style="margin:0">Suscripciones totales del mes</h3>
-              <div class="muted">Podés setear un valor manual para cerrar números del supervisor.</div>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;min-width:320px">
-              <input type="number" step="0.01" min="0" id="sup-subs-input" value="${Number(s.suscripciones_totales || 0).toFixed(2)}" style="flex:1">
-              <button class="btn-secondary" id="sup-subs-save" style="width:auto;padding:10px 16px;margin:0">Guardar</button>
-            </div>
+        <div class="card sup-detail-card">
+          <div class="flex-between" style="margin-bottom:10px">
+            <h3 style="margin:0">Detalle por chatter <span class="muted" style="font-weight:400;font-size:0.9rem">· ${s.ventas_detalle.length} chatters</span></h3>
           </div>
-        </div>
-
-        <div class="kpi-row" style="margin-top:18px">
-          <div class="kpi-mini"><div class="kpi-mini-lbl">SFS Control</div><div class="kpi-mini-val">${fmtMoney(s.sfs_control)}</div></div>
-          <div class="kpi-mini"><div class="kpi-mini-lbl">Suscripciones totales</div><div class="kpi-mini-val">${fmtMoney(s.suscripciones_totales)}</div></div>
-          <div class="kpi-mini"><div class="kpi-mini-lbl">5% sobre suscripciones</div><div class="kpi-mini-val">${fmtMoney(s.comision_suscripciones)}</div></div>
-          <div class="kpi-mini"><div class="kpi-mini-lbl">% sobre ventas chatters</div><div class="kpi-mini-val">${fmtMoney(s.comision_ventas_chatters)}</div></div>
-        </div>
-
-        <div class="card">
-          <h3>Detalle por chatter</h3>
           <div class="table-wrap">
-            <table>
+            <table class="sup-table">
               <thead><tr><th>Chatter</th><th style="text-align:right">Facturación mes</th><th style="text-align:right">% supervisor</th><th style="text-align:right">Comisión</th></tr></thead>
               <tbody>${ventasRows || '<tr><td colspan="4" class="empty-state">Sin datos de chatters este mes.</td></tr>'}</tbody>
             </table>
@@ -3390,19 +3402,46 @@
       const chRes = await api('catalog', { params: { entity: 'chatters' } });
       const chatters = chRes.data.filter(c => c.activo);
 
-      const rowsHtml = lista.map(i => `
+      // KPIs: total entregado, ganador del mes actual, monto promedio
+      const totalEntregado = lista.reduce((s, i) => s + Number(i.monto || 0), 0);
+      const curMes = currentMes();
+      const ganadorActual = lista.find(i => i.mes === curMes);
+      const promedio = lista.length ? totalEntregado / lista.length : 0;
+
+      const rowsHtml = lista.map(i => {
+        const chHue = hueOfName(i.chatter || '');
+        return `
         <tr>
-          <td><strong>${i.mes}</strong></td>
-          <td>${i.chatter || '—'}</td>
-          <td style="text-align:right">${fmtMoney(i.monto)}</td>
-          <td>${i.motivo || '—'}</td>
-          <td><button class="btn-ghost-small inc-del-mes" data-mes="${i.mes}">✕</button></td>
-        </tr>
-      `).join('');
+          <td><span class="pill" style="background:rgba(56,189,248,0.12);border-color:rgba(56,189,248,0.32);color:#7DD3FC">${i.mes}</span></td>
+          <td>${i.chatter ? `<span class="pill-entity" style="--ent-hue:${chHue}"><strong>${i.chatter}</strong></span>` : '<span class="muted">—</span>'}</td>
+          <td style="text-align:right;color:#34D399;font-weight:800;font-family:var(--font-display);font-size:1rem">${fmtMoney(i.monto)}</td>
+          <td class="muted">${i.motivo || '—'}</td>
+          <td style="text-align:right"><button class="btn-ghost-small inc-del-mes" data-mes="${i.mes}" title="Eliminar">✕</button></td>
+        </tr>`;
+      }).join('');
 
       view.innerHTML = `
+        <div class="kpi-row" style="margin-bottom:18px">
+          <div class="kpi-mini ${ganadorActual ? 'highlight' : ''}">
+            <div class="kpi-mini-lbl">Ganador este mes</div>
+            <div class="kpi-mini-val" style="font-size:1.05rem">${ganadorActual ? `<span class="pill-entity" style="--ent-hue:${hueOfName(ganadorActual.chatter)};font-size:0.85rem;padding:3px 10px"><strong>${ganadorActual.chatter}</strong></span>` : '<span class="muted" style="font-size:0.95rem">Sin asignar</span>'}</div>
+          </div>
+          <div class="kpi-mini">
+            <div class="kpi-mini-lbl">Total entregado</div>
+            <div class="kpi-mini-val" style="color:#34D399">${fmtMoney(totalEntregado)}</div>
+          </div>
+          <div class="kpi-mini">
+            <div class="kpi-mini-lbl">Promedio por mes</div>
+            <div class="kpi-mini-val" style="color:#FDE047">${fmtMoney(promedio)}</div>
+          </div>
+          <div class="kpi-mini">
+            <div class="kpi-mini-lbl">Meses con ganador</div>
+            <div class="kpi-mini-val" style="color:#7DD3FC">${lista.length}</div>
+          </div>
+        </div>
+
         <div class="card">
-          <h3>Asignar incentivo del mes</h3>
+          <h3 style="margin-bottom:14px">🏆 Asignar incentivo del mes</h3>
           <div class="inline-form">
             <input type="month" id="inc-mes" value="${currentMes()}">
             <select id="inc-chatter">
@@ -3417,12 +3456,12 @@
 
         <div class="card">
           <div class="flex-between">
-            <h3>Histórico</h3>
-            <div class="muted">${lista.length} meses con ganador</div>
+            <h3 style="margin:0">Histórico de ganadores</h3>
+            <div class="muted">${lista.length} meses</div>
           </div>
-          <div class="table-wrap">
+          <div class="table-wrap" style="margin-top:12px">
             <table>
-              <thead><tr><th>Mes</th><th>Chatter</th><th style="text-align:right">Monto</th><th>Motivo</th><th></th></tr></thead>
+              <thead><tr><th>Mes</th><th>Ganador</th><th style="text-align:right">Monto</th><th>Motivo</th><th></th></tr></thead>
               <tbody>${rowsHtml || '<tr><td colspan="5" class="empty-state">Aún no asignaste incentivos.</td></tr>'}</tbody>
             </table>
           </div>
@@ -3471,42 +3510,97 @@
     navigate(route);
   }
 
+  const MESES_FULL  = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const MESES_SHORT = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   function fmtMesNice(value) {
     if (!value) return '—';
     const [y, m] = value.split('-').map(Number);
     if (!y || !m) return value;
-    const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-    return `${meses[m-1]} ${y}`;
+    return `${MESES_FULL[m-1]} ${y}`;
   }
   function refreshMesDisplay() {
     const v = document.getElementById('mes-selector').value;
     const t = document.getElementById('mes-display-text');
     if (t) t.textContent = fmtMesNice(v);
   }
-  document.getElementById('mes-selector').addEventListener('change', (e) => {
-    sessionStorage.setItem('admin_mes', e.target.value);
-    refreshMesDisplay();
-    const route = location.hash.replace('#', '') || 'resumen';
-    navigate(route);
+  // Custom month picker
+  let pickerYearState = null;
+  function getPickerYearState() {
+    if (pickerYearState != null) return pickerYearState;
+    const v = document.getElementById('mes-selector').value;
+    pickerYearState = v ? Number(v.split('-')[0]) : new Date().getFullYear();
+    return pickerYearState;
+  }
+  function renderPickerGrid() {
+    const grid = document.getElementById('mes-picker-grid');
+    const yrLbl = document.getElementById('mes-picker-year');
+    const year = getPickerYearState();
+    yrLbl.textContent = year;
+    const sel = document.getElementById('mes-selector').value;
+    const [selY, selM] = sel ? sel.split('-').map(Number) : [null, null];
+    const now = new Date();
+    const curY = now.getFullYear(), curM = now.getMonth() + 1;
+    grid.innerHTML = MESES_SHORT.map((lbl, i) => {
+      const m = i + 1;
+      const classes = ['mes-picker-cell'];
+      if (selY === year && selM === m) classes.push('selected');
+      if (curY === year && curM === m) classes.push('current');
+      return `<div class="${classes.join(' ')}" data-month="${m}">${lbl}</div>`;
+    }).join('');
+    grid.querySelectorAll('.mes-picker-cell').forEach(c => {
+      c.addEventListener('click', () => {
+        const m = Number(c.dataset.month);
+        const newMes = `${year}-${String(m).padStart(2, '0')}`;
+        document.getElementById('mes-selector').value = newMes;
+        sessionStorage.setItem('admin_mes', newMes);
+        refreshMesDisplay();
+        closePicker();
+        const route = location.hash.replace('#', '') || 'resumen';
+        navigate(route);
+      });
+    });
+  }
+  function openPicker() {
+    const p = document.getElementById('mes-picker');
+    pickerYearState = null;
+    renderPickerGrid();
+    p.classList.add('open');
+    p.setAttribute('aria-hidden', 'false');
+    document.getElementById('mes-display').setAttribute('aria-expanded', 'true');
+  }
+  function closePicker() {
+    const p = document.getElementById('mes-picker');
+    p.classList.remove('open');
+    p.setAttribute('aria-hidden', 'true');
+    document.getElementById('mes-display').setAttribute('aria-expanded', 'false');
+  }
+  document.getElementById('mes-display')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const p = document.getElementById('mes-picker');
+    p.classList.contains('open') ? closePicker() : openPicker();
   });
-  // El botón "mes-display" abre el picker nativo del input month escondido.
-  document.getElementById('mes-display')?.addEventListener('click', () => {
-    const input = document.getElementById('mes-selector');
-    if (input.showPicker) input.showPicker();
-    else input.click();
+  document.addEventListener('click', (e) => {
+    const p = document.getElementById('mes-picker');
+    if (p?.classList.contains('open') && !p.contains(e.target) && !e.target.closest('#mes-display')) closePicker();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePicker(); });
+  document.querySelectorAll('.mes-picker-nav').forEach(b => {
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      pickerYearState = (pickerYearState ?? getPickerYearState()) + Number(b.dataset.yr);
+      renderPickerGrid();
+    });
   });
   document.getElementById('mes-prev').addEventListener('click', () => { shiftMes(-1); refreshMesDisplay(); });
   document.getElementById('mes-next').addEventListener('click', () => { shiftMes(1); refreshMesDisplay(); });
   document.getElementById('mes-today').addEventListener('click', () => {
     const today = new Date().toISOString().slice(0, 7);
-    const input = document.getElementById('mes-selector');
-    input.value = today;
+    document.getElementById('mes-selector').value = today;
     sessionStorage.setItem('admin_mes', today);
     refreshMesDisplay();
     const route = location.hash.replace('#', '') || 'resumen';
     navigate(route);
   });
-  // Inicial al arrancar
   setTimeout(refreshMesDisplay, 0);
 
   boot();

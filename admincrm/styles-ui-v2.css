@@ -236,7 +236,7 @@ body::after {
 .month-selector:hover { border-color: var(--border-brand); }
 .month-selector label { margin: 0; color: var(--text-mute); font-size: 0.62rem; letter-spacing: 0.1em; font-weight: 700; text-transform: uppercase; }
 .month-selector input { color: rgba(255,255,255,0.95); font-weight: 600; font-family: var(--font-sans); }
-/* v2: botón custom que abre el picker nativo y muestra el mes prolijo (sin label MES, sin recuadro feo) */
+/* v2: selector de mes 100% custom (sin native picker feo) */
 .month-selector-v2 { padding: 4px 8px; position: relative; }
 .month-display {
   display: inline-flex; align-items: center; gap: 8px;
@@ -249,6 +249,57 @@ body::after {
 .month-display:hover { background: rgba(255,31,142,0.14); color: #fff; }
 .month-display svg { color: var(--text-mute); transition: color 0.16s var(--ease); }
 .month-display:hover svg { color: #FF1F8E; }
+/* Dropdown del picker */
+.mes-picker {
+  position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%) scale(0.96);
+  background: linear-gradient(160deg, rgba(20,20,32,0.99) 0%, rgba(12,12,20,0.99) 100%);
+  border: 1px solid rgba(255,31,142,0.3); border-radius: 14px;
+  padding: 14px; min-width: 280px; z-index: 100;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  opacity: 0; pointer-events: none; transform-origin: top center;
+  transition: opacity 0.18s var(--ease), transform 0.18s var(--ease);
+}
+.mes-picker.open { opacity: 1; pointer-events: auto; transform: translateX(-50%) scale(1); }
+.mes-picker-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-bottom: 12px; margin-bottom: 10px;
+  border-bottom: 1px dashed rgba(255,255,255,0.08);
+}
+.mes-picker-head span {
+  font-size: 1.05rem; font-weight: 800; color: #fff;
+  font-family: var(--font-display); letter-spacing: 0.02em;
+}
+.mes-picker-nav {
+  width: 30px; height: 30px; border-radius: 9px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-dim); font-size: 1.15rem; font-weight: 700;
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  transition: all 0.16s var(--ease); line-height: 1; padding: 0;
+}
+.mes-picker-nav:hover {
+  background: rgba(255,31,142,0.18); border-color: rgba(255,31,142,0.4); color: #fff;
+}
+.mes-picker-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+.mes-picker-cell {
+  padding: 10px 6px; border-radius: 9px; cursor: pointer;
+  background: rgba(255,255,255,0.03); border: 1px solid transparent;
+  color: var(--text-dim); font-size: 0.8rem; font-weight: 700;
+  text-align: center; text-transform: capitalize;
+  transition: all 0.14s var(--ease);
+}
+.mes-picker-cell:hover {
+  background: rgba(255,31,142,0.12); border-color: rgba(255,31,142,0.3); color: #fff;
+}
+.mes-picker-cell.current {
+  background: rgba(56,189,248,0.08); border-color: rgba(56,189,248,0.32); color: #7DD3FC;
+}
+.mes-picker-cell.selected {
+  background: linear-gradient(135deg, rgba(255,31,142,0.4), rgba(255,31,142,0.18));
+  border-color: #FF1F8E; color: #fff;
+  box-shadow: 0 4px 18px rgba(255,31,142,0.32);
+}
 .month-nav-btn {
   width: 28px; height: 28px; border-radius: 8px;
   background: rgba(255,255,255,0.04); border: 1px solid var(--border);
@@ -513,6 +564,36 @@ label { font-size: 0.67rem; letter-spacing: 0.1em; color: rgba(107,107,122,0.9);
   flex-shrink: 0;
 }
 .pill-entity strong { font-weight: 700; color: inherit; }
+
+/* Supervisor · header compacto con KPIs */
+.sup-head {
+  display: grid; grid-template-columns: minmax(220px, 1fr) 2.4fr auto;
+  gap: 18px; align-items: center; padding: 16px 22px;
+}
+.sup-head-left { min-width: 0; }
+.sup-head-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  padding: 0 18px; border-left: 1px dashed rgba(255,255,255,0.08);
+  border-right: 1px dashed rgba(255,255,255,0.08);
+}
+.sup-stat { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sup-stat-lbl { font-size: 0.6rem; letter-spacing: 0.1em; font-weight: 700; color: var(--text-mute); text-transform: uppercase; }
+.sup-stat-val { font-size: 1.15rem; font-weight: 800; font-family: var(--font-display); letter-spacing: -0.02em; line-height: 1.1; }
+.sup-stat-input-wrap { display: flex; gap: 4px; align-items: stretch; }
+.sup-stat-input-wrap input {
+  flex: 1; padding: 6px 10px; font-size: 0.92rem; font-weight: 700;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,31,142,0.3); border-radius: 8px;
+  color: #fff; min-width: 0;
+}
+.sup-stat-input-wrap button { padding: 4px 10px; font-size: 0.75rem; flex-shrink: 0; }
+.sup-head-actions { display: flex; align-items: center; }
+.sup-head-actions .btn-primary { width: auto; padding: 12px 18px; margin: 0; font-size: 0.86rem; white-space: nowrap; }
+.sup-detail-card { margin-top: 18px; }
+.sup-table .pill-entity { font-size: 0.74rem; padding: 2px 10px; }
+@media (max-width: 1100px) {
+  .sup-head { grid-template-columns: 1fr; }
+  .sup-head-stats { padding: 12px 0; border-left: none; border-right: none; border-top: 1px dashed rgba(255,255,255,0.08); border-bottom: 1px dashed rgba(255,255,255,0.08); }
+}
 
 /* Facturación · barra superior reorganizada (limpia, sin overflow) */
 .fact-bar { display: flex; flex-direction: column; gap: 14px; padding: 16px 22px; }
@@ -817,13 +898,15 @@ label { font-size: 0.67rem; letter-spacing: 0.1em; color: rgba(107,107,122,0.9);
 /* Recent facturas list */
 .recent-facturas { display: flex; flex-direction: column; gap: 0; }
 .recent-factura-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 0; border-bottom: 1px solid var(--border);
+  display: grid; grid-template-columns: 1fr auto auto; align-items: center;
+  gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border);
 }
 .recent-factura-row:last-child { border-bottom: none; }
 .rf-num  { font-size: 0.76rem; color: var(--text-mute); min-width: 80px; }
-.rf-name { font-size: 0.85rem; font-weight: 600; color: var(--text); flex: 1; }
-.rf-monto { font-size: 0.85rem; font-weight: 700; color: var(--text); margin-right: 8px; }
+.rf-name { font-size: 0.85rem; font-weight: 600; color: var(--text); min-width: 0; overflow: hidden; }
+.rf-name .pill-entity { font-size: 0.72rem; padding: 2px 9px; max-width: 100%; }
+.rf-monto { font-size: 0.84rem; font-weight: 700; color: var(--gold); white-space: nowrap; font-family: var(--font-display); }
+.recent-factura-row .pill { white-space: nowrap; }
 
 /* Incentivo card */
 .rs-incentivo { background: linear-gradient(145deg, rgba(255,31,142,0.07) 0%, rgba(14,14,24,1) 100%) !important; border-color: var(--border-brand) !important; }
