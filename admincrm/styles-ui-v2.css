@@ -1563,6 +1563,55 @@ td .btn-ghost-small.sum-detail + .btn-ghost-small.sum-save { margin-left: 6px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   v15 — CATALOG TABLE: compact + sticky actions
+   ═══════════════════════════════════════════════════════════════ */
+.catalog-table .compact-table th,
+.catalog-table .compact-table td {
+  padding: 8px 12px;
+  font-size: 0.83rem;
+  vertical-align: middle;
+}
+.catalog-table .compact-table th {
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  font-weight: 800;
+  white-space: nowrap;
+  padding-top: 12px; padding-bottom: 12px;
+}
+.catalog-table .compact-table tr { height: 44px; }
+.catalog-table .compact-table tbody tr:hover { background: rgba(255,31,142,0.04); }
+.catalog-table .compact-table .pill { padding: 3px 9px; font-size: 0.72rem; }
+.catalog-table .compact-table .pill-entity { padding: 3px 10px; font-size: 0.78rem; }
+
+/* Sticky right column con acciones — siempre visible aunque haya scroll horizontal */
+.catalog-table { overflow-x: auto; }
+.catalog-table .compact-table .action-col {
+  position: sticky; right: 0;
+  background: var(--bg-card);
+  box-shadow: -8px 0 16px -8px rgba(0,0,0,0.6);
+  z-index: 2;
+}
+.catalog-table .compact-table thead .action-col {
+  background: var(--bg-1);
+}
+
+/* Botones cuadrados compactos para acciones de fila */
+.btn-row-edit, .btn-row-del {
+  width: 30px; height: 30px;
+  padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; font-weight: 700;
+  border-radius: 8px;
+  margin-left: 4px;
+}
+.btn-row-edit { color: #7DD3FC; border-color: rgba(56,189,248,0.25); background: rgba(56,189,248,0.06); }
+.btn-row-edit:hover { color: #fff; background: rgba(56,189,248,0.18); border-color: rgba(56,189,248,0.5); transform: scale(1.05); }
+.btn-row-del { font-size: 0.95rem; }
+.btn-row-del:hover { transform: scale(1.05); }
+
+/* ═══════════════════════════════════════════════════════════════
    v14 — GANANCIAS REDISEÑO + DELTA BADGES
    ═══════════════════════════════════════════════════════════════ */
 .pnl-header {

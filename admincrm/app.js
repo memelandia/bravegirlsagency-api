@@ -89,7 +89,7 @@
         { key: 'factura_numero_actual', label: 'Último N° de liquidación', type: 'number', step: '1' },
         { key: 'activo', label: 'Activo', type: 'bool' }
       ],
-      tableColumns: ['nombre', 'email', 'porcentaje_default', 'porcentaje_supervisor', 'rol', 'es_team_leader', 'w8_w9_on_file', 'activo']
+      tableColumns: ['nombre', 'rol', 'porcentaje_default', 'porcentaje_supervisor', 'es_team_leader', 'w8_w9_on_file', 'activo']
     },
     equipo: {
       label: 'Equipo Fijo',
@@ -111,7 +111,7 @@
         { key: 'factura_numero_actual', label: 'Último N° de liquidación', type: 'number', step: '1' },
         { key: 'activo', label: 'Activo', type: 'bool' }
       ],
-      tableColumns: ['nombre', 'rol', 'email', 'sueldo_mensual_usd', 'w8_w9_on_file', 'activo']
+      tableColumns: ['nombre', 'rol', 'sueldo_mensual_usd', 'w8_w9_on_file', 'activo']
     },
     planes: {
       label: 'Planes de Servicio',
@@ -799,21 +799,21 @@
         : data.map(row => `
             <tr>
               ${def.tableColumns.map(c => `<td>${formatCell(c, row[c], entity)}</td>`).join('')}
-              <td style="text-align:right;white-space:nowrap">
-                <button class="btn-ghost-small" data-edit="${row.id}">Editar</button>
-                <button class="btn-danger" data-del="${row.id}">Desactivar</button>
+              <td class="action-col" style="text-align:right;white-space:nowrap">
+                <button class="btn-ghost-small btn-row-edit" data-edit="${row.id}" title="Editar">✎</button>
+                <button class="btn-danger btn-row-del" data-del="${row.id}" title="Desactivar">✕</button>
               </td>
             </tr>
           `).join('');
 
       container.innerHTML = `
-        <div class="table-wrap">
+        <div class="table-wrap catalog-table">
           <div class="table-toolbar">
             <h3>${def.icon} ${def.label} <span class="count">${data.length} registros</span></h3>
             <button class="btn-primary" id="new-btn" style="width:auto;padding:8px 16px;font-size:0.85rem">+ Nuevo</button>
           </div>
-          <table>
-            <thead><tr>${headers}<th style="text-align:right">Acciones</th></tr></thead>
+          <table class="compact-table">
+            <thead><tr>${headers}<th class="action-col" style="text-align:right">Acciones</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -845,8 +845,15 @@
 
   function formatCell(key, value, entity) {
     if (value === null || value === undefined || value === '') return '<span class="muted">—</span>';
-    if (key === 'activa' || key === 'activo' || key === 'es_team_leader') {
-      return value ? '<span class="pill green">✓ Sí</span>' : '<span class="pill">—</span>';
+    // Booleanos: cualquier campo que llega como true/false (incluye w8_w9_on_file y todos los bool nuevos)
+    if (typeof value === 'boolean' || key === 'activa' || key === 'activo' || key === 'es_team_leader' || key === 'w8_w9_on_file') {
+      const isTrue = value === true || value === 'true' || value === 1;
+      if (key === 'w8_w9_on_file') {
+        return isTrue
+          ? '<span class="pill green" title="Formulario firmado">✓</span>'
+          : '<span class="pill red" title="Pendiente de firma">✕</span>';
+      }
+      return isTrue ? '<span class="pill green">✓ Sí</span>' : '<span class="pill">—</span>';
     }
     if (key === 'plan_id') {
       const p = planesCache && planesCache.find(x => x.id === value);
@@ -868,7 +875,8 @@
       return `<span class="pill pill-rol rol-${slug}">${value}</span>`;
     }
     if (key === 'email') {
-      return `<a href="mailto:${escapeHtml(value)}" style="color:var(--text);text-decoration:none;border-bottom:1px dashed rgba(255,255,255,0.2)">${escapeHtml(value)}</a>`;
+      const display = value.length > 24 ? value.slice(0, 22) + '…' : value;
+      return `<a href="mailto:${escapeHtml(value)}" title="${escapeHtml(value)}" style="color:var(--text);text-decoration:none;border-bottom:1px dashed rgba(255,255,255,0.18);font-size:0.82rem">${escapeHtml(display)}</a>`;
     }
     if (key === 'porcentaje' || key === 'porcentaje_default' || key === 'porcentaje_supervisor') {
       return `<strong>${value}%</strong>`;
