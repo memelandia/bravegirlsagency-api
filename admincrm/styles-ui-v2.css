@@ -1585,16 +1585,11 @@ td .btn-ghost-small.sum-detail + .btn-ghost-small.sum-save { margin-left: 6px; }
 .catalog-table .compact-table .pill { padding: 3px 9px; font-size: 0.72rem; }
 .catalog-table .compact-table .pill-entity { padding: 3px 10px; font-size: 0.78rem; }
 
-/* Sticky right column con acciones — siempre visible aunque haya scroll horizontal */
-.catalog-table { overflow-x: auto; }
+/* La columna de acciones queda en flujo normal — la tabla ya entra sin scroll
+   horizontal en desktop. En mobile se aplica overflow-x del wrapper general. */
 .catalog-table .compact-table .action-col {
-  position: sticky; right: 0;
-  background: var(--bg-card);
-  box-shadow: -8px 0 16px -8px rgba(0,0,0,0.6);
-  z-index: 2;
-}
-.catalog-table .compact-table thead .action-col {
-  background: var(--bg-1);
+  background: transparent;
+  box-shadow: none;
 }
 
 /* Botones cuadrados compactos para acciones de fila */
