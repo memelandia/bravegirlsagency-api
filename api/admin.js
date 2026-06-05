@@ -119,6 +119,28 @@ async function ensureGastosSoftDelete() {
   _ensuredGastosSoftDelete = true;
 }
 
+let _ensuredICATables = false;
+async function ensureICATables() {
+  if (_ensuredICATables) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS contratos_ica (
+      id BIGSERIAL PRIMARY KEY,
+      contratista_tipo TEXT NOT NULL,    -- 'chatter' | 'supervisor' | 'equipo'
+      contratista_id INTEGER NOT NULL,
+      numero INTEGER,                     -- secuencial por contratista
+      fecha_generacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      fecha_firma DATE,
+      version TEXT DEFAULT 'v1-es',
+      html_snapshot TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  // Flag de "ICA firmado en archivo" + fecha en cada tabla de receptores
+  await sql`ALTER TABLE chatters_admin ADD COLUMN IF NOT EXISTS ica_signed_date DATE`;
+  await sql`ALTER TABLE equipo_fijo ADD COLUMN IF NOT EXISTS ica_signed_date DATE`;
+  _ensuredICATables = true;
+}
+
 let _ensuredFacturaSeqColumns = false;
 async function ensureFacturaSeqColumns() {
   if (_ensuredFacturaSeqColumns) return;
@@ -317,16 +339,16 @@ const ENTITY_CONFIG = {
       'fecha_inicio', 'porcentaje_default', 'porcentaje_supervisor',
       'rol', 'es_team_leader',
       'tax_residency_country', 'tax_id_type', 'tax_id_number',
-      'w8_w9_on_file', 'w8_w9_signed_date', 'factura_numero_actual',
-      'activo'
+      'w8_w9_on_file', 'w8_w9_signed_date', 'ica_signed_date',
+      'factura_numero_actual', 'activo'
     ],
     upsertColumns: [
       'nombre', 'nombre_fiscal', 'identificador', 'direccion', 'email',
       'fecha_inicio', 'porcentaje_default', 'porcentaje_supervisor',
       'rol', 'es_team_leader',
       'tax_residency_country', 'tax_id_type', 'tax_id_number',
-      'w8_w9_on_file', 'w8_w9_signed_date', 'factura_numero_actual',
-      'activo'
+      'w8_w9_on_file', 'w8_w9_signed_date', 'ica_signed_date',
+      'factura_numero_actual', 'activo'
     ]
   },
   equipo: {
@@ -336,15 +358,15 @@ const ENTITY_CONFIG = {
       'id', 'nombre', 'nombre_fiscal', 'identificador', 'rol', 'email', 'direccion',
       'sueldo_mensual_usd', 'fecha_inicio',
       'tax_residency_country', 'tax_id_type', 'tax_id_number',
-      'w8_w9_on_file', 'w8_w9_signed_date', 'factura_numero_actual',
-      'activo'
+      'w8_w9_on_file', 'w8_w9_signed_date', 'ica_signed_date',
+      'factura_numero_actual', 'activo'
     ],
     upsertColumns: [
       'nombre', 'nombre_fiscal', 'identificador', 'rol', 'email', 'direccion',
       'sueldo_mensual_usd', 'fecha_inicio',
       'tax_residency_country', 'tax_id_type', 'tax_id_number',
-      'w8_w9_on_file', 'w8_w9_signed_date', 'factura_numero_actual',
-      'activo'
+      'w8_w9_on_file', 'w8_w9_signed_date', 'ica_signed_date',
+      'factura_numero_actual', 'activo'
     ]
   }
 };
@@ -503,6 +525,7 @@ module.exports = async function handler(req, res) {
       // Asegurar columnas opcionales antes de cualquier SELECT
       await ensureEnviosColumns();
       await ensureFacturaSeqColumns();
+      await ensureICATables();
 
       const entity = req.query.entity;
       if (!entity || !ENTITY_CONFIG[entity]) {
@@ -1869,10 +1892,110 @@ module.exports = async function handler(req, res) {
       return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
 
+    // ─── INDEPENDENT CONTRACTOR AGREEMENT (ICA) ────
+    // POST ?action=ica-generate body: { contratista_tipo, contratista_id, html_snapshot, version? }
+    // GET  ?action=ica-list[&contratista_tipo=X&contratista_id=N]
+    // POST ?action=ica-mark-signed body: { contratista_tipo, contratista_id, fecha_firma }
+    if (action === 'ica-generate') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+      await ensureICATables();
+
+      const b = req.body || {};
+      const tipo = String(b.contratista_tipo || '').toLowerCase();
+      const cid = Number(b.contratista_id);
+      const html = String(b.html_snapshot || '');
+      if (!['chatter', 'supervisor', 'equipo'].includes(tipo)) {
+        return res.status(400).json({ success: false, error: 'contratista_tipo invalido' });
+      }
+      if (!cid || !html) {
+        return res.status(400).json({ success: false, error: 'contratista_id y html_snapshot requeridos' });
+      }
+
+      // Calcular numero secuencial para este contratista
+      const seqRes = await sql`
+        SELECT COALESCE(MAX(numero), 0) + 1 AS next_num
+        FROM contratos_ica
+        WHERE contratista_tipo = ${tipo} AND contratista_id = ${cid}
+      `;
+      const numero = Number(seqRes.rows[0].next_num);
+
+      const ins = await sql`
+        INSERT INTO contratos_ica (
+          contratista_tipo, contratista_id, numero, version, html_snapshot
+        ) VALUES (
+          ${tipo}, ${cid}, ${numero}, ${b.version || 'v1-es'}, ${html}
+        )
+        RETURNING id, numero, fecha_generacion, version
+      `;
+      return res.status(200).json({ success: true, data: ins.rows[0] });
+    }
+
+    if (action === 'ica-list') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureICATables();
+
+      const tipo = req.query.contratista_tipo || null;
+      const cid  = req.query.contratista_id ? Number(req.query.contratista_id) : null;
+
+      let q = `SELECT id, contratista_tipo, contratista_id, numero, fecha_generacion, fecha_firma, version FROM contratos_ica WHERE 1=1`;
+      const params = [];
+      if (tipo) { params.push(tipo); q += ` AND contratista_tipo = $${params.length}`; }
+      if (cid)  { params.push(cid);  q += ` AND contratista_id = $${params.length}`; }
+      q += ` ORDER BY fecha_generacion DESC LIMIT 200`;
+
+      const r = await sql.query(q, params);
+      return res.status(200).json({ success: true, data: r.rows });
+    }
+
+    if (action === 'ica-get') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureICATables();
+      const id = Number(req.query.id);
+      if (!id) return res.status(400).json({ success: false, error: 'id requerido' });
+      const r = await sql`SELECT * FROM contratos_ica WHERE id = ${id}`;
+      if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'not found' });
+      return res.status(200).json({ success: true, data: r.rows[0] });
+    }
+
+    if (action === 'ica-mark-signed') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+      await ensureICATables();
+
+      const b = req.body || {};
+      const tipo = String(b.contratista_tipo || '').toLowerCase();
+      const cid = Number(b.contratista_id);
+      const fecha = b.fecha_firma || new Date().toISOString().slice(0, 10);
+      if (!['chatter', 'supervisor', 'equipo'].includes(tipo) || !cid) {
+        return res.status(400).json({ success: false, error: 'parametros invalidos' });
+      }
+
+      // Actualiza la fecha en la tabla del receptor
+      const tabla = tipo === 'equipo' ? 'equipo_fijo' : 'chatters_admin';
+      await sql.query(`UPDATE ${tabla} SET ica_signed_date = $1 WHERE id = $2`, [fecha, cid]);
+
+      // Marca tambien el ultimo ICA generado como firmado
+      await sql`
+        UPDATE contratos_ica
+        SET fecha_firma = ${fecha}
+        WHERE id = (
+          SELECT id FROM contratos_ica
+          WHERE contratista_tipo = ${tipo} AND contratista_id = ${cid}
+          ORDER BY fecha_generacion DESC LIMIT 1
+        )
+      `;
+      return res.status(200).json({ success: true, fecha_firma: fecha });
+    }
+
     return res.status(400).json({
       success: false,
       error: 'unknown action',
-      hint: 'usa ?action=login | logout | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | envios-update | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl | log-error'
+      hint: 'usa ?action=login | logout | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | envios-update | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl | log-error | ica-generate | ica-list | ica-get | ica-mark-signed'
     });
 
   } catch (error) {

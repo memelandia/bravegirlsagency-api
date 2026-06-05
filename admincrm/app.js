@@ -86,10 +86,11 @@
         { key: 'tax_id_number', label: 'N° Tax ID', type: 'text' },
         { key: 'w8_w9_on_file', label: 'W-8BEN/W-9 firmado en archivo', type: 'bool' },
         { key: 'w8_w9_signed_date', label: 'Fecha firma W-8/W-9', type: 'date' },
+        { key: 'ica_signed_date', label: 'Fecha firma ICA (contrato)', type: 'date' },
         { key: 'factura_numero_actual', label: 'Último N° de liquidación', type: 'number', step: '1' },
         { key: 'activo', label: 'Activo', type: 'bool' }
       ],
-      tableColumns: ['nombre', 'rol', 'porcentaje_default', 'porcentaje_supervisor', 'es_team_leader', 'w8_w9_on_file', 'activo']
+      tableColumns: ['nombre', 'rol', 'porcentaje_default', 'porcentaje_supervisor', 'es_team_leader', 'ica_signed_date', 'w8_w9_on_file', 'activo']
     },
     equipo: {
       label: 'Equipo Fijo',
@@ -108,10 +109,11 @@
         { key: 'tax_id_number', label: 'N° Tax ID', type: 'text' },
         { key: 'w8_w9_on_file', label: 'W-8BEN/W-9 firmado en archivo', type: 'bool' },
         { key: 'w8_w9_signed_date', label: 'Fecha firma W-8/W-9', type: 'date' },
+        { key: 'ica_signed_date', label: 'Fecha firma ICA (contrato)', type: 'date' },
         { key: 'factura_numero_actual', label: 'Último N° de liquidación', type: 'number', step: '1' },
         { key: 'activo', label: 'Activo', type: 'bool' }
       ],
-      tableColumns: ['nombre', 'rol', 'sueldo_mensual_usd', 'w8_w9_on_file', 'activo']
+      tableColumns: ['nombre', 'rol', 'sueldo_mensual_usd', 'ica_signed_date', 'w8_w9_on_file', 'activo']
     },
     planes: {
       label: 'Planes de Servicio',
@@ -796,15 +798,21 @@
              <div>Aún no hay ${def.label.toLowerCase()} cargados.</div>
              <div style="margin-top:12px"><button class="btn-primary" id="empty-add" style="width:auto;display:inline-flex">+ Crear el primero</button></div>
            </td></tr>`
-        : data.map(row => `
+        : data.map(row => {
+            const showIca = entity === 'chatters' || entity === 'equipo';
+            const icaBtn = showIca
+              ? `<button class="btn-ghost-small btn-row-ica" data-ica="${row.id}" data-ica-rol="${row.rol || ''}" title="Generar ICA (contrato de servicios)">📜</button>`
+              : '';
+            return `
             <tr>
               ${def.tableColumns.map(c => `<td>${formatCell(c, row[c], entity)}</td>`).join('')}
               <td class="action-col" style="text-align:right;white-space:nowrap">
+                ${icaBtn}
                 <button class="btn-ghost-small btn-row-edit" data-edit="${row.id}" title="Editar">✎</button>
                 <button class="btn-danger btn-row-del" data-del="${row.id}" title="Desactivar">✕</button>
               </td>
             </tr>
-          `).join('');
+          `;}).join('');
 
       container.innerHTML = `
         <div class="table-wrap catalog-table">
@@ -838,6 +846,26 @@
           } catch (e) { toast('Error: ' + e.message, 'error'); }
         });
       });
+      container.querySelectorAll('[data-ica]').forEach(b => {
+        b.addEventListener('click', async () => {
+          const row = data.find(r => r.id === Number(b.dataset.ica));
+          if (!row) return;
+          const kind = entity === 'equipo'
+            ? 'equipo'
+            : (String(row.rol || '').toLowerCase() === 'supervisor' ? 'supervisor' : 'chatter');
+          const original = b.innerHTML;
+          b.disabled = true; b.innerHTML = '⏳';
+          try {
+            await generarICA(kind, row);
+            // refresh to update ica badge
+            showEntityList(entity);
+          } catch (e) {
+            toast('Error: ' + e.message, 'error');
+          } finally {
+            b.disabled = false; b.innerHTML = original;
+          }
+        });
+      });
     } catch (e) {
       container.innerHTML = `<div class="card center muted">⚠️ Error cargando: ${e.message}</div>`;
     }
@@ -854,6 +882,14 @@
           : '<span class="pill red" title="Pendiente de firma">✕</span>';
       }
       return isTrue ? '<span class="pill green">✓ Sí</span>' : '<span class="pill">—</span>';
+    }
+    if (key === 'ica_signed_date') {
+      return value
+        ? `<span class="pill green" title="ICA firmado el ${value}">📜 ${value}</span>`
+        : '<span class="pill red" title="ICA pendiente de firma">📜 ✕</span>';
+    }
+    if (key === 'w8_w9_signed_date' && value) {
+      return `<span class="muted" style="font-size:0.78rem">${value}</span>`;
     }
     if (key === 'plan_id') {
       const p = planesCache && planesCache.find(x => x.id === value);
@@ -3479,6 +3515,226 @@
   </div>
   <div style="margin-top:10px;text-align:center;color:#9ca3af;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase">
     ${LLC_INFO.nombre} · ${new Date().getFullYear()} · Documento generado electrónicamente
+  </div>
+
+</div>`;
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // INDEPENDENT CONTRACTOR AGREEMENT (ICA) — 3 plantillas ES
+  //   chatter / supervisor / equipo
+  //   - Persistencia con snapshot inmutable en contratos_ica
+  //   - PDF descargable
+  // ═══════════════════════════════════════════════════════
+  async function generarICA(kind, receptor) {
+    if (!receptor) { toast('Sin datos del contratista', 'error'); return; }
+    // Validaciones mínimas
+    const faltantes = [];
+    if (!receptor.nombre_fiscal) faltantes.push('nombre fiscal');
+    if (!receptor.identificador) faltantes.push('DNI/Pasaporte');
+    if (!receptor.direccion)     faltantes.push('dirección');
+    if (faltantes.length > 0) {
+      if (!confirm(`Faltan datos del contratista: ${faltantes.join(', ')}.\n\nEl PDF se genera igual pero esos campos aparecerán como "[A COMPLETAR]". ¿Continuar?`)) return;
+    }
+
+    const fechaHoy = new Date().toISOString().slice(0, 10);
+    const html = buildICAHtml({ kind, receptor, fechaHoy });
+
+    // Persistir snapshot en backend
+    try {
+      const r = await api('ica-generate', {
+        method: 'POST',
+        body: {
+          contratista_tipo: kind,
+          contratista_id: receptor.id,
+          html_snapshot: html,
+          version: 'v1-es'
+        }
+      });
+      const numero = r.data?.numero;
+      const filename = `ICA_${kind}_${(receptor.nombre || 'contractor').replace(/\s+/g, '_')}_v${numero || 1}.pdf`;
+      await renderHtmlToPdf(html, filename);
+      const markSign = confirm(`✓ ICA v${numero} generado para ${receptor.nombre}.\n\n¿Marcar como FIRMADO ahora? (decí "Cancelar" si todavía no lo firmaron, lo marcás después)`);
+      if (markSign) {
+        await api('ica-mark-signed', {
+          method: 'POST',
+          body: { contratista_tipo: kind, contratista_id: receptor.id, fecha_firma: fechaHoy }
+        });
+        toast('Marcado como firmado', 'success');
+      } else {
+        toast('PDF descargado · Marcalo como firmado cuando recibas el documento', 'success');
+      }
+    } catch (e) {
+      toast('Error al guardar ICA: ' + e.message, 'error');
+    }
+  }
+
+  // ─── Builder del HTML del ICA por rol ───
+  function buildICAHtml({ kind, receptor, fechaHoy }) {
+    const ACCENT = '#be185d';
+    const VALUE = '#0f172a';
+    const MUTED = '#6b7280';
+    const PLACE = '<span style="color:#dc2626;font-style:italic">[A COMPLETAR]</span>';
+
+    const fiscal = receptor.nombre_fiscal || PLACE;
+    const idDoc  = receptor.identificador || PLACE;
+    const direc  = receptor.direccion || PLACE;
+    const email  = receptor.email || PLACE;
+    const pais   = receptor.tax_residency_country || PLACE;
+    const fInicio = receptor.fecha_inicio || fechaHoy;
+    const rol    = receptor.rol || (kind === 'equipo' ? 'Miembro del equipo' : 'Chatter');
+
+    // Compensación: variable por chatter/supervisor, fija por equipo
+    let compensacion = '';
+    if (kind === 'chatter') {
+      const pctChat = receptor.porcentaje_default != null ? Number(receptor.porcentaje_default) : 15;
+      compensacion = `
+        <p>El <strong>CONTRATISTA</strong> percibirá una comisión variable equivalente al <strong>${pctChat}%</strong> sobre las ventas netas que genere en las cuentas que le sean asignadas por la <strong>COMPAÑÍA</strong>, calculada mensualmente. Los pagos se realizarán mediante transferencia bancaria internacional, plataforma de envío de remesas o billetera de criptoactivos, según lo que ambas partes acuerden previamente.</p>
+        <p>El porcentaje podrá ser modificado por acuerdo escrito de las partes (incluido correo electrónico). La <strong>COMPAÑÍA</strong> podrá adicionar bonos por desempeño, incentivos del mes y bonificación de Team Leader cuando corresponda.</p>
+        <p>De cada pago se descontará el <strong>Transaction Fee</strong> de la plataforma de envío (entre 3% y 5%), por cuenta del <strong>CONTRATISTA</strong>.</p>`;
+    } else if (kind === 'supervisor') {
+      compensacion = `
+        <p>El <strong>SUPERVISOR</strong> percibirá la siguiente compensación mensual:</p>
+        <ul style="margin:8px 0 8px 22px;padding:0">
+          <li>USD 100 fijos por SFS Control;</li>
+          <li>5% de las suscripciones totales del mes (suma de todas las cuentas administradas);</li>
+          <li>Comisión variable sobre las ventas del equipo bajo su supervisión, según el porcentaje pactado individualmente con cada chatter (entre 3% y 5%).</li>
+        </ul>
+        <p>De cada pago se descontará el <strong>Transaction Fee</strong> de la plataforma de envío. La <strong>COMPAÑÍA</strong> podrá ajustar la compensación por acuerdo escrito ante cambios en la estructura del equipo.</p>`;
+    } else {
+      const sueldo = receptor.sueldo_mensual_usd != null ? Number(receptor.sueldo_mensual_usd) : 0;
+      compensacion = `
+        <p>El <strong>CONTRATISTA</strong> percibirá una compensación mensual fija de <strong>USD ${sueldo.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong> por la prestación de los Servicios. El pago se realizará dentro de los primeros 10 días de cada mes, mediante transferencia bancaria internacional (Wise, SWIFT) o billetera de criptoactivos, según lo acordado entre las partes.</p>
+        <p>La <strong>COMPAÑÍA</strong> podrá ajustar la compensación por acuerdo escrito (incluido correo electrónico) en caso de modificación de las responsabilidades.</p>`;
+    }
+
+    // Servicios por rol
+    let serviciosTexto = '';
+    if (kind === 'chatter') {
+      serviciosTexto = `
+        <p>El <strong>CONTRATISTA</strong> prestará a la <strong>COMPAÑÍA</strong> servicios independientes de <em>chatting profesional</em> en las plataformas digitales administradas por la <strong>COMPAÑÍA</strong>, principalmente <em>OnlyFans</em>, en las cuentas que le sean asignadas. Las tareas incluyen, sin limitarse a:</p>
+        <ul style="margin:8px 0 8px 22px;padding:0">
+          <li>Comunicación profesional con suscriptores y fans;</li>
+          <li>Venta de contenido digital (PPV, custom, suscripciones);</li>
+          <li>Cumplimiento de los lineamientos editoriales, comerciales y de cumplimiento de la <strong>COMPAÑÍA</strong>;</li>
+          <li>Reporte de actividad y producción según los procedimientos internos.</li>
+        </ul>
+        <p>El <strong>CONTRATISTA</strong> mantendrá la <em>autonomía</em> sobre la organización de su jornada y los medios técnicos para prestar los Servicios.</p>`;
+    } else if (kind === 'supervisor') {
+      serviciosTexto = `
+        <p>El <strong>SUPERVISOR</strong> prestará a la <strong>COMPAÑÍA</strong> servicios independientes de <em>supervisión y coordinación</em> del equipo de chatters, incluyendo:</p>
+        <ul style="margin:8px 0 8px 22px;padding:0">
+          <li>Control de calidad de los chats (SFS Control);</li>
+          <li>Coordinación de turnos, asignaciones y reemplazos;</li>
+          <li>Capacitación y onboarding de chatters nuevos;</li>
+          <li>Auditoría de cumplimiento de lineamientos editoriales y comerciales;</li>
+          <li>Reportes periódicos a la <strong>COMPAÑÍA</strong> sobre desempeño del equipo.</li>
+        </ul>
+        <p>El <strong>SUPERVISOR</strong> mantendrá la <em>autonomía</em> sobre la organización de su jornada y los medios técnicos para prestar los Servicios.</p>`;
+    } else {
+      serviciosTexto = `
+        <p>El <strong>CONTRATISTA</strong> prestará a la <strong>COMPAÑÍA</strong> servicios independientes en su rol de <strong>${escapeHtml(rol)}</strong>, con las responsabilidades acordadas entre las partes y conforme a los lineamientos operativos vigentes de la <strong>COMPAÑÍA</strong>.</p>
+        <p>El <strong>CONTRATISTA</strong> mantendrá la <em>autonomía</em> sobre la organización de su jornada, manteniendo los canales de coordinación habituales para coordinar tareas con la <strong>COMPAÑÍA</strong>.</p>`;
+    }
+
+    const tituloDoc = {
+      chatter: 'Contrato de Servicios Independientes · Chatter',
+      supervisor: 'Contrato de Servicios Independientes · Supervisor',
+      equipo: `Contrato de Servicios Independientes · ${escapeHtml(rol)}`
+    }[kind];
+
+    const partyLabel = kind === 'supervisor' ? 'SUPERVISOR' : 'CONTRATISTA';
+
+    return `
+<div style="font-family:Georgia,'Times New Roman',serif;padding:40px 50px;color:${VALUE};background:#fff;width:100%;box-sizing:border-box;font-size:11.5px;line-height:1.55">
+
+  <div style="text-align:center;border-bottom:2px solid ${ACCENT};padding-bottom:18px;margin-bottom:22px">
+    <div style="font-family:Arial,sans-serif;font-size:9px;color:${MUTED};letter-spacing:0.18em;text-transform:uppercase;font-weight:700">${LLC_INFO.nombre}</div>
+    <div style="font-family:Arial,sans-serif;font-size:8.5px;color:${MUTED};margin-top:2px">${LLC_INFO.direccion} · EIN ${LLC_INFO.ein}</div>
+    <h1 style="font-family:Georgia,serif;font-size:20px;color:${ACCENT};margin:14px 0 4px;font-weight:700;letter-spacing:-0.3px">${tituloDoc}</h1>
+    <div style="font-family:Arial,sans-serif;font-size:9.5px;color:${MUTED};letter-spacing:0.14em;text-transform:uppercase;font-weight:600">Independent Contractor Agreement</div>
+  </div>
+
+  <p style="margin:0 0 14px"><strong>En Wilmington, Delaware, Estados Unidos de América</strong>, en la fecha <strong>${fechaHoy}</strong>, comparecen:</p>
+
+  <p style="margin:0 0 10px"><strong>I.</strong> <strong>${LLC_INFO.nombre}</strong>, sociedad de responsabilidad limitada registrada en el Estado de Delaware, Estados Unidos de América, con domicilio legal en ${LLC_INFO.direccion}, identificada con Employer Identification Number (EIN) ${LLC_INFO.ein} y N° de Licencia ${LLC_INFO.licencia}, en adelante <strong>"LA COMPAÑÍA"</strong>; y</p>
+
+  <p style="margin:0 0 16px"><strong>II.</strong> <strong>${fiscal}</strong>, con domicilio en ${direc}, identificado con documento ${idDoc}, con residencia fiscal en ${pais}, correo electrónico ${email}, en adelante el <strong>"${partyLabel}"</strong>.</p>
+
+  <p style="margin:0 0 18px;text-align:justify">Las partes celebran el presente <strong>Contrato de Servicios Independientes</strong> (en adelante el "Contrato"), regulado por las siguientes cláusulas:</p>
+
+  <h3 style="font-family:Georgia,serif;color:${ACCENT};font-size:13px;margin:18px 0 6px">PRIMERA · Objeto y servicios</h3>
+  ${serviciosTexto}
+
+  <h3 style="font-family:Georgia,serif;color:${ACCENT};font-size:13px;margin:18px 0 6px">SEGUNDA · Plazo</h3>
+  <p>El presente Contrato entra en vigor el <strong>${fInicio}</strong> y se mantendrá vigente por tiempo indefinido, pudiendo cualquiera de las partes resolverlo sin expresión de causa con un preaviso por escrito (incluido correo electrónico) no menor a <strong>quince (15) días</strong>.</p>
+
+  <h3 style="font-family:Georgia,serif;color:${ACCENT};font-size:13px;margin:18px 0 6px">TERCERA · Compensación</h3>
+  ${compensacion}
+
+  <h3 style="font-family:Georgia,serif;color:${ACCENT};font-size:13px;margin:18px 0 6px">CUARTA · Naturaleza del vínculo (Independent Contractor)</h3>
+  <p>Las partes <strong>expresamente reconocen</strong> que el presente vínculo es de naturaleza estrictamente <strong>contractual independiente</strong>, conforme a la figura de <em>"Independent Contractor"</em> reconocida en la legislación de los Estados Unidos de América. <strong>No existe ni se constituye</strong> entre las partes relación laboral, dependencia jerárquica, subordinación económica, ni vínculo societario alguno. El <strong>${partyLabel}</strong> NO es empleado, agente, socio ni representante legal de la <strong>COMPAÑÍA</strong>, y nada en este Contrato puede interpretarse en sentido contrario.</p>
+  <p>El <strong>${partyLabel}</strong> presta los Servicios con sus propios medios técnicos y organiza libremente su jornada, sin perjuicio del cumplimiento de los lineamientos operativos acordados.</p>
+
+  <h3 style="font-family:Georgia,serif;color:${ACCENT};font-size:13px;margin:18px 0 6px">QUINTA · Responsabilidad fiscal</h3>
+  <p>El <strong>${partyLabel}</strong> es el único y exclusivo responsable de <strong>declarar y pagar todos los impuestos, contribuciones, aportes a la seguridad social y demás obligaciones tributarias</strong> que correspondan en su país de residencia fiscal, derivados de los pagos recibidos en virtud del presente Contrato. La <strong>COMPAÑÍA</strong> no efectuará retención fiscal alguna, salvo que la normativa estadounidense aplicable así lo exigiera (por ejemplo, ante la falta de Form W-8BEN).</p>
+  <p>El <strong>${partyLabel}</strong> se obliga a entregar a la <strong>COMPAÑÍA</strong> el formulario <strong>W-8BEN</strong> (o W-9, si correspondiere) debidamente firmado, dentro de los treinta (30) días corridos siguientes a la firma del presente.</p>
+
+  <h3 style="font-family:Georgia,serif;color:${ACCENT};font-size:13px;margin:18px 0 6px">SEXTA · Confidencialidad</h3>
+  <p>El <strong>${partyLabel}</strong> se obliga a mantener la <strong>más estricta confidencialidad</strong> sobre toda información a la que acceda con motivo de la prestación de Servicios, incluyendo, sin limitación:</p>
+  <ul style="margin:6px 0 8px 22px;padding:0">
+    <li>Identidad real, datos personales y de contacto de las <em>modelos representadas</em>;</li>
+    <li>Credenciales de acceso a plataformas digitales;</li>
+    <li>Datos de suscriptores, conversaciones, contenido producido y bases de datos comerciales;</li>
+    <li>Estrategias comerciales, planes de marketing y procedimientos operativos internos.</li>
+  </ul>
+  <p>La obligación de confidencialidad se mantendrá <strong>indefinidamente</strong>, incluso después de finalizado el Contrato.</p>
+
+  <h3 style="font-family:Georgia,serif;color:${ACCENT};font-size:13px;margin:18px 0 6px">SÉPTIMA · Propiedad Intelectual</h3>
+  <p>Todo el material, contenido, mensajes, conversaciones, base de datos de suscriptores y cualquier otra producción intelectual generada por el <strong>${partyLabel}</strong> con motivo de la prestación de los Servicios es y será de <strong>exclusiva propiedad de la COMPAÑÍA</strong>. El <strong>${partyLabel}</strong> cede de forma automática, irrevocable y a título gratuito todos los derechos patrimoniales sobre dicha producción a favor de la <strong>COMPAÑÍA</strong>.</p>
+
+  <h3 style="font-family:Georgia,serif;color:${ACCENT};font-size:13px;margin:18px 0 6px">OCTAVA · No competencia</h3>
+  <p>Durante la vigencia del presente Contrato y por un plazo de <strong>seis (6) meses</strong> contados desde su terminación, el <strong>${partyLabel}</strong> se compromete a NO prestar servicios análogos o sustancialmente similares para <strong>agencias competidoras directas</strong> de la <strong>COMPAÑÍA</strong>, ni a establecer relación comercial con las modelos que representó la <strong>COMPAÑÍA</strong> durante su vínculo, sin autorización previa y por escrito.</p>
+
+  <h3 style="font-family:Georgia,serif;color:${ACCENT};font-size:13px;margin:18px 0 6px">NOVENA · Terminación</h3>
+  <p>Cualquiera de las partes podrá resolver el Contrato en cualquier momento, con un preaviso por escrito de quince (15) días. Adicionalmente, la <strong>COMPAÑÍA</strong> podrá resolver el Contrato <strong>de manera inmediata y sin preaviso</strong> en caso de incumplimiento grave del <strong>${partyLabel}</strong>, incluyendo (sin limitación): violación de confidencialidad, conducta dolosa, divulgación de credenciales, o incumplimiento reiterado de los lineamientos operativos.</p>
+
+  <h3 style="font-family:Georgia,serif;color:${ACCENT};font-size:13px;margin:18px 0 6px">DÉCIMA · Ley aplicable y jurisdicción</h3>
+  <p>El presente Contrato se rige por las <strong>leyes del Estado de Delaware, Estados Unidos de América</strong>. Toda controversia derivada del Contrato será sometida a la jurisdicción de los tribunales competentes del Estado de Delaware, EE.UU., con renuncia expresa a cualquier otro fuero que pudiera corresponder.</p>
+
+  <h3 style="font-family:Georgia,serif;color:${ACCENT};font-size:13px;margin:18px 0 6px">DÉCIMO PRIMERA · Disposiciones finales</h3>
+  <p>El presente Contrato constituye el <strong>acuerdo íntegro</strong> entre las partes, prevalece sobre cualquier acuerdo previo verbal o escrito, y solo podrá ser modificado mediante adenda escrita firmada por ambas partes. La invalidez de cualquier cláusula no afectará la validez del resto del Contrato.</p>
+
+  <p style="margin:30px 0 12px;text-align:justify">En conformidad con lo expuesto, las partes firman el presente Contrato en dos ejemplares de igual tenor y valor, en la fecha indicada al inicio.</p>
+
+  <!-- FIRMAS -->
+  <table style="width:100%;border-collapse:collapse;margin-top:50px;font-family:Arial,sans-serif">
+    <tr>
+      <td style="width:48%;vertical-align:top;text-align:center">
+        <div style="border-top:1.5px solid ${VALUE};margin:0 12px;padding-top:8px">
+          <div style="font-size:11px;font-weight:700;color:${VALUE}">${LLC_INFO.nombre}</div>
+          <div style="font-size:9px;color:${MUTED};margin-top:2px">LA COMPAÑÍA</div>
+          <div style="font-size:9px;color:${MUTED};margin-top:6px">EIN ${LLC_INFO.ein}</div>
+        </div>
+      </td>
+      <td style="width:4%"></td>
+      <td style="width:48%;vertical-align:top;text-align:center">
+        <div style="border-top:1.5px solid ${VALUE};margin:0 12px;padding-top:8px">
+          <div style="font-size:11px;font-weight:700;color:${VALUE}">${fiscal}</div>
+          <div style="font-size:9px;color:${MUTED};margin-top:2px">EL ${partyLabel}</div>
+          <div style="font-size:9px;color:${MUTED};margin-top:6px">${idDoc}</div>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <div style="margin-top:36px;padding:9px 12px;background:#f9fafb;border-left:3px solid ${ACCENT};font-size:8.5px;color:${MUTED};line-height:1.5">
+    <strong style="color:${VALUE};text-transform:uppercase;letter-spacing:0.06em;font-size:8px">Nota legal</strong><br>
+    Este documento es un Independent Contractor Agreement (ICA) bajo la legislación del Estado de Delaware, EE.UU. Su firma constituye reconocimiento expreso de la naturaleza independiente del vínculo. Cualquier disputa será resuelta en los tribunales de Delaware.
+  </div>
+
+  <div style="margin-top:12px;text-align:center;color:#9ca3af;font-size:8.5px;letter-spacing:0.08em;text-transform:uppercase">
+    ${LLC_INFO.nombre} · ${new Date().getFullYear()} · ICA v1-es
   </div>
 
 </div>`;
