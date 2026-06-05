@@ -878,6 +878,7 @@ module.exports = async function handler(req, res) {
       const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       await ensureResumenOverridesTable();
+      await ensureGastosSoftDelete();
 
       const mes = req.query.mes;
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
@@ -1700,6 +1701,7 @@ module.exports = async function handler(req, res) {
     if (action === 'pnl') {
       const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureGastosSoftDelete();
       const mes = req.query.mes;
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
 
