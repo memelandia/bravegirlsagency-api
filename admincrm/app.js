@@ -4441,6 +4441,20 @@
         `<option value="${c.key}" ${filtros.categoria === c.key ? 'selected' : ''}>${c.label}</option>`
       ).join('');
 
+      // Selector de mes consistente con el theme (24 meses atrás + 2 adelante)
+      const mesOptionsHtml = (() => {
+        const now = new Date();
+        const opts = [];
+        for (let i = -2; i <= 24; i++) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          const monthName = MESES_FULL[d.getMonth()];
+          const lbl = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${d.getFullYear()}`;
+          opts.push(`<option value="${val}" ${filtros.mes === val ? 'selected' : ''}>${lbl}</option>`);
+        }
+        return opts.join('');
+      })();
+
       const cards = archivos.map(a => {
         const isImage = (a.mime_type || '').startsWith('image/');
         const thumb = isImage
@@ -4475,7 +4489,10 @@
         <div class="card" style="margin-bottom:18px">
           <div class="archivos-toolbar">
             <div class="archivos-filtros">
-              <input type="month" id="arch-mes" value="${filtros.mes || ''}" placeholder="Todos los meses">
+              <select id="arch-mes">
+                <option value="">Todos los meses</option>
+                ${mesOptionsHtml}
+              </select>
               <select id="arch-cat">
                 <option value="">Todas las categorías</option>
                 ${catOptions}
@@ -4580,7 +4597,21 @@
             </div>
             <div>
               <label for="arch-mes-input">Mes</label>
-              <input type="month" id="arch-mes-input" value="${prefill.mes || currentMes()}">
+              <select id="arch-mes-input">
+                ${(() => {
+                  const now = new Date();
+                  const cur = prefill.mes || currentMes();
+                  const opts = [];
+                  for (let i = -2; i <= 24; i++) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    const monthName = MESES_FULL[d.getMonth()];
+                    const lbl = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${d.getFullYear()}`;
+                    opts.push(`<option value="${val}" ${cur === val ? 'selected' : ''}>${lbl}</option>`);
+                  }
+                  return opts.join('');
+                })()}
+              </select>
             </div>
             <div>
               <label for="arch-monto-input">Monto (opcional)</label>
@@ -4690,7 +4721,21 @@
             </div>
             <div>
               <label>Mes</label>
-              <input type="month" id="ed-mes" value="${arch.mes || ''}">
+              <select id="ed-mes">
+                <option value="">— sin mes —</option>
+                ${(() => {
+                  const now = new Date();
+                  const opts = [];
+                  for (let i = -2; i <= 24; i++) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    const monthName = MESES_FULL[d.getMonth()];
+                    const lbl = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${d.getFullYear()}`;
+                    opts.push(`<option value="${val}" ${arch.mes === val ? 'selected' : ''}>${lbl}</option>`);
+                  }
+                  return opts.join('');
+                })()}
+              </select>
             </div>
             <div>
               <label>Monto</label>

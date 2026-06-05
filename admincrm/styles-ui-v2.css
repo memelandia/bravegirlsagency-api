@@ -1657,8 +1657,8 @@ td .btn-ghost-small.sum-detail + .btn-ghost-small.sum-save { margin-left: 6px; }
 .archivos-filtros input, .archivos-filtros select {
   min-height: 38px; padding: 7px 12px; font-size: 0.85rem;
 }
-.archivos-filtros #arch-mes    { max-width: 170px; }
-.archivos-filtros #arch-cat    { max-width: 220px; }
+.archivos-filtros #arch-mes    { min-width: 170px; max-width: 200px; }
+.archivos-filtros #arch-cat    { min-width: 180px; max-width: 230px; }
 .archivos-filtros #arch-search { min-width: 200px; flex: 1; }
 
 /* ─── Archivos grid ─── */
