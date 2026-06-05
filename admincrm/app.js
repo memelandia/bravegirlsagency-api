@@ -19,6 +19,17 @@
     localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY);
   }
 
+  // ───────── Datos legales de la LLC (aparecen en TODAS las facturas/liquidaciones) ─────────
+  const LLC_INFO = {
+    nombre: 'BraveGirls Agency LLC',
+    direccion: '1401 Pennsylvania Ave. STE 105, 19806 Wilmington, Delaware (EE.UU.)',
+    ein: '38-4349826',
+    telefono: '(34) 675 32 80 74',
+    licencia: '20250971778',
+    estado_registro: 'Delaware'
+  };
+  window.LLC_INFO = LLC_INFO;
+
   // ───────── Configuración de entidades del catálogo ─────────
   const ENTITY_DEFS = {
     modelos: {
@@ -61,8 +72,8 @@
       icon: '💬',
       columns: [
         { key: 'nombre', label: 'Nombre', type: 'text', required: true },
-        { key: 'nombre_fiscal', label: 'Nombre fiscal', type: 'text' },
-        { key: 'identificador', label: 'CUIT / DNI', type: 'text' },
+        { key: 'nombre_fiscal', label: 'Nombre fiscal completo', type: 'text' },
+        { key: 'identificador', label: 'DNI / Pasaporte / ID local', type: 'text' },
         { key: 'direccion', label: 'Dirección', type: 'text', wide: true },
         { key: 'email', label: 'Email', type: 'email' },
         { key: 'fecha_inicio', label: 'Fecha inicio', type: 'date' },
@@ -70,22 +81,37 @@
         { key: 'porcentaje_supervisor', label: '% supervisor', type: 'number', step: '0.01', placeholder: '5' },
         { key: 'rol', label: 'Rol', type: 'select', options: ['chatter', 'supervisor', 'team_leader'] },
         { key: 'es_team_leader', label: 'Team Leader', type: 'bool' },
+        { key: 'tax_residency_country', label: 'País residencia fiscal', type: 'text', placeholder: 'AR / ES / US / MX...' },
+        { key: 'tax_id_type', label: 'Tipo Tax ID', type: 'select', options: ['', 'W-9 (US)', 'W-8BEN (Foreign)', 'DNI', 'Pasaporte', 'CUIT/CUIL', 'NIE/NIF', 'RFC', 'Otro'] },
+        { key: 'tax_id_number', label: 'N° Tax ID', type: 'text' },
+        { key: 'w8_w9_on_file', label: 'W-8BEN/W-9 firmado en archivo', type: 'bool' },
+        { key: 'w8_w9_signed_date', label: 'Fecha firma W-8/W-9', type: 'date' },
+        { key: 'factura_numero_actual', label: 'Último N° de liquidación', type: 'number', step: '1' },
         { key: 'activo', label: 'Activo', type: 'bool' }
       ],
-      tableColumns: ['nombre', 'email', 'porcentaje_default', 'porcentaje_supervisor', 'rol', 'es_team_leader', 'activo']
+      tableColumns: ['nombre', 'email', 'porcentaje_default', 'porcentaje_supervisor', 'rol', 'es_team_leader', 'w8_w9_on_file', 'activo']
     },
     equipo: {
       label: 'Equipo Fijo',
       icon: '★',
       columns: [
         { key: 'nombre', label: 'Nombre', type: 'text', required: true },
+        { key: 'nombre_fiscal', label: 'Nombre fiscal completo', type: 'text' },
+        { key: 'identificador', label: 'DNI / Pasaporte / ID local', type: 'text' },
         { key: 'rol', label: 'Rol', type: 'text', placeholder: 'Account Manager, Editor…' },
         { key: 'email', label: 'Email', type: 'email' },
+        { key: 'direccion', label: 'Dirección', type: 'text', wide: true },
         { key: 'sueldo_mensual_usd', label: 'Sueldo USD/mes', type: 'number', step: '0.01' },
         { key: 'fecha_inicio', label: 'Fecha inicio', type: 'date' },
+        { key: 'tax_residency_country', label: 'País residencia fiscal', type: 'text', placeholder: 'AR / ES / US / MX...' },
+        { key: 'tax_id_type', label: 'Tipo Tax ID', type: 'select', options: ['', 'W-9 (US)', 'W-8BEN (Foreign)', 'DNI', 'Pasaporte', 'CUIT/CUIL', 'NIE/NIF', 'RFC', 'Otro'] },
+        { key: 'tax_id_number', label: 'N° Tax ID', type: 'text' },
+        { key: 'w8_w9_on_file', label: 'W-8BEN/W-9 firmado en archivo', type: 'bool' },
+        { key: 'w8_w9_signed_date', label: 'Fecha firma W-8/W-9', type: 'date' },
+        { key: 'factura_numero_actual', label: 'Último N° de liquidación', type: 'number', step: '1' },
         { key: 'activo', label: 'Activo', type: 'bool' }
       ],
-      tableColumns: ['nombre', 'rol', 'email', 'sueldo_mensual_usd', 'activo']
+      tableColumns: ['nombre', 'rol', 'email', 'sueldo_mensual_usd', 'w8_w9_on_file', 'activo']
     },
     planes: {
       label: 'Planes de Servicio',
@@ -2262,38 +2288,68 @@
     view.innerHTML = Skel.full();
     try {
       const mes = currentMes();
-      const r = await api('facturas-list', { params: mes ? { mes } : {} });
-      const rows = (r.data || []).map(f => `
+      const filtroTipo = sessionStorage.getItem('facturas_filtro_tipo') || '';
+      const params = {};
+      if (mes) params.mes = mes;
+      if (filtroTipo) params.tipo = filtroTipo;
+      const r = await api('facturas-list', { params });
+
+      const tipoLabel = {
+        factura_modelo:        { txt: 'Modelo',     color: 'pink',  prefix: 'FCT' },
+        liquidacion_chatter:   { txt: 'Chatter',    color: 'blue',  prefix: 'LIQ' },
+        liquidacion_supervisor:{ txt: 'Supervisor', color: 'gold',  prefix: 'LIQ' },
+        liquidacion_equipo:    { txt: 'Equipo',     color: 'green', prefix: 'LIQ' }
+      };
+
+      const rows = (r.data || []).map(f => {
+        const t = tipoLabel[f.tipo] || { txt: f.tipo || '—', color: '', prefix: 'DOC' };
+        return `
         <tr>
-          <td><span class="pill pink">FCT-${String(f.numero).padStart(4, '0')}</span></td>
-          <td><strong>${escapeHtml(f.modelo_nombre || ('Modelo #' + f.entidad_id))}</strong></td>
+          <td><span class="pill pink">${t.prefix}-${String(f.numero).padStart(4, '0')}</span></td>
+          <td><span class="pill ${t.color}">${t.txt}</span></td>
+          <td><strong>${escapeHtml(f.modelo_nombre || ('#' + f.entidad_id))}</strong></td>
           <td>${f.mes || '—'}</td>
           <td>${f.fecha_emision ? new Date(f.fecha_emision).toLocaleDateString('es-AR') : '—'}</td>
           <td style="text-align:right"><strong>${fmtMoney(f.total, f.moneda)}</strong></td>
           <td>${estadoBadge(f.estado)}</td>
           <td style="text-align:right">
-            <button class="btn-ghost-small" data-reprint="${f.id}">📥 Reimprimir PDF</button>
+            <button class="btn-ghost-small" data-reprint="${f.id}">📥 PDF</button>
           </td>
         </tr>
-      `).join('');
+      `;}).join('');
 
       view.innerHTML = `
         <div class="table-wrap">
-          <div class="table-toolbar">
-            <h3>▦ Facturas Emitidas <span class="count">${(r.data || []).length}</span></h3>
-            <button class="btn-primary" style="width:auto;padding:8px 16px;font-size:0.85rem" onclick="location.hash='facturacion'">+ Nueva factura</button>
+          <div class="table-toolbar" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <h3>▦ Documentos emitidos <span class="count">${(r.data || []).length}</span></h3>
+            <div style="display:flex;gap:6px;align-items:center;margin-left:auto">
+              <label style="margin:0;font-size:0.7rem">Tipo:</label>
+              <select id="facturas-filtro-tipo" style="min-width:170px;padding:6px 32px 6px 12px;font-size:0.82rem">
+                <option value="" ${filtroTipo===''?'selected':''}>Todos</option>
+                <option value="factura_modelo" ${filtroTipo==='factura_modelo'?'selected':''}>Facturas a modelos</option>
+                <option value="liquidacion_chatter" ${filtroTipo==='liquidacion_chatter'?'selected':''}>Liquidaciones chatters</option>
+                <option value="liquidacion_supervisor" ${filtroTipo==='liquidacion_supervisor'?'selected':''}>Liquidación supervisor</option>
+                <option value="liquidacion_equipo" ${filtroTipo==='liquidacion_equipo'?'selected':''}>Liquidaciones equipo</option>
+              </select>
+              <button class="btn-primary" style="width:auto;padding:8px 16px;font-size:0.85rem" onclick="location.hash='facturacion'">+ Nueva factura</button>
+            </div>
           </div>
           <table>
             <thead>
               <tr>
-                <th>N°</th><th>Modelo</th><th>Mes</th><th>Emisión</th>
+                <th>N°</th><th>Tipo</th><th>Receptor</th><th>Mes</th><th>Emisión</th>
                 <th style="text-align:right">Total</th><th>Estado</th><th style="text-align:right">Acciones</th>
               </tr>
             </thead>
-            <tbody>${rows || '<tr><td colspan="7" class="empty-state">Aún no hay facturas emitidas.</td></tr>'}</tbody>
+            <tbody>${rows || '<tr><td colspan="8" class="empty-state">Aún no hay documentos emitidos.</td></tr>'}</tbody>
           </table>
         </div>
       `;
+
+      document.getElementById('facturas-filtro-tipo')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('facturas_filtro_tipo', e.target.value);
+        renderFacturas(view);
+      });
 
       view.querySelectorAll('[data-reprint]').forEach(b => {
         b.addEventListener('click', async () => {
@@ -2481,9 +2537,10 @@
           <td><input type="number" step="0.01" class="sum-e3" value="${e3 || ''}" placeholder="0" style="max-width:110px;text-align:right"></td>
           <td style="text-align:right;font-weight:700" class="sum-falta-cell">${fmtMoney(falta)}</td>
           <td><span class="${estadoClass}">${estadoLbl}</span></td>
-          <td style="text-align:right">
+          <td style="text-align:right;white-space:nowrap">
             <button class="btn-ghost-small sum-save" type="button" title="Guardar envíos">💾</button>
             ${detailBtn}
+            <button class="btn-ghost-small sum-factura" type="button" title="Generar factura/liquidación legal" ${neto <= 0 ? 'disabled' : ''}>📄</button>
           </td>
         </tr>
       `;
@@ -2644,6 +2701,23 @@
         liqState.selected = chId;
         drawLiquidacion(view);
         document.getElementById('liq-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    view.querySelectorAll('.sum-factura').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const tr = btn.closest('tr');
+        const kind = tr.dataset.sumKind; // chatter | supervisor | equipo
+        const entityId = Number(tr.dataset.sumId);
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = '⏳';
+        try {
+          await generarFacturaLegal(kind, entityId);
+        } catch (e) {
+          toast('Error: ' + e.message, 'error');
+        } finally {
+          btn.disabled = false; btn.innerHTML = originalHtml;
+        }
       });
     });
     // Copiar email al clipboard
@@ -3153,6 +3227,253 @@
 
 </div>`;
     await renderHtmlToPdf(html, `liquidacion_${chatter.nombre.replace(/\s+/g, '_')}_${liqState.mes}.pdf`);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // FACTURA / LIQUIDACIÓN LEGAL (US LLC compliant)
+  //   - Para chatter/supervisor: usa data de liqState (pagos_by_chatter)
+  //   - Para equipo: usa pagos_by_equipo + sueldo del catálogo
+  //   - Incluye header con datos LLC, receptor con tax data, footer legal
+  //   - Persiste en facturas_emitidas con numero secuencial por entidad
+  // ═══════════════════════════════════════════════════════
+  async function generarFacturaLegal(kind, entityId) {
+    const mes = liqState.mes;
+    if (!mes) { toast('Mes no definido', 'error'); return; }
+
+    // 1) Resolver datos del receptor y monto del mes
+    let receptor = null, items = [], bruto = 0, neto = 0, fee = 0, conceptoCorto = '';
+
+    if (kind === 'chatter' || kind === 'supervisor') {
+      const chList = kind === 'supervisor'
+        ? [liqState.supervisor].filter(Boolean)
+        : (liqState.chatters || []);
+      receptor = chList.find(c => c && c.id === entityId);
+      if (!receptor) {
+        // fallback: traer del catálogo
+        const r = await api('catalog', { params: { entity: 'chatters', id: entityId } });
+        receptor = r.data;
+      }
+      const pago = kind === 'supervisor'
+        ? (liqState.supervisor_pago || {})
+        : ((liqState.pagos_by_chatter || {})[entityId] || {});
+      bruto = Number(pago.total_bruto || 0);
+      neto  = Number(pago.neto_a_pagar || 0);
+      fee   = Number(pago.transaction_fee_pct || liqState.transaction_fee_pct || 0);
+      // Items: detalle de comisiones del mes desde liquidacion_mes
+      const cuentaById = {};
+      (liqState.cuentas || []).forEach(c => { cuentaById[c.id] = c; });
+      const detalles = kind === 'supervisor'
+        ? [{ descripcion: `SFS Control + comisiones supervisión · ${fmtMesNice(mes)}`, monto: bruto }]
+        : ((liqState.detalle_by_chatter || {})[entityId] || [])
+            .filter(d => Number(d.comision_calculada || 0) > 0)
+            .map(d => {
+              const cu = cuentaById[d.cuenta_id];
+              const cuentaTxt = cu ? `${cu.modelo_nombre} ${cu.tipo || ''}`.trim() : `Cuenta #${d.cuenta_id}`;
+              return {
+                descripcion: `${cuentaTxt} · ${d.porcentaje_comision}%`,
+                monto: Number(d.comision_calculada || 0)
+              };
+            });
+      // Sumar bonus (TL, incentivos, incentivo del mes) que están en pagos
+      if (kind === 'chatter') {
+        if (Number(pago.team_leader_bonus || 0) > 0) {
+          detalles.push({ descripcion: 'Team Leader Bonus', monto: Number(pago.team_leader_bonus) });
+        }
+        const incIndiv = Array.isArray(pago.incentivos_individuales) ? pago.incentivos_individuales : [];
+        incIndiv.forEach(i => detalles.push({ descripcion: i.descripcion || 'Incentivo', monto: Number(i.monto || 0) }));
+        if (pago.incentivo_mes_ganado) {
+          detalles.push({ descripcion: 'Incentivo del Mes (Ganador)', monto: Number(pago.incentivo_mes_monto || 0) });
+        }
+      }
+      items = detalles.length ? detalles : [{ descripcion: kind === 'supervisor' ? 'Liquidación supervisor' : 'Liquidación de chatting', monto: bruto }];
+      conceptoCorto = kind === 'supervisor' ? 'Liquidación Supervisor' : 'Liquidación Chatter';
+    } else if (kind === 'equipo') {
+      const eqList = liqState.equipo || [];
+      receptor = eqList.find(e => e && e.id === entityId);
+      if (!receptor) {
+        const r = await api('catalog', { params: { entity: 'equipo', id: entityId } });
+        receptor = r.data;
+      }
+      const pago = (liqState.pagos_by_equipo || {})[entityId] || {};
+      const monto = Number(pago.monto != null ? pago.monto : (receptor?.sueldo_mensual_usd || 0));
+      bruto = monto; neto = monto; fee = 0;
+      items = [{ descripcion: `${receptor?.rol || 'Servicios'} · Sueldo mensual`, monto }];
+      conceptoCorto = `Liquidación ${receptor?.rol || 'Equipo'}`;
+    }
+
+    if (!receptor) { toast('No se pudo encontrar el receptor', 'error'); return; }
+    if (neto <= 0) { toast('No hay monto a pagar este mes', 'error'); return; }
+
+    // 2) Confirmación rápida (sin modal pesado por ahora)
+    const nombreCorto = receptor.nombre || receptor.nombre_fiscal || '—';
+    if (!confirm(`Generar liquidación legal para ${nombreCorto}\nPeríodo: ${fmtMesNice(mes)}\nNeto: ${fmtMoney(neto)}\n\nSe registra en "Facturas" con N° secuencial.\n\n¿Continuar?`)) {
+      return;
+    }
+
+    // 3) Persistir en backend (numerador + snapshot)
+    const fechaHoy = new Date().toISOString().slice(0, 10);
+    const [yy, mm] = mes.split('-').map(Number);
+    const lastDay = new Date(yy, mm, 0).getDate();
+    const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const periodoFull = `01 al ${lastDay} de ${meses[mm-1]} ${yy}`;
+
+    const html = buildFacturaLegalHtml({ kind, receptor, items, bruto, neto, fee, mes, periodoFull, fechaHoy, numero: null });
+
+    let numero = null;
+    try {
+      const r = await api('factura-create', {
+        method: 'POST',
+        body: {
+          entidad_tipo: kind,
+          entidad_id: entityId,
+          mes,
+          fecha_emision: fechaHoy,
+          concepto: conceptoCorto,
+          items,
+          subtotal: bruto,
+          iva: 0,
+          total: neto,
+          moneda: 'USD',
+          servicios_pie: items.map(i => i.descripcion).join(' · '),
+          pdf_html_snapshot: html
+        }
+      });
+      numero = r.data?.numero;
+    } catch (e) {
+      toast('Error al registrar la factura: ' + e.message, 'error');
+      return;
+    }
+
+    // 4) Re-render con el N° asignado y emitir PDF
+    const finalHtml = buildFacturaLegalHtml({ kind, receptor, items, bruto, neto, fee, mes, periodoFull, fechaHoy, numero });
+    const filename = `liquidacion_${kind}_${(nombreCorto || 'recv').replace(/\s+/g, '_')}_${mes}_${numero || ''}.pdf`;
+    await renderHtmlToPdf(finalHtml, filename);
+    toast(`Liquidación #${numero} emitida para ${nombreCorto}`, 'success');
+  }
+
+  // Builder reusable del HTML de la factura/liquidación legal
+  function buildFacturaLegalHtml({ kind, receptor, items, bruto, neto, fee, mes, periodoFull, fechaHoy, numero }) {
+    const customLogo = (window.AGENCY_LOGO_DATA_URI || '').trim();
+    const logoHtml = customLogo
+      ? `<img src="${customLogo}" alt="BraveGirls" width="68" height="68" style="display:block;object-fit:contain;border-radius:10px"/>`
+      : `<div style="width:68px;height:68px;border-radius:12px;background:#be185d;color:#fff;text-align:center;line-height:68px;font-weight:900;font-size:20px;font-family:Arial,sans-serif">BG</div>`;
+
+    const ACCENT = '#be185d';
+    const LABEL = '#6b1c4a';
+    const VALUE = '#0f172a';
+    const MUTED = '#6b7280';
+
+    const tipoLabel = {
+      chatter:    'Liquidación de Servicios · Chatter',
+      supervisor: 'Liquidación de Servicios · Supervisor',
+      equipo:     'Liquidación de Servicios · Equipo Fijo'
+    }[kind] || 'Liquidación';
+
+    const taxBlock = receptor.tax_id_number || receptor.tax_residency_country
+      ? `<div style="font-size:9.5px;color:${MUTED};margin-top:3px">
+           ${receptor.tax_id_type ? `${escapeHtml(receptor.tax_id_type)}: ` : 'Tax ID: '}<strong style="color:${VALUE}">${escapeHtml(receptor.tax_id_number || '—')}</strong>
+           ${receptor.tax_residency_country ? ` · País fiscal: <strong style="color:${VALUE}">${escapeHtml(receptor.tax_residency_country)}</strong>` : ''}
+         </div>`
+      : `<div style="font-size:9px;color:#dc2626;margin-top:3px;font-weight:600">⚠ Tax ID no registrado en el catálogo</div>`;
+
+    const w8Block = receptor.w8_w9_on_file
+      ? `<div style="font-size:9px;color:#15803d;margin-top:2px;font-weight:600">✓ W-8BEN/W-9 en archivo${receptor.w8_w9_signed_date ? ` (${receptor.w8_w9_signed_date})` : ''}</div>`
+      : `<div style="font-size:9px;color:#b45309;margin-top:2px;font-weight:600">⚠ W-8BEN/W-9 pendiente de firma</div>`;
+
+    const itemRows = items.map(it => `
+      <tr>
+        <td style="padding:9px 12px;font-size:11.5px;color:${VALUE};border-bottom:1px solid #fce7f3">${escapeHtml(it.descripcion)}</td>
+        <td style="padding:9px 12px;text-align:right;font-weight:700;font-size:11.5px;color:${VALUE};border-bottom:1px solid #fce7f3">${fmtMoney(it.monto)}</td>
+      </tr>
+    `).join('');
+
+    const feeAmount = bruto - neto;
+    const numeroLbl = numero ? `N° ${numero}` : 'PREVIEW';
+
+    return `
+<div style="font-family:Arial,Helvetica,sans-serif;padding:18px 22px;color:${VALUE};background:#fff;width:100%;box-sizing:border-box">
+
+  <!-- HEADER LLC + N° -->
+  <table style="width:100%;border-collapse:collapse;margin-bottom:14px">
+    <tr>
+      <td style="vertical-align:top;width:62%">
+        <div style="display:flex;align-items:center;gap:12px">
+          ${logoHtml}
+          <div>
+            <div style="font-size:18px;font-weight:900;color:${ACCENT};letter-spacing:-0.4px;line-height:1.1">${LLC_INFO.nombre}</div>
+            <div style="font-size:9.5px;color:${MUTED};margin-top:3px;line-height:1.4">${LLC_INFO.direccion}</div>
+            <div style="font-size:9.5px;color:${MUTED};margin-top:2px"><strong style="color:${VALUE}">EIN:</strong> ${LLC_INFO.ein} · <strong style="color:${VALUE}">Lic.:</strong> ${LLC_INFO.licencia}</div>
+            <div style="font-size:9.5px;color:${MUTED}"><strong style="color:${VALUE}">Tel:</strong> ${LLC_INFO.telefono}</div>
+          </div>
+        </div>
+      </td>
+      <td style="vertical-align:top;text-align:right">
+        <div style="display:inline-block;background:${ACCENT};color:#fff;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:0.06em">${numeroLbl}</div>
+        <div style="font-size:9.5px;color:${MUTED};margin-top:6px">Emisión: <strong style="color:${VALUE}">${fechaHoy}</strong></div>
+        <div style="font-size:9.5px;color:${MUTED}">Período: <strong style="color:${VALUE}">${periodoFull}</strong></div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- TITULO -->
+  <div style="font-size:22px;color:${ACCENT};font-weight:900;letter-spacing:-0.5px;line-height:1;margin:6px 0 4px">${tipoLabel}</div>
+
+  <!-- RECEPTOR -->
+  <table style="width:100%;border-collapse:collapse;margin-top:10px;background:#fdf2f8;border:1px solid #fbcfe8;border-radius:6px">
+    <tr>
+      <td style="padding:12px 16px;vertical-align:top">
+        <div style="font-size:9px;color:${LABEL};text-transform:uppercase;letter-spacing:0.1em;font-weight:800;margin-bottom:4px">Pago a / Bill to</div>
+        <div style="font-size:14px;font-weight:800;color:${VALUE}">${escapeHtml(receptor.nombre_fiscal || receptor.nombre || '—')}</div>
+        ${receptor.nombre_fiscal && receptor.nombre && receptor.nombre !== receptor.nombre_fiscal ? `<div style="font-size:10px;color:${MUTED}">a/k/a "${escapeHtml(receptor.nombre)}"</div>` : ''}
+        ${receptor.direccion ? `<div style="font-size:10px;color:${MUTED};margin-top:3px">${escapeHtml(receptor.direccion)}</div>` : ''}
+        ${receptor.email ? `<div style="font-size:10px;color:${MUTED}">${escapeHtml(receptor.email)}</div>` : ''}
+        ${taxBlock}
+        ${w8Block}
+      </td>
+    </tr>
+  </table>
+
+  <!-- ITEMS -->
+  <table style="width:100%;border-collapse:collapse;background:#fff;font-size:11.5px;border:1.5px solid ${ACCENT};margin-top:12px">
+    <thead>
+      <tr style="background:${ACCENT}">
+        <th style="padding:9px 12px;text-align:left;color:#fff;font-size:10.5px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase">Descripción del servicio</th>
+        <th style="padding:9px 12px;text-align:right;color:#fff;font-size:10.5px;font-weight:800;width:140px;letter-spacing:0.04em;text-transform:uppercase">Monto USD</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows || '<tr><td colspan="2" style="padding:20px;text-align:center;color:#9ca3af">Sin ítems</td></tr>'}</tbody>
+  </table>
+
+  <!-- TOTALES -->
+  <table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:12px">
+    <tr>
+      <td style="width:55%"></td>
+      <td style="padding:6px 12px;text-align:right;color:${LABEL};font-weight:800;border-bottom:1px solid #fce7f3">Subtotal bruto</td>
+      <td style="padding:6px 12px;text-align:right;color:${VALUE};font-weight:800;width:130px;border-bottom:1px solid #fce7f3">${fmtMoney(bruto)}</td>
+    </tr>
+    ${fee > 0 ? `
+    <tr>
+      <td></td>
+      <td style="padding:5px 12px;text-align:right;color:${LABEL};font-weight:700;border-bottom:1px solid #fce7f3">Transaction fee (${fee}%)</td>
+      <td style="padding:5px 12px;text-align:right;color:#dc2626;font-weight:800;border-bottom:1px solid #fce7f3">−${fmtMoney(feeAmount)}</td>
+    </tr>` : ''}
+    <tr>
+      <td></td>
+      <td style="padding:12px 12px 4px;text-align:right;color:${ACCENT};font-weight:900;font-size:13px;letter-spacing:0.02em;text-transform:uppercase">Total neto a pagar</td>
+      <td style="padding:12px 12px 4px;text-align:right;color:${ACCENT};font-weight:900;font-size:22px;letter-spacing:-0.5px;line-height:1">${fmtMoney(neto)}</td>
+    </tr>
+  </table>
+
+  <!-- FOOTER LEGAL -->
+  <div style="margin-top:22px;padding:11px 14px;background:#f9fafb;border-left:3px solid ${ACCENT};font-size:9px;color:${MUTED};line-height:1.5">
+    <strong style="color:${VALUE};text-transform:uppercase;letter-spacing:0.06em;font-size:8.5px">Notice · IRS Compliance</strong><br>
+    This statement reflects payments made to an independent contractor for services rendered. The recipient is solely responsible for declaring and paying applicable taxes in their jurisdiction of residence. BraveGirls Agency LLC, a Delaware registered company (EIN ${LLC_INFO.ein}), complies with IRS Form W-8BEN / W-9 / 1099-NEC reporting requirements where applicable. Records of this transaction are retained for a minimum of 7 years.
+  </div>
+  <div style="margin-top:10px;text-align:center;color:#9ca3af;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase">
+    ${LLC_INFO.nombre} · ${new Date().getFullYear()} · Documento generado electrónicamente
+  </div>
+
+</div>`;
   }
 
   // ═══════════════════════════════════════════════════════

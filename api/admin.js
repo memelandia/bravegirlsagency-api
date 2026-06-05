@@ -119,6 +119,29 @@ async function ensureGastosSoftDelete() {
   _ensuredGastosSoftDelete = true;
 }
 
+let _ensuredFacturaSeqColumns = false;
+async function ensureFacturaSeqColumns() {
+  if (_ensuredFacturaSeqColumns) return;
+  // Numeración independiente por chatter/equipo para liquidaciones legales.
+  await sql`ALTER TABLE chatters_admin ADD COLUMN IF NOT EXISTS factura_numero_actual INTEGER DEFAULT 0`;
+  await sql`ALTER TABLE equipo_fijo ADD COLUMN IF NOT EXISTS factura_numero_actual INTEGER DEFAULT 0`;
+  // Datos fiscales de cada receptor para validez legal frente a IRS.
+  await sql`ALTER TABLE chatters_admin ADD COLUMN IF NOT EXISTS tax_residency_country TEXT`;
+  await sql`ALTER TABLE chatters_admin ADD COLUMN IF NOT EXISTS tax_id_type TEXT`;
+  await sql`ALTER TABLE chatters_admin ADD COLUMN IF NOT EXISTS tax_id_number TEXT`;
+  await sql`ALTER TABLE chatters_admin ADD COLUMN IF NOT EXISTS w8_w9_on_file BOOLEAN DEFAULT FALSE`;
+  await sql`ALTER TABLE chatters_admin ADD COLUMN IF NOT EXISTS w8_w9_signed_date DATE`;
+  await sql`ALTER TABLE equipo_fijo ADD COLUMN IF NOT EXISTS tax_residency_country TEXT`;
+  await sql`ALTER TABLE equipo_fijo ADD COLUMN IF NOT EXISTS tax_id_type TEXT`;
+  await sql`ALTER TABLE equipo_fijo ADD COLUMN IF NOT EXISTS tax_id_number TEXT`;
+  await sql`ALTER TABLE equipo_fijo ADD COLUMN IF NOT EXISTS w8_w9_on_file BOOLEAN DEFAULT FALSE`;
+  await sql`ALTER TABLE equipo_fijo ADD COLUMN IF NOT EXISTS w8_w9_signed_date DATE`;
+  await sql`ALTER TABLE equipo_fijo ADD COLUMN IF NOT EXISTS direccion TEXT`;
+  await sql`ALTER TABLE equipo_fijo ADD COLUMN IF NOT EXISTS nombre_fiscal TEXT`;
+  await sql`ALTER TABLE equipo_fijo ADD COLUMN IF NOT EXISTS identificador TEXT`;
+  _ensuredFacturaSeqColumns = true;
+}
+
 let _ensuredFrontendErrors = false;
 async function ensureFrontendErrorsTable() {
   if (_ensuredFrontendErrors) return;
@@ -292,19 +315,37 @@ const ENTITY_CONFIG = {
     listColumns: [
       'id', 'nombre', 'nombre_fiscal', 'identificador', 'direccion', 'email',
       'fecha_inicio', 'porcentaje_default', 'porcentaje_supervisor',
-      'rol', 'es_team_leader', 'activo'
+      'rol', 'es_team_leader',
+      'tax_residency_country', 'tax_id_type', 'tax_id_number',
+      'w8_w9_on_file', 'w8_w9_signed_date', 'factura_numero_actual',
+      'activo'
     ],
     upsertColumns: [
       'nombre', 'nombre_fiscal', 'identificador', 'direccion', 'email',
       'fecha_inicio', 'porcentaje_default', 'porcentaje_supervisor',
-      'rol', 'es_team_leader', 'activo'
+      'rol', 'es_team_leader',
+      'tax_residency_country', 'tax_id_type', 'tax_id_number',
+      'w8_w9_on_file', 'w8_w9_signed_date', 'factura_numero_actual',
+      'activo'
     ]
   },
   equipo: {
     table: 'equipo_fijo',
     activeColumn: 'activo',
-    listColumns: ['id', 'nombre', 'rol', 'email', 'sueldo_mensual_usd', 'fecha_inicio', 'activo'],
-    upsertColumns: ['nombre', 'rol', 'email', 'sueldo_mensual_usd', 'fecha_inicio', 'activo']
+    listColumns: [
+      'id', 'nombre', 'nombre_fiscal', 'identificador', 'rol', 'email', 'direccion',
+      'sueldo_mensual_usd', 'fecha_inicio',
+      'tax_residency_country', 'tax_id_type', 'tax_id_number',
+      'w8_w9_on_file', 'w8_w9_signed_date', 'factura_numero_actual',
+      'activo'
+    ],
+    upsertColumns: [
+      'nombre', 'nombre_fiscal', 'identificador', 'rol', 'email', 'direccion',
+      'sueldo_mensual_usd', 'fecha_inicio',
+      'tax_residency_country', 'tax_id_type', 'tax_id_number',
+      'w8_w9_on_file', 'w8_w9_signed_date', 'factura_numero_actual',
+      'activo'
+    ]
   }
 };
 
@@ -461,6 +502,7 @@ module.exports = async function handler(req, res) {
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       // Asegurar columnas opcionales antes de cualquier SELECT
       await ensureEnviosColumns();
+      await ensureFacturaSeqColumns();
 
       const entity = req.query.entity;
       if (!entity || !ENTITY_CONFIG[entity]) {
@@ -682,15 +724,32 @@ module.exports = async function handler(req, res) {
     }
 
     // ─── CREAR FACTURA (snapshot inmutable) ────
-    // POST ?action=factura-create body: { modelo_id, mes, items, ...metadatos }
+    // POST ?action=factura-create body: { entidad_tipo: 'modelo'|'chatter'|'equipo'|'supervisor', entidad_id, mes, items, ... }
+    //   Compat: si viene modelo_id en body, se asume entidad_tipo='modelo'.
     if (action === 'factura-create') {
       const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureFacturaSeqColumns();
 
       if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
       const b = req.body || {};
-      const modeloId = Number(b.modelo_id);
-      if (!modeloId) return res.status(400).json({ success: false, error: 'modelo_id requerido' });
+      // Compat: si llega modelo_id (sin entidad_tipo), asumimos factura_modelo
+      let entidadTipo = String(b.entidad_tipo || (b.modelo_id ? 'modelo' : '')).toLowerCase();
+      let entidadId = Number(b.entidad_id || b.modelo_id);
+      if (!entidadId) return res.status(400).json({ success: false, error: 'entidad_id requerido' });
+      if (!['modelo', 'chatter', 'equipo', 'supervisor'].includes(entidadTipo)) {
+        return res.status(400).json({ success: false, error: 'entidad_tipo inválido' });
+      }
+
+      // Map entidad_tipo → tabla + tipo de doc
+      const SEQ_TABLE = {
+        modelo:      { table: 'modelos',         tipo: 'factura_modelo' },
+        chatter:     { table: 'chatters_admin',  tipo: 'liquidacion_chatter' },
+        supervisor:  { table: 'chatters_admin',  tipo: 'liquidacion_supervisor' }, // supervisor también vive en chatters_admin
+        equipo:      { table: 'equipo_fijo',     tipo: 'liquidacion_equipo' }
+      };
+      const seqCfg = SEQ_TABLE[entidadTipo];
+      const tipoDoc = seqCfg.tipo;
 
       const numeroManualRaw = b.numero;
       const usaManual = numeroManualRaw !== undefined && numeroManualRaw !== null && numeroManualRaw !== '';
@@ -706,24 +765,16 @@ module.exports = async function handler(req, res) {
       // Número de factura: manual (si viene) o autoincremental
       await sql`BEGIN`;
       try {
-        const upd = usaManual
-          ? await sql`
-            UPDATE modelos
-            SET factura_numero_actual = GREATEST(COALESCE(factura_numero_actual, 0), ${numeroManual}),
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = ${modeloId}
-            RETURNING factura_numero_actual
-          `
-          : await sql`
-            UPDATE modelos
-            SET factura_numero_actual = COALESCE(factura_numero_actual, 0) + 1,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = ${modeloId}
-            RETURNING factura_numero_actual
-          `;
+        // Increment numerador en la tabla del receptor (sql.query crudo porque varía la tabla)
+        const updSql = usaManual
+          ? `UPDATE ${seqCfg.table} SET factura_numero_actual = GREATEST(COALESCE(factura_numero_actual, 0), $1) WHERE id = $2 RETURNING factura_numero_actual`
+          : `UPDATE ${seqCfg.table} SET factura_numero_actual = COALESCE(factura_numero_actual, 0) + 1 WHERE id = $1 RETURNING factura_numero_actual`;
+        const updParams = usaManual ? [numeroManual, entidadId] : [entidadId];
+        const upd = await sql.query(updSql, updParams);
+
         if (upd.rows.length === 0) {
           await sql`ROLLBACK`;
-          return res.status(404).json({ success: false, error: 'modelo no encontrada' });
+          return res.status(404).json({ success: false, error: `${entidadTipo} no encontrado` });
         }
         const numero = usaManual ? numeroManual : Number(upd.rows[0].factura_numero_actual);
 
@@ -735,7 +786,7 @@ module.exports = async function handler(req, res) {
             subtotal, iva, total, moneda, cotizacion_eur,
             servicios_pie, estado, pdf_html_snapshot
           ) VALUES (
-            ${numero}, 'factura_modelo', 'modelo', ${modeloId}, ${b.mes || null},
+            ${numero}, ${tipoDoc}, ${entidadTipo}, ${entidadId}, ${b.mes || null},
             ${b.fecha_emision || null}, ${b.fecha_vencimiento || null}, ${b.pago_por || null},
             ${b.concepto || null}, ${b.porcentaje_concepto || null},
             ${JSON.stringify(b.items || [])}::jsonb,
@@ -751,7 +802,7 @@ module.exports = async function handler(req, res) {
       } catch (e) {
         await sql`ROLLBACK`;
         if (e && e.code === '23505') {
-          return res.status(409).json({ success: false, error: 'Ese número de factura ya existe para esta modelo' });
+          return res.status(409).json({ success: false, error: 'Ese número de factura ya existe para este receptor' });
         }
         throw e;
       }
@@ -765,24 +816,30 @@ module.exports = async function handler(req, res) {
 
       const modeloId = req.query.modelo_id ? Number(req.query.modelo_id) : null;
       const mes = req.query.mes || null;
+      const tipo = req.query.tipo || null; // factura_modelo | liquidacion_chatter | liquidacion_supervisor | liquidacion_equipo
 
       let query = `
         SELECT f.id, f.numero, f.tipo, f.entidad_tipo, f.entidad_id, f.mes,
                f.fecha_emision, f.fecha_vencimiento, f.pago_por,
                f.concepto, f.subtotal, f.iva, f.total, f.moneda, f.estado,
                f.created_at,
-               m.nombre AS modelo_nombre
+               COALESCE(m.nombre, c.nombre, eq.nombre) AS receptor_nombre
         FROM facturas_emitidas f
-        LEFT JOIN modelos m ON m.id = f.entidad_id AND f.entidad_tipo = 'modelo'
-        WHERE f.tipo = 'factura_modelo'
+        LEFT JOIN modelos        m  ON m.id  = f.entidad_id AND f.entidad_tipo = 'modelo'
+        LEFT JOIN chatters_admin c  ON c.id  = f.entidad_id AND f.entidad_tipo IN ('chatter','supervisor')
+        LEFT JOIN equipo_fijo    eq ON eq.id = f.entidad_id AND f.entidad_tipo = 'equipo'
+        WHERE 1=1
       `;
       const params = [];
+      if (tipo)     { params.push(tipo);     query += ` AND f.tipo = $${params.length}`; }
       if (modeloId) { params.push(modeloId); query += ` AND f.entidad_id = $${params.length}`; }
       if (mes)      { params.push(mes);      query += ` AND f.mes = $${params.length}`; }
       query += ` ORDER BY f.created_at DESC LIMIT 200`;
 
       const r = await sql.query(query, params);
-      return res.status(200).json({ success: true, data: r.rows });
+      // Compat: el frontend viejo espera `modelo_nombre`
+      const rows = r.rows.map(x => ({ ...x, modelo_nombre: x.receptor_nombre }));
+      return res.status(200).json({ success: true, data: rows });
     }
 
     // ─── OBTENER UNA FACTURA (con su HTML snapshot para reimprimir PDF) ────
