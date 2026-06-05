@@ -1618,6 +1618,150 @@ td .btn-ghost-small.sum-detail + .btn-ghost-small.sum-save { margin-left: 6px; }
 .btn-row-del:hover { transform: scale(1.05); }
 
 /* ═══════════════════════════════════════════════════════════════
+   v18 — ARCHIVOS · CONTABILIDAD · DROPZONE · PILLS NUEVAS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Libro Mayor table ─── */
+.libro-mayor-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.libro-mayor-table th {
+  font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-mute); font-weight: 800; padding: 10px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.02);
+}
+.libro-mayor-table td {
+  padding: 9px 8px; border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: middle;
+}
+.libro-mayor-table tbody tr:hover { background: rgba(255,31,142,0.04); }
+.lm-archivo {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  background: rgba(56,189,248,0.1);
+  border: 1px solid rgba(56,189,248,0.25);
+  border-radius: 8px;
+  color: #7DD3FC; text-decoration: none;
+  font-size: 0.95rem;
+  transition: all 0.15s var(--ease);
+}
+.lm-archivo:hover { background: rgba(56,189,248,0.2); transform: scale(1.06); }
+
+/* ─── Archivos toolbar ─── */
+.archivos-toolbar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  justify-content: space-between;
+}
+.archivos-filtros {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex: 1;
+}
+.archivos-filtros input, .archivos-filtros select {
+  min-height: 38px; padding: 7px 12px; font-size: 0.85rem;
+}
+.archivos-filtros #arch-mes    { max-width: 170px; }
+.archivos-filtros #arch-cat    { max-width: 220px; }
+.archivos-filtros #arch-search { min-width: 200px; flex: 1; }
+
+/* ─── Archivos grid ─── */
+.archivos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+.archivo-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all 0.2s var(--ease);
+  display: flex; flex-direction: column;
+}
+.archivo-card:hover {
+  border-color: var(--border-brand);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.archivo-thumb {
+  height: 130px;
+  background: linear-gradient(135deg, rgba(255,31,142,0.04), rgba(56,189,248,0.04));
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.archivo-thumb img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.archivo-icon {
+  font-size: 3rem; opacity: 0.7;
+}
+.archivo-body {
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.archivo-title {
+  font-size: 0.88rem; font-weight: 700; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  max-height: 2.6em;
+}
+.archivo-meta {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+}
+.archivo-actions {
+  display: flex; gap: 6px; margin-top: 8px;
+  border-top: 1px solid var(--border); padding-top: 10px;
+}
+.archivo-actions .btn-ghost-small, .archivo-actions .btn-danger {
+  width: 32px; height: 32px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.92rem; border-radius: 8px;
+  text-decoration: none;
+}
+
+/* ─── Upload dropzone ─── */
+.upload-dropzone {
+  border: 2px dashed rgba(255,255,255,0.2);
+  border-radius: var(--radius-md);
+  padding: 26px 16px;
+  text-align: center; cursor: pointer;
+  background: rgba(255,255,255,0.02);
+  transition: all 0.18s var(--ease);
+}
+.upload-dropzone:hover {
+  border-color: rgba(255,31,142,0.5);
+  background: rgba(255,31,142,0.04);
+}
+.upload-dropzone.dragover {
+  border-color: var(--brand);
+  background: rgba(255,31,142,0.1);
+  transform: scale(1.02);
+}
+.upload-dropzone .dropzone-content { pointer-events: none; }
+
+/* ─── Pills nuevas para categorías de archivos ─── */
+.pill.cat-factura_recibida  { background: rgba(56,189,248,0.12);  border-color: rgba(56,189,248,0.3);  color: #7DD3FC; }
+.pill.cat-comprobante_pago  { background: rgba(34,197,94,0.12);   border-color: rgba(34,197,94,0.3);   color: #4ADE80; }
+.pill.cat-extracto_bancario { background: rgba(168,85,247,0.12);  border-color: rgba(168,85,247,0.3);  color: #C4B5FD; }
+.pill.cat-contrato_chatter  { background: rgba(255,31,142,0.12);  border-color: rgba(255,31,142,0.3);  color: #FF1F8E; }
+.pill.cat-w8_w9             { background: rgba(251,146,60,0.12);  border-color: rgba(251,146,60,0.3);  color: #FDBA74; }
+
+/* ─── Categorías de libro mayor ─── */
+.pill.cat-cobro_modelo     { background: rgba(34,197,94,0.12);   border-color: rgba(34,197,94,0.3);   color: #4ADE80; }
+.pill.cat-pago_chatter     { background: rgba(168,85,247,0.12);  border-color: rgba(168,85,247,0.3);  color: #C4B5FD; }
+.pill.cat-pago_supervisor  { background: rgba(255,31,142,0.12);  border-color: rgba(255,31,142,0.3);  color: #FF1F8E; }
+.pill.cat-pago_equipo      { background: rgba(251,146,60,0.12);  border-color: rgba(251,146,60,0.3);  color: #FDBA74; }
+
+/* Mobile responsive */
+@media (max-width: 980px) {
+  .archivos-toolbar { flex-direction: column; align-items: stretch; }
+  .archivos-filtros { flex-direction: column; gap: 8px; }
+  .archivos-filtros input, .archivos-filtros select { max-width: 100% !important; width: 100% !important; }
+  .archivos-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .libro-mayor-table { font-size: 0.76rem; min-width: 700px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    v14 — GANANCIAS REDISEÑO + DELTA BADGES
    ═══════════════════════════════════════════════════════════════ */
 .pnl-header {

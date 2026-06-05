@@ -50,9 +50,10 @@
         { key: 'gasto_om_modelo_default', label: 'Gasto OM (modelo paga)', type: 'number', step: '0.01' },
         { key: 'gasto_om_agencia_default', label: 'Gasto OM (agencia paga)', type: 'number', step: '0.01' },
         { key: 'servicios_factura_texto', label: 'Texto servicios (pie factura)', type: 'textarea', wide: true },
+        { key: 'tma_signed_date', label: 'Fecha firma TMA', shortLabel: 'TMA', type: 'date' },
         { key: 'activa', label: 'Activa', type: 'bool' }
       ],
-      tableColumns: ['nombre', 'plan_id', 'porcentaje', 'moneda_default', 'factura_numero_actual', 'activa']
+      tableColumns: ['nombre', 'plan_id', 'porcentaje', 'moneda_default', 'factura_numero_actual', 'tma_signed_date', 'activa']
     },
     cuentas: {
       label: 'Cuentas',
@@ -329,8 +330,10 @@
       cobros:      ['Cobros a Modelos', 'Control de pagos recibidos por modelo'],
       supervisor:  ['Supervisor · Jony', 'Comisión automática del supervisor'],
       ganancias:   ['Ganancias (P&L)', 'Estado de resultados de la agencia'],
+      contabilidad:['Contabilidad · Libro Mayor', 'Movimientos cronológicos del mes (ingresos, egresos, neto)'],
       incentivos:  ['Incentivos del Mes', 'Histórico de ganadores'],
       facturas:    ['Facturas Emitidas', 'Listado histórico de todas las facturas'],
+      archivos:    ['Archivos', 'Facturas recibidas, comprobantes, extractos y contratos'],
       gastos:      ['Gastos del Mes', 'Registro de gastos fijos y variables'],
       ajustes:     ['Ajustes', 'Configuración global del sistema']
     };
@@ -346,8 +349,10 @@
     if (route === 'cobros')      return renderCobros(view);
     if (route === 'supervisor')  return renderSupervisor(view);
     if (route === 'ganancias')   return renderGanancias(view);
+    if (route === 'contabilidad')return renderContabilidad(view);
     if (route === 'incentivos')  return renderIncentivos(view);
     if (route === 'facturas')    return renderFacturas(view);
+    if (route === 'archivos')    return renderArchivos(view);
     if (route === 'gastos')      return renderGastos(view);
     if (route === 'ajustes')     return renderAjustes(view);
     view.innerHTML = `<div class="card center muted">Sección "${route}" — próximamente.</div>`;
@@ -801,14 +806,19 @@
            </td></tr>`
         : data.map(row => {
             const showIca = entity === 'chatters' || entity === 'equipo';
+            const showTma = entity === 'modelos';
             const icaBtn = showIca
               ? `<button class="btn-ghost-small btn-row-ica" data-ica="${row.id}" data-ica-rol="${row.rol || ''}" title="Generar ICA (contrato de servicios)">📜</button>`
+              : '';
+            const tmaBtn = showTma
+              ? `<button class="btn-ghost-small btn-row-tma" data-tma="${row.id}" title="${row.tma_url ? 'Ver / Reemplazar TMA' : 'Subir TMA (Talent Management Agreement)'}">📜</button>`
               : '';
             return `
             <tr>
               ${def.tableColumns.map(c => `<td>${formatCell(c, row[c], entity)}</td>`).join('')}
               <td class="action-col" style="text-align:right;white-space:nowrap">
                 ${icaBtn}
+                ${tmaBtn}
                 <button class="btn-ghost-small btn-row-edit" data-edit="${row.id}" title="Editar">✎</button>
                 <button class="btn-danger btn-row-del" data-del="${row.id}" title="Desactivar">✕</button>
               </td>
@@ -867,6 +877,13 @@
           }
         });
       });
+      container.querySelectorAll('[data-tma]').forEach(b => {
+        b.addEventListener('click', () => {
+          const row = data.find(r => r.id === Number(b.dataset.tma));
+          if (!row) return;
+          openTMAUploadModal(row, () => showEntityList(entity));
+        });
+      });
     } catch (e) {
       container.innerHTML = `<div class="card center muted">⚠️ Error cargando: ${e.message}</div>`;
     }
@@ -888,6 +905,11 @@
       return value
         ? `<span class="pill green" title="ICA firmado el ${value}">✓</span>`
         : '<span class="pill red" title="ICA pendiente de firma">✕</span>';
+    }
+    if (key === 'tma_signed_date') {
+      return value
+        ? `<span class="pill green" title="TMA firmado el ${value}">✓</span>`
+        : '<span class="pill red" title="TMA pendiente / no cargado">✕</span>';
     }
     if (key === 'w8_w9_signed_date' && value) {
       return `<span class="muted" style="font-size:0.78rem">${value}</span>`;
@@ -4195,7 +4217,7 @@
         <div class="pnl-grid">
           <div class="card pnl-card-in">
             <div class="pnl-card-head">
-              <span class="section-ico ico-green"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+              <span class="section-ico section-ico--green"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
               <h3>Ingresos</h3>
             </div>
             ${pnlLine('Total facturado a modelos', p.ingreso_bruto, pPrev?.ingreso_bruto, { color: 'var(--green)' })}
@@ -4207,7 +4229,7 @@
 
           <div class="card pnl-card-out">
             <div class="pnl-card-head">
-              <span class="section-ico ico-red"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg></span>
+              <span class="section-ico section-ico--red"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg></span>
               <h3>Egresos</h3>
             </div>
             ${pnlLine('Pagos a chatters', p.pagos_chatters, pPrev?.pagos_chatters, { color: 'var(--red)', minus: true, invert: true })}
@@ -4250,6 +4272,581 @@
   // ═══════════════════════════════════════════════════════
   // FASE 3 · VISTA: INCENTIVOS HISTÓRICO
   // ═══════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════
+  // CONTABILIDAD · Libro Mayor del mes
+  // ═══════════════════════════════════════════════════════
+  async function renderContabilidad(view) {
+    const mes = currentMes();
+    view.innerHTML = Skel.full();
+    try {
+      const r = await api('libro-mayor', { params: { mes } });
+      const k = r.kpis || {};
+      const lineas = r.lineas || [];
+
+      // Calcular balance acumulado
+      let balance = 0;
+      const lineasConBalance = lineas.map(l => {
+        balance += l.tipo === 'ingreso' ? l.monto : -l.monto;
+        return { ...l, balance };
+      });
+
+      const fmtFecha = (f) => f ? new Date(f).toLocaleDateString('es-AR') : '—';
+      const categoriaLabel = {
+        cobro_modelo:    'Cobro Modelo',
+        pago_chatter:    'Pago Chatter',
+        pago_supervisor: 'Pago Supervisor',
+        pago_equipo:     'Pago Equipo',
+        publicidad:      'Publicidad',
+        herramientas:    'Herramientas',
+        ia:              'IA',
+        om:              'OnlyMonster',
+        incentivos:      'Incentivos',
+        otros:           'Otros'
+      };
+
+      const rows = lineasConBalance.map(l => {
+        const sign = l.tipo === 'ingreso' ? '+' : '−';
+        const color = l.tipo === 'ingreso' ? 'var(--green)' : 'var(--red)';
+        const balColor = l.balance >= 0 ? 'var(--green)' : 'var(--red)';
+        const catSlug = String(l.categoria || 'otros').toLowerCase();
+        const catLbl = categoriaLabel[catSlug] || catSlug;
+        const archivoBtn = l.archivo_url
+          ? `<a href="${escapeHtml(l.archivo_url)}" target="_blank" rel="noopener" title="Abrir comprobante" class="lm-archivo">📎</a>`
+          : '<span class="muted" style="opacity:0.3">—</span>';
+        return `
+          <tr>
+            <td style="font-size:0.78rem;color:var(--text-mute);white-space:nowrap">${fmtFecha(l.fecha)}</td>
+            <td>${escapeHtml(l.concepto)}</td>
+            <td><span class="pill cat-${catSlug}" style="font-size:0.7rem">${catLbl}</span></td>
+            <td style="text-align:right;color:${color};font-weight:700;font-variant-numeric:tabular-nums">${l.tipo === 'ingreso' ? sign + fmtMoney(l.monto, l.moneda) : ''}</td>
+            <td style="text-align:right;color:${color};font-weight:700;font-variant-numeric:tabular-nums">${l.tipo === 'egreso' ? sign + fmtMoney(l.monto, l.moneda) : ''}</td>
+            <td style="text-align:right;color:${balColor};font-weight:800;font-variant-numeric:tabular-nums">${fmtMoney(l.balance, l.moneda)}</td>
+            <td style="text-align:center">${archivoBtn}</td>
+          </tr>
+        `;
+      }).join('');
+
+      view.innerHTML = `
+        <div class="kpi-row" style="margin-bottom:18px">
+          <div class="kpi-mini big">
+            <div class="kpi-mini-lbl">Total ingresos</div>
+            <div class="kpi-mini-val" style="color:var(--green)">${fmtMoney(k.total_ingresos)}</div>
+          </div>
+          <div class="kpi-mini big">
+            <div class="kpi-mini-lbl">Total egresos</div>
+            <div class="kpi-mini-val" style="color:var(--red)">${fmtMoney(k.total_egresos)}</div>
+          </div>
+          <div class="kpi-mini big highlight">
+            <div class="kpi-mini-lbl">Neto del mes</div>
+            <div class="kpi-mini-val" style="color:${k.neto >= 0 ? 'var(--green)' : 'var(--red)'}">${fmtMoney(k.neto)}</div>
+          </div>
+          <div class="kpi-mini big">
+            <div class="kpi-mini-lbl">Movimientos · Archivos</div>
+            <div class="kpi-mini-val" style="font-size:1.2rem">${k.cantidad_lineas || 0} · ${k.cantidad_archivos || 0}</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+            <span><span class="section-ico section-ico--gold"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span> Libro Mayor · ${fmtMesNice(mes)}</span>
+            <div style="display:flex;gap:8px">
+              <button class="btn-secondary" id="lm-export-csv" style="width:auto;padding:8px 14px;font-size:0.82rem">📥 Exportar CSV</button>
+              <button class="btn-primary" id="lm-upload" style="width:auto;padding:8px 14px;font-size:0.82rem">+ Subir comprobante</button>
+            </div>
+          </div>
+          <p class="card-sub">Vista cronológica unificada del mes. Click 📎 abre el archivo respaldatorio si existe.</p>
+          <div class="table-wrap" style="margin-top:14px">
+            <table class="libro-mayor-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Concepto</th>
+                  <th>Categoría</th>
+                  <th style="text-align:right">Ingreso</th>
+                  <th style="text-align:right">Egreso</th>
+                  <th style="text-align:right">Balance</th>
+                  <th style="text-align:center">📎</th>
+                </tr>
+              </thead>
+              <tbody>${rows || '<tr><td colspan="7" class="empty-state">Sin movimientos en ' + fmtMesNice(mes) + '. Cargá cobros, gastos o liquidaciones desde sus pestañas.</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('lm-export-csv')?.addEventListener('click', () => {
+        const csv = [
+          ['Fecha', 'Tipo', 'Concepto', 'Categoría', 'Subcategoría', 'Monto', 'Moneda', 'Balance'].join(','),
+          ...lineasConBalance.map(l => [
+            l.fecha ? new Date(l.fecha).toISOString().slice(0, 10) : '',
+            l.tipo,
+            `"${(l.concepto || '').replace(/"/g, '""')}"`,
+            l.categoria || '',
+            l.subcategoria || '',
+            l.monto.toFixed(2),
+            l.moneda,
+            l.balance.toFixed(2)
+          ].join(','))
+        ].join('\n');
+        const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `libro-mayor-${mes}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('CSV descargado', 'success');
+      });
+
+      document.getElementById('lm-upload')?.addEventListener('click', () => {
+        openArchivoUploadModal({ categoria: 'comprobante_pago', mes });
+      });
+    } catch (e) {
+      view.innerHTML = `<div class="card center muted">⚠️ ${e.message}</div>`;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // ARCHIVOS · Gestión de archivos respaldatorios
+  // ═══════════════════════════════════════════════════════
+  const ARCHIVO_CATEGORIAS = [
+    { key: 'factura_recibida',  label: 'Factura recibida',  sub: ['OnlyMonster', 'Anthropic', 'Notion', 'Linktree', 'Reddit', 'OnlyFans Fee'] },
+    { key: 'comprobante_pago',  label: 'Comprobante pago',  sub: ['Binance', 'Paxum', 'Wise', 'Bizum', 'Mercury Wire'] },
+    { key: 'extracto_bancario', label: 'Extracto bancario', sub: ['Mercury', 'Wise', 'Skrill'] },
+    { key: 'contrato_chatter',  label: 'Contrato chatter',  sub: ['ICA firmado', 'W-8BEN', 'W-9'] },
+    { key: 'w8_w9',             label: 'W-8BEN / W-9',      sub: ['W-8BEN', 'W-9'] },
+    { key: 'otros',             label: 'Otros',             sub: [] }
+  ];
+
+  async function renderArchivos(view) {
+    const filtros = window._archivosFiltros || {};
+    view.innerHTML = Skel.full();
+    try {
+      const params = {};
+      if (filtros.mes)            params.mes = filtros.mes;
+      if (filtros.categoria)      params.categoria = filtros.categoria;
+      const r = await api('archivos-list', { params });
+      let archivos = r.data || [];
+      // Búsqueda por texto client-side
+      const search = (filtros.search || '').trim().toLowerCase();
+      if (search) {
+        archivos = archivos.filter(a =>
+          (a.descripcion || '').toLowerCase().includes(search) ||
+          (a.subcategoria || '').toLowerCase().includes(search) ||
+          (a.filename || '').toLowerCase().includes(search)
+        );
+      }
+
+      const catOptions = ARCHIVO_CATEGORIAS.map(c =>
+        `<option value="${c.key}" ${filtros.categoria === c.key ? 'selected' : ''}>${c.label}</option>`
+      ).join('');
+
+      const cards = archivos.map(a => {
+        const isImage = (a.mime_type || '').startsWith('image/');
+        const thumb = isImage
+          ? `<img src="${escapeHtml(a.blob_url)}" alt="" loading="lazy"/>`
+          : `<div class="archivo-icon">${(a.mime_type || '').includes('pdf') ? '📄' : '📎'}</div>`;
+        const catCfg = ARCHIVO_CATEGORIAS.find(c => c.key === a.categoria);
+        const catLbl = catCfg ? catCfg.label : a.categoria;
+        return `
+          <div class="archivo-card" data-id="${a.id}">
+            <div class="archivo-thumb">${thumb}</div>
+            <div class="archivo-body">
+              <div class="archivo-title" title="${escapeHtml(a.descripcion || a.filename)}">${escapeHtml(a.descripcion || a.filename)}</div>
+              <div class="archivo-meta">
+                <span class="pill cat-${a.categoria}" style="font-size:0.68rem">${catLbl}</span>
+                ${a.subcategoria ? `<span class="muted" style="font-size:0.72rem">${escapeHtml(a.subcategoria)}</span>` : ''}
+              </div>
+              <div class="archivo-meta">
+                ${a.mes ? `<span class="muted" style="font-size:0.72rem">${a.mes}</span>` : ''}
+                ${a.monto != null ? `<strong style="font-size:0.84rem">${fmtMoney(a.monto, a.moneda)}</strong>` : ''}
+              </div>
+              <div class="archivo-actions">
+                <a class="btn-ghost-small" href="${escapeHtml(a.blob_url)}" target="_blank" rel="noopener" title="Abrir">👁</a>
+                <button class="btn-ghost-small archivo-edit" data-id="${a.id}" title="Editar metadata">✎</button>
+                <button class="btn-danger archivo-del" data-id="${a.id}" title="Borrar">🗑</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      view.innerHTML = `
+        <div class="card" style="margin-bottom:18px">
+          <div class="archivos-toolbar">
+            <div class="archivos-filtros">
+              <input type="month" id="arch-mes" value="${filtros.mes || ''}" placeholder="Todos los meses">
+              <select id="arch-cat">
+                <option value="">Todas las categorías</option>
+                ${catOptions}
+              </select>
+              <input type="text" id="arch-search" placeholder="🔍 Buscar..." value="${escapeHtml(filtros.search || '')}">
+              <button class="btn-secondary" id="arch-clear" style="width:auto;padding:8px 14px;font-size:0.82rem">Limpiar</button>
+            </div>
+            <button class="btn-primary" id="arch-upload" style="width:auto;padding:10px 18px">+ Subir archivo</button>
+          </div>
+        </div>
+
+        <div class="archivos-grid">
+          ${cards || '<div class="card empty-state center" style="padding:48px"><div class="big">📁</div><div>Sin archivos cargados. Subí tu primer respaldo.</div></div>'}
+        </div>
+      `;
+
+      document.getElementById('arch-mes')?.addEventListener('change', (e) => {
+        window._archivosFiltros = { ...filtros, mes: e.target.value || null };
+        renderArchivos(view);
+      });
+      document.getElementById('arch-cat')?.addEventListener('change', (e) => {
+        window._archivosFiltros = { ...filtros, categoria: e.target.value || null };
+        renderArchivos(view);
+      });
+      let searchTimer;
+      document.getElementById('arch-search')?.addEventListener('input', (e) => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          window._archivosFiltros = { ...filtros, search: e.target.value };
+          renderArchivos(view);
+        }, 250);
+      });
+      document.getElementById('arch-clear')?.addEventListener('click', () => {
+        window._archivosFiltros = {};
+        renderArchivos(view);
+      });
+      document.getElementById('arch-upload')?.addEventListener('click', () => {
+        openArchivoUploadModal({ mes: filtros.mes || currentMes() });
+      });
+      view.querySelectorAll('.archivo-del').forEach(b => {
+        b.addEventListener('click', async () => {
+          if (!confirm('¿Borrar este archivo? El archivo se elimina del storage también.')) return;
+          try {
+            await api('archivo-delete', { method: 'POST', params: { id: b.dataset.id } });
+            toast('Archivo borrado', 'success');
+            renderArchivos(view);
+          } catch (e) { toast('Error: ' + e.message, 'error'); }
+        });
+      });
+      view.querySelectorAll('.archivo-edit').forEach(b => {
+        b.addEventListener('click', () => {
+          const arch = archivos.find(a => String(a.id) === b.dataset.id);
+          if (arch) openArchivoEditModal(arch, view);
+        });
+      });
+    } catch (e) {
+      view.innerHTML = `<div class="card center muted">⚠️ ${e.message}</div>`;
+    }
+  }
+
+  // ─── Modal de upload de archivo ───
+  function openArchivoUploadModal(prefill = {}) {
+    const catOptions = ARCHIVO_CATEGORIAS.map(c =>
+      `<option value="${c.key}" ${prefill.categoria === c.key ? 'selected' : ''}>${c.label}</option>`
+    ).join('');
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal" style="max-width:560px">
+        <div class="modal-header">
+          <div class="modal-title">📤 Subir archivo</div>
+          <button class="modal-close" type="button">✕</button>
+        </div>
+        <form id="arch-upload-form">
+          <div class="upload-dropzone" id="arch-dropzone">
+            <input type="file" id="arch-file" accept="application/pdf,image/*" hidden>
+            <div class="dropzone-content">
+              <div style="font-size:2rem">📎</div>
+              <div style="font-weight:600;margin-top:8px">Arrastrá un archivo aquí</div>
+              <div class="muted" style="font-size:0.78rem;margin-top:4px">o hacé click para seleccionar · PDF / imagen · máx 8 MB</div>
+              <div id="arch-file-name" class="muted" style="font-size:0.82rem;margin-top:10px;font-weight:600;color:var(--brand)"></div>
+            </div>
+          </div>
+
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+            <div>
+              <label for="arch-cat-input">Categoría *</label>
+              <select id="arch-cat-input" required>
+                <option value="">Elegí…</option>
+                ${catOptions}
+              </select>
+            </div>
+            <div>
+              <label for="arch-sub-input">Subcategoría</label>
+              <input type="text" id="arch-sub-input" placeholder="ej: OnlyMonster, Mercury, Binance…" list="arch-sub-options">
+              <datalist id="arch-sub-options"></datalist>
+            </div>
+            <div class="full">
+              <label for="arch-desc-input">Descripción</label>
+              <input type="text" id="arch-desc-input" placeholder="ej: Factura mayo OnlyMonster">
+            </div>
+            <div>
+              <label for="arch-mes-input">Mes</label>
+              <input type="month" id="arch-mes-input" value="${prefill.mes || currentMes()}">
+            </div>
+            <div>
+              <label for="arch-monto-input">Monto (opcional)</label>
+              <input type="number" id="arch-monto-input" step="0.01" placeholder="0.00">
+            </div>
+            <div class="full">
+              <label for="arch-notas-input">Notas</label>
+              <input type="text" id="arch-notas-input" placeholder="Detalles adicionales…">
+            </div>
+          </div>
+
+          <div class="form-actions" style="margin-top:18px">
+            <button type="button" class="btn-secondary modal-cancel">Cancelar</button>
+            <button type="submit" class="btn-primary" id="arch-submit">Subir</button>
+          </div>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+
+    const closeModal = () => backdrop.remove();
+    backdrop.querySelector('.modal-close').addEventListener('click', closeModal);
+    backdrop.querySelector('.modal-cancel').addEventListener('click', closeModal);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModal(); });
+
+    const fileInput = backdrop.querySelector('#arch-file');
+    const dropzone = backdrop.querySelector('#arch-dropzone');
+    const fileNameEl = backdrop.querySelector('#arch-file-name');
+    let selectedFile = null;
+
+    const setFile = (f) => {
+      if (!f) return;
+      if (f.size > 8 * 1024 * 1024) { toast('Archivo muy grande (máx 8 MB)', 'error'); return; }
+      selectedFile = f;
+      fileNameEl.textContent = `✓ ${f.name} (${(f.size / 1024).toFixed(0)} KB)`;
+    };
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => setFile(e.target.files[0]));
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      setFile(e.dataTransfer.files[0]);
+    });
+
+    // Actualizar sugerencias de subcategoría según categoría
+    const catSelect = backdrop.querySelector('#arch-cat-input');
+    const datalist = backdrop.querySelector('#arch-sub-options');
+    const updateSugs = () => {
+      const cfg = ARCHIVO_CATEGORIAS.find(c => c.key === catSelect.value);
+      datalist.innerHTML = (cfg?.sub || []).map(s => `<option value="${s}">`).join('');
+    };
+    catSelect.addEventListener('change', updateSugs);
+    updateSugs();
+
+    backdrop.querySelector('#arch-upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!selectedFile) { toast('Seleccioná un archivo', 'error'); return; }
+      const submitBtn = backdrop.querySelector('#arch-submit');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '⏳ Subiendo…';
+      try {
+        const dataBase64 = await fileToBase64(selectedFile);
+        await api('archivo-upload', {
+          method: 'POST',
+          body: {
+            filename: selectedFile.name,
+            mime_type: selectedFile.type,
+            data_base64: dataBase64,
+            categoria: catSelect.value,
+            subcategoria: backdrop.querySelector('#arch-sub-input').value || null,
+            descripcion: backdrop.querySelector('#arch-desc-input').value || null,
+            mes: backdrop.querySelector('#arch-mes-input').value || null,
+            monto: backdrop.querySelector('#arch-monto-input').value || null,
+            moneda: 'USD',
+            notas: backdrop.querySelector('#arch-notas-input').value || null
+          }
+        });
+        toast('Archivo subido ✓', 'success');
+        closeModal();
+        const route = location.hash.replace('#', '') || 'resumen';
+        if (route === 'archivos' || route === 'contabilidad') navigate(route);
+      } catch (err) {
+        toast('Error: ' + err.message, 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Subir';
+      }
+    });
+  }
+
+  function openArchivoEditModal(arch, view) {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal" style="max-width:520px">
+        <div class="modal-header">
+          <div class="modal-title">✎ Editar metadata</div>
+          <button class="modal-close" type="button">✕</button>
+        </div>
+        <form id="arch-edit-form">
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px">
+            <div class="full">
+              <label>Descripción</label>
+              <input type="text" id="ed-desc" value="${escapeHtml(arch.descripcion || '')}">
+            </div>
+            <div>
+              <label>Mes</label>
+              <input type="month" id="ed-mes" value="${arch.mes || ''}">
+            </div>
+            <div>
+              <label>Monto</label>
+              <input type="number" id="ed-monto" step="0.01" value="${arch.monto || ''}">
+            </div>
+            <div class="full">
+              <label>Subcategoría</label>
+              <input type="text" id="ed-sub" value="${escapeHtml(arch.subcategoria || '')}">
+            </div>
+            <div class="full">
+              <label>Notas</label>
+              <input type="text" id="ed-notas" value="${escapeHtml(arch.notas || '')}">
+            </div>
+          </div>
+          <div class="form-actions" style="margin-top:14px">
+            <button type="button" class="btn-secondary modal-cancel">Cancelar</button>
+            <button type="submit" class="btn-primary">Guardar</button>
+          </div>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const close = () => backdrop.remove();
+    backdrop.querySelector('.modal-close').addEventListener('click', close);
+    backdrop.querySelector('.modal-cancel').addEventListener('click', close);
+    backdrop.querySelector('#arch-edit-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await api('archivo-update', {
+          method: 'POST',
+          params: { id: arch.id },
+          body: {
+            descripcion: backdrop.querySelector('#ed-desc').value || null,
+            mes: backdrop.querySelector('#ed-mes').value || null,
+            monto: backdrop.querySelector('#ed-monto').value || null,
+            subcategoria: backdrop.querySelector('#ed-sub').value || null,
+            notas: backdrop.querySelector('#ed-notas').value || null
+          }
+        });
+        toast('Actualizado', 'success');
+        close();
+        renderArchivos(view);
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    });
+  }
+
+  // Helper: file → base64 string (sin data: prefix)
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        const base64 = result.split(',')[1]; // sacar prefix "data:...;base64,"
+        resolve(base64);
+      };
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+      reader.readAsDataURL(file);
+    });
+  }
+  window.openArchivoUploadModal = openArchivoUploadModal;
+
+  // ─── Modal upload TMA de modelo ───
+  async function openTMAUploadModal(modelo, refreshFn) {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    const hasTMA = !!modelo.tma_url;
+    backdrop.innerHTML = `
+      <div class="modal" style="max-width:520px">
+        <div class="modal-header">
+          <div class="modal-title">📜 ${hasTMA ? 'Reemplazar' : 'Subir'} TMA · ${escapeHtml(modelo.nombre)}</div>
+          <button class="modal-close" type="button">✕</button>
+        </div>
+        <form id="tma-form">
+          ${hasTMA ? `
+            <div style="padding:10px 14px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:8px;margin-bottom:12px">
+              <div style="font-size:0.84rem">TMA actual:
+                <a href="${escapeHtml(modelo.tma_url)}" target="_blank" rel="noopener" style="color:var(--info);text-decoration:underline">Ver PDF</a>
+                ${modelo.tma_signed_date ? `· firmado el <strong>${modelo.tma_signed_date}</strong>` : ''}
+              </div>
+              <div class="muted" style="font-size:0.74rem;margin-top:4px">⚠ Al subir uno nuevo se reemplaza el anterior (no se puede recuperar).</div>
+            </div>
+          ` : ''}
+          <div class="upload-dropzone" id="tma-dropzone">
+            <input type="file" id="tma-file" accept="application/pdf,image/*" hidden>
+            <div class="dropzone-content">
+              <div style="font-size:2rem">📄</div>
+              <div style="font-weight:600;margin-top:8px">Arrastrá el TMA firmado aquí</div>
+              <div class="muted" style="font-size:0.78rem;margin-top:4px">PDF o imagen · máx 8 MB</div>
+              <div id="tma-file-name" class="muted" style="font-size:0.82rem;margin-top:10px;font-weight:600;color:var(--brand)"></div>
+            </div>
+          </div>
+          <div class="form-grid" style="grid-template-columns:1fr;gap:12px;margin-top:14px">
+            <div>
+              <label for="tma-date">Fecha de firma</label>
+              <input type="date" id="tma-date" value="${modelo.tma_signed_date || new Date().toISOString().slice(0, 10)}">
+            </div>
+          </div>
+          <div class="form-actions" style="margin-top:14px">
+            <button type="button" class="btn-secondary modal-cancel">Cancelar</button>
+            <button type="submit" class="btn-primary" id="tma-submit">${hasTMA ? 'Reemplazar' : 'Subir'} TMA</button>
+          </div>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const close = () => backdrop.remove();
+    backdrop.querySelector('.modal-close').addEventListener('click', close);
+    backdrop.querySelector('.modal-cancel').addEventListener('click', close);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+
+    const fileInput = backdrop.querySelector('#tma-file');
+    const dropzone = backdrop.querySelector('#tma-dropzone');
+    const fileNameEl = backdrop.querySelector('#tma-file-name');
+    let selectedFile = null;
+    const setFile = (f) => {
+      if (!f) return;
+      if (f.size > 8 * 1024 * 1024) { toast('Archivo muy grande (máx 8 MB)', 'error'); return; }
+      selectedFile = f;
+      fileNameEl.textContent = `✓ ${f.name} (${(f.size / 1024).toFixed(0)} KB)`;
+    };
+    dropzone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => setFile(e.target.files[0]));
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => { e.preventDefault(); dropzone.classList.remove('dragover'); setFile(e.dataTransfer.files[0]); });
+
+    backdrop.querySelector('#tma-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!selectedFile) { toast('Seleccioná un archivo', 'error'); return; }
+      const submitBtn = backdrop.querySelector('#tma-submit');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '⏳ Subiendo…';
+      try {
+        const dataBase64 = await fileToBase64(selectedFile);
+        await api('modelo-tma-upload', {
+          method: 'POST',
+          body: {
+            modelo_id: modelo.id,
+            filename: selectedFile.name,
+            mime_type: selectedFile.type,
+            data_base64: dataBase64,
+            tma_signed_date: backdrop.querySelector('#tma-date').value || null
+          }
+        });
+        toast(`TMA ${hasTMA ? 'reemplazado' : 'subido'} ✓`, 'success');
+        close();
+        if (refreshFn) refreshFn();
+      } catch (err) {
+        toast('Error: ' + err.message, 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = hasTMA ? 'Reemplazar TMA' : 'Subir TMA';
+      }
+    });
+  }
+  window.openTMAUploadModal = openTMAUploadModal;
+
   async function renderIncentivos(view) {
     view.innerHTML = Skel.full();
     try {

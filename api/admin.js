@@ -18,6 +18,7 @@
  */
 
 const { sql } = require('@vercel/postgres');
+const { put, del } = require('@vercel/blob');
 
 // ═══════════════════════════════════════════════════════════
 // Lazy table creation (sin migracion manual)
@@ -117,6 +118,47 @@ async function ensureGastosSoftDelete() {
   if (_ensuredGastosSoftDelete) return;
   await sql`ALTER TABLE gastos_mes ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`;
   _ensuredGastosSoftDelete = true;
+}
+
+let _ensuredArchivosTable = false;
+async function ensureArchivosTable() {
+  if (_ensuredArchivosTable) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS archivos (
+      id              BIGSERIAL PRIMARY KEY,
+      categoria       TEXT NOT NULL,
+      subcategoria    TEXT,
+      descripcion     TEXT,
+      mes             CHAR(7),
+      monto           NUMERIC(12,2),
+      moneda          TEXT DEFAULT 'USD',
+      entidad_tipo    TEXT,
+      entidad_id      INTEGER,
+      gasto_id        BIGINT,
+      factura_id      BIGINT,
+      blob_url        TEXT NOT NULL,
+      blob_pathname   TEXT NOT NULL,
+      filename        TEXT NOT NULL,
+      mime_type       TEXT,
+      size_bytes      BIGINT,
+      notas           TEXT,
+      created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      deleted_at      TIMESTAMP
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_archivos_mes        ON archivos(mes)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_archivos_categoria  ON archivos(categoria)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_archivos_entidad    ON archivos(entidad_tipo, entidad_id)`;
+  _ensuredArchivosTable = true;
+}
+
+let _ensuredModeloTMA = false;
+async function ensureModeloTMA() {
+  if (_ensuredModeloTMA) return;
+  await sql`ALTER TABLE modelos ADD COLUMN IF NOT EXISTS tma_url TEXT`;
+  await sql`ALTER TABLE modelos ADD COLUMN IF NOT EXISTS tma_pathname TEXT`;
+  await sql`ALTER TABLE modelos ADD COLUMN IF NOT EXISTS tma_signed_date DATE`;
+  _ensuredModeloTMA = true;
 }
 
 let _ensuredICATables = false;
@@ -316,13 +358,13 @@ const ENTITY_CONFIG = {
       'id', 'nombre', 'nombre_fiscal', 'identificador', 'direccion', 'email',
       'fecha_inicio', 'plan_id', 'porcentaje', 'moneda_default', 'medio_pago_default',
       'factura_numero_actual', 'gasto_om_modelo_default', 'gasto_om_agencia_default',
-      'servicios_factura_texto', 'activa'
+      'servicios_factura_texto', 'tma_url', 'tma_signed_date', 'activa'
     ],
     upsertColumns: [
       'nombre', 'nombre_fiscal', 'identificador', 'direccion', 'email',
       'fecha_inicio', 'plan_id', 'porcentaje', 'moneda_default', 'medio_pago_default',
       'factura_numero_actual', 'gasto_om_modelo_default', 'gasto_om_agencia_default',
-      'servicios_factura_texto', 'activa'
+      'servicios_factura_texto', 'tma_signed_date', 'activa'
     ]
   },
   cuentas: {
@@ -526,6 +568,7 @@ module.exports = async function handler(req, res) {
       await ensureEnviosColumns();
       await ensureFacturaSeqColumns();
       await ensureICATables();
+      await ensureModeloTMA();
 
       const entity = req.query.entity;
       if (!entity || !ENTITY_CONFIG[entity]) {
@@ -1992,10 +2035,389 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, fecha_firma: fecha });
     }
 
+    // ═══════════════════════════════════════════════════════
+    // ARCHIVOS — Vercel Blob storage
+    // ═══════════════════════════════════════════════════════
+    //
+    // POST ?action=archivo-upload   body: { filename, mime_type, data_base64, categoria, ... metadata }
+    // GET  ?action=archivos-list    [&mes=&categoria=&entidad_tipo=&entidad_id=]
+    // GET  ?action=archivo-get      &id=N
+    // POST ?action=archivo-update   &id=N  body: metadata editable
+    // POST ?action=archivo-delete   &id=N
+    // POST ?action=modelo-tma-upload  body: { modelo_id, filename, mime_type, data_base64, tma_signed_date }
+    if (action === 'archivo-upload') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+      await ensureArchivosTable();
+
+      const b = req.body || {};
+      if (!b.filename || !b.data_base64 || !b.categoria) {
+        return res.status(400).json({ success: false, error: 'filename, data_base64 y categoria requeridos' });
+      }
+
+      // Decode + validar tamaño (Vercel Hobby tope request ~4.5MB → base64 ~3.3MB binario)
+      let buffer;
+      try {
+        buffer = Buffer.from(b.data_base64, 'base64');
+      } catch (e) {
+        return res.status(400).json({ success: false, error: 'data_base64 inválido' });
+      }
+      if (buffer.length > 8 * 1024 * 1024) {
+        return res.status(400).json({ success: false, error: 'Archivo demasiado grande (máx 8 MB)' });
+      }
+
+      // Sanitizar pathname para que no rompa el blob
+      const safeName = String(b.filename).replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
+      const pathname = `${b.categoria}/${Date.now()}-${safeName}`;
+
+      let blob;
+      try {
+        blob = await put(pathname, buffer, {
+          access: 'public',
+          contentType: b.mime_type || 'application/octet-stream',
+          addRandomSuffix: false
+        });
+      } catch (e) {
+        return res.status(500).json({ success: false, error: 'Blob upload falló: ' + e.message });
+      }
+
+      const r = await sql`
+        INSERT INTO archivos (
+          categoria, subcategoria, descripcion, mes, monto, moneda,
+          entidad_tipo, entidad_id, gasto_id, factura_id,
+          blob_url, blob_pathname, filename, mime_type, size_bytes, notas
+        ) VALUES (
+          ${b.categoria}, ${b.subcategoria || null}, ${b.descripcion || null},
+          ${b.mes || null}, ${b.monto != null && b.monto !== '' ? Number(b.monto) : null}, ${b.moneda || 'USD'},
+          ${b.entidad_tipo || null}, ${b.entidad_id ? Number(b.entidad_id) : null},
+          ${b.gasto_id ? Number(b.gasto_id) : null}, ${b.factura_id ? Number(b.factura_id) : null},
+          ${blob.url}, ${blob.pathname}, ${safeName}, ${b.mime_type || null},
+          ${buffer.length}, ${b.notas || null}
+        )
+        RETURNING *
+      `;
+      // Purga oportunista: borrados > 60 días → delete blob + row
+      sql`
+        SELECT blob_pathname FROM archivos
+        WHERE deleted_at IS NOT NULL AND deleted_at < CURRENT_TIMESTAMP - INTERVAL '60 days'
+      `.then(async (old) => {
+        for (const row of old.rows) {
+          try { await del(row.blob_pathname); } catch (_) {}
+        }
+        await sql`DELETE FROM archivos WHERE deleted_at IS NOT NULL AND deleted_at < CURRENT_TIMESTAMP - INTERVAL '60 days'`;
+      }).catch(() => {});
+      return res.status(200).json({ success: true, data: r.rows[0] });
+    }
+
+    if (action === 'archivos-list') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureArchivosTable();
+
+      const mes      = req.query.mes || null;
+      const cat      = req.query.categoria || null;
+      const entT     = req.query.entidad_tipo || null;
+      const entId    = req.query.entidad_id ? Number(req.query.entidad_id) : null;
+
+      let q = `SELECT * FROM archivos WHERE deleted_at IS NULL`;
+      const params = [];
+      if (mes)   { params.push(mes);   q += ` AND mes = $${params.length}`; }
+      if (cat)   { params.push(cat);   q += ` AND categoria = $${params.length}`; }
+      if (entT)  { params.push(entT);  q += ` AND entidad_tipo = $${params.length}`; }
+      if (entId) { params.push(entId); q += ` AND entidad_id = $${params.length}`; }
+      q += ` ORDER BY created_at DESC LIMIT 500`;
+
+      const r = await sql.query(q, params);
+      return res.status(200).json({ success: true, data: r.rows });
+    }
+
+    if (action === 'archivo-get') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureArchivosTable();
+      const id = Number(req.query.id);
+      if (!id) return res.status(400).json({ success: false, error: 'id requerido' });
+      const r = await sql`SELECT * FROM archivos WHERE id = ${id}`;
+      if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'not found' });
+      return res.status(200).json({ success: true, data: r.rows[0] });
+    }
+
+    if (action === 'archivo-update') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+      await ensureArchivosTable();
+      const id = Number(req.query.id);
+      if (!id) return res.status(400).json({ success: false, error: 'id requerido' });
+      const b = req.body || {};
+      await sql`
+        UPDATE archivos SET
+          categoria    = COALESCE(${b.categoria}, categoria),
+          subcategoria = ${b.subcategoria !== undefined ? b.subcategoria : null},
+          descripcion  = ${b.descripcion !== undefined ? b.descripcion : null},
+          mes          = ${b.mes !== undefined ? b.mes : null},
+          monto        = ${b.monto != null && b.monto !== '' ? Number(b.monto) : null},
+          moneda       = COALESCE(${b.moneda}, moneda),
+          entidad_tipo = ${b.entidad_tipo !== undefined ? b.entidad_tipo : null},
+          entidad_id   = ${b.entidad_id ? Number(b.entidad_id) : null},
+          notas        = ${b.notas !== undefined ? b.notas : null}
+        WHERE id = ${id}
+      `;
+      return res.status(200).json({ success: true });
+    }
+
+    if (action === 'archivo-delete') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+      await ensureArchivosTable();
+      const id = Number(req.query.id);
+      if (!id) return res.status(400).json({ success: false, error: 'id requerido' });
+      const r = await sql`SELECT blob_pathname FROM archivos WHERE id = ${id}`;
+      if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'not found' });
+      // Soft delete primero, blob después (si blob falla, igual marca borrado)
+      await sql`UPDATE archivos SET deleted_at = CURRENT_TIMESTAMP WHERE id = ${id}`;
+      try { await del(r.rows[0].blob_pathname); } catch (_) { /* tolerable */ }
+      return res.status(200).json({ success: true });
+    }
+
+    if (action === 'modelo-tma-upload') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+      await ensureModeloTMA();
+
+      const b = req.body || {};
+      const modeloId = Number(b.modelo_id);
+      if (!modeloId || !b.filename || !b.data_base64) {
+        return res.status(400).json({ success: false, error: 'modelo_id, filename y data_base64 requeridos' });
+      }
+
+      let buffer;
+      try { buffer = Buffer.from(b.data_base64, 'base64'); }
+      catch (e) { return res.status(400).json({ success: false, error: 'data_base64 inválido' }); }
+      if (buffer.length > 8 * 1024 * 1024) {
+        return res.status(400).json({ success: false, error: 'Archivo demasiado grande (máx 8 MB)' });
+      }
+
+      // Borrar TMA anterior si existe
+      const prev = await sql`SELECT tma_pathname FROM modelos WHERE id = ${modeloId}`;
+      if (prev.rows.length === 0) return res.status(404).json({ success: false, error: 'modelo no encontrada' });
+      if (prev.rows[0].tma_pathname) {
+        try { await del(prev.rows[0].tma_pathname); } catch (_) {}
+      }
+
+      const safeName = String(b.filename).replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
+      const pathname = `tma/${modeloId}-${Date.now()}-${safeName}`;
+      let blob;
+      try {
+        blob = await put(pathname, buffer, {
+          access: 'public',
+          contentType: b.mime_type || 'application/pdf',
+          addRandomSuffix: false
+        });
+      } catch (e) {
+        return res.status(500).json({ success: false, error: 'Blob upload falló: ' + e.message });
+      }
+
+      const signedDate = b.tma_signed_date || new Date().toISOString().slice(0, 10);
+      await sql`
+        UPDATE modelos
+        SET tma_url = ${blob.url},
+            tma_pathname = ${blob.pathname},
+            tma_signed_date = ${signedDate}
+        WHERE id = ${modeloId}
+      `;
+      return res.status(200).json({
+        success: true,
+        data: { modelo_id: modeloId, tma_url: blob.url, tma_signed_date: signedDate }
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // LIBRO MAYOR — vista cronológica del mes
+    // ═══════════════════════════════════════════════════════
+    // GET ?action=libro-mayor&mes=YYYY-MM
+    // Devuelve filas tipo: { fecha, tipo: 'ingreso'|'egreso', concepto, categoria, monto, archivo_id?, archivo_url? }
+    if (action === 'libro-mayor') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      const mes = req.query.mes;
+      if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
+      await ensureArchivosTable();
+      await ensureGastosSoftDelete();
+
+      const lineas = [];
+
+      // 1) INGRESOS: cobros recibidos del mes (cierre_cuenta_mes)
+      const cobros = await sql`
+        SELECT cu.nombre_cuenta, m.nombre AS modelo, cc.pago_recibido, cc.total_a_cobrar,
+               cc.medio_pago, cc.estado_resumen, cc.moneda, cc.updated_at, cc.id AS cierre_id
+        FROM cierre_cuenta_mes cc
+        JOIN cuentas cu ON cu.id = cc.cuenta_id
+        JOIN modelos m  ON m.id = cu.modelo_id
+        WHERE cc.mes = ${mes} AND cc.pago_recibido > 0
+        ORDER BY cc.updated_at ASC
+      `;
+      cobros.rows.forEach(c => {
+        lineas.push({
+          fecha: c.updated_at,
+          tipo: 'ingreso',
+          concepto: `Cobro · ${c.modelo} (${c.nombre_cuenta})`,
+          categoria: 'cobro_modelo',
+          subcategoria: c.medio_pago || null,
+          monto: Number(c.pago_recibido),
+          moneda: c.moneda || 'USD',
+          ref: { tipo: 'cierre', id: c.cierre_id }
+        });
+      });
+
+      // 2) EGRESOS: gastos del mes (gastos_mes)
+      const gastos = await sql`
+        SELECT id, descripcion, categoria, monto, paga, observaciones, created_at
+        FROM gastos_mes
+        WHERE mes = ${mes} AND deleted_at IS NULL
+        ORDER BY created_at ASC
+      `;
+      gastos.rows.forEach(g => {
+        lineas.push({
+          fecha: g.created_at,
+          tipo: 'egreso',
+          concepto: g.descripcion || 'Gasto',
+          categoria: g.categoria || 'otros',
+          subcategoria: g.paga,
+          monto: Number(g.monto),
+          moneda: 'USD',
+          ref: { tipo: 'gasto', id: g.id }
+        });
+      });
+
+      // 3) EGRESOS: liquidaciones a chatters (chatter_pagos_mes)
+      const pagosChat = await sql`
+        SELECT cp.chatter_id, c.nombre AS chatter, cp.neto_a_pagar, cp.envio_1, cp.envio_2, cp.envio_3,
+               cp.fecha_envio_1, cp.fecha_envio_2, cp.fecha_envio_3
+        FROM chatter_pagos_mes cp
+        JOIN chatters_admin c ON c.id = cp.chatter_id
+        WHERE cp.mes = ${mes}
+        ORDER BY c.nombre
+      `;
+      pagosChat.rows.forEach(p => {
+        // una línea por cada envío real efectuado
+        ['envio_1', 'envio_2', 'envio_3'].forEach((env, i) => {
+          const monto = Number(p[env] || 0);
+          if (monto > 0) {
+            lineas.push({
+              fecha: p[`fecha_envio_${i+1}`] || null,
+              tipo: 'egreso',
+              concepto: `Liquidación chatter · ${p.chatter} (envío ${i+1})`,
+              categoria: 'pago_chatter',
+              subcategoria: null,
+              monto,
+              moneda: 'USD',
+              ref: { tipo: 'chatter_pago', id: p.chatter_id }
+            });
+          }
+        });
+      });
+
+      // 4) EGRESOS: pagos al supervisor
+      const pagosSup = await sql`
+        SELECT id, neto_a_pagar, envio_1, envio_2, envio_3,
+               fecha_envio_1, fecha_envio_2, fecha_envio_3
+        FROM supervisor_comision_mes
+        WHERE mes = ${mes}
+      `;
+      pagosSup.rows.forEach(p => {
+        ['envio_1', 'envio_2', 'envio_3'].forEach((env, i) => {
+          const monto = Number(p[env] || 0);
+          if (monto > 0) {
+            lineas.push({
+              fecha: p[`fecha_envio_${i+1}`] || null,
+              tipo: 'egreso',
+              concepto: `Pago Supervisor (envío ${i+1})`,
+              categoria: 'pago_supervisor',
+              subcategoria: null,
+              monto,
+              moneda: 'USD',
+              ref: { tipo: 'supervisor', id: p.id }
+            });
+          }
+        });
+      });
+
+      // 5) EGRESOS: pagos al equipo fijo
+      const pagosEq = await sql`
+        SELECT ep.equipo_id, e.nombre, e.rol, ep.envio_1, ep.envio_2, ep.envio_3,
+               ep.fecha_envio_1, ep.fecha_envio_2, ep.fecha_envio_3
+        FROM equipo_pagos_mes ep
+        JOIN equipo_fijo e ON e.id = ep.equipo_id
+        WHERE ep.mes = ${mes}
+        ORDER BY e.nombre
+      `;
+      pagosEq.rows.forEach(p => {
+        ['envio_1', 'envio_2', 'envio_3'].forEach((env, i) => {
+          const monto = Number(p[env] || 0);
+          if (monto > 0) {
+            lineas.push({
+              fecha: p[`fecha_envio_${i+1}`] || null,
+              tipo: 'egreso',
+              concepto: `Pago equipo · ${p.nombre}${p.rol ? ' (' + p.rol + ')' : ''} (envío ${i+1})`,
+              categoria: 'pago_equipo',
+              subcategoria: p.rol,
+              monto,
+              moneda: 'USD',
+              ref: { tipo: 'equipo_pago', id: p.equipo_id }
+            });
+          }
+        });
+      });
+
+      // Cruzar con archivos cargados del mes (puede haber comprobantes vinculados)
+      const archivos = await sql`SELECT id, blob_url, descripcion, categoria, entidad_tipo, entidad_id, gasto_id FROM archivos WHERE mes = ${mes} AND deleted_at IS NULL`;
+      const archByGasto = {};
+      archivos.rows.forEach(a => {
+        if (a.gasto_id) archByGasto[a.gasto_id] = a;
+      });
+
+      // Adjuntar archivo a líneas de gasto cuando hay match
+      lineas.forEach(l => {
+        if (l.ref?.tipo === 'gasto' && archByGasto[l.ref.id]) {
+          l.archivo_id = archByGasto[l.ref.id].id;
+          l.archivo_url = archByGasto[l.ref.id].blob_url;
+        }
+      });
+
+      // Ordenar cronológicamente por fecha (sin fecha = al final)
+      lineas.sort((a, b) => {
+        if (!a.fecha) return 1;
+        if (!b.fecha) return -1;
+        return new Date(a.fecha) - new Date(b.fecha);
+      });
+
+      // KPIs
+      const totalIngresos = lineas.filter(l => l.tipo === 'ingreso').reduce((s, l) => s + l.monto, 0);
+      const totalEgresos  = lineas.filter(l => l.tipo === 'egreso').reduce((s, l) => s + l.monto, 0);
+      const neto = totalIngresos - totalEgresos;
+
+      return res.status(200).json({
+        success: true,
+        mes,
+        kpis: {
+          total_ingresos: totalIngresos,
+          total_egresos: totalEgresos,
+          neto,
+          cantidad_lineas: lineas.length,
+          cantidad_archivos: archivos.rows.length
+        },
+        lineas
+      });
+    }
+
     return res.status(400).json({
       success: false,
       error: 'unknown action',
-      hint: 'usa ?action=login | logout | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | envios-update | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl | log-error | ica-generate | ica-list | ica-get | ica-mark-signed'
+      hint: 'usa ?action=login | logout | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | envios-update | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl | log-error | ica-generate | ica-list | ica-get | ica-mark-signed | archivo-upload | archivos-list | archivo-get | archivo-update | archivo-delete | modelo-tma-upload | libro-mayor'
     });
 
   } catch (error) {
