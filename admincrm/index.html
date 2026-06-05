@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css?v=7">
-  <link rel="stylesheet" href="./styles-ui-v2.css?v=13">
+  <link rel="stylesheet" href="./styles-ui-v2.css?v=14">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
@@ -118,6 +118,9 @@
     <!-- MAIN -->
     <main class="main">
       <header class="topbar">
+        <button type="button" id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Abrir menú">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
         <div class="topbar-left">
           <h1 class="page-title" id="page-title">Dashboard Administrativo &amp; Contable</h1>
           <div class="page-sub" id="page-sub">Resumen general del mes</div>
@@ -161,9 +164,12 @@
 
   </div>
 
+  <!-- Mobile sidebar backdrop -->
+  <div id="mobile-sidebar-backdrop" class="mobile-sidebar-backdrop"></div>
+
   <!-- Toast container -->
   <div id="toast" class="toast"></div>
 
-  <script src="./app.js?v=26"></script>
+  <script src="./app.js?v=27"></script>
 </body>
 </html>

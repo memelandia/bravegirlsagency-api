@@ -135,6 +135,56 @@
     reportError(e.reason || 'unhandled rejection');
   });
 
+  // ───────── Skeleton loaders (no afectan estructura visual final) ─────────
+  // Reemplazo del <div class="spinner"></div> con bloques shimmer.
+  // Devuelve string HTML. Cada vista decide qué layout usar.
+  const Skel = {
+    kpiRow(n = 4) {
+      const cells = Array.from({ length: n }, () =>
+        `<div class="skeleton skeleton-kpi"></div>`).join('');
+      return `<div class="skeleton-grid">${cells}</div>`;
+    },
+    card(opts = {}) {
+      const lines = opts.lines || 3;
+      const ls = Array.from({ length: lines }, (_, i) =>
+        `<div class="skeleton skeleton-line ${i === 0 ? 'lg' : ''}" style="width:${100 - i * 8}%"></div>`).join('');
+      return `<div class="card">${ls}</div>`;
+    },
+    table(rows = 6) {
+      const rs = Array.from({ length: rows }, () => `
+        <div class="skel-row">
+          <div class="skeleton skeleton-line" style="width:24px;height:24px;border-radius:6px"></div>
+          <div class="skeleton skeleton-line grow"></div>
+          <div class="skeleton skeleton-line" style="width:80px"></div>
+          <div class="skeleton skeleton-line" style="width:60px"></div>
+        </div>`).join('');
+      return `<div class="card">
+        <div class="skeleton skeleton-line lg" style="width:30%;margin-bottom:14px"></div>
+        ${rs}
+      </div>`;
+    },
+    resumen() {
+      return `
+        ${this.kpiRow(4)}
+        <div style="height:16px"></div>
+        <div class="grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          ${this.card({ lines: 5 })}
+          ${this.card({ lines: 5 })}
+        </div>
+        <div style="height:16px"></div>
+        ${this.card({ lines: 3 })}
+      `;
+    },
+    full() {
+      return `
+        ${this.kpiRow(4)}
+        <div style="height:16px"></div>
+        ${this.card({ lines: 4 })}
+      `;
+    }
+  };
+  window.Skel = Skel;
+
   // ───────── Toast ─────────
   function toast(msg, type = '') {
     const t = document.getElementById('toast');
@@ -316,7 +366,7 @@
 
   async function renderResumen(view) {
     const mes = currentMes();
-    view.innerHTML = `<div class="spinner"></div>`;
+    view.innerHTML = Skel.resumen();
     try {
       const r = await api('resumen-mes', { params: { mes } });
       const k = r.kpis;
@@ -699,7 +749,7 @@
   async function showEntityList(entity) {
     const def = ENTITY_DEFS[entity];
     const container = document.getElementById('catalogo-content');
-    container.innerHTML = `<div class="spinner"></div>`;
+    container.innerHTML = Skel.table(8);
 
     try {
       const r = await api('catalog', { params: { entity } });
@@ -920,7 +970,7 @@
   // ───────── Vista: Ajustes ─────────
   async function renderAjustes(view) {
     const mes = currentMes();
-    view.innerHTML = `<div class="spinner"></div>`;
+    view.innerHTML = Skel.full();
     try {
       const [feeRes, histRes, statsRes, overrideRes, errorsRes, trashRes] = await Promise.all([
         api('tx-fee',         { params: { mes } }),
@@ -1378,7 +1428,7 @@
 
   async function renderFacturacion(view) {
     const mes = currentMes();
-    view.innerHTML = `<div class="spinner"></div>`;
+    view.innerHTML = Skel.full();
 
     if (!modelosCache) {
       try { modelosCache = (await api('catalog', { params: { entity: 'modelos' } })).data; }
@@ -1502,7 +1552,7 @@
 
   async function loadFacturacionModelo(modeloId, mes) {
     const detail = document.getElementById('fact-detail');
-    detail.innerHTML = `<div class="spinner"></div>`;
+    detail.innerHTML = Skel.full();
     try {
       const r = await api('cierre-modelo', { params: { modelo_id: modeloId, mes } });
       currentFactState = { modelo: r.modelo, cuentas: r.cuentas, mes, facturaRef: r.factura_ref || {} };
@@ -2209,7 +2259,7 @@
   // VISTA: FACTURAS EMITIDAS
   // ═══════════════════════════════════════════════════════
   async function renderFacturas(view) {
-    view.innerHTML = `<div class="spinner"></div>`;
+    view.innerHTML = Skel.full();
     try {
       const mes = currentMes();
       const r = await api('facturas-list', { params: mes ? { mes } : {} });
@@ -2276,7 +2326,7 @@
   // ═══════════════════════════════════════════════════════
   async function renderGastos(view) {
     const mes = currentMes();
-    view.innerHTML = `<div class="spinner"></div>`;
+    view.innerHTML = Skel.full();
     try {
       const r = await api('gastos', { params: { mes } });
       const total = (r.data || []).reduce((s, g) => s + Number(g.monto || 0), 0);
@@ -2368,7 +2418,7 @@
 
   async function renderLiquidacion(view) {
     const mes = currentMes();
-    view.innerHTML = `<div class="spinner"></div>`;
+    view.innerHTML = Skel.full();
     try {
       const r = await api('liquidacion-mes', { params: { mes } });
       liqState = { ...r, selected: r.chatters[0]?.id || null };
@@ -3110,7 +3160,7 @@
   // ═══════════════════════════════════════════════════════
   async function renderCobros(view) {
     const mes = currentMes();
-    view.innerHTML = `<div class="spinner"></div>`;
+    view.innerHTML = Skel.full();
     try {
       const r = await api('cobros-mes', { params: { mes } });
       const rows = r.data;
@@ -3276,7 +3326,7 @@
   // ═══════════════════════════════════════════════════════
   async function renderSupervisor(view) {
     const mes = currentMes();
-    view.innerHTML = `<div class="spinner"></div>`;
+    view.innerHTML = Skel.full();
     try {
       const s = await api('supervisor-mes', { params: { mes } });
       const supName = s.supervisor ? s.supervisor.nombre : '— sin supervisor configurado —';
@@ -3486,42 +3536,123 @@
   // ═══════════════════════════════════════════════════════
   async function renderGanancias(view) {
     const mes = currentMes();
-    view.innerHTML = `<div class="spinner"></div>`;
+    view.innerHTML = Skel.full();
     try {
-      const p = await api('pnl', { params: { mes } });
+      // Mes actual + mes anterior para comparativa
+      const [yy, mm] = mes.split('-').map(Number);
+      const dPrev = new Date(yy, mm - 2, 1);
+      const mesPrev = `${dPrev.getFullYear()}-${String(dPrev.getMonth() + 1).padStart(2, '0')}`;
+      const [p, pPrev] = await Promise.all([
+        api('pnl', { params: { mes } }),
+        api('pnl', { params: { mes: mesPrev } }).catch(() => null)
+      ]);
       const totalGastos = p.pagos_chatters + p.pagos_supervisor + p.pagos_equipo_fijo + p.gasto_om_agencia + p.gastos_otros;
+      const prevTotalGastos = pPrev ? (pPrev.pagos_chatters + pPrev.pagos_supervisor + pPrev.pagos_equipo_fijo + pPrev.gasto_om_agencia + pPrev.gastos_otros) : 0;
+
+      // Helper para badge de Δ vs mes anterior
+      const delta = (curr, prev, opts = {}) => {
+        if (!pPrev || prev == null || (prev === 0 && curr === 0)) return '';
+        const diff = curr - prev;
+        const pct = prev === 0 ? 100 : (diff / Math.abs(prev)) * 100;
+        const isPositive = opts.invert ? diff < 0 : diff > 0;
+        const cls = Math.abs(diff) < 0.01 ? 'flat' : (isPositive ? 'up' : 'down');
+        const arrow = Math.abs(diff) < 0.01 ? '→' : (diff > 0 ? '↑' : '↓');
+        return `<span class="pnl-delta pnl-delta-${cls}" title="Mes anterior: ${fmtMoney(prev)}">${arrow} ${Math.abs(pct).toFixed(1)}%</span>`;
+      };
+
+      const pnlLine = (label, valor, valorPrev, opts = {}) => `
+        <div class="pnl-line">
+          <span class="pnl-line-lbl">${label}</span>
+          <div class="pnl-line-vals">
+            <strong style="color:${opts.color || 'inherit'}">${opts.minus ? '−' : ''}${fmtMoney(valor)}</strong>
+            ${delta(valor, valorPrev, opts)}
+          </div>
+        </div>
+      `;
+
       view.innerHTML = `
-        <div class="kpi-row">
-          <div class="kpi-mini big"><div class="kpi-mini-lbl">Facturación total</div><div class="kpi-mini-val">${fmtMoney(p.fact_total)}</div></div>
-          <div class="kpi-mini big"><div class="kpi-mini-lbl">Suscripciones</div><div class="kpi-mini-val">${fmtMoney(p.suscripciones)}</div></div>
-          <div class="kpi-mini big"><div class="kpi-mini-lbl">Fact s/subs</div><div class="kpi-mini-val">${fmtMoney(p.fact_sin_subs)}</div></div>
-          <div class="kpi-mini big highlight"><div class="kpi-mini-lbl">Ganancia bruta agencia</div><div class="kpi-mini-val">${fmtMoney(p.ganancia_bruta_agencia)}</div></div>
+        <div class="pnl-header">
+          <div>
+            <h2 class="pnl-title">P&amp;L · ${fmtMesNice(mes)}</h2>
+            <p class="pnl-sub">${pPrev ? `Comparado con ${fmtMesNice(mesPrev)}` : 'Sin datos del mes anterior para comparar'}</p>
+          </div>
+          <div class="pnl-net-hero" style="--net-color:${p.neto_owner >= 0 ? 'var(--green)' : 'var(--red)'}">
+            <div class="pnl-net-lbl">Neto Owner</div>
+            <div class="pnl-net-val">${fmtMoney(p.neto_owner)}</div>
+            ${pPrev ? `<div class="pnl-net-delta">${delta(p.neto_owner, pPrev.neto_owner)} <span class="muted">vs mes ant.</span></div>` : ''}
+          </div>
+        </div>
+
+        <div class="kpi-row pnl-kpis">
+          <div class="kpi-mini big">
+            <div class="kpi-mini-lbl">Facturación total</div>
+            <div class="kpi-mini-val">${fmtMoney(p.fact_total)}</div>
+            ${pPrev ? delta(p.fact_total, pPrev.fact_total) : ''}
+          </div>
+          <div class="kpi-mini big">
+            <div class="kpi-mini-lbl">Suscripciones</div>
+            <div class="kpi-mini-val">${fmtMoney(p.suscripciones)}</div>
+            ${pPrev ? delta(p.suscripciones, pPrev.suscripciones) : ''}
+          </div>
+          <div class="kpi-mini big">
+            <div class="kpi-mini-lbl">Fact s/subs</div>
+            <div class="kpi-mini-val">${fmtMoney(p.fact_sin_subs)}</div>
+            ${pPrev ? delta(p.fact_sin_subs, pPrev.fact_sin_subs) : ''}
+          </div>
+          <div class="kpi-mini big highlight">
+            <div class="kpi-mini-lbl">Ganancia bruta agencia</div>
+            <div class="kpi-mini-val">${fmtMoney(p.ganancia_bruta_agencia)}</div>
+            ${pPrev ? delta(p.ganancia_bruta_agencia, pPrev.ganancia_bruta_agencia) : ''}
+          </div>
         </div>
 
         <div class="pnl-grid">
-          <div class="card">
-            <h3>Ingreso bruto (a cobrar a modelos)</h3>
-            <div class="pnl-line big"><span>Total facturado a modelos</span><strong style="color:var(--green)">${fmtMoney(p.ingreso_bruto)}</strong></div>
+          <div class="card pnl-card-in">
+            <div class="pnl-card-head">
+              <span class="section-ico ico-green"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+              <h3>Ingresos</h3>
+            </div>
+            ${pnlLine('Total facturado a modelos', p.ingreso_bruto, pPrev?.ingreso_bruto, { color: 'var(--green)' })}
+            <div class="pnl-card-total">
+              <span>Ingreso bruto</span>
+              <strong style="color:var(--green)">${fmtMoney(p.ingreso_bruto)}</strong>
+            </div>
           </div>
-          <div class="card">
-            <h3>Egresos</h3>
-            <div class="pnl-line"><span>Pagos a chatters</span><strong style="color:var(--red)">−${fmtMoney(p.pagos_chatters)}</strong></div>
-            <div class="pnl-line"><span>Pago supervisor (Jony)</span><strong style="color:var(--red)">−${fmtMoney(p.pagos_supervisor)}</strong></div>
-            <div class="pnl-line"><span>Equipo fijo (sueldos)</span><strong style="color:var(--red)">−${fmtMoney(p.pagos_equipo_fijo)}</strong></div>
-            <div class="pnl-line"><span>OnlyMonster (parte agencia)</span><strong style="color:var(--red)">−${fmtMoney(p.gasto_om_agencia)}</strong></div>
-            <div class="pnl-line"><span>Otros gastos del mes</span><strong style="color:var(--red)">−${fmtMoney(p.gastos_otros)}</strong></div>
-            <div class="pnl-line total"><span>Total egresos</span><strong style="color:var(--red)">−${fmtMoney(totalGastos)}</strong></div>
+
+          <div class="card pnl-card-out">
+            <div class="pnl-card-head">
+              <span class="section-ico ico-red"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg></span>
+              <h3>Egresos</h3>
+            </div>
+            ${pnlLine('Pagos a chatters', p.pagos_chatters, pPrev?.pagos_chatters, { color: 'var(--red)', minus: true, invert: true })}
+            ${pnlLine('Pago supervisor (Jony)', p.pagos_supervisor, pPrev?.pagos_supervisor, { color: 'var(--red)', minus: true, invert: true })}
+            ${pnlLine('Equipo fijo (sueldos)', p.pagos_equipo_fijo, pPrev?.pagos_equipo_fijo, { color: 'var(--red)', minus: true, invert: true })}
+            ${pnlLine('OnlyMonster (parte agencia)', p.gasto_om_agencia, pPrev?.gasto_om_agencia, { color: 'var(--red)', minus: true, invert: true })}
+            ${pnlLine('Otros gastos del mes', p.gastos_otros, pPrev?.gastos_otros, { color: 'var(--red)', minus: true, invert: true })}
+            <div class="pnl-card-total">
+              <span>Total egresos</span>
+              <strong style="color:var(--red)">−${fmtMoney(totalGastos)}</strong>
+            </div>
           </div>
         </div>
 
-        <div class="sticky-actionbar" style="margin-top:18px">
-          <div class="sab-grid" style="grid-template-columns:1fr 1fr 1.5fr">
-            <div class="liq-sum"><div class="liq-sum-lbl">Ingreso bruto</div><div class="liq-sum-val">${fmtMoney(p.ingreso_bruto)}</div></div>
-            <div class="liq-sum"><div class="liq-sum-lbl">Total egresos</div><div class="liq-sum-val" style="color:var(--red)">−${fmtMoney(totalGastos)}</div></div>
-            <div class="liq-sum-net">
-              <div class="sab-total-lbl">Neto Owner</div>
-              <div class="sab-total-val" style="color:${p.neto_owner >= 0 ? 'var(--green)' : 'var(--red)'}">${fmtMoney(p.neto_owner)}</div>
-            </div>
+        <div class="pnl-summary-bar">
+          <div class="pnl-sum-item">
+            <div class="pnl-sum-lbl">Ingreso bruto</div>
+            <div class="pnl-sum-val" style="color:var(--green)">${fmtMoney(p.ingreso_bruto)}</div>
+            ${pPrev ? delta(p.ingreso_bruto, pPrev.ingreso_bruto) : ''}
+          </div>
+          <div class="pnl-sum-op">−</div>
+          <div class="pnl-sum-item">
+            <div class="pnl-sum-lbl">Total egresos</div>
+            <div class="pnl-sum-val" style="color:var(--red)">${fmtMoney(totalGastos)}</div>
+            ${pPrev ? delta(totalGastos, prevTotalGastos, { invert: true }) : ''}
+          </div>
+          <div class="pnl-sum-op">=</div>
+          <div class="pnl-sum-item pnl-sum-net">
+            <div class="pnl-sum-lbl">Neto Owner</div>
+            <div class="pnl-sum-val pnl-sum-val-net" style="color:${p.neto_owner >= 0 ? 'var(--green)' : 'var(--red)'}">${fmtMoney(p.neto_owner)}</div>
+            ${pPrev ? delta(p.neto_owner, pPrev.neto_owner) : ''}
           </div>
         </div>
       `;
@@ -3534,7 +3665,7 @@
   // FASE 3 · VISTA: INCENTIVOS HISTÓRICO
   // ═══════════════════════════════════════════════════════
   async function renderIncentivos(view) {
-    view.innerHTML = `<div class="spinner"></div>`;
+    view.innerHTML = Skel.full();
     try {
       const r = await api('incentivos');
       const lista = r.data;
@@ -3750,6 +3881,21 @@
     navigate(route);
   });
   setTimeout(refreshMesDisplay, 0);
+
+  // ───────── Mobile sidebar drawer ─────────
+  function openMobileSidebar() {
+    document.querySelector('.sidebar')?.classList.add('open');
+    document.getElementById('mobile-sidebar-backdrop')?.classList.add('open');
+  }
+  function closeMobileSidebar() {
+    document.querySelector('.sidebar')?.classList.remove('open');
+    document.getElementById('mobile-sidebar-backdrop')?.classList.remove('open');
+  }
+  document.getElementById('mobile-menu-btn')?.addEventListener('click', openMobileSidebar);
+  document.getElementById('mobile-sidebar-backdrop')?.addEventListener('click', closeMobileSidebar);
+  // Cerrar drawer al navegar
+  document.querySelectorAll('.sidebar-nav .nav-item').forEach(n =>
+    n.addEventListener('click', () => closeMobileSidebar()));
 
   boot();
 })();
