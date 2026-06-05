@@ -1565,11 +1565,22 @@ td .btn-ghost-small.sum-detail + .btn-ghost-small.sum-save { margin-left: 6px; }
 /* ═══════════════════════════════════════════════════════════════
    v15 — CATALOG TABLE: compact + sticky actions
    ═══════════════════════════════════════════════════════════════ */
+.catalog-table { overflow-x: auto; }
+.catalog-table .compact-table {
+  table-layout: auto;
+  width: 100%;
+  min-width: 720px;
+}
 .catalog-table .compact-table th,
 .catalog-table .compact-table td {
-  padding: 8px 12px;
-  font-size: 0.83rem;
+  padding: 8px 10px;
+  font-size: 0.82rem;
   vertical-align: middle;
+}
+.catalog-table .compact-table th.action-col,
+.catalog-table .compact-table td.action-col {
+  padding-right: 14px;
+  width: 1%;
 }
 .catalog-table .compact-table th {
   font-size: 0.66rem;

@@ -77,17 +77,17 @@
         { key: 'direccion', label: 'Dirección', type: 'text', wide: true },
         { key: 'email', label: 'Email', type: 'email' },
         { key: 'fecha_inicio', label: 'Fecha inicio', type: 'date' },
-        { key: 'porcentaje_default', label: '% comisión default', type: 'number', step: '0.01', placeholder: '15' },
-        { key: 'porcentaje_supervisor', label: '% supervisor', type: 'number', step: '0.01', placeholder: '5' },
+        { key: 'porcentaje_default', label: '% comisión default', shortLabel: '% Com.', type: 'number', step: '0.01', placeholder: '15' },
+        { key: 'porcentaje_supervisor', label: '% supervisor', shortLabel: '% Sup.', type: 'number', step: '0.01', placeholder: '5' },
         { key: 'rol', label: 'Rol', type: 'select', options: ['chatter', 'supervisor', 'team_leader'] },
-        { key: 'es_team_leader', label: 'Team Leader', type: 'bool' },
+        { key: 'es_team_leader', label: 'Team Leader', shortLabel: 'TL', type: 'bool' },
         { key: 'tax_residency_country', label: 'País residencia fiscal', type: 'text', placeholder: 'AR / ES / US / MX...' },
         { key: 'tax_id_type', label: 'Tipo Tax ID', type: 'select', options: ['', 'W-9 (US)', 'W-8BEN (Foreign)', 'DNI', 'Pasaporte', 'CUIT/CUIL', 'NIE/NIF', 'RFC', 'Otro'] },
         { key: 'tax_id_number', label: 'N° Tax ID', type: 'text' },
-        { key: 'w8_w9_on_file', label: 'W-8BEN/W-9 firmado en archivo', type: 'bool' },
+        { key: 'w8_w9_on_file', label: 'W-8BEN/W-9 firmado en archivo', shortLabel: 'W-8/W-9', type: 'bool' },
         { key: 'w8_w9_signed_date', label: 'Fecha firma W-8/W-9', type: 'date' },
-        { key: 'ica_signed_date', label: 'Fecha firma ICA (contrato)', type: 'date' },
-        { key: 'factura_numero_actual', label: 'Último N° de liquidación', type: 'number', step: '1' },
+        { key: 'ica_signed_date', label: 'Fecha firma ICA (contrato)', shortLabel: 'ICA', type: 'date' },
+        { key: 'factura_numero_actual', label: 'Último N° de liquidación', shortLabel: 'Últ. N°', type: 'number', step: '1' },
         { key: 'activo', label: 'Activo', type: 'bool' }
       ],
       tableColumns: ['nombre', 'rol', 'porcentaje_default', 'porcentaje_supervisor', 'es_team_leader', 'ica_signed_date', 'w8_w9_on_file', 'activo']
@@ -107,10 +107,10 @@
         { key: 'tax_residency_country', label: 'País residencia fiscal', type: 'text', placeholder: 'AR / ES / US / MX...' },
         { key: 'tax_id_type', label: 'Tipo Tax ID', type: 'select', options: ['', 'W-9 (US)', 'W-8BEN (Foreign)', 'DNI', 'Pasaporte', 'CUIT/CUIL', 'NIE/NIF', 'RFC', 'Otro'] },
         { key: 'tax_id_number', label: 'N° Tax ID', type: 'text' },
-        { key: 'w8_w9_on_file', label: 'W-8BEN/W-9 firmado en archivo', type: 'bool' },
+        { key: 'w8_w9_on_file', label: 'W-8BEN/W-9 firmado en archivo', shortLabel: 'W-8/W-9', type: 'bool' },
         { key: 'w8_w9_signed_date', label: 'Fecha firma W-8/W-9', type: 'date' },
-        { key: 'ica_signed_date', label: 'Fecha firma ICA (contrato)', type: 'date' },
-        { key: 'factura_numero_actual', label: 'Último N° de liquidación', type: 'number', step: '1' },
+        { key: 'ica_signed_date', label: 'Fecha firma ICA (contrato)', shortLabel: 'ICA', type: 'date' },
+        { key: 'factura_numero_actual', label: 'Último N° de liquidación', shortLabel: 'Últ. N°', type: 'number', step: '1' },
         { key: 'activo', label: 'Activo', type: 'bool' }
       ],
       tableColumns: ['nombre', 'rol', 'sueldo_mensual_usd', 'ica_signed_date', 'w8_w9_on_file', 'activo']
@@ -789,7 +789,8 @@
 
       const headers = def.tableColumns.map(c => {
         const col = def.columns.find(x => x.key === c);
-        return `<th>${col ? col.label : c}</th>`;
+        const label = col ? (col.shortLabel || col.label) : c;
+        return `<th>${label}</th>`;
       }).join('');
 
       const rows = data.length === 0
@@ -885,8 +886,8 @@
     }
     if (key === 'ica_signed_date') {
       return value
-        ? `<span class="pill green" title="ICA firmado el ${value}">📜 ${value}</span>`
-        : '<span class="pill red" title="ICA pendiente de firma">📜 ✕</span>';
+        ? `<span class="pill green" title="ICA firmado el ${value}">✓</span>`
+        : '<span class="pill red" title="ICA pendiente de firma">✕</span>';
     }
     if (key === 'w8_w9_signed_date' && value) {
       return `<span class="muted" style="font-size:0.78rem">${value}</span>`;
