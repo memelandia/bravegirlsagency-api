@@ -120,6 +120,13 @@ async function ensureGastosSoftDelete() {
   _ensuredGastosSoftDelete = true;
 }
 
+let _ensuredFacturaSoftDelete = false;
+async function ensureFacturaSoftDelete() {
+  if (_ensuredFacturaSoftDelete) return;
+  await sql`ALTER TABLE facturas_emitidas ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`;
+  _ensuredFacturaSoftDelete = true;
+}
+
 let _ensuredArchivosTable = false;
 async function ensureArchivosTable() {
   if (_ensuredArchivosTable) return;
@@ -879,6 +886,7 @@ module.exports = async function handler(req, res) {
     if (action === 'facturas-list') {
       const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureFacturaSoftDelete();
 
       const modeloId = req.query.modelo_id ? Number(req.query.modelo_id) : null;
       const mes = req.query.mes || null;
@@ -894,7 +902,7 @@ module.exports = async function handler(req, res) {
         LEFT JOIN modelos        m  ON m.id  = f.entidad_id AND f.entidad_tipo = 'modelo'
         LEFT JOIN chatters_admin c  ON c.id  = f.entidad_id AND f.entidad_tipo IN ('chatter','supervisor')
         LEFT JOIN equipo_fijo    eq ON eq.id = f.entidad_id AND f.entidad_tipo = 'equipo'
-        WHERE 1=1
+        WHERE f.deleted_at IS NULL
       `;
       const params = [];
       if (tipo)     { params.push(tipo);     query += ` AND f.tipo = $${params.length}`; }
@@ -906,6 +914,27 @@ module.exports = async function handler(req, res) {
       // Compat: el frontend viejo espera `modelo_nombre`
       const rows = r.rows.map(x => ({ ...x, modelo_nombre: x.receptor_nombre }));
       return res.status(200).json({ success: true, data: rows });
+    }
+
+    // ─── BORRAR FACTURA (soft-delete, queda fuera de la lista pero conserva el N°) ────
+    // POST ?action=factura-delete&id=N
+    // Opcionalmente &op=restore para des-borrar
+    if (action === 'factura-delete') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+      await ensureFacturaSoftDelete();
+
+      const id = Number(req.query.id);
+      const op = req.query.op || null;
+      if (!id) return res.status(400).json({ success: false, error: 'id requerido' });
+
+      if (op === 'restore') {
+        await sql`UPDATE facturas_emitidas SET deleted_at = NULL WHERE id = ${id}`;
+        return res.status(200).json({ success: true });
+      }
+      await sql`UPDATE facturas_emitidas SET deleted_at = CURRENT_TIMESTAMP WHERE id = ${id}`;
+      return res.status(200).json({ success: true });
     }
 
     // ─── OBTENER UNA FACTURA (con su HTML snapshot para reimprimir PDF) ────
@@ -1027,13 +1056,17 @@ module.exports = async function handler(req, res) {
         FROM gastos_mes WHERE mes = ${mes} AND deleted_at IS NULL
       `;
 
-      // Cobros por modelo
+      // Asegurar que la columna existe (comision_transaccion)
+      await ensureCobroComisionColumn();
+
+      // Cobros por modelo (pendiente real = total − pago_recibido − comision_transaccion)
       const cobros = await sql`
         SELECT
           m.id AS modelo_id, m.nombre AS modelo,
           COALESCE(SUM(c.total_a_cobrar), 0) AS total_a_cobrar,
           COALESCE(SUM(c.pago_recibido), 0)  AS pago_recibido,
-          COALESCE(SUM(c.total_a_cobrar - c.pago_recibido), 0) AS pendiente,
+          COALESCE(SUM(c.comision_transaccion), 0) AS comision_transaccion,
+          COALESCE(SUM(c.total_a_cobrar - c.pago_recibido - COALESCE(c.comision_transaccion, 0)), 0) AS pendiente,
           string_agg(DISTINCT c.estado_resumen, ', ') AS estados,
           string_agg(DISTINCT c.medio_pago, ', ')     AS medios_pago,
           m.moneda_default AS moneda

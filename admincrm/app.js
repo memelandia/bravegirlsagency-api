@@ -425,13 +425,21 @@
         const hue = [...(c.modelo || '')].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 360;
         const pendiente = Number(c.pendiente || 0);
         const recibido = Number(c.pago_recibido || 0);
+        const comision = Number(c.comision_transaccion || 0);
         const pendColor = pendiente > 0.01 ? '#FCA5A5' : '#34D399';
+        const pendTxt = pendiente > 0.01
+          ? fmtMoney(pendiente, c.moneda)
+          : '✓';
+        // Tooltip explica el cálculo si hay comisión
+        const titleAttr = comision > 0
+          ? ` title="Total ${fmtMoney(c.total_a_cobrar, c.moneda)} − Pagado ${fmtMoney(recibido, c.moneda)} − Comisión ${fmtMoney(comision, c.moneda)} = ${fmtMoney(pendiente, c.moneda)}"`
+          : '';
         return `
-          <tr>
+          <tr${titleAttr}>
             <td><span class="pill-entity" style="--ent-hue:${hue}"><strong>${escapeHtml(c.modelo)}</strong></span></td>
             <td class="text-right" style="color:#FDE047;font-weight:700">${fmtMoney(c.total_a_cobrar, c.moneda)}</td>
-            <td class="text-right" style="color:#34D399;font-weight:700">${fmtMoney(recibido, c.moneda)}</td>
-            <td class="text-right" style="color:${pendColor};font-weight:700">${fmtMoney(pendiente, c.moneda)}</td>
+            <td class="text-right" style="color:#34D399;font-weight:700">${fmtMoney(recibido, c.moneda)}${comision > 0 ? `<div style="font-size:0.66rem;color:#FB923C;font-weight:600;margin-top:1px">+ ${fmtMoney(comision, c.moneda)} fee</div>` : ''}</td>
+            <td class="text-right" style="color:${pendColor};font-weight:700">${pendTxt}</td>
           </tr>`;
       }).join('');
 
@@ -2380,7 +2388,8 @@
           <td style="text-align:right"><strong>${fmtMoney(f.total, f.moneda)}</strong></td>
           <td>${estadoBadge(f.estado)}</td>
           <td style="text-align:right">
-            <button class="btn-ghost-small" data-reprint="${f.id}">📥 PDF</button>
+            <button class="btn-ghost-small" data-reprint="${f.id}" title="Descargar PDF">📥 PDF</button>
+            <button class="btn-danger" data-fact-del="${f.id}" title="Borrar factura">🗑</button>
           </td>
         </tr>
       `;}).join('');
@@ -2430,6 +2439,17 @@
           } catch (e) {
             toast('Error: ' + e.message, 'error');
           }
+        });
+      });
+
+      view.querySelectorAll('[data-fact-del]').forEach(b => {
+        b.addEventListener('click', async () => {
+          if (!confirm('¿Borrar esta factura?\n\n• El N° queda libre conceptualmente (la próxima sigue el secuencial)\n• Se elimina de la lista de Documentos emitidos\n• Para recuperarla habría que restaurarla desde la DB\n\n¿Continuar?')) return;
+          try {
+            await api('factura-delete', { method: 'POST', params: { id: b.dataset.factDel } });
+            toast('Factura borrada', 'success');
+            renderFacturas(view);
+          } catch (e) { toast('Error: ' + e.message, 'error'); }
         });
       });
     } catch (e) {
