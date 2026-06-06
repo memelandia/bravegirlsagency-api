@@ -32,7 +32,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
-  const { start_date, end_date, user_id, creator_id, history, days, account_id, fans_only, messages, om_account_id, chat_id, weekly_compare, weekly_rankings } = req.query;
+  const { start_date, end_date, user_id, creator_id, history, days, account_id, fans_only, messages, om_account_id, chat_id, weekly_compare, weekly_rankings, team_ids } = req.query;
 
   try {
     // --- MODO FANS: GET /api/v0/accounts/{id}/fans ---
@@ -80,7 +80,11 @@ module.exports = async function handler(req, res) {
     if (weekly_rankings === 'true' && user_id) {
       const { current } = computeWeekRanges();
       const allTeam = await fetchUserMetrics(current.start, current.end, null, null);
-      const rankings = computeWeeklyRankings(allTeam, user_id);
+      // team_ids: CSV de user_ids válidos del equipo — si se pasa, se filtra (descarta IDs externos a la agencia)
+      const teamFilter = team_ids
+        ? new Set(String(team_ids).split(',').map(s => s.trim()).filter(Boolean))
+        : null;
+      const rankings = computeWeeklyRankings(allTeam, user_id, teamFilter);
       return res.status(200).json({
         success: true,
         data: {
@@ -542,9 +546,13 @@ function bucketByUser(items) {
   }));
 }
 
-function computeWeeklyRankings(items, userId) {
+function computeWeeklyRankings(items, userId, teamFilter = null) {
   const uid = String(userId);
-  const team = bucketByUser(items).filter(u => u.total_messages > 0);
+  let team = bucketByUser(items).filter(u => u.total_messages > 0);
+  // Si nos pasaron lista de IDs del equipo (agencia), descartar IDs ajenos al equipo
+  if (teamFilter && teamFilter.size > 0) {
+    team = team.filter(u => teamFilter.has(u.user_id));
+  }
 
   // Reply time: menor es mejor; excluir 0 (sin datos)
   const replyList = team.filter(u => u.reply_time_avg_minutes > 0)
