@@ -30,7 +30,8 @@ window.CONFIG = {
             'chatter7': { name: 'Carlo', gid: '1922350290' },
             'chatter8': { name: 'Leo', gid: '1346980441' },
             'chatter9': { name: 'Genesys', gid: '524118032' },
-            'chatter10': { name: 'Camila', gid: '18239613' }
+            'chatter10': { name: 'Camila', gid: '18239613' },
+            'chatter11': { name: 'Mauricio Rivera', gid: '1163151564' }
         }
     },
     
@@ -260,11 +261,20 @@ window.CONFIG = {
             {
                 id: 'chatter10',
                 username: 'camila',
-                password: 'camial2026',
+                password: 'camila2026',
                 name: 'Camila',
                 type: 'chatter',
                 onlyMonsterId: '173798',
                 assignedModels: ['model1', 'model4', 'model8'] // Carmen, Lexi, KatieRose
+            },
+            {
+                id: 'chatter11',
+                username: 'mauricio',
+                password: 'mauricio2026',
+                name: 'Mauricio Rivera',
+                type: 'chatter',
+                onlyMonsterId: '179781',
+                assignedModels: [] // Configurar según asignación del Excel
             }
         ]
     },

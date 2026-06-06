@@ -11,6 +11,8 @@
  *   GET ?user_id=XXX&history=true&days=30                                  -> Historial diario (/users/metrics-based)
  *   GET ?fans_only=true&om_account_id=XXX                                  -> Lista de fan IDs activos
  *   GET ?messages=true&om_account_id=XXX&chat_id=YYY                      -> Mensajes de un chat
+ *   GET ?weekly_compare=true&user_id=XXX                                   -> Métricas semana actual + semana anterior
+ *   GET ?weekly_rankings=true&user_id=XXX                                  -> Ranking semanal del equipo (reply time, conversion, PPV)
  */
 
 const fetch = require('node-fetch');
@@ -30,7 +32,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
-  const { start_date, end_date, user_id, creator_id, history, days, account_id, fans_only, messages, om_account_id, chat_id } = req.query;
+  const { start_date, end_date, user_id, creator_id, history, days, account_id, fans_only, messages, om_account_id, chat_id, weekly_compare, weekly_rankings } = req.query;
 
   try {
     // --- MODO FANS: GET /api/v0/accounts/{id}/fans ---
@@ -49,6 +51,42 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         success: true,
         data: { items: messagesData },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // --- MODO COMPARACIÓN SEMANAL: semana actual vs anterior ---
+    if (weekly_compare === 'true' && user_id) {
+      const { current, previous } = computeWeekRanges();
+      const [curArr, prevArr] = await Promise.all([
+        fetchUserMetrics(current.start, current.end, null, [user_id]),
+        fetchUserMetrics(previous.start, previous.end, null, [user_id])
+      ]);
+      const cur = aggregateForUser(curArr, user_id);
+      const prv = aggregateForUser(prevArr, user_id);
+      return res.status(200).json({
+        success: true,
+        data: {
+          current: cur,
+          previous: prv,
+          current_range: { start: current.start.toISOString(), end: current.end.toISOString() },
+          previous_range: { start: previous.start.toISOString(), end: previous.end.toISOString() }
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // --- MODO RANKING SEMANAL: posición del chatter en el equipo, semana actual ---
+    if (weekly_rankings === 'true' && user_id) {
+      const { current } = computeWeekRanges();
+      const allTeam = await fetchUserMetrics(current.start, current.end, null, null);
+      const rankings = computeWeeklyRankings(allTeam, user_id);
+      return res.status(200).json({
+        success: true,
+        data: {
+          ...rankings,
+          week_range: { start: current.start.toISOString(), end: current.end.toISOString() }
+        },
         timestamp: new Date().toISOString()
       });
     }
@@ -410,4 +448,140 @@ async function fetchChatMessages(omAccountId, chatId) {
   // Devolver tal cual — el limit=100 del request ya limita la cantidad
   console.log(`[messages] ${items.length} messages returned for chat ${chatId}`);
   return items;
+}
+
+// =============================================
+// SEMANA ISO (lunes-domingo) actual + anterior
+// =============================================
+
+function computeWeekRanges() {
+  const now = new Date();
+  const dayIdx = (now.getUTCDay() + 6) % 7; // 0=Mon ... 6=Sun
+  const monday = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dayIdx,
+    0, 0, 0, 0
+  ));
+  const sunday = new Date(monday);
+  sunday.setUTCDate(sunday.getUTCDate() + 6);
+  sunday.setUTCHours(23, 59, 59, 999);
+
+  const prevMonday = new Date(monday);
+  prevMonday.setUTCDate(prevMonday.getUTCDate() - 7);
+  const prevSunday = new Date(prevMonday);
+  prevSunday.setUTCDate(prevSunday.getUTCDate() + 6);
+  prevSunday.setUTCHours(23, 59, 59, 999);
+
+  return {
+    current: { start: monday, end: sunday },
+    previous: { start: prevMonday, end: prevSunday }
+  };
+}
+
+// Si el chatter aparece en varias filas (multi-cuenta) las agregamos en un solo objeto.
+function aggregateForUser(items, userId) {
+  const mine = items.filter(m => String(m.user_id) === String(userId));
+  if (mine.length === 0) return null;
+  if (mine.length === 1) return mine[0];
+
+  const totalMsgs = mine.reduce((s, i) => s + i.messages.total, 0);
+  const totalPaidSent = mine.reduce((s, i) => s + i.messages.paid_sent, 0);
+  const totalSold = mine.reduce((s, i) => s + i.messages.sold, 0);
+  const totalNet = mine.reduce((s, i) => s + i.revenue.total_net, 0);
+  const validReply = mine.filter(i => i.performance.reply_time_avg_minutes > 0);
+  const avgReply = validReply.length > 0
+    ? validReply.reduce((s, i) => s + i.performance.reply_time_avg_minutes, 0) / validReply.length
+    : 0;
+
+  return {
+    ...mine[0],
+    messages: { ...mine[0].messages, total: totalMsgs, paid_sent: totalPaidSent, sold: totalSold },
+    performance: {
+      ...mine[0].performance,
+      reply_time_avg_minutes: round2(avgReply),
+      reply_time_avg_seconds: round2(avgReply * 60),
+      conversion_rate: totalPaidSent > 0 ? round2((totalSold / totalPaidSent) * 100) : 0
+    },
+    revenue: { ...mine[0].revenue, total_net: round2(totalNet) }
+  };
+}
+
+// Agrega multi-cuenta por user_id para que el ranking compare 1 fila por chatter.
+function bucketByUser(items) {
+  const byUser = new Map();
+  for (const it of items) {
+    const uid = String(it.user_id);
+    const cur = byUser.get(uid);
+    if (!cur) {
+      byUser.set(uid, {
+        user_id: uid,
+        user_name: it.user_name,
+        total_messages: it.messages.total,
+        paid_sent: it.messages.paid_sent,
+        sold: it.messages.sold,
+        reply_sum_minutes: it.performance.reply_time_avg_minutes > 0 ? it.performance.reply_time_avg_minutes : 0,
+        reply_count: it.performance.reply_time_avg_minutes > 0 ? 1 : 0
+      });
+    } else {
+      cur.total_messages += it.messages.total;
+      cur.paid_sent += it.messages.paid_sent;
+      cur.sold += it.messages.sold;
+      if (it.performance.reply_time_avg_minutes > 0) {
+        cur.reply_sum_minutes += it.performance.reply_time_avg_minutes;
+        cur.reply_count += 1;
+      }
+    }
+  }
+  return Array.from(byUser.values()).map(u => ({
+    user_id: u.user_id,
+    user_name: u.user_name,
+    total_messages: u.total_messages,
+    paid_sent: u.paid_sent,
+    sold: u.sold,
+    reply_time_avg_minutes: u.reply_count > 0 ? round2(u.reply_sum_minutes / u.reply_count) : 0,
+    conversion_rate: u.paid_sent > 0 ? round2((u.sold / u.paid_sent) * 100) : 0
+  }));
+}
+
+function computeWeeklyRankings(items, userId) {
+  const uid = String(userId);
+  const team = bucketByUser(items).filter(u => u.total_messages > 0);
+
+  // Reply time: menor es mejor; excluir 0 (sin datos)
+  const replyList = team.filter(u => u.reply_time_avg_minutes > 0)
+    .sort((a, b) => a.reply_time_avg_minutes - b.reply_time_avg_minutes);
+
+  // Conversión: mayor es mejor; requiere paid_sent > 0
+  const convList = team.filter(u => u.paid_sent > 0)
+    .sort((a, b) => b.conversion_rate - a.conversion_rate);
+
+  // PPV vendidos: mayor es mejor
+  const ppvList = [...team].sort((a, b) => b.sold - a.sold);
+
+  const findPos = (list) => {
+    const idx = list.findIndex(u => u.user_id === uid);
+    return idx >= 0 ? idx + 1 : null;
+  };
+
+  const meEntry = team.find(u => u.user_id === uid) || null;
+
+  return {
+    reply_time: {
+      position: findPos(replyList),
+      total: replyList.length,
+      my_value_minutes: meEntry && meEntry.reply_time_avg_minutes > 0 ? meEntry.reply_time_avg_minutes : null,
+      leader_value_minutes: replyList[0] ? replyList[0].reply_time_avg_minutes : null
+    },
+    conversion: {
+      position: findPos(convList),
+      total: convList.length,
+      my_value_pct: meEntry && meEntry.paid_sent > 0 ? meEntry.conversion_rate : null,
+      leader_value_pct: convList[0] ? convList[0].conversion_rate : null
+    },
+    ppv_sold: {
+      position: findPos(ppvList),
+      total: ppvList.length,
+      my_value: meEntry ? meEntry.sold : null,
+      leader_value: ppvList[0] ? ppvList[0].sold : null
+    }
+  };
 }
