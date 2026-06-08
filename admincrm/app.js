@@ -30,6 +30,23 @@
   };
   window.LLC_INFO = LLC_INFO;
 
+  // ───────── Medios de pago sugeridos (datalist en formularios) ─────────
+  const MEDIOS_PAGO = [
+    'Binance USDT (TRC20)',
+    'Binance USDT (BEP20)',
+    'Binance BTC',
+    'Skrill',
+    'Wise',
+    'Paxum',
+    'Bizum',
+    'Mercury Wire',
+    'Western Union',
+    'PayPal',
+    'Efectivo',
+    'Otro'
+  ];
+  window.MEDIOS_PAGO = MEDIOS_PAGO;
+
   // ───────── Configuración de entidades del catálogo ─────────
   const ENTITY_DEFS = {
     modelos: {
@@ -89,6 +106,7 @@
         { key: 'w8_w9_on_file', label: 'W-8BEN/W-9 firmado en archivo', shortLabel: 'W-8/W-9', type: 'bool' },
         { key: 'w8_w9_signed_date', label: 'Fecha firma W-8/W-9', type: 'date' },
         { key: 'ica_signed_date', label: 'Fecha firma ICA (contrato)', shortLabel: 'ICA', type: 'date' },
+        { key: 'medio_pago_default', label: 'Medio de pago default', type: 'medio-pago' },
         { key: 'factura_numero_actual', label: 'Último N° de liquidación', shortLabel: 'Últ. N°', type: 'number', step: '1' },
         { key: 'activo', label: 'Activo', type: 'bool' }
       ],
@@ -113,10 +131,34 @@
         { key: 'w8_w9_on_file', label: 'W-8BEN/W-9 firmado en archivo', shortLabel: 'W-8/W-9', type: 'bool' },
         { key: 'w8_w9_signed_date', label: 'Fecha firma W-8/W-9', type: 'date' },
         { key: 'ica_signed_date', label: 'Fecha firma ICA (contrato)', shortLabel: 'ICA', type: 'date' },
+        { key: 'medio_pago_default', label: 'Medio de pago default', type: 'medio-pago' },
         { key: 'factura_numero_actual', label: 'Último N° de liquidación', shortLabel: 'Últ. N°', type: 'number', step: '1' },
         { key: 'activo', label: 'Activo', type: 'bool' }
       ],
       tableColumns: ['nombre', 'rol', 'sueldo_mensual_usd', 'ica_signed_date', 'w8_w9_on_file', 'activo']
+    },
+    archivo: {
+      label: 'Archivo (Ex-Contratistas)',
+      icon: '📦',
+      columns: [
+        { key: 'tipo', label: 'Tipo de receptor', type: 'select', options: ['chatter', 'supervisor', 'equipo'], required: true },
+        { key: 'nombre', label: 'Nombre artístico / corto', type: 'text', required: true, placeholder: 'ej: Brian, JM, Sofi...' },
+        { key: 'nombre_fiscal', label: 'Nombre fiscal completo', type: 'text', placeholder: 'Como aparece en su DNI/Pasaporte' },
+        { key: 'identificador', label: 'DNI / Pasaporte / ID', type: 'text' },
+        { key: 'direccion', label: 'Dirección (calle + número)', type: 'text', wide: true, placeholder: 'Opcional' },
+        { key: 'ciudad', label: 'Ciudad', type: 'text' },
+        { key: 'tax_residency_country', label: 'País residencia fiscal', type: 'text', placeholder: 'AR / VE / ES / MX...' },
+        { key: 'tax_id_type', label: 'Tipo Tax ID', type: 'select', options: ['', 'W-9 (US)', 'W-8BEN (Foreign)', 'DNI', 'Pasaporte', 'CUIT/CUIL', 'NIE/NIF', 'RFC', 'Otro'] },
+        { key: 'tax_id_number', label: 'N° Tax ID', type: 'text' },
+        { key: 'email', label: 'Email', type: 'email' },
+        { key: 'medio_pago_default', label: 'Medio de pago default', type: 'medio-pago' },
+        { key: 'fecha_inicio', label: 'Trabajó desde', type: 'date' },
+        { key: 'fecha_fin', label: 'Trabajó hasta', type: 'date' },
+        { key: 'notas', label: 'Notas internas', type: 'textarea', wide: true, placeholder: 'Contexto sobre cuándo y por qué dejó la agencia' },
+        { key: 'factura_numero_actual', label: 'Último N° emitido', shortLabel: 'Últ. N°', type: 'number', step: '1' },
+        { key: 'activo', label: 'Activo (visible)', type: 'bool' }
+      ],
+      tableColumns: ['nombre', 'tipo', 'identificador', 'tax_id_number', 'medio_pago_default', 'fecha_fin', 'factura_numero_actual', 'activo']
     },
     planes: {
       label: 'Planes de Servicio',
@@ -817,7 +859,7 @@
         : data.map(row => {
             const showIca = entity === 'chatters' || entity === 'equipo';
             const showTma = entity === 'modelos';
-            const showFR  = entity === 'chatters' || entity === 'equipo';
+            const showFR  = entity === 'chatters' || entity === 'equipo' || entity === 'archivo';
             const icaBtn = showIca
               ? `<button class="btn-ghost-small btn-row-ica" data-ica="${row.id}" data-ica-rol="${row.rol || ''}" title="Generar ICA (contrato de servicios)">📜</button>`
               : '';
@@ -825,7 +867,7 @@
               ? `<button class="btn-ghost-small btn-row-tma" data-tma="${row.id}" title="${row.tma_url ? 'Ver / Reemplazar TMA' : 'Subir TMA (Talent Management Agreement)'}">📜</button>`
               : '';
             const frBtn = showFR
-              ? `<button class="btn-ghost-small btn-row-fr" data-fr="${row.id}" title="Factura rápida (cualquier mes)">💸</button>`
+              ? `<button class="btn-ghost-small btn-row-fr" data-fr="${row.id}" title="${entity === 'archivo' ? 'Generar factura (cualquier mes)' : 'Factura rápida (cualquier mes)'}">💸</button>`
               : '';
             return `
             <tr>
@@ -903,10 +945,17 @@
         b.addEventListener('click', () => {
           const row = data.find(r => r.id === Number(b.dataset.fr));
           if (!row) return;
-          const kind = entity === 'equipo'
-            ? 'equipo'
-            : (String(row.rol || '').toLowerCase() === 'supervisor' ? 'supervisor' : 'chatter');
-          openFacturaRapidaModal(row, kind);
+          let kind;
+          if (entity === 'archivo') {
+            // Tipo del receptor viene del campo tipo del archivo (chatter/supervisor/equipo)
+            kind = String(row.tipo || 'chatter').toLowerCase();
+            openFacturaRapidaModal(row, kind, { fromArchivo: true });
+          } else {
+            kind = entity === 'equipo'
+              ? 'equipo'
+              : (String(row.rol || '').toLowerCase() === 'supervisor' ? 'supervisor' : 'chatter');
+            openFacturaRapidaModal(row, kind);
+          }
         });
       });
     } catch (e) {
@@ -935,6 +984,16 @@
       return value
         ? `<span class="pill green" title="TMA firmado el ${value}">✓</span>`
         : '<span class="pill red" title="TMA pendiente / no cargado">✕</span>';
+    }
+    if (key === 'medio_pago_default' && value) {
+      return `<span class="muted" style="font-size:0.78rem;font-family:ui-monospace,Menlo,Consolas,monospace">${escapeHtml(value)}</span>`;
+    }
+    if (key === 'tipo' && entity === 'archivo') {
+      const colors = { chatter: 'blue', supervisor: 'gold', equipo: 'green' };
+      return `<span class="pill ${colors[value] || ''}">${value}</span>`;
+    }
+    if (key === 'archivado_en' && value) {
+      return `<span class="muted" style="font-size:0.74rem">${new Date(value).toLocaleDateString('es-AR')}</span>`;
     }
     if (key === 'w8_w9_signed_date' && value) {
       return `<span class="muted" style="font-size:0.78rem">${value}</span>`;
@@ -1079,6 +1138,10 @@
     if (col.type === 'model-select') {
       const opts = (modelosCache || []).map(m => `<option value="${m.id}" ${value === m.id ? 'selected' : ''}>${m.nombre}</option>`).join('');
       return `<select id="${id}" ${req}><option value="">Elegí una modelo…</option>${opts}</select>`;
+    }
+    if (col.type === 'medio-pago') {
+      const opts = MEDIOS_PAGO.map(o => `<option value="${o}" ${value === o ? 'selected' : ''}>${o}</option>`).join('');
+      return `<input type="text" id="${id}" list="dl-medios-pago" value="${value || ''}" placeholder="Binance USDT, Skrill, Wise..."><datalist id="dl-medios-pago">${opts}</datalist>`;
     }
     const valAttr = value !== null && value !== undefined ? `value="${value}"` : '';
     const stepAttr = col.step ? `step="${col.step}"` : '';
@@ -3467,7 +3530,7 @@
   }
 
   // Builder reusable del HTML de la factura/liquidación legal
-  function buildFacturaLegalHtml({ kind, receptor, items, bruto, neto, fee, mes, periodoFull, fechaHoy, numero }) {
+  function buildFacturaLegalHtml({ kind, receptor, items, bruto, neto, fee, mes, periodoFull, fechaHoy, numero, medio_pago }) {
     const customLogo = (window.AGENCY_LOGO_DATA_URI || '').trim();
     const logoHtml = customLogo
       ? `<img src="${customLogo}" alt="BraveGirls" width="68" height="68" style="display:block;object-fit:contain;border-radius:10px"/>`
@@ -3577,6 +3640,12 @@
       <td style="padding:12px 12px 4px;text-align:right;color:${ACCENT};font-weight:900;font-size:13px;letter-spacing:0.02em;text-transform:uppercase">Total neto a pagar</td>
       <td style="padding:12px 12px 4px;text-align:right;color:${ACCENT};font-weight:900;font-size:22px;letter-spacing:-0.5px;line-height:1">${fmtMoney(neto)}</td>
     </tr>
+    ${(medio_pago || receptor.medio_pago_default) ? `
+    <tr>
+      <td></td>
+      <td style="padding:4px 12px;text-align:right;color:${MUTED};font-weight:600;font-size:10px">Pagado vía</td>
+      <td style="padding:4px 12px;text-align:right;color:${VALUE};font-weight:700;font-size:10.5px">${escapeHtml(medio_pago || receptor.medio_pago_default || '')}</td>
+    </tr>` : ''}
   </table>
 
   <!-- FOOTER LEGAL -->
@@ -4948,8 +5017,9 @@
   //   - Útil para emitir liquidaciones de meses pasados (Hacienda)
   //     o de Aldi/Josue sin tocar Liquidación
   // ═══════════════════════════════════════════════════════
-  function openFacturaRapidaModal(receptor, kind) {
+  function openFacturaRapidaModal(receptor, kind, opts = {}) {
     const tipoLabel = kind === 'equipo' ? 'Equipo' : (kind === 'supervisor' ? 'Supervisor' : 'Chatter');
+    const fromArchivo = !!opts.fromArchivo;
     // Defaults por rol
     const defaultMonto = kind === 'equipo' && receptor.sueldo_mensual_usd
       ? Number(receptor.sueldo_mensual_usd).toFixed(2)
@@ -4958,10 +5028,11 @@
       ? `${receptor.rol || 'Servicios'} · Sueldo mensual`
       : (kind === 'supervisor' ? 'Liquidación supervisor · SFS + comisiones' : 'Liquidación chatter · Comisiones del mes');
 
-    // Lista de 36 meses atrás + actual + 1 adelante
+    // Para archivo: rango más amplio (60 meses), para activos 36
+    const mesRange = fromArchivo ? 60 : 36;
     const now = new Date();
     const mesOpts = [];
-    for (let i = -1; i <= 36; i++) {
+    for (let i = -1; i <= mesRange; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       const mname = MESES_FULL[d.getMonth()];
@@ -4969,16 +5040,21 @@
       mesOpts.push(`<option value="${val}" ${i === 0 ? 'selected' : ''}>${lbl}</option>`);
     }
 
+    const medioPagoDefault = receptor.medio_pago_default || '';
+    const medioPagoOpts = MEDIOS_PAGO.map(m => `<option value="${m}">`).join('');
+
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop';
     backdrop.innerHTML = `
-      <div class="modal" style="max-width:580px">
+      <div class="modal" style="max-width:600px">
         <div class="modal-header">
-          <div class="modal-title">💸 Factura rápida · ${escapeHtml(receptor.nombre)} <span class="muted" style="font-size:0.75rem;font-weight:500;margin-left:6px">(${tipoLabel})</span></div>
+          <div class="modal-title">💸 Factura ${fromArchivo ? '(Archivo)' : 'rápida'} · ${escapeHtml(receptor.nombre)} <span class="muted" style="font-size:0.75rem;font-weight:500;margin-left:6px">(${tipoLabel})</span></div>
           <button class="modal-close" type="button">✕</button>
         </div>
         <form id="fr-form">
-          <p class="muted" style="font-size:0.82rem;margin:0 0 14px">Genera una liquidación legal sin pasar por Liquidación Chatters. Ideal para Aldi/Josue (sueldo fijo) o para emitir facturas de meses anteriores.</p>
+          <p class="muted" style="font-size:0.82rem;margin:0 0 14px">${fromArchivo
+            ? 'Receptor del <strong>Archivo de Ex-Contratistas</strong>. NO afecta el dashboard. Los datos quedan congelados para reusar mes a mes.'
+            : 'Genera una liquidación legal sin pasar por Liquidación Chatters. Ideal para Aldi/Josue (sueldo fijo) o para emitir facturas de meses anteriores.'}</p>
 
           <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px">
             <div>
@@ -5000,6 +5076,11 @@
             <div>
               <label for="fr-fee">Transaction fee % (opc.)</label>
               <input type="number" id="fr-fee" step="0.01" value="0" placeholder="0">
+            </div>
+            <div class="full">
+              <label for="fr-medio">Medio de pago</label>
+              <input type="text" id="fr-medio" list="dl-medios-fr" value="${escapeHtml(medioPagoDefault)}" placeholder="ej: Binance USDT (TRC20), Wise, Skrill...">
+              <datalist id="dl-medios-fr">${medioPagoOpts}</datalist>
             </div>
             <div class="full">
               <label for="fr-extra">Observaciones (opc.)</label>
@@ -5046,6 +5127,7 @@
       const bruto = Number(backdrop.querySelector('#fr-monto').value || 0);
       const feePct = Number(backdrop.querySelector('#fr-fee').value || 0);
       const obs = backdrop.querySelector('#fr-extra').value.trim();
+      const medioPago = backdrop.querySelector('#fr-medio').value.trim();
       if (!mes || !concepto || bruto <= 0) {
         toast('Mes, concepto y monto son requeridos', 'error');
         return;
@@ -5066,17 +5148,18 @@
         const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         const periodoFull = `01 al ${lastDay} de ${meses[mm-1]} ${yy}`;
 
-        // HTML preview (sin numero)
+        // HTML preview (sin numero). El receptor de archivo pasa con su info completa
+        const receptorForPdf = { ...receptor, medio_pago: medioPago };
         const previewHtml = buildFacturaLegalHtml({
-          kind, receptor, items, bruto, neto, fee: feePct,
-          mes, periodoFull, fechaHoy: fecha, numero: null
+          kind, receptor: receptorForPdf, items, bruto, neto, fee: feePct,
+          mes, periodoFull, fechaHoy: fecha, numero: null, medio_pago: medioPago
         });
 
-        // Persistir
+        // Persistir — para archivo usar entidad_tipo='archivo'
         const r = await api('factura-create', {
           method: 'POST',
           body: {
-            entidad_tipo: kind,
+            entidad_tipo: fromArchivo ? 'archivo' : kind,
             entidad_id: receptor.id,
             mes,
             fecha_emision: fecha,
@@ -5086,6 +5169,7 @@
             iva: 0,
             total: neto,
             moneda: 'USD',
+            medio_pago: medioPago || null,
             servicios_pie: concepto,
             pdf_html_snapshot: previewHtml
           }
@@ -5094,8 +5178,8 @@
 
         // Re-render con N° y emitir PDF
         const finalHtml = buildFacturaLegalHtml({
-          kind, receptor, items, bruto, neto, fee: feePct,
-          mes, periodoFull, fechaHoy: fecha, numero
+          kind, receptor: receptorForPdf, items, bruto, neto, fee: feePct,
+          mes, periodoFull, fechaHoy: fecha, numero, medio_pago: medioPago
         });
         const filename = `factura_${kind}_${(receptor.nombre || 'recv').replace(/\s+/g, '_')}_${mes}_${numero || ''}.pdf`;
         await renderHtmlToPdf(finalHtml, filename);
@@ -5228,6 +5312,11 @@
                 <input type="number" id="fm-num" step="1" placeholder="Auto">
               </div>
               <div class="full">
+                <label for="fm-medio">Medio de pago</label>
+                <input type="text" id="fm-medio" list="dl-medios-fm" placeholder="ej: Binance USDT (TRC20), Wise, Skrill...">
+                <datalist id="dl-medios-fm">${MEDIOS_PAGO.map(m => `<option value="${m}">`).join('')}</datalist>
+              </div>
+              <div class="full">
                 <label for="fm-obs">Observaciones</label>
                 <input type="text" id="fm-obs" placeholder="Nota adicional opcional">
               </div>
@@ -5288,12 +5377,14 @@
       const bruto = Number(g('#fm-bruto') || 0);
       const feePct = Number(g('#fm-fee') || 0);
       const obs = g('#fm-obs');
+      const medioPago = g('#fm-medio');
       const numManual = g('#fm-num');
       if (!receptor.nombre || !receptor.nombre_fiscal || !receptor.identificador || !concepto || bruto <= 0) {
         toast('Faltan campos requeridos (*)', 'error');
         return;
       }
       const neto = bruto * (1 - feePct / 100);
+      receptor.medio_pago = medioPago || null;
 
       const submitBtn = backdrop.querySelector('#fm-submit');
       submitBtn.disabled = true;
@@ -5309,7 +5400,7 @@
 
         const previewHtml = buildFacturaLegalHtml({
           kind: tipoReceptor, receptor, items, bruto, neto, fee: feePct,
-          mes, periodoFull, fechaHoy: fecha, numero: null
+          mes, periodoFull, fechaHoy: fecha, numero: null, medio_pago: medioPago
         });
 
         const body = {
@@ -5324,6 +5415,7 @@
           iva: 0,
           total: neto,
           moneda: 'USD',
+          medio_pago: medioPago || null,
           servicios_pie: concepto,
           pdf_html_snapshot: previewHtml
         };
@@ -5334,7 +5426,7 @@
 
         const finalHtml = buildFacturaLegalHtml({
           kind: tipoReceptor, receptor, items, bruto, neto, fee: feePct,
-          mes, periodoFull, fechaHoy: fecha, numero
+          mes, periodoFull, fechaHoy: fecha, numero, medio_pago: medioPago
         });
         const filename = `factura_manual_${(receptor.nombre || 'externo').replace(/\s+/g, '_')}_${mes}_${numero || ''}.pdf`;
         await renderHtmlToPdf(finalHtml, filename);

@@ -126,7 +126,38 @@ async function ensureCiudadColumns() {
   await sql`ALTER TABLE chatters_admin ADD COLUMN IF NOT EXISTS ciudad TEXT`;
   await sql`ALTER TABLE equipo_fijo    ADD COLUMN IF NOT EXISTS ciudad TEXT`;
   await sql`ALTER TABLE modelos        ADD COLUMN IF NOT EXISTS ciudad TEXT`;
+  await sql`ALTER TABLE chatters_admin ADD COLUMN IF NOT EXISTS medio_pago_default TEXT`;
+  await sql`ALTER TABLE equipo_fijo    ADD COLUMN IF NOT EXISTS medio_pago_default TEXT`;
+  await sql`ALTER TABLE facturas_emitidas ADD COLUMN IF NOT EXISTS medio_pago TEXT`;
   _ensuredCiudadColumns = true;
+}
+
+let _ensuredContratistasArchivo = false;
+async function ensureContratistasArchivo() {
+  if (_ensuredContratistasArchivo) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS contratistas_archivo (
+      id                    SERIAL PRIMARY KEY,
+      tipo                  TEXT NOT NULL DEFAULT 'chatter',  -- chatter | supervisor | equipo
+      nombre                TEXT NOT NULL,
+      nombre_fiscal         TEXT,
+      identificador         TEXT,
+      direccion             TEXT,
+      ciudad                TEXT,
+      tax_residency_country TEXT,
+      tax_id_type           TEXT,
+      tax_id_number         TEXT,
+      email                 TEXT,
+      medio_pago_default    TEXT,
+      fecha_inicio          DATE,
+      fecha_fin             DATE,
+      notas                 TEXT,
+      factura_numero_actual INTEGER DEFAULT 0,
+      archivado_en          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      activo                BOOLEAN DEFAULT TRUE
+    )
+  `;
+  _ensuredContratistasArchivo = true;
 }
 
 let _ensuredFacturaSoftDelete = false;
@@ -399,7 +430,7 @@ const ENTITY_CONFIG = {
       'rol', 'es_team_leader',
       'tax_residency_country', 'tax_id_type', 'tax_id_number',
       'w8_w9_on_file', 'w8_w9_signed_date', 'ica_signed_date',
-      'factura_numero_actual', 'activo'
+      'medio_pago_default', 'factura_numero_actual', 'activo'
     ],
     upsertColumns: [
       'nombre', 'nombre_fiscal', 'identificador', 'direccion', 'ciudad', 'email',
@@ -407,7 +438,7 @@ const ENTITY_CONFIG = {
       'rol', 'es_team_leader',
       'tax_residency_country', 'tax_id_type', 'tax_id_number',
       'w8_w9_on_file', 'w8_w9_signed_date', 'ica_signed_date',
-      'factura_numero_actual', 'activo'
+      'medio_pago_default', 'factura_numero_actual', 'activo'
     ]
   },
   equipo: {
@@ -418,13 +449,29 @@ const ENTITY_CONFIG = {
       'sueldo_mensual_usd', 'fecha_inicio',
       'tax_residency_country', 'tax_id_type', 'tax_id_number',
       'w8_w9_on_file', 'w8_w9_signed_date', 'ica_signed_date',
-      'factura_numero_actual', 'activo'
+      'medio_pago_default', 'factura_numero_actual', 'activo'
     ],
     upsertColumns: [
       'nombre', 'nombre_fiscal', 'identificador', 'rol', 'email', 'direccion', 'ciudad',
       'sueldo_mensual_usd', 'fecha_inicio',
       'tax_residency_country', 'tax_id_type', 'tax_id_number',
       'w8_w9_on_file', 'w8_w9_signed_date', 'ica_signed_date',
+      'medio_pago_default', 'factura_numero_actual', 'activo'
+    ]
+  },
+  archivo: {
+    table: 'contratistas_archivo',
+    activeColumn: 'activo',
+    listColumns: [
+      'id', 'tipo', 'nombre', 'nombre_fiscal', 'identificador',
+      'direccion', 'ciudad', 'tax_residency_country', 'tax_id_type', 'tax_id_number',
+      'email', 'medio_pago_default', 'fecha_inicio', 'fecha_fin', 'notas',
+      'factura_numero_actual', 'archivado_en', 'activo'
+    ],
+    upsertColumns: [
+      'tipo', 'nombre', 'nombre_fiscal', 'identificador',
+      'direccion', 'ciudad', 'tax_residency_country', 'tax_id_type', 'tax_id_number',
+      'email', 'medio_pago_default', 'fecha_inicio', 'fecha_fin', 'notas',
       'factura_numero_actual', 'activo'
     ]
   }
@@ -587,6 +634,7 @@ module.exports = async function handler(req, res) {
       await ensureICATables();
       await ensureModeloTMA();
       await ensureCiudadColumns();
+      await ensureContratistasArchivo();
 
       const entity = req.query.entity;
       if (!entity || !ENTITY_CONFIG[entity]) {
@@ -823,26 +871,38 @@ module.exports = async function handler(req, res) {
       let entidadTipo = String(b.entidad_tipo || (b.modelo_id ? 'modelo' : '')).toLowerCase();
       let entidadId = b.entidad_id !== undefined ? Number(b.entidad_id) : (b.modelo_id ? Number(b.modelo_id) : null);
 
-      if (!['modelo', 'chatter', 'equipo', 'supervisor', 'externo'].includes(entidadTipo)) {
+      if (!['modelo', 'chatter', 'equipo', 'supervisor', 'externo', 'archivo'].includes(entidadTipo)) {
         return res.status(400).json({ success: false, error: 'entidad_tipo inválido' });
       }
       const esExterno = entidadTipo === 'externo';
+      const esArchivo = entidadTipo === 'archivo';
       if (!esExterno && !entidadId) {
         return res.status(400).json({ success: false, error: 'entidad_id requerido para entidad no externa' });
       }
 
       // Map entidad_tipo → tabla + tipo de doc
       const SEQ_TABLE = {
-        modelo:      { table: 'modelos',         tipo: 'factura_modelo' },
-        chatter:     { table: 'chatters_admin',  tipo: 'liquidacion_chatter' },
-        supervisor:  { table: 'chatters_admin',  tipo: 'liquidacion_supervisor' },
-        equipo:      { table: 'equipo_fijo',     tipo: 'liquidacion_equipo' }
+        modelo:      { table: 'modelos',               tipo: 'factura_modelo' },
+        chatter:     { table: 'chatters_admin',        tipo: 'liquidacion_chatter' },
+        supervisor:  { table: 'chatters_admin',        tipo: 'liquidacion_supervisor' },
+        equipo:      { table: 'equipo_fijo',           tipo: 'liquidacion_equipo' },
+        archivo:     { table: 'contratistas_archivo',  tipo: null } // dinamico segun tipo del archivo
       };
       // Externo: el tipo de doc lo decide tipo_receptor (chatter por default)
       const tipoReceptor = String(b.tipo_receptor || 'chatter').toLowerCase();
+      // Para archivo, leer el tipo desde la tabla (chatter/supervisor/equipo)
+      let archivoTipo = 'chatter';
+      if (esArchivo) {
+        await ensureContratistasArchivo();
+        const ar = await sql.query('SELECT tipo FROM contratistas_archivo WHERE id = $1', [entidadId]);
+        if (ar.rows.length === 0) return res.status(404).json({ success: false, error: 'contratista de archivo no encontrado' });
+        archivoTipo = ar.rows[0].tipo || 'chatter';
+      }
       const tipoDoc = esExterno
         ? `liquidacion_externa_${['chatter','supervisor','equipo'].includes(tipoReceptor) ? tipoReceptor : 'chatter'}`
-        : SEQ_TABLE[entidadTipo].tipo;
+        : (esArchivo
+            ? `liquidacion_archivo_${['chatter','supervisor','equipo'].includes(archivoTipo) ? archivoTipo : 'chatter'}`
+            : SEQ_TABLE[entidadTipo].tipo);
 
       const numeroManualRaw = b.numero;
       const usaManual = numeroManualRaw !== undefined && numeroManualRaw !== null && numeroManualRaw !== '';
@@ -893,7 +953,7 @@ module.exports = async function handler(req, res) {
             fecha_emision, fecha_vencimiento, pago_por,
             concepto, porcentaje_concepto, items,
             subtotal, iva, total, moneda, cotizacion_eur,
-            servicios_pie, estado, pdf_html_snapshot, receptor_snapshot
+            servicios_pie, estado, pdf_html_snapshot, receptor_snapshot, medio_pago
           ) VALUES (
             ${numero}, ${tipoDoc}, ${entidadTipo}, ${esExterno ? null : entidadId}, ${b.mes || null},
             ${b.fecha_emision || null}, ${b.fecha_vencimiento || null}, ${b.pago_por || null},
@@ -902,7 +962,7 @@ module.exports = async function handler(req, res) {
             ${b.subtotal || 0}, ${b.iva || 0}, ${b.total || 0},
             ${b.moneda || 'USD'}, ${b.cotizacion_eur || null},
             ${b.servicios_pie || null}, 'emitida',
-            ${b.pdf_html_snapshot || null}, ${receptorSnapshotJson}::jsonb
+            ${b.pdf_html_snapshot || null}, ${receptorSnapshotJson}::jsonb, ${b.medio_pago || null}
           )
           RETURNING *
         `;
@@ -932,12 +992,13 @@ module.exports = async function handler(req, res) {
         SELECT f.id, f.numero, f.tipo, f.entidad_tipo, f.entidad_id, f.mes,
                f.fecha_emision, f.fecha_vencimiento, f.pago_por,
                f.concepto, f.subtotal, f.iva, f.total, f.moneda, f.estado,
-               f.created_at, f.receptor_snapshot,
-               COALESCE(m.nombre, c.nombre, eq.nombre, f.receptor_snapshot->>'nombre') AS receptor_nombre
+               f.created_at, f.receptor_snapshot, f.medio_pago,
+               COALESCE(m.nombre, c.nombre, eq.nombre, ar.nombre, f.receptor_snapshot->>'nombre') AS receptor_nombre
         FROM facturas_emitidas f
-        LEFT JOIN modelos        m  ON m.id  = f.entidad_id AND f.entidad_tipo = 'modelo'
-        LEFT JOIN chatters_admin c  ON c.id  = f.entidad_id AND f.entidad_tipo IN ('chatter','supervisor')
-        LEFT JOIN equipo_fijo    eq ON eq.id = f.entidad_id AND f.entidad_tipo = 'equipo'
+        LEFT JOIN modelos              m  ON m.id  = f.entidad_id AND f.entidad_tipo = 'modelo'
+        LEFT JOIN chatters_admin       c  ON c.id  = f.entidad_id AND f.entidad_tipo IN ('chatter','supervisor')
+        LEFT JOIN equipo_fijo          eq ON eq.id = f.entidad_id AND f.entidad_tipo = 'equipo'
+        LEFT JOIN contratistas_archivo ar ON ar.id = f.entidad_id AND f.entidad_tipo = 'archivo'
         WHERE f.deleted_at IS NULL
       `;
       const params = [];
