@@ -133,6 +133,7 @@ let _ensuredFacturaSoftDelete = false;
 async function ensureFacturaSoftDelete() {
   if (_ensuredFacturaSoftDelete) return;
   await sql`ALTER TABLE facturas_emitidas ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`;
+  await sql`ALTER TABLE facturas_emitidas ADD COLUMN IF NOT EXISTS receptor_snapshot JSONB`;
   _ensuredFacturaSoftDelete = true;
 }
 
@@ -807,32 +808,41 @@ module.exports = async function handler(req, res) {
     }
 
     // ─── CREAR FACTURA (snapshot inmutable) ────
-    // POST ?action=factura-create body: { entidad_tipo: 'modelo'|'chatter'|'equipo'|'supervisor', entidad_id, mes, items, ... }
+    // POST ?action=factura-create body: { entidad_tipo: 'modelo'|'chatter'|'equipo'|'supervisor'|'externo', ... }
     //   Compat: si viene modelo_id en body, se asume entidad_tipo='modelo'.
+    //   Para entidad_tipo='externo': enviar receptor_snapshot { nombre, nombre_fiscal, identificador, direccion, ciudad, tax_residency_country, tax_id_type, tax_id_number, email } y tipo_receptor ('chatter'|'supervisor'|'equipo') para el titulo del PDF.
     if (action === 'factura-create') {
       const auth = await checkAuth(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       await ensureFacturaSeqColumns();
+      await ensureFacturaSoftDelete();
 
       if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
       const b = req.body || {};
       // Compat: si llega modelo_id (sin entidad_tipo), asumimos factura_modelo
       let entidadTipo = String(b.entidad_tipo || (b.modelo_id ? 'modelo' : '')).toLowerCase();
-      let entidadId = Number(b.entidad_id || b.modelo_id);
-      if (!entidadId) return res.status(400).json({ success: false, error: 'entidad_id requerido' });
-      if (!['modelo', 'chatter', 'equipo', 'supervisor'].includes(entidadTipo)) {
+      let entidadId = b.entidad_id !== undefined ? Number(b.entidad_id) : (b.modelo_id ? Number(b.modelo_id) : null);
+
+      if (!['modelo', 'chatter', 'equipo', 'supervisor', 'externo'].includes(entidadTipo)) {
         return res.status(400).json({ success: false, error: 'entidad_tipo inválido' });
+      }
+      const esExterno = entidadTipo === 'externo';
+      if (!esExterno && !entidadId) {
+        return res.status(400).json({ success: false, error: 'entidad_id requerido para entidad no externa' });
       }
 
       // Map entidad_tipo → tabla + tipo de doc
       const SEQ_TABLE = {
         modelo:      { table: 'modelos',         tipo: 'factura_modelo' },
         chatter:     { table: 'chatters_admin',  tipo: 'liquidacion_chatter' },
-        supervisor:  { table: 'chatters_admin',  tipo: 'liquidacion_supervisor' }, // supervisor también vive en chatters_admin
+        supervisor:  { table: 'chatters_admin',  tipo: 'liquidacion_supervisor' },
         equipo:      { table: 'equipo_fijo',     tipo: 'liquidacion_equipo' }
       };
-      const seqCfg = SEQ_TABLE[entidadTipo];
-      const tipoDoc = seqCfg.tipo;
+      // Externo: el tipo de doc lo decide tipo_receptor (chatter por default)
+      const tipoReceptor = String(b.tipo_receptor || 'chatter').toLowerCase();
+      const tipoDoc = esExterno
+        ? `liquidacion_externa_${['chatter','supervisor','equipo'].includes(tipoReceptor) ? tipoReceptor : 'chatter'}`
+        : SEQ_TABLE[entidadTipo].tipo;
 
       const numeroManualRaw = b.numero;
       const usaManual = numeroManualRaw !== undefined && numeroManualRaw !== null && numeroManualRaw !== '';
@@ -845,21 +855,37 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      // Número de factura: manual (si viene) o autoincremental
+      // Número de factura
       await sql`BEGIN`;
       try {
-        // Increment numerador en la tabla del receptor (sql.query crudo porque varía la tabla)
-        const updSql = usaManual
-          ? `UPDATE ${seqCfg.table} SET factura_numero_actual = GREATEST(COALESCE(factura_numero_actual, 0), $1) WHERE id = $2 RETURNING factura_numero_actual`
-          : `UPDATE ${seqCfg.table} SET factura_numero_actual = COALESCE(factura_numero_actual, 0) + 1 WHERE id = $1 RETURNING factura_numero_actual`;
-        const updParams = usaManual ? [numeroManual, entidadId] : [entidadId];
-        const upd = await sql.query(updSql, updParams);
-
-        if (upd.rows.length === 0) {
-          await sql`ROLLBACK`;
-          return res.status(404).json({ success: false, error: `${entidadTipo} no encontrado` });
+        let numero;
+        if (esExterno) {
+          // Contador global por receptor externo: MAX(numero) WHERE tipo LIKE 'liquidacion_externa_%' + 1
+          if (usaManual) {
+            numero = numeroManual;
+          } else {
+            const maxRes = await sql`
+              SELECT COALESCE(MAX(numero), 0) AS max_num
+              FROM facturas_emitidas
+              WHERE tipo LIKE 'liquidacion_externa_%'
+            `;
+            numero = Number(maxRes.rows[0].max_num) + 1;
+          }
+        } else {
+          const seqCfg = SEQ_TABLE[entidadTipo];
+          const updSql = usaManual
+            ? `UPDATE ${seqCfg.table} SET factura_numero_actual = GREATEST(COALESCE(factura_numero_actual, 0), $1) WHERE id = $2 RETURNING factura_numero_actual`
+            : `UPDATE ${seqCfg.table} SET factura_numero_actual = COALESCE(factura_numero_actual, 0) + 1 WHERE id = $1 RETURNING factura_numero_actual`;
+          const updParams = usaManual ? [numeroManual, entidadId] : [entidadId];
+          const upd = await sql.query(updSql, updParams);
+          if (upd.rows.length === 0) {
+            await sql`ROLLBACK`;
+            return res.status(404).json({ success: false, error: `${entidadTipo} no encontrado` });
+          }
+          numero = usaManual ? numeroManual : Number(upd.rows[0].factura_numero_actual);
         }
-        const numero = usaManual ? numeroManual : Number(upd.rows[0].factura_numero_actual);
+
+        const receptorSnapshotJson = b.receptor_snapshot ? JSON.stringify(b.receptor_snapshot) : null;
 
         const ins = await sql`
           INSERT INTO facturas_emitidas (
@@ -867,16 +893,16 @@ module.exports = async function handler(req, res) {
             fecha_emision, fecha_vencimiento, pago_por,
             concepto, porcentaje_concepto, items,
             subtotal, iva, total, moneda, cotizacion_eur,
-            servicios_pie, estado, pdf_html_snapshot
+            servicios_pie, estado, pdf_html_snapshot, receptor_snapshot
           ) VALUES (
-            ${numero}, ${tipoDoc}, ${entidadTipo}, ${entidadId}, ${b.mes || null},
+            ${numero}, ${tipoDoc}, ${entidadTipo}, ${esExterno ? null : entidadId}, ${b.mes || null},
             ${b.fecha_emision || null}, ${b.fecha_vencimiento || null}, ${b.pago_por || null},
             ${b.concepto || null}, ${b.porcentaje_concepto || null},
             ${JSON.stringify(b.items || [])}::jsonb,
             ${b.subtotal || 0}, ${b.iva || 0}, ${b.total || 0},
             ${b.moneda || 'USD'}, ${b.cotizacion_eur || null},
             ${b.servicios_pie || null}, 'emitida',
-            ${b.pdf_html_snapshot || null}
+            ${b.pdf_html_snapshot || null}, ${receptorSnapshotJson}::jsonb
           )
           RETURNING *
         `;
@@ -906,8 +932,8 @@ module.exports = async function handler(req, res) {
         SELECT f.id, f.numero, f.tipo, f.entidad_tipo, f.entidad_id, f.mes,
                f.fecha_emision, f.fecha_vencimiento, f.pago_por,
                f.concepto, f.subtotal, f.iva, f.total, f.moneda, f.estado,
-               f.created_at,
-               COALESCE(m.nombre, c.nombre, eq.nombre) AS receptor_nombre
+               f.created_at, f.receptor_snapshot,
+               COALESCE(m.nombre, c.nombre, eq.nombre, f.receptor_snapshot->>'nombre') AS receptor_nombre
         FROM facturas_emitidas f
         LEFT JOIN modelos        m  ON m.id  = f.entidad_id AND f.entidad_tipo = 'modelo'
         LEFT JOIN chatters_admin c  ON c.id  = f.entidad_id AND f.entidad_tipo IN ('chatter','supervisor')

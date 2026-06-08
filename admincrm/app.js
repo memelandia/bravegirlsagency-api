@@ -2387,10 +2387,13 @@
       const r = await api('facturas-list', { params });
 
       const tipoLabel = {
-        factura_modelo:        { txt: 'Modelo',     color: 'pink',  prefix: 'FCT' },
-        liquidacion_chatter:   { txt: 'Chatter',    color: 'blue',  prefix: 'LIQ' },
-        liquidacion_supervisor:{ txt: 'Supervisor', color: 'gold',  prefix: 'LIQ' },
-        liquidacion_equipo:    { txt: 'Equipo',     color: 'green', prefix: 'LIQ' }
+        factura_modelo:                 { txt: 'Modelo',          color: 'pink',  prefix: 'FCT' },
+        liquidacion_chatter:            { txt: 'Chatter',         color: 'blue',  prefix: 'LIQ' },
+        liquidacion_supervisor:         { txt: 'Supervisor',      color: 'gold',  prefix: 'LIQ' },
+        liquidacion_equipo:             { txt: 'Equipo',          color: 'green', prefix: 'LIQ' },
+        liquidacion_externa_chatter:    { txt: 'Externo · Chat',  color: 'amber', prefix: 'EXT' },
+        liquidacion_externa_supervisor: { txt: 'Externo · Sup',   color: 'amber', prefix: 'EXT' },
+        liquidacion_externa_equipo:     { txt: 'Externo · Equipo',color: 'amber', prefix: 'EXT' }
       };
 
       const rows = (r.data || []).map(f => {
@@ -2417,13 +2420,17 @@
             <h3>▦ Documentos emitidos <span class="count">${(r.data || []).length}</span></h3>
             <div style="display:flex;gap:6px;align-items:center;margin-left:auto">
               <label style="margin:0;font-size:0.7rem">Tipo:</label>
-              <select id="facturas-filtro-tipo" style="min-width:170px;padding:6px 32px 6px 12px;font-size:0.82rem">
+              <select id="facturas-filtro-tipo" style="min-width:200px;padding:6px 32px 6px 12px;font-size:0.82rem">
                 <option value="" ${filtroTipo===''?'selected':''}>Todos</option>
                 <option value="factura_modelo" ${filtroTipo==='factura_modelo'?'selected':''}>Facturas a modelos</option>
                 <option value="liquidacion_chatter" ${filtroTipo==='liquidacion_chatter'?'selected':''}>Liquidaciones chatters</option>
                 <option value="liquidacion_supervisor" ${filtroTipo==='liquidacion_supervisor'?'selected':''}>Liquidación supervisor</option>
                 <option value="liquidacion_equipo" ${filtroTipo==='liquidacion_equipo'?'selected':''}>Liquidaciones equipo</option>
+                <option value="liquidacion_externa_chatter" ${filtroTipo==='liquidacion_externa_chatter'?'selected':''}>Externas · Chatter</option>
+                <option value="liquidacion_externa_supervisor" ${filtroTipo==='liquidacion_externa_supervisor'?'selected':''}>Externas · Supervisor</option>
+                <option value="liquidacion_externa_equipo" ${filtroTipo==='liquidacion_externa_equipo'?'selected':''}>Externas · Equipo</option>
               </select>
+              <button class="btn-secondary" id="fact-manual-btn" style="width:auto;padding:8px 14px;font-size:0.85rem" title="Receptor que NO está en el catálogo">📝 Manual</button>
               <button class="btn-primary" style="width:auto;padding:8px 16px;font-size:0.85rem" onclick="location.hash='facturacion'">+ Nueva factura</button>
             </div>
           </div>
@@ -2442,6 +2449,10 @@
       document.getElementById('facturas-filtro-tipo')?.addEventListener('change', (e) => {
         sessionStorage.setItem('facturas_filtro_tipo', e.target.value);
         renderFacturas(view);
+      });
+
+      document.getElementById('fact-manual-btn')?.addEventListener('click', () => {
+        openFacturaManualModal();
       });
 
       view.querySelectorAll('[data-reprint]').forEach(b => {
@@ -5098,6 +5109,249 @@
     });
   }
   window.openFacturaRapidaModal = openFacturaRapidaModal;
+
+  // ═══════════════════════════════════════════════════════
+  // FACTURA MANUAL · receptor externo (NO se guarda en catalogo)
+  //   Caso: ex-chatters, colaboradores puntuales, etc.
+  //   Todos los datos del receptor se tipean a mano y se guardan
+  //   como JSONB snapshot en facturas_emitidas. Reusables al
+  //   reimprimir, pero no quedan como entidad activa.
+  //   Numerador GLOBAL para todas las externas (MAN-0001, MAN-0002...).
+  // ═══════════════════════════════════════════════════════
+  function openFacturaManualModal() {
+    const now = new Date();
+    const mesOpts = [];
+    for (let i = -1; i <= 60; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const mname = MESES_FULL[d.getMonth()];
+      const lbl = `${mname.charAt(0).toUpperCase() + mname.slice(1)} ${d.getFullYear()}`;
+      mesOpts.push(`<option value="${val}" ${i === 0 ? 'selected' : ''}>${lbl}</option>`);
+    }
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal" style="max-width:700px">
+        <div class="modal-header">
+          <div class="modal-title">📝 Factura manual · Receptor externo</div>
+          <button class="modal-close" type="button">✕</button>
+        </div>
+        <form id="fm-form">
+          <p class="muted" style="font-size:0.82rem;margin:0 0 14px">Para personas que ya no están en la agencia o colaboradores puntuales. Los datos NO se guardan en el catálogo — solo en esta factura específica.</p>
+
+          <div style="margin:0 0 14px;padding:10px 12px;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:8px">
+            <div style="font-size:0.7rem;color:#7DD3FC;text-transform:uppercase;letter-spacing:0.1em;font-weight:800;margin-bottom:8px">Datos del Receptor</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px">
+              <div class="full">
+                <label for="fm-nombre">Nombre artístico / corto *</label>
+                <input type="text" id="fm-nombre" required placeholder="ej: Brian, JM, Sofi...">
+              </div>
+              <div class="full">
+                <label for="fm-fiscal">Nombre fiscal completo *</label>
+                <input type="text" id="fm-fiscal" required placeholder="Nombre y apellidos como en su DNI/Pasaporte">
+              </div>
+              <div>
+                <label for="fm-id">DNI / Pasaporte / ID *</label>
+                <input type="text" id="fm-id" required>
+              </div>
+              <div>
+                <label for="fm-pais">País residencia fiscal</label>
+                <input type="text" id="fm-pais" placeholder="AR / VE / ES / MX...">
+              </div>
+              <div>
+                <label for="fm-direccion">Dirección (calle + número)</label>
+                <input type="text" id="fm-direccion" placeholder="Opcional">
+              </div>
+              <div>
+                <label for="fm-ciudad">Ciudad</label>
+                <input type="text" id="fm-ciudad">
+              </div>
+              <div>
+                <label for="fm-taxtype">Tipo Tax ID</label>
+                <select id="fm-taxtype">
+                  <option value="">—</option>
+                  <option value="DNI">DNI</option>
+                  <option value="Pasaporte">Pasaporte</option>
+                  <option value="CUIT/CUIL">CUIT/CUIL</option>
+                  <option value="NIE/NIF">NIE/NIF</option>
+                  <option value="RFC">RFC</option>
+                  <option value="W-8BEN (Foreign)">W-8BEN</option>
+                  <option value="W-9 (US)">W-9</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label for="fm-taxid">N° Tax ID</label>
+                <input type="text" id="fm-taxid" placeholder="Mismo que ID o foreign tax">
+              </div>
+              <div class="full">
+                <label for="fm-email">Email (opcional)</label>
+                <input type="email" id="fm-email">
+              </div>
+            </div>
+          </div>
+
+          <div style="margin:0 0 14px;padding:10px 12px;background:rgba(255,31,142,0.08);border:1px solid rgba(255,31,142,0.25);border-radius:8px">
+            <div style="font-size:0.7rem;color:#FF1F8E;text-transform:uppercase;letter-spacing:0.1em;font-weight:800;margin-bottom:8px">Datos de la Factura</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px">
+              <div>
+                <label for="fm-tipo">Tipo PDF *</label>
+                <select id="fm-tipo" required>
+                  <option value="chatter" selected>Chatter</option>
+                  <option value="supervisor">Supervisor</option>
+                  <option value="equipo">Equipo / Otro</option>
+                </select>
+              </div>
+              <div>
+                <label for="fm-mes">Período (mes) *</label>
+                <select id="fm-mes" required>${mesOpts.join('')}</select>
+              </div>
+              <div>
+                <label for="fm-fecha">Fecha emisión</label>
+                <input type="date" id="fm-fecha" value="${new Date().toISOString().slice(0, 10)}">
+              </div>
+              <div class="full">
+                <label for="fm-concepto">Concepto / Servicios *</label>
+                <input type="text" id="fm-concepto" required value="Liquidación de servicios" placeholder="ej: Comisiones chatting · Junio 2024">
+              </div>
+              <div>
+                <label for="fm-bruto">Monto bruto USD *</label>
+                <input type="number" id="fm-bruto" step="0.01" required placeholder="0.00">
+              </div>
+              <div>
+                <label for="fm-fee">Fee % (opc.)</label>
+                <input type="number" id="fm-fee" step="0.01" value="0">
+              </div>
+              <div>
+                <label for="fm-num">N° manual (opc.)</label>
+                <input type="number" id="fm-num" step="1" placeholder="Auto">
+              </div>
+              <div class="full">
+                <label for="fm-obs">Observaciones</label>
+                <input type="text" id="fm-obs" placeholder="Nota adicional opcional">
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:10px 12px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:8px;font-size:0.78rem;color:#FDE047" id="fm-preview-box">
+            <strong>Vista previa:</strong>
+            <div id="fm-preview-content" style="margin-top:4px;color:rgba(255,255,255,0.85);font-weight:600">—</div>
+          </div>
+
+          <div class="form-actions" style="margin-top:14px">
+            <button type="button" class="btn-secondary modal-cancel">Cancelar</button>
+            <button type="submit" class="btn-primary" id="fm-submit">📄 Generar PDF</button>
+          </div>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const close = () => backdrop.remove();
+    backdrop.querySelector('.modal-close').addEventListener('click', close);
+    backdrop.querySelector('.modal-cancel').addEventListener('click', close);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+
+    const updatePreview = () => {
+      const nombre = backdrop.querySelector('#fm-nombre').value || '—';
+      const bruto = Number(backdrop.querySelector('#fm-bruto').value || 0);
+      const feePct = Number(backdrop.querySelector('#fm-fee').value || 0);
+      const neto = bruto * (1 - feePct / 100);
+      const mes = backdrop.querySelector('#fm-mes').value;
+      backdrop.querySelector('#fm-preview-content').innerHTML =
+        `${escapeHtml(nombre)} · ${fmtMesNice(mes)} · Bruto <strong>${fmtMoney(bruto)}</strong>${feePct > 0 ? ` · Fee ${feePct}% (−${fmtMoney(bruto - neto)})` : ''} · Neto <strong style="color:#34D399">${fmtMoney(neto)}</strong>`;
+    };
+    backdrop.querySelectorAll('#fm-nombre, #fm-bruto, #fm-fee, #fm-mes').forEach(el => el.addEventListener('input', updatePreview));
+    updatePreview();
+
+    backdrop.querySelector('#fm-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const g = (id) => backdrop.querySelector(id).value.trim();
+      const receptor = {
+        nombre:                g('#fm-nombre'),
+        nombre_fiscal:         g('#fm-fiscal'),
+        identificador:         g('#fm-id'),
+        direccion:             g('#fm-direccion') || null,
+        ciudad:                g('#fm-ciudad') || null,
+        tax_residency_country: g('#fm-pais') || null,
+        tax_id_type:           g('#fm-taxtype') || null,
+        tax_id_number:         g('#fm-taxid') || null,
+        email:                 g('#fm-email') || null,
+        w8_w9_on_file:         false,
+        w8_w9_signed_date:     null,
+        id:                    null // marca de externo
+      };
+      const tipoReceptor = g('#fm-tipo');
+      const mes = g('#fm-mes');
+      const fecha = g('#fm-fecha');
+      const concepto = g('#fm-concepto');
+      const bruto = Number(g('#fm-bruto') || 0);
+      const feePct = Number(g('#fm-fee') || 0);
+      const obs = g('#fm-obs');
+      const numManual = g('#fm-num');
+      if (!receptor.nombre || !receptor.nombre_fiscal || !receptor.identificador || !concepto || bruto <= 0) {
+        toast('Faltan campos requeridos (*)', 'error');
+        return;
+      }
+      const neto = bruto * (1 - feePct / 100);
+
+      const submitBtn = backdrop.querySelector('#fm-submit');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '⏳ Generando…';
+      try {
+        const items = [{ descripcion: concepto, monto: bruto }];
+        if (obs) items.push({ descripcion: `Observaciones: ${obs}`, monto: 0 });
+
+        const [yy, mm] = mes.split('-').map(Number);
+        const lastDay = new Date(yy, mm, 0).getDate();
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        const periodoFull = `01 al ${lastDay} de ${meses[mm-1]} ${yy}`;
+
+        const previewHtml = buildFacturaLegalHtml({
+          kind: tipoReceptor, receptor, items, bruto, neto, fee: feePct,
+          mes, periodoFull, fechaHoy: fecha, numero: null
+        });
+
+        const body = {
+          entidad_tipo: 'externo',
+          tipo_receptor: tipoReceptor,
+          receptor_snapshot: receptor,
+          mes,
+          fecha_emision: fecha,
+          concepto,
+          items,
+          subtotal: bruto,
+          iva: 0,
+          total: neto,
+          moneda: 'USD',
+          servicios_pie: concepto,
+          pdf_html_snapshot: previewHtml
+        };
+        if (numManual) body.numero = Number(numManual);
+
+        const r = await api('factura-create', { method: 'POST', body });
+        const numero = r.data?.numero;
+
+        const finalHtml = buildFacturaLegalHtml({
+          kind: tipoReceptor, receptor, items, bruto, neto, fee: feePct,
+          mes, periodoFull, fechaHoy: fecha, numero
+        });
+        const filename = `factura_manual_${(receptor.nombre || 'externo').replace(/\s+/g, '_')}_${mes}_${numero || ''}.pdf`;
+        await renderHtmlToPdf(finalHtml, filename);
+        toast(`Factura externa #${numero} emitida para ${receptor.nombre}`, 'success');
+        close();
+        // refresh facturas list if currently displayed
+        if ((location.hash.replace('#', '') || 'resumen') === 'facturas') {
+          navigate('facturas');
+        }
+      } catch (err) {
+        toast('Error: ' + err.message, 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '📄 Generar PDF';
+      }
+    });
+  }
+  window.openFacturaManualModal = openFacturaManualModal;
 
   async function renderIncentivos(view) {
     view.innerHTML = Skel.full();
