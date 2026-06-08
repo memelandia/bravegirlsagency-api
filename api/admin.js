@@ -120,6 +120,15 @@ async function ensureGastosSoftDelete() {
   _ensuredGastosSoftDelete = true;
 }
 
+let _ensuredCiudadColumns = false;
+async function ensureCiudadColumns() {
+  if (_ensuredCiudadColumns) return;
+  await sql`ALTER TABLE chatters_admin ADD COLUMN IF NOT EXISTS ciudad TEXT`;
+  await sql`ALTER TABLE equipo_fijo    ADD COLUMN IF NOT EXISTS ciudad TEXT`;
+  await sql`ALTER TABLE modelos        ADD COLUMN IF NOT EXISTS ciudad TEXT`;
+  _ensuredCiudadColumns = true;
+}
+
 let _ensuredFacturaSoftDelete = false;
 async function ensureFacturaSoftDelete() {
   if (_ensuredFacturaSoftDelete) return;
@@ -384,7 +393,7 @@ const ENTITY_CONFIG = {
     table: 'chatters_admin',
     activeColumn: 'activo',
     listColumns: [
-      'id', 'nombre', 'nombre_fiscal', 'identificador', 'direccion', 'email',
+      'id', 'nombre', 'nombre_fiscal', 'identificador', 'direccion', 'ciudad', 'email',
       'fecha_inicio', 'porcentaje_default', 'porcentaje_supervisor',
       'rol', 'es_team_leader',
       'tax_residency_country', 'tax_id_type', 'tax_id_number',
@@ -392,7 +401,7 @@ const ENTITY_CONFIG = {
       'factura_numero_actual', 'activo'
     ],
     upsertColumns: [
-      'nombre', 'nombre_fiscal', 'identificador', 'direccion', 'email',
+      'nombre', 'nombre_fiscal', 'identificador', 'direccion', 'ciudad', 'email',
       'fecha_inicio', 'porcentaje_default', 'porcentaje_supervisor',
       'rol', 'es_team_leader',
       'tax_residency_country', 'tax_id_type', 'tax_id_number',
@@ -404,14 +413,14 @@ const ENTITY_CONFIG = {
     table: 'equipo_fijo',
     activeColumn: 'activo',
     listColumns: [
-      'id', 'nombre', 'nombre_fiscal', 'identificador', 'rol', 'email', 'direccion',
+      'id', 'nombre', 'nombre_fiscal', 'identificador', 'rol', 'email', 'direccion', 'ciudad',
       'sueldo_mensual_usd', 'fecha_inicio',
       'tax_residency_country', 'tax_id_type', 'tax_id_number',
       'w8_w9_on_file', 'w8_w9_signed_date', 'ica_signed_date',
       'factura_numero_actual', 'activo'
     ],
     upsertColumns: [
-      'nombre', 'nombre_fiscal', 'identificador', 'rol', 'email', 'direccion',
+      'nombre', 'nombre_fiscal', 'identificador', 'rol', 'email', 'direccion', 'ciudad',
       'sueldo_mensual_usd', 'fecha_inicio',
       'tax_residency_country', 'tax_id_type', 'tax_id_number',
       'w8_w9_on_file', 'w8_w9_signed_date', 'ica_signed_date',
@@ -576,6 +585,7 @@ module.exports = async function handler(req, res) {
       await ensureFacturaSeqColumns();
       await ensureICATables();
       await ensureModeloTMA();
+      await ensureCiudadColumns();
 
       const entity = req.query.entity;
       if (!entity || !ENTITY_CONFIG[entity]) {
@@ -1350,8 +1360,14 @@ module.exports = async function handler(req, res) {
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
       await ensureAsignTable();
 
+      // Incluye datos fiscales para que generarFacturaLegal arme bien el PDF
+      await ensureFacturaSeqColumns();
+      await ensureCiudadColumns();
       const chatters = await sql`
-        SELECT id, nombre, email, porcentaje_default, porcentaje_supervisor, rol, es_team_leader
+        SELECT id, nombre, email, porcentaje_default, porcentaje_supervisor, rol, es_team_leader,
+               nombre_fiscal, identificador, direccion, ciudad,
+               tax_residency_country, tax_id_type, tax_id_number,
+               w8_w9_on_file, w8_w9_signed_date, ica_signed_date
         FROM chatters_admin
         WHERE activo = TRUE AND COALESCE(rol, 'chatter') <> 'supervisor'
         ORDER BY nombre
@@ -1406,7 +1422,10 @@ module.exports = async function handler(req, res) {
       // Supervisor (chatter con rol=supervisor) + su pago del mes (si existe)
       await ensureEnviosColumns();
       const supRow = await sql`
-        SELECT id, nombre, email, porcentaje_supervisor
+        SELECT id, nombre, email, porcentaje_supervisor,
+               nombre_fiscal, identificador, direccion, ciudad,
+               tax_residency_country, tax_id_type, tax_id_number,
+               w8_w9_on_file, w8_w9_signed_date, ica_signed_date
         FROM chatters_admin
         WHERE activo = TRUE AND rol = 'supervisor'
         ORDER BY nombre
@@ -1420,7 +1439,15 @@ module.exports = async function handler(req, res) {
       }
 
       // Equipo fijo + sus pagos del mes
-      const equipo = await sql`SELECT id, nombre, rol, sueldo_mensual_usd, email FROM equipo_fijo WHERE activo = TRUE ORDER BY nombre`;
+      const equipo = await sql`
+        SELECT id, nombre, rol, sueldo_mensual_usd, email,
+               nombre_fiscal, identificador, direccion, ciudad,
+               tax_residency_country, tax_id_type, tax_id_number,
+               w8_w9_on_file, w8_w9_signed_date, ica_signed_date
+        FROM equipo_fijo
+        WHERE activo = TRUE
+        ORDER BY nombre
+      `;
       const equipoPagosRows = await sql`SELECT * FROM equipo_pagos_mes WHERE mes = ${mes}`;
       const pagosByEquipo = {};
       equipoPagosRows.rows.forEach(p => { pagosByEquipo[p.equipo_id] = p; });

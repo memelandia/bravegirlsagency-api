@@ -72,10 +72,11 @@
       label: 'Chatters',
       icon: '💬',
       columns: [
-        { key: 'nombre', label: 'Nombre', type: 'text', required: true },
-        { key: 'nombre_fiscal', label: 'Nombre fiscal completo', type: 'text' },
-        { key: 'identificador', label: 'DNI / Pasaporte / ID local', type: 'text' },
-        { key: 'direccion', label: 'Dirección', type: 'text', wide: true },
+        { key: 'nombre', label: 'Nombre artístico', type: 'text', required: true, placeholder: 'Alfonso, Kari, Jony...' },
+        { key: 'nombre_fiscal', label: 'Nombre fiscal completo', type: 'text', placeholder: 'Como aparece en su DNI/Pasaporte' },
+        { key: 'identificador', label: 'DNI / Pasaporte / ID local', type: 'text', placeholder: 'Solo dígitos/letras del documento' },
+        { key: 'direccion', label: 'Dirección (calle + número)', type: 'text', wide: true, placeholder: 'Opcional pero recomendado para W-8BEN' },
+        { key: 'ciudad', label: 'Ciudad', type: 'text', placeholder: 'Buenos Aires, Caracas, Madrid...' },
         { key: 'email', label: 'Email', type: 'email' },
         { key: 'fecha_inicio', label: 'Fecha inicio', type: 'date' },
         { key: 'porcentaje_default', label: '% comisión default', shortLabel: '% Com.', type: 'number', step: '0.01', placeholder: '15' },
@@ -98,11 +99,12 @@
       icon: '★',
       columns: [
         { key: 'nombre', label: 'Nombre', type: 'text', required: true },
-        { key: 'nombre_fiscal', label: 'Nombre fiscal completo', type: 'text' },
+        { key: 'nombre_fiscal', label: 'Nombre fiscal completo', type: 'text', placeholder: 'Como aparece en su DNI/Pasaporte' },
         { key: 'identificador', label: 'DNI / Pasaporte / ID local', type: 'text' },
         { key: 'rol', label: 'Rol', type: 'text', placeholder: 'Account Manager, Editor…' },
         { key: 'email', label: 'Email', type: 'email' },
-        { key: 'direccion', label: 'Dirección', type: 'text', wide: true },
+        { key: 'direccion', label: 'Dirección (calle + número)', type: 'text', wide: true, placeholder: 'Opcional pero recomendado' },
+        { key: 'ciudad', label: 'Ciudad', type: 'text', placeholder: 'Buenos Aires, Madrid, Caracas...' },
         { key: 'sueldo_mensual_usd', label: 'Sueldo USD/mes', type: 'number', step: '0.01' },
         { key: 'fecha_inicio', label: 'Fecha inicio', type: 'date' },
         { key: 'tax_residency_country', label: 'País residencia fiscal', type: 'text', placeholder: 'AR / ES / US / MX...' },
@@ -815,16 +817,21 @@
         : data.map(row => {
             const showIca = entity === 'chatters' || entity === 'equipo';
             const showTma = entity === 'modelos';
+            const showFR  = entity === 'chatters' || entity === 'equipo';
             const icaBtn = showIca
               ? `<button class="btn-ghost-small btn-row-ica" data-ica="${row.id}" data-ica-rol="${row.rol || ''}" title="Generar ICA (contrato de servicios)">📜</button>`
               : '';
             const tmaBtn = showTma
               ? `<button class="btn-ghost-small btn-row-tma" data-tma="${row.id}" title="${row.tma_url ? 'Ver / Reemplazar TMA' : 'Subir TMA (Talent Management Agreement)'}">📜</button>`
               : '';
+            const frBtn = showFR
+              ? `<button class="btn-ghost-small btn-row-fr" data-fr="${row.id}" title="Factura rápida (cualquier mes)">💸</button>`
+              : '';
             return `
             <tr>
               ${def.tableColumns.map(c => `<td>${formatCell(c, row[c], entity)}</td>`).join('')}
               <td class="action-col" style="text-align:right;white-space:nowrap">
+                ${frBtn}
                 ${icaBtn}
                 ${tmaBtn}
                 <button class="btn-ghost-small btn-row-edit" data-edit="${row.id}" title="Editar">✎</button>
@@ -890,6 +897,16 @@
           const row = data.find(r => r.id === Number(b.dataset.tma));
           if (!row) return;
           openTMAUploadModal(row, () => showEntityList(entity));
+        });
+      });
+      container.querySelectorAll('[data-fr]').forEach(b => {
+        b.addEventListener('click', () => {
+          const row = data.find(r => r.id === Number(b.dataset.fr));
+          if (!row) return;
+          const kind = entity === 'equipo'
+            ? 'equipo'
+            : (String(row.rol || '').toLowerCase() === 'supervisor' ? 'supervisor' : 'chatter');
+          openFacturaRapidaModal(row, kind);
         });
       });
     } catch (e) {
@@ -3512,7 +3529,7 @@
         <div style="font-size:9px;color:${LABEL};text-transform:uppercase;letter-spacing:0.1em;font-weight:800;margin-bottom:4px">Pago a / Bill to</div>
         <div style="font-size:14px;font-weight:800;color:${VALUE}">${escapeHtml(receptor.nombre_fiscal || receptor.nombre || '—')}</div>
         ${receptor.nombre_fiscal && receptor.nombre && receptor.nombre !== receptor.nombre_fiscal ? `<div style="font-size:10px;color:${MUTED}">a/k/a "${escapeHtml(receptor.nombre)}"</div>` : ''}
-        ${receptor.direccion ? `<div style="font-size:10px;color:${MUTED};margin-top:3px">${escapeHtml(receptor.direccion)}</div>` : ''}
+        ${(receptor.direccion || receptor.ciudad) ? `<div style="font-size:10px;color:${MUTED};margin-top:3px">${[receptor.direccion, receptor.ciudad, receptor.tax_residency_country].filter(Boolean).map(escapeHtml).join(', ')}</div>` : ''}
         ${receptor.email ? `<div style="font-size:10px;color:${MUTED}">${escapeHtml(receptor.email)}</div>` : ''}
         ${taxBlock}
         ${w8Block}
@@ -4911,6 +4928,176 @@
     });
   }
   window.openTMAUploadModal = openTMAUploadModal;
+
+  // ═══════════════════════════════════════════════════════
+  // FACTURA RÁPIDA · sin pasar por Liquidación
+  //   - Pickás mes (cualquier mes pasado o actual)
+  //   - Concepto + monto + fee opcional
+  //   - Genera PDF legal igual + persiste en facturas_emitidas
+  //   - Útil para emitir liquidaciones de meses pasados (Hacienda)
+  //     o de Aldi/Josue sin tocar Liquidación
+  // ═══════════════════════════════════════════════════════
+  function openFacturaRapidaModal(receptor, kind) {
+    const tipoLabel = kind === 'equipo' ? 'Equipo' : (kind === 'supervisor' ? 'Supervisor' : 'Chatter');
+    // Defaults por rol
+    const defaultMonto = kind === 'equipo' && receptor.sueldo_mensual_usd
+      ? Number(receptor.sueldo_mensual_usd).toFixed(2)
+      : '';
+    const defaultConcepto = kind === 'equipo'
+      ? `${receptor.rol || 'Servicios'} · Sueldo mensual`
+      : (kind === 'supervisor' ? 'Liquidación supervisor · SFS + comisiones' : 'Liquidación chatter · Comisiones del mes');
+
+    // Lista de 36 meses atrás + actual + 1 adelante
+    const now = new Date();
+    const mesOpts = [];
+    for (let i = -1; i <= 36; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const mname = MESES_FULL[d.getMonth()];
+      const lbl = `${mname.charAt(0).toUpperCase() + mname.slice(1)} ${d.getFullYear()}`;
+      mesOpts.push(`<option value="${val}" ${i === 0 ? 'selected' : ''}>${lbl}</option>`);
+    }
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal" style="max-width:580px">
+        <div class="modal-header">
+          <div class="modal-title">💸 Factura rápida · ${escapeHtml(receptor.nombre)} <span class="muted" style="font-size:0.75rem;font-weight:500;margin-left:6px">(${tipoLabel})</span></div>
+          <button class="modal-close" type="button">✕</button>
+        </div>
+        <form id="fr-form">
+          <p class="muted" style="font-size:0.82rem;margin:0 0 14px">Genera una liquidación legal sin pasar por Liquidación Chatters. Ideal para Aldi/Josue (sueldo fijo) o para emitir facturas de meses anteriores.</p>
+
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label for="fr-mes">Mes / Período *</label>
+              <select id="fr-mes" required>${mesOpts.join('')}</select>
+            </div>
+            <div>
+              <label for="fr-fecha">Fecha de emisión</label>
+              <input type="date" id="fr-fecha" value="${new Date().toISOString().slice(0, 10)}">
+            </div>
+            <div class="full">
+              <label for="fr-concepto">Concepto / descripción *</label>
+              <input type="text" id="fr-concepto" value="${escapeHtml(defaultConcepto)}" required>
+            </div>
+            <div>
+              <label for="fr-monto">Monto bruto USD *</label>
+              <input type="number" id="fr-monto" step="0.01" value="${defaultMonto}" required placeholder="0.00">
+            </div>
+            <div>
+              <label for="fr-fee">Transaction fee % (opc.)</label>
+              <input type="number" id="fr-fee" step="0.01" value="0" placeholder="0">
+            </div>
+            <div class="full">
+              <label for="fr-extra">Observaciones (opc.)</label>
+              <input type="text" id="fr-extra" placeholder="Notas adicionales que aparecen en el PDF">
+            </div>
+          </div>
+
+          <div style="margin-top:14px;padding:10px 12px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:8px;font-size:0.78rem;color:#FDE047" id="fr-preview">
+            <strong>Vista previa:</strong>
+            <div id="fr-preview-content" style="margin-top:4px;color:rgba(255,255,255,0.85);font-weight:600">—</div>
+          </div>
+
+          <div class="form-actions" style="margin-top:14px">
+            <button type="button" class="btn-secondary modal-cancel">Cancelar</button>
+            <button type="submit" class="btn-primary" id="fr-submit">📄 Generar PDF</button>
+          </div>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    const close = () => backdrop.remove();
+    backdrop.querySelector('.modal-close').addEventListener('click', close);
+    backdrop.querySelector('.modal-cancel').addEventListener('click', close);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+
+    // Live preview
+    const updatePreview = () => {
+      const bruto = Number(backdrop.querySelector('#fr-monto').value || 0);
+      const feePct = Number(backdrop.querySelector('#fr-fee').value || 0);
+      const neto = bruto * (1 - feePct / 100);
+      const mes = backdrop.querySelector('#fr-mes').value;
+      backdrop.querySelector('#fr-preview-content').innerHTML =
+        `${fmtMesNice(mes)} · Bruto <strong>${fmtMoney(bruto)}</strong>${feePct > 0 ? ` · Fee ${feePct}% (−${fmtMoney(bruto - neto)})` : ''} · Neto <strong style="color:#34D399">${fmtMoney(neto)}</strong>`;
+    };
+    backdrop.querySelectorAll('#fr-monto, #fr-fee, #fr-mes').forEach(el => el.addEventListener('input', updatePreview));
+    updatePreview();
+
+    // Submit
+    backdrop.querySelector('#fr-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const mes = backdrop.querySelector('#fr-mes').value;
+      const fecha = backdrop.querySelector('#fr-fecha').value;
+      const concepto = backdrop.querySelector('#fr-concepto').value.trim();
+      const bruto = Number(backdrop.querySelector('#fr-monto').value || 0);
+      const feePct = Number(backdrop.querySelector('#fr-fee').value || 0);
+      const obs = backdrop.querySelector('#fr-extra').value.trim();
+      if (!mes || !concepto || bruto <= 0) {
+        toast('Mes, concepto y monto son requeridos', 'error');
+        return;
+      }
+      const neto = bruto * (1 - feePct / 100);
+
+      const submitBtn = backdrop.querySelector('#fr-submit');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '⏳ Generando…';
+      try {
+        // Construir item(s)
+        const items = [{ descripcion: concepto, monto: bruto }];
+        if (obs) items.push({ descripcion: `Observaciones: ${obs}`, monto: 0 });
+
+        // Calcular periodoFull
+        const [yy, mm] = mes.split('-').map(Number);
+        const lastDay = new Date(yy, mm, 0).getDate();
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        const periodoFull = `01 al ${lastDay} de ${meses[mm-1]} ${yy}`;
+
+        // HTML preview (sin numero)
+        const previewHtml = buildFacturaLegalHtml({
+          kind, receptor, items, bruto, neto, fee: feePct,
+          mes, periodoFull, fechaHoy: fecha, numero: null
+        });
+
+        // Persistir
+        const r = await api('factura-create', {
+          method: 'POST',
+          body: {
+            entidad_tipo: kind,
+            entidad_id: receptor.id,
+            mes,
+            fecha_emision: fecha,
+            concepto,
+            items,
+            subtotal: bruto,
+            iva: 0,
+            total: neto,
+            moneda: 'USD',
+            servicios_pie: concepto,
+            pdf_html_snapshot: previewHtml
+          }
+        });
+        const numero = r.data?.numero;
+
+        // Re-render con N° y emitir PDF
+        const finalHtml = buildFacturaLegalHtml({
+          kind, receptor, items, bruto, neto, fee: feePct,
+          mes, periodoFull, fechaHoy: fecha, numero
+        });
+        const filename = `factura_${kind}_${(receptor.nombre || 'recv').replace(/\s+/g, '_')}_${mes}_${numero || ''}.pdf`;
+        await renderHtmlToPdf(finalHtml, filename);
+        toast(`Factura #${numero} emitida para ${receptor.nombre}`, 'success');
+        close();
+      } catch (err) {
+        toast('Error: ' + err.message, 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '📄 Generar PDF';
+      }
+    });
+  }
+  window.openFacturaRapidaModal = openFacturaRapidaModal;
 
   async function renderIncentivos(view) {
     view.innerHTML = Skel.full();
