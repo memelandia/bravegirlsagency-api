@@ -132,6 +132,42 @@ async function ensureCiudadColumns() {
   _ensuredCiudadColumns = true;
 }
 
+let _ensuredTrazabilidadTables = false;
+async function ensureTrazabilidadTables() {
+  if (_ensuredTrazabilidadTables) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS trazabilidad_chatters (
+      id          SERIAL PRIMARY KEY,
+      nombre      TEXT NOT NULL,
+      notas       TEXT,
+      orden       INTEGER DEFAULT 0,
+      created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_traz_chatter_nombre_unique ON trazabilidad_chatters (LOWER(nombre))`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS trazabilidad_pagos (
+      id                       SERIAL PRIMARY KEY,
+      trazabilidad_chatter_id  INTEGER NOT NULL REFERENCES trazabilidad_chatters(id) ON DELETE CASCADE,
+      mes                      CHAR(7) NOT NULL,
+      estado                   TEXT NOT NULL DEFAULT 'pendiente',
+      monto                    NUMERIC(12,2),
+      moneda                   TEXT DEFAULT 'USD',
+      medio_pago               TEXT,
+      tx_id                    TEXT,
+      fecha_envio              DATE,
+      factura_id               BIGINT REFERENCES facturas_emitidas(id),
+      notas                    TEXT,
+      created_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (trazabilidad_chatter_id, mes)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_traz_pagos_mes ON trazabilidad_pagos(mes)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_traz_pagos_estado ON trazabilidad_pagos(estado)`;
+  _ensuredTrazabilidadTables = true;
+}
+
 let _ensuredContratistasArchivo = false;
 async function ensureContratistasArchivo() {
   if (_ensuredContratistasArchivo) return;
@@ -2561,10 +2597,191 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // ═══════════════════════════════════════════════════════
+    // TRAZABILIDAD · matriz tipo Excel para investigar pagos retroactivos
+    //   Totalmente independiente del resto (no afecta P&L, Resumen, etc).
+    // ═══════════════════════════════════════════════════════
+    if (action === 'traz-grid') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureTrazabilidadTables();
+      const año = String(req.query.año || req.query.anio || new Date().getFullYear());
+      if (!/^\d{4}$/.test(año)) {
+        return res.status(400).json({ success: false, error: 'año inválido' });
+      }
+
+      const chatters = await sql`
+        SELECT id, nombre, notas, orden, created_at
+        FROM trazabilidad_chatters
+        ORDER BY orden ASC, LOWER(nombre) ASC
+      `;
+      const mesLike = año + '-%';
+      const pagos = await sql`
+        SELECT trazabilidad_chatter_id, mes, estado, monto, moneda,
+               medio_pago, tx_id, fecha_envio, factura_id, notas
+        FROM trazabilidad_pagos
+        WHERE mes LIKE ${mesLike}
+      `;
+      // Agrupar: { chatterId: { mes: pago } }
+      const pagosByChatter = {};
+      pagos.rows.forEach(p => {
+        const key = String(p.trazabilidad_chatter_id);
+        if (!pagosByChatter[key]) pagosByChatter[key] = {};
+        pagosByChatter[key][p.mes] = p;
+      });
+
+      // KPIs del año: contar estados
+      const counts = { pendientes: 0, encontrados: 0, facturados: 0, total_celdas_con_dato: 0 };
+      pagos.rows.forEach(p => {
+        if (p.estado === 'encontrado') counts.encontrados++;
+        else if (p.estado === 'facturado') counts.facturados++;
+        else counts.pendientes++;
+        counts.total_celdas_con_dato++;
+      });
+
+      return res.status(200).json({
+        success: true,
+        año,
+        chatters: chatters.rows,
+        pagos_by_chatter: pagosByChatter,
+        kpis: {
+          chatters_count: chatters.rows.length,
+          pendientes: counts.pendientes,
+          encontrados: counts.encontrados,
+          facturados: counts.facturados
+        }
+      });
+    }
+
+    if (action === 'traz-chatter') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+      await ensureTrazabilidadTables();
+
+      const b = req.body || {};
+      const id = b.id ? Number(b.id) : null;
+      const nombre = String(b.nombre || '').trim();
+      if (!nombre) return res.status(400).json({ success: false, error: 'nombre requerido' });
+      const notas = b.notas || null;
+      const orden = b.orden != null ? Number(b.orden) : 0;
+
+      try {
+        if (id) {
+          const r = await sql`
+            UPDATE trazabilidad_chatters
+            SET nombre = ${nombre}, notas = ${notas}, orden = ${orden}
+            WHERE id = ${id}
+            RETURNING *
+          `;
+          if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'no encontrado' });
+          return res.status(200).json({ success: true, data: r.rows[0] });
+        }
+        const r = await sql`
+          INSERT INTO trazabilidad_chatters (nombre, notas, orden)
+          VALUES (${nombre}, ${notas}, ${orden})
+          RETURNING *
+        `;
+        return res.status(200).json({ success: true, data: r.rows[0] });
+      } catch (e) {
+        if (e && e.code === '23505') {
+          return res.status(409).json({ success: false, error: 'Ya existe un chatter con ese nombre' });
+        }
+        throw e;
+      }
+    }
+
+    if (action === 'traz-chatter-delete') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+      await ensureTrazabilidadTables();
+      const id = Number(req.query.id);
+      if (!id) return res.status(400).json({ success: false, error: 'id requerido' });
+      await sql`DELETE FROM trazabilidad_chatters WHERE id = ${id}`;
+      return res.status(200).json({ success: true });
+    }
+
+    if (action === 'traz-pago') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+      await ensureTrazabilidadTables();
+
+      const b = req.body || {};
+      const chatterId = Number(b.trazabilidad_chatter_id);
+      const mes = String(b.mes || '').trim();
+      if (!chatterId) return res.status(400).json({ success: false, error: 'trazabilidad_chatter_id requerido' });
+      if (!/^\d{4}-\d{2}$/.test(mes)) return res.status(400).json({ success: false, error: 'mes inválido (YYYY-MM)' });
+
+      const estado = ['pendiente', 'encontrado', 'facturado'].includes(b.estado) ? b.estado : 'pendiente';
+      const monto = b.monto != null && b.monto !== '' ? Number(b.monto) : null;
+      const moneda = b.moneda || 'USD';
+      const medioPago = b.medio_pago || null;
+      const txId = b.tx_id || null;
+      const fechaEnvio = b.fecha_envio || null;
+      const facturaId = b.factura_id ? Number(b.factura_id) : null;
+      const notas = b.notas || null;
+
+      const r = await sql`
+        INSERT INTO trazabilidad_pagos (
+          trazabilidad_chatter_id, mes, estado, monto, moneda,
+          medio_pago, tx_id, fecha_envio, factura_id, notas, updated_at
+        ) VALUES (
+          ${chatterId}, ${mes}, ${estado}, ${monto}, ${moneda},
+          ${medioPago}, ${txId}, ${fechaEnvio}, ${facturaId}, ${notas}, CURRENT_TIMESTAMP
+        )
+        ON CONFLICT (trazabilidad_chatter_id, mes) DO UPDATE SET
+          estado = EXCLUDED.estado,
+          monto = EXCLUDED.monto,
+          moneda = EXCLUDED.moneda,
+          medio_pago = EXCLUDED.medio_pago,
+          tx_id = EXCLUDED.tx_id,
+          fecha_envio = EXCLUDED.fecha_envio,
+          factura_id = EXCLUDED.factura_id,
+          notas = EXCLUDED.notas,
+          updated_at = CURRENT_TIMESTAMP
+        RETURNING *
+      `;
+      return res.status(200).json({ success: true, data: r.rows[0] });
+    }
+
+    if (action === 'traz-export') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureTrazabilidadTables();
+      const año = String(req.query.año || req.query.anio || new Date().getFullYear());
+      if (!/^\d{4}$/.test(año)) return res.status(400).json({ success: false, error: 'año inválido' });
+
+      const mesLike = año + '-%';
+      const r = await sql`
+        SELECT c.nombre AS chatter, p.mes, p.estado, p.monto, p.moneda,
+               p.medio_pago, p.tx_id, p.fecha_envio, p.notas
+        FROM trazabilidad_pagos p
+        JOIN trazabilidad_chatters c ON c.id = p.trazabilidad_chatter_id
+        WHERE p.mes LIKE ${mesLike}
+        ORDER BY LOWER(c.nombre) ASC, p.mes ASC
+      `;
+      const esc = (v) => {
+        if (v == null) return '';
+        const s = String(v);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      const lines = ['chatter,mes,estado,monto,moneda,medio_pago,tx_id,fecha_envio,notas'];
+      r.rows.forEach(row => {
+        lines.push([row.chatter, row.mes, row.estado, row.monto, row.moneda,
+                    row.medio_pago, row.tx_id, row.fecha_envio, row.notas].map(esc).join(','));
+      });
+      const csv = '﻿' + lines.join('\n'); // BOM para Excel
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="trazabilidad_${año}.csv"`);
+      return res.status(200).send(csv);
+    }
+
     return res.status(400).json({
       success: false,
       error: 'unknown action',
-      hint: 'usa ?action=login | logout | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | envios-update | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl | log-error | ica-generate | ica-list | ica-get | ica-mark-signed | archivo-upload | archivos-list | archivo-get | archivo-update | archivo-delete | modelo-tma-upload | libro-mayor'
+      hint: 'usa ?action=login | logout | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | envios-update | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl | log-error | ica-generate | ica-list | ica-get | ica-mark-signed | archivo-upload | archivos-list | archivo-get | archivo-update | archivo-delete | modelo-tma-upload | libro-mayor | traz-grid | traz-chatter | traz-chatter-delete | traz-pago | traz-export'
     });
 
   } catch (error) {
