@@ -12,8 +12,16 @@
   const API_KEY = 'BG-Franco2025-Pipeline';
   const TIMEOUT_MS = 90000;
   const DRIVE_TIMEOUT_MS = 200000; // Drive needs ~130s, give it 200s
-  const CACHE_KEY = 'bg-marketing-v5';
+  const CACHE_KEY = 'bg-marketing-v6';
   const PUBLISH_RATE = 2.5; // reels/day average for dias de contenido calc
+  const REQUIRED_MODELS = ['CARMEN', 'LEXI', 'LILY', 'VICKY', 'REDCARMYN'];
+  const DEFAULT_MODEL_NAMES = {
+    CARMEN: 'Carmen',
+    LEXI: 'Lexi',
+    LILY: 'Lily',
+    VICKY: 'Vicky',
+    REDCARMYN: 'Redcarmyn',
+  };
   const EXCLUDED_MODELS = {
     ARIANA: true,
     VICKYENG: true,
@@ -215,25 +223,27 @@
       };
     });
 
-    // Fallback para compatibilidad si el backend no envía config
-    if (Object.keys(map).length === 0) {
-      var inferred = {}
-      var sources = [calendario || {}, produccion || {}, drive || {}];
-      sources.forEach(function(src) {
-        Object.keys(src).forEach(function(key) {
-          if (key.indexOf('_') === 0) return;
-          inferred[key] = true;
-        });
+    // Mezclar configuración backend + modelos detectados + modelos requeridos.
+    var inferred = {}
+    var sources = [calendario || {}, produccion || {}, drive || {}];
+    sources.forEach(function(src) {
+      Object.keys(src).forEach(function(key) {
+        if (key.indexOf('_') === 0) return;
+        inferred[key] = true;
       });
-      Object.keys(inferred).forEach(function(key) {
+    });
+    REQUIRED_MODELS.forEach(function(key) { inferred[key] = true; });
+
+    Object.keys(inferred).forEach(function(key) {
+      if (!map[key]) {
         map[key] = {
           key: key,
-          nombre: key,
+          nombre: DEFAULT_MODEL_NAMES[key] || key,
           pendienteFolder: false,
           tieneEjemplosNotion: true,
         };
-      });
-    }
+      }
+    });
 
     return Object.keys(map)
       .map(function(key) { return map[key]; })
