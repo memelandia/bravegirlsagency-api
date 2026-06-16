@@ -12,15 +12,13 @@
   const API_KEY = 'BG-Franco2025-Pipeline';
   const TIMEOUT_MS = 90000;
   const DRIVE_TIMEOUT_MS = 200000; // Drive needs ~130s, give it 200s
-  const CACHE_KEY = 'bg-marketing-v4';
+  const CACHE_KEY = 'bg-marketing-v5';
   const PUBLISH_RATE = 2.5; // reels/day average for dias de contenido calc
-
-  const MODEL_COLORS = {
-    CARMEN:   '#06b6d4',
-    LEXI:     '#f97316',
-    LILY:     '#ec4899',
-    VICKY:    '#8b5cf6',
-    REDCARMYN:'#dc2626',
+  const EXCLUDED_MODELS = {
+    ARIANA: true,
+    VICKYENG: true,
+    LILYENG: true,
+    LEXYENG: true,
   };
 
   // Endpoints that actually work (alertas is computed client-side)
@@ -95,10 +93,6 @@
     return s === 'critico' ? 0 : s === 'bajo' ? 1 : s === 'ok' ? 2 : 3;
   }
 
-  function alertIcon(t) {
-    return t === 'critico' ? '🚨' : t === 'bajo' ? '⚠️' : t === 'warning' ? '⚡' : t === 'info' ? '💡' : 'ℹ️';
-  }
-
   function driveLabel(s) {
     return { activa:'Activa', normal:'Normal', inactiva:'Inactiva', sin_datos:'Sin datos', error:'Error' }[s] || s || 'Sin datos';
   }
@@ -108,6 +102,10 @@
     var d = document.createElement('div');
     d.textContent = text;
     return d.innerHTML;
+  }
+
+  function normalizeModelId(text) {
+    return String(text || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   }
 
   // ============================================
@@ -204,9 +202,52 @@
     return {};
   }
 
-  function buildFullData(calendario, produccion, drive) {
-    var MODELS = ['CARMEN','LEXI','LILY','VICKY','REDCARMYN'];
-    var MODELS_PENDING = [];
+  function resolveModelConfigs(configModelos, calendario, produccion, drive) {
+    var cfg = configModelos || {};
+    var map = {};
+    Object.keys(cfg).forEach(function(key) {
+      var item = cfg[key] || {};
+      map[key] = {
+        key: key,
+        nombre: item.nombre || key,
+        pendienteFolder: item.pendienteFolder === true,
+        tieneEjemplosNotion: item.tieneEjemplosNotion !== false,
+      };
+    });
+
+    // Fallback para compatibilidad si el backend no envía config
+    if (Object.keys(map).length === 0) {
+      var inferred = {}
+      var sources = [calendario || {}, produccion || {}, drive || {}];
+      sources.forEach(function(src) {
+        Object.keys(src).forEach(function(key) {
+          if (key.indexOf('_') === 0) return;
+          inferred[key] = true;
+        });
+      });
+      Object.keys(inferred).forEach(function(key) {
+        map[key] = {
+          key: key,
+          nombre: key,
+          pendienteFolder: false,
+          tieneEjemplosNotion: true,
+        };
+      });
+    }
+
+    return Object.keys(map)
+      .map(function(key) { return map[key]; })
+      .filter(function(model) {
+        var keyNorm = normalizeModelId(model.key);
+        var nameNorm = normalizeModelId(model.nombre);
+        return !EXCLUDED_MODELS[keyNorm] && !EXCLUDED_MODELS[nameNorm];
+      });
+  }
+
+  function buildFullData(calendario, produccion, drive, configModelos) {
+    var modelConfigs = resolveModelConfigs(configModelos, calendario, produccion, drive);
+    var MODELS = modelConfigs.filter(function(m) { return !m.pendienteFolder; }).map(function(m) { return m.key; });
+    var MODELS_PENDING = modelConfigs.filter(function(m) { return m.pendienteFolder; }).map(function(m) { return m.key; });
     var modelos = {};
     var totalEditados = 0;
     var totalPipeline = 0;
@@ -216,10 +257,8 @@
     var countDias = 0;
     var criticos = 0, bajos = 0, ok = 0, inactivos = 0;
 
-    // Models that are known to use Notion examples (override backend if missing)
-    var MODELS_WITH_EJEMPLOS = ['CARMEN','LEXI','LILY','VICKY','REDCARMYN'];
-
     MODELS.forEach(function(key) {
+      var cfg = findModelData(configModelos, key);
       var cal = findModelData(calendario, key);
       var prod = findModelData(produccion, key);
       var drv = findModelData(drive, key);
@@ -241,10 +280,8 @@
       else ok++;
       if (actDrive === 'inactiva') inactivos++;
 
-      // Determine tieneEjemplosNotion: known list overrides backend
-      var knownWithEjemplos = MODELS_WITH_EJEMPLOS.indexOf(key) !== -1;
-      var tieneEj = knownWithEjemplos
-        ? true
+      var tieneEj = cfg.tieneEjemplosNotion != null
+        ? cfg.tieneEjemplosNotion
         : (cal.tieneEjemplosNotion != null
           ? cal.tieneEjemplosNotion
           : (prod.tieneEjemplosNotion != null
@@ -252,7 +289,7 @@
             : false));
 
       modelos[key] = {
-        nombre: cal.nombre || prod.nombre || drv.nombre || key,
+        nombre: cfg.nombre || cal.nombre || prod.nombre || drv.nombre || key,
         stockEditados: stockEditados,
         stockStatus: stockStatus,
         diasDeContenido: diasDeContenido,
@@ -264,14 +301,14 @@
         ultimoEjemploEnviado: prod.ultimoEjemploEnviado,
         crudosRecientes: drv.archivosUltimos7Dias || 0,
         tieneEjemplosNotion: tieneEj,
+        pendienteFolder: false,
       };
     });
 
-    // Add pending models
-    var NAMES_PENDING = {};
     MODELS_PENDING.forEach(function(key) {
+      var cfg = findModelData(configModelos, key);
       modelos[key] = {
-        nombre: NAMES_PENDING[key] || key,
+        nombre: cfg.nombre || key,
         stockEditados: 0,
         stockStatus: 'pendiente',
         diasDeContenido: 0,
@@ -344,6 +381,7 @@
     return {
       ok: true,
       timestamp: new Date().toISOString(),
+      config: configModelos || {},
       resumen: resumen,
       calendario: calendario || {},
       produccion: produccion || {},
@@ -396,6 +434,13 @@
     var done = 0;
     var errs = 0;
     var total = ENDPOINTS.length;
+    function pickConfig() {
+      return (raw.stock && raw.stock.config) ||
+        (raw.produccion && raw.produccion.config) ||
+        (raw.drive && raw.drive.config) ||
+        (cached && cached.data && cached.data.config) ||
+        {};
+    }
 
     function fetchWithRetry(action, label, timeout, retries) {
       return fetchEndpoint(action, timeout)
@@ -448,7 +493,7 @@
         tempDrive = cached.data.drive;
       }
 
-      currentData = buildFullData(calendario, produccion, tempDrive);
+      currentData = buildFullData(calendario, produccion, tempDrive, pickConfig());
       saveCache(currentData);
       renderDashboard(currentData);
       showDashboard();
@@ -467,7 +512,7 @@
 
         if (driveData) {
           // Re-build with real drive data
-          currentData = buildFullData(calendario, produccion, driveData);
+          currentData = buildFullData(calendario, produccion, driveData, pickConfig());
           if (raw.drive.drive && raw.drive.drive._cacheAgeMinutes != null) {
             currentData._driveCacheAge = raw.drive.drive._cacheAgeMinutes;
           }
@@ -545,10 +590,10 @@
 
     dom.alertsSection.innerHTML =
       '<div class="alert-banner ' + bannerClass + '" id="alert-banner">' +
-        '<div class="alert-banner-header" id="alert-banner-toggle">' +
+        '<button type="button" class="alert-banner-header" id="alert-banner-toggle" aria-expanded="false">' +
           '<span>⚠️ ' + sorted.length + ' alerta' + (sorted.length !== 1 ? 's' : '') + ' — ' + modelNames.join(', ') + '</span>' +
           '<svg class="alerts-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
-        '</div>' +
+        '</button>' +
         '<div class="alert-banner-body" id="alert-banner-body">' +
           rowsHtml +
         '</div>' +
@@ -556,11 +601,14 @@
 
     // Wire toggle
     var banner = document.getElementById('alert-banner');
-    document.getElementById('alert-banner-toggle').addEventListener('click', function() {
+    var bannerToggle = document.getElementById('alert-banner-toggle');
+    bannerToggle.addEventListener('click', function() {
       banner.classList.toggle('collapsed');
+      bannerToggle.setAttribute('aria-expanded', banner.classList.contains('collapsed') ? 'false' : 'true');
     });
     // Start collapsed
     banner.classList.add('collapsed');
+    bannerToggle.setAttribute('aria-expanded', 'false');
   }
 
   // ============================================
@@ -589,7 +637,7 @@
       (bajos > 0 ? '<span class="summary-pill pill-yellow">🟡 ' + bajos + ' baja' + (bajos !== 1 ? 's' : '') + '</span>' : '') +
       (okCount > 0 ? '<span class="summary-pill pill-green">🟢 ' + okCount + ' ok</span>' : '') +
       (sinEjemplos > 0 ? '<span class="summary-pill pill-gray">📤 ' + sinEjemplos + ' sin ejemplos</span>' : '') +
-      (pendientes > 0 ? '<span class="summary-pill pill-gray" style="font-size:0.75rem;">+ ' + pendientes + ' en preparación</span>' : '');
+      (pendientes > 0 ? '<span class="summary-pill pill-gray summary-pill-small">+ ' + pendientes + ' en preparación</span>' : '');
   }
 
   // ============================================
@@ -655,7 +703,8 @@
       var tieneEjemplos = m.tieneEjemplosNotion !== false;
       var action = computeAction(m);
       var bgClass = i % 2 === 0 ? 'row-even' : 'row-odd';
-      var rowStyle = isPending ? ' style="opacity:0.6"' : '';
+      var rowClass = 'model-row ' + bgClass + (isPending ? ' model-row-pending' : (' border-' + st));
+      var rowA11y = ' role="button" tabindex="0" aria-label="Ver detalle de ' + esc(m.nombre) + '"';
 
       // Model name with optional pending badge
       var nameHtml = '<strong>' + esc(m.nombre) + '</strong>';
@@ -665,11 +714,11 @@
       }
 
       if (isPending) {
-        return '<tr class="model-row ' + bgClass + '" data-model="' + m.key + '"' + rowStyle + '>' +
+        return '<tr class="' + rowClass + '" data-model="' + m.key + '"' + rowA11y + '>' +
           '<td class="col-modelo">' + nameHtml + '</td>' +
-          '<td class="col-stock"><span style="color:var(--text-muted)">—</span></td>' +
-          '<td class="col-drive"><span style="color:var(--text-muted)">Pendiente</span></td>' +
-          '<td class="col-ejemplos"><span style="color:var(--text-muted)">—</span></td>' +
+          '<td class="col-stock"><span class="text-muted">—</span></td>' +
+          '<td class="col-drive"><span class="text-muted">Pendiente</span></td>' +
+          '<td class="col-ejemplos"><span class="text-muted">—</span></td>' +
           '<td class="col-hoy"><span class="action-tag action-blue">PRÓXIMAMENTE</span></td>' +
         '</tr>';
       }
@@ -706,7 +755,7 @@
         ejPill = '<span class="status-pill pill-green">🟢 hace ' + ejDias + 'd</span>';
       }
 
-      return '<tr class="model-row ' + bgClass + ' border-' + st + '" data-model="' + m.key + '">' +
+      return '<tr class="' + rowClass + '" data-model="' + m.key + '"' + rowA11y + '>' +
         '<td class="col-modelo">' + nameHtml + '</td>' +
         '<td class="col-stock">' +
           '<div class="stock-number ' + stockColor + '">' + m.stockEditados + ' <span class="stock-unit">reels</span></div>' +
@@ -721,6 +770,12 @@
     // Click handlers
     dom.modelsTbody.querySelectorAll('.model-row').forEach(function(row) {
       row.addEventListener('click', function() { openModelModal(row.dataset.model, data); });
+      row.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openModelModal(row.dataset.model, data);
+        }
+      });
     });
   }
 
@@ -831,7 +886,7 @@
       html += '<div class="modal-col-body">';
       top10ej.forEach(function(e) {
         html += '<div class="modal-col-item">' +
-          '<div style="min-width:0">' +
+          '<div class="modal-item-content">' +
             '<div class="modal-item-num">#' + esc(e.numReel) + '</div>' +
             '<div class="modal-item-sub">' + esc(e.subcuenta || '') + '</div>' +
             '<div class="modal-item-date">' + formatDateShort(e.fecha || e.createdAt) + '</div>' +
