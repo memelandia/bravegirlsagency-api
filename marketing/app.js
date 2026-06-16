@@ -12,7 +12,7 @@
   const API_KEY = 'BG-Franco2025-Pipeline';
   const TIMEOUT_MS = 90000;
   const DRIVE_TIMEOUT_MS = 200000; // Drive needs ~130s, give it 200s
-  const CACHE_KEY = 'bg-marketing-v3';
+  const CACHE_KEY = 'bg-marketing-v4';
   const PUBLISH_RATE = 2.5; // reels/day average for dias de contenido calc
 
   const MODEL_COLORS = {
