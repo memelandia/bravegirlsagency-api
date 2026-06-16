@@ -15,6 +15,14 @@
   const CACHE_KEY = 'bg-marketing-v3';
   const PUBLISH_RATE = 2.5; // reels/day average for dias de contenido calc
 
+  const MODEL_COLORS = {
+    CARMEN:   '#06b6d4',
+    LEXI:     '#f97316',
+    LILY:     '#ec4899',
+    VICKY:    '#8b5cf6',
+    REDCARMYN:'#dc2626',
+  };
+
   // Endpoints that actually work (alertas is computed client-side)
   const ENDPOINTS = [
     { action: 'stock', label: 'Stock / Calendario' },
@@ -197,7 +205,8 @@
   }
 
   function buildFullData(calendario, produccion, drive) {
-    var MODELS = ['ARIANA','LUCY','VICKY','BELLA','CARMEN','LEXI'];
+    var MODELS = ['CARMEN','LEXI','LILY','VICKY','REDCARMYN'];
+    var MODELS_PENDING = [];
     var modelos = {};
     var totalEditados = 0;
     var totalPipeline = 0;
@@ -206,6 +215,9 @@
     var totalDias = 0;
     var countDias = 0;
     var criticos = 0, bajos = 0, ok = 0, inactivos = 0;
+
+    // Models that are known to use Notion examples (override backend if missing)
+    var MODELS_WITH_EJEMPLOS = ['CARMEN','LEXI','LILY','VICKY','REDCARMYN'];
 
     MODELS.forEach(function(key) {
       var cal = findModelData(calendario, key);
@@ -229,6 +241,16 @@
       else ok++;
       if (actDrive === 'inactiva') inactivos++;
 
+      // Determine tieneEjemplosNotion: known list overrides backend
+      var knownWithEjemplos = MODELS_WITH_EJEMPLOS.indexOf(key) !== -1;
+      var tieneEj = knownWithEjemplos
+        ? true
+        : (cal.tieneEjemplosNotion != null
+          ? cal.tieneEjemplosNotion
+          : (prod.tieneEjemplosNotion != null
+            ? prod.tieneEjemplosNotion
+            : false));
+
       modelos[key] = {
         nombre: cal.nombre || prod.nombre || drv.nombre || key,
         stockEditados: stockEditados,
@@ -241,11 +263,27 @@
         diasDesdeUltimoEjemplo: prod.diasDesdeUltimoEjemplo,
         ultimoEjemploEnviado: prod.ultimoEjemploEnviado,
         crudosRecientes: drv.archivosUltimos7Dias || 0,
-        tieneEjemplosNotion: cal.tieneEjemplosNotion != null
-          ? cal.tieneEjemplosNotion
-          : (prod.tieneEjemplosNotion != null
-            ? prod.tieneEjemplosNotion
-            : true),
+        tieneEjemplosNotion: tieneEj,
+      };
+    });
+
+    // Add pending models
+    var NAMES_PENDING = {};
+    MODELS_PENDING.forEach(function(key) {
+      modelos[key] = {
+        nombre: NAMES_PENDING[key] || key,
+        stockEditados: 0,
+        stockStatus: 'pendiente',
+        diasDeContenido: 0,
+        enPipeline: 0,
+        publicadosRecientes: 0,
+        actividadDrive: 'pendiente',
+        diasDesdeUltimaSubida: null,
+        diasDesdeUltimoEjemplo: null,
+        ultimoEjemploEnviado: null,
+        crudosRecientes: 0,
+        tieneEjemplosNotion: false,
+        pendienteFolder: true,
       };
     });
 
@@ -261,13 +299,15 @@
       modelosOk: ok,
       modelosInactivos: inactivos,
       totalModelos: MODELS.length,
+      totalModelosPendientes: MODELS_PENDING.length,
       modelos: modelos,
     };
 
-    // Build alertas client-side
+    // Build alertas client-side (only for active models)
     var alertas = [];
     MODELS.forEach(function(key) {
       var m = modelos[key];
+      if (m.pendienteFolder) return;
       if (m.stockStatus === 'critico') {
         alertas.push({
           tipo: 'critico', categoria: 'stock', modelo: m.nombre, modeloKey: key,
@@ -542,11 +582,14 @@
       if (m.diasDesdeUltimoEjemplo == null) sinEjemplos++;
     });
 
+    var pendientes = resumen.totalModelosPendientes || 0;
+
     dom.summaryBar.innerHTML =
       (criticos > 0 ? '<span class="summary-pill pill-red">🔴 ' + criticos + ' crítica' + (criticos !== 1 ? 's' : '') + '</span>' : '') +
       (bajos > 0 ? '<span class="summary-pill pill-yellow">🟡 ' + bajos + ' baja' + (bajos !== 1 ? 's' : '') + '</span>' : '') +
       (okCount > 0 ? '<span class="summary-pill pill-green">🟢 ' + okCount + ' ok</span>' : '') +
-      (sinEjemplos > 0 ? '<span class="summary-pill pill-gray">📤 ' + sinEjemplos + ' sin ejemplos</span>' : '');
+      (sinEjemplos > 0 ? '<span class="summary-pill pill-gray">📤 ' + sinEjemplos + ' sin ejemplos</span>' : '') +
+      (pendientes > 0 ? '<span class="summary-pill pill-gray" style="font-size:0.75rem;">+ ' + pendientes + ' en preparación</span>' : '');
   }
 
   // ============================================
@@ -592,21 +635,44 @@
         diasDesdeUltimaSubida: m.diasDesdeUltimaSubida,
         diasDesdeUltimoEjemplo: m.diasDesdeUltimoEjemplo,
         tieneEjemplosNotion: m.tieneEjemplosNotion,
+        pendienteFolder: m.pendienteFolder,
       };
     });
     entries.sort(function(a, b) {
+      // Pending models always at the bottom
+      if (a.pendienteFolder && !b.pendienteFolder) return 1;
+      if (!a.pendienteFolder && b.pendienteFolder) return -1;
       var d = statusOrder(a.stockStatus) - statusOrder(b.stockStatus);
       return d !== 0 ? d : (a.stockEditados || 0) - (b.stockEditados || 0);
     });
 
     dom.modelsTbody.innerHTML = entries.map(function(m, i) {
       var st = m.stockStatus || 'ok';
+      var isPending = m.pendienteFolder === true;
       var drvDays = m.diasDesdeUltimaSubida;
       var drvStatus = m.actividadDrive;
       var ejDias = m.diasDesdeUltimoEjemplo;
       var tieneEjemplos = m.tieneEjemplosNotion !== false;
       var action = computeAction(m);
       var bgClass = i % 2 === 0 ? 'row-even' : 'row-odd';
+      var rowStyle = isPending ? ' style="opacity:0.6"' : '';
+
+      // Model name with optional pending badge
+      var nameHtml = '<strong>' + esc(m.nombre) + '</strong>';
+      if (isPending) {
+        nameHtml = '<span class="model-name">' + esc(m.nombre) + '</span>' +
+          '<span class="badge-pending">🔜 En preparación</span>';
+      }
+
+      if (isPending) {
+        return '<tr class="model-row ' + bgClass + '" data-model="' + m.key + '"' + rowStyle + '>' +
+          '<td class="col-modelo">' + nameHtml + '</td>' +
+          '<td class="col-stock"><span style="color:var(--text-muted)">—</span></td>' +
+          '<td class="col-drive"><span style="color:var(--text-muted)">Pendiente</span></td>' +
+          '<td class="col-ejemplos"><span style="color:var(--text-muted)">—</span></td>' +
+          '<td class="col-hoy"><span class="action-tag action-blue">PRÓXIMAMENTE</span></td>' +
+        '</tr>';
+      }
 
       // Stock column
       var stockColor = st === 'critico' ? 'stock-red' : st === 'bajo' ? 'stock-yellow' : 'stock-green';
@@ -641,7 +707,7 @@
       }
 
       return '<tr class="model-row ' + bgClass + ' border-' + st + '" data-model="' + m.key + '">' +
-        '<td class="col-modelo"><strong>' + esc(m.nombre) + '</strong></td>' +
+        '<td class="col-modelo">' + nameHtml + '</td>' +
         '<td class="col-stock">' +
           '<div class="stock-number ' + stockColor + '">' + m.stockEditados + ' <span class="stock-unit">reels</span></div>' +
           '<div class="stock-dias">' + diasText + '</div>' +
@@ -669,7 +735,7 @@
     var driveInfo = findModelData(data.drive, modelKey);
 
     dom.modalTitle.textContent = resumen.nombre || modelKey;
-    renderModalContent(calendario, produccion, driveInfo);
+    renderModalContent(calendario, produccion, driveInfo, resumen);
 
     dom.modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -680,9 +746,12 @@
     document.body.style.overflow = '';
   }
 
-  function renderModalContent(cal, prod, driveInfo) {
+  function renderModalContent(cal, prod, driveInfo, resumen) {
     var content = $('#modal-content');
-    var tieneEjemplosNotion = prod.tieneEjemplosNotion !== false;
+    // Use computed value from resumen (respects MODELS_WITH_EJEMPLOS override)
+    var tieneEjemplosNotion = resumen && resumen.tieneEjemplosNotion != null
+      ? resumen.tieneEjemplosNotion
+      : prod.tieneEjemplosNotion !== false;
     var reelCount = (cal.reelsEditados || []).length;
     var drvDays = driveInfo ? driveInfo.diasDesdeUltimaSubida : null;
     var ejDias = tieneEjemplosNotion ? (prod ? prod.diasDesdeUltimoEjemplo : null) : null;
@@ -776,6 +845,91 @@
     html += '</div>';
 
     html += '</div>'; // close modal-grid
+
+    // ─── SECCIÓN: Seguimiento de grabación ───
+    var mostrarSeguimiento =
+      resumen.tieneEjemplosNotion === true &&
+      !resumen.pendienteFolder &&
+      Array.isArray(driveInfo.carpetasGrabadas) &&
+      driveInfo.carpetasGrabadas.length > 0 &&
+      prod.ejemplosEnviados &&
+      prod.ejemplosEnviados.length > 0;
+
+    if (mostrarSeguimiento) {
+      // Mapear, filtrar inválidos y deduplicar por numInt (quedar con el primero)
+      var seenNums = new Set();
+      var ejemplosNotion = prod.ejemplosEnviados
+        .map(function(e) { return { numReel: e.numReel, subcuenta: e.subcuenta, indicaciones: e.indicaciones, numInt: parseInt(e.numReel, 10) }; })
+        .filter(function(e) {
+          if (isNaN(e.numInt)) return false;
+          if (seenNums.has(e.numInt)) return false;
+          seenNums.add(e.numInt);
+          return true;
+        });
+
+      var grabadas = new Set(driveInfo.carpetasGrabadas || []);
+
+      var yaGrabo = ejemplosNotion.filter(function(e) { return grabadas.has(e.numInt); });
+      var faltaGrabar = ejemplosNotion
+        .filter(function(e) { return !grabadas.has(e.numInt); })
+        .sort(function(a, b) { return b.numInt - a.numInt; }); // mayor a menor
+
+      var porcentaje = ejemplosNotion.length > 0
+        ? Math.round((yaGrabo.length / ejemplosNotion.length) * 100)
+        : 0;
+
+      html += '<div class="grabacion-section">';
+
+      // Header con stats
+      html += '<div class="grabacion-header">' +
+        '<span class="grabacion-title">📹 Seguimiento de grabación</span>' +
+        '<div class="grabacion-stats">' +
+          '<span class="stat-grabados">✅ ' + yaGrabo.length + ' grabados</span>' +
+          '<span class="stat-faltantes">⏳ ' + faltaGrabar.length + ' pendientes</span>' +
+          '<span class="stat-total">de ' + ejemplosNotion.length + ' enviados</span>' +
+        '</div>' +
+      '</div>';
+
+      // Barra de progreso
+      html += '<div class="grabacion-progress-track">' +
+        '<div class="grabacion-progress-fill" style="width: ' + porcentaje + '%"></div>' +
+      '</div>' +
+      '<div class="grabacion-progress-label">' + porcentaje + '% grabado</div>';
+
+      // Lista de pendientes
+      if (faltaGrabar.length > 0) {
+        html += '<div class="grabacion-pendientes">' +
+          '<p class="grabacion-subtitle">⏳ Faltan grabar (' + faltaGrabar.length + ')</p>' +
+          '<div class="grabacion-grid">';
+        faltaGrabar.forEach(function(item) {
+          html += '<div class="grabacion-item pendiente">' +
+            '<span class="grab-num">#' + esc(item.numReel) + '</span>' +
+            '<span class="grab-sub">' + esc(item.subcuenta || '') + '</span>' +
+            (item.indicaciones ? '<span class="grab-indicaciones">' + esc(item.indicaciones) + '</span>' : '') +
+          '</div>';
+        });
+        html += '</div></div>';
+      } else {
+        html += '<p class="grabacion-all-done">✅ Grabó todos los ejemplos enviados</p>';
+      }
+
+      // Lista de grabados (colapsable)
+      if (yaGrabo.length > 0) {
+        html += '<details class="grabacion-grabados-wrap">' +
+          '<summary>Ver grabados (' + yaGrabo.length + ')</summary>' +
+          '<div class="grabacion-grid">';
+        yaGrabo.forEach(function(item) {
+          html += '<div class="grabacion-item grabado">' +
+            '<span class="grab-num">#' + esc(item.numReel) + '</span>' +
+            '<span class="grab-sub">' + esc(item.subcuenta || '') + '</span>' +
+          '</div>';
+        });
+        html += '</div></details>';
+      }
+
+      html += '</div>'; // close grabacion-section
+    }
+
     content.innerHTML = html;
   }
 
