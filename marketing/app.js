@@ -12,7 +12,7 @@
   const API_KEY = 'BG-Franco2025-Pipeline';
   const TIMEOUT_MS = 90000;
   const DRIVE_TIMEOUT_MS = 200000; // Drive needs ~130s, give it 200s
-  const CACHE_KEY = 'bg-marketing-v6';
+  const CACHE_KEY = 'bg-marketing-v7';
   const PUBLISH_RATE = 2.5; // reels/day average for dias de contenido calc
   const REQUIRED_MODELS = ['CARMEN', 'LEXI', 'LILY', 'VICKY', 'REDCARMYN'];
   const DEFAULT_MODEL_NAMES = {
@@ -256,6 +256,10 @@
 
   function buildFullData(calendario, produccion, drive, configModelos) {
     var modelConfigs = resolveModelConfigs(configModelos, calendario, produccion, drive);
+    var modelConfigMap = {};
+    modelConfigs.forEach(function(model) {
+      modelConfigMap[model.key] = model;
+    });
     var MODELS = modelConfigs.filter(function(m) { return !m.pendienteFolder; }).map(function(m) { return m.key; });
     var MODELS_PENDING = modelConfigs.filter(function(m) { return m.pendienteFolder; }).map(function(m) { return m.key; });
     var modelos = {};
@@ -268,7 +272,7 @@
     var criticos = 0, bajos = 0, ok = 0, inactivos = 0;
 
     MODELS.forEach(function(key) {
-      var cfg = findModelData(configModelos, key);
+      var cfg = findModelData(modelConfigMap, key);
       var cal = findModelData(calendario, key);
       var prod = findModelData(produccion, key);
       var drv = findModelData(drive, key);
@@ -316,7 +320,7 @@
     });
 
     MODELS_PENDING.forEach(function(key) {
-      var cfg = findModelData(configModelos, key);
+      var cfg = findModelData(modelConfigMap, key);
       modelos[key] = {
         nombre: cfg.nombre || key,
         stockEditados: 0,
