@@ -19,6 +19,35 @@ const SUB_HEADER_STYLES = [
 const cellKey = (row: ChecklistRow, day: number, colIdx: number) =>
   `${row.chatter}|${row.cuenta}|${day}|${colIdx}`;
 
+// Símbolo grande por estado: más legible que texto en una grilla densa de 31 días.
+const STATUS_SYMBOLS: Record<string, string> = {
+  [Status.OK]: '✓',
+  [Status.OBS]: '!',
+  [Status.CRIT]: '✕',
+  [Status.NA]: '–',
+  [Status.EMPTY]: '',
+};
+
+// Opciones del selector de 1 clic (popover) para fijar el estado directo.
+const STATUS_OPTIONS: { value: Status; label: string; symbol: string; cls: string }[] = [
+  { value: Status.OK,   label: 'OK',          symbol: '✓', cls: 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-200' },
+  { value: Status.OBS,  label: 'Observación', symbol: '!', cls: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-200' },
+  { value: Status.CRIT, label: 'Crítico',     symbol: '✕', cls: 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-200' },
+  { value: Status.NA,   label: 'No aplica',   symbol: '–', cls: 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300' },
+];
+
+// Bloques de chatter: el nombre se muestra una sola vez por grupo (celda con rowSpan).
+// CHECKLIST_ROWS viene agrupado por chatter, así que los bloques son contiguos.
+const CHATTER_BLOCKS = CHECKLIST_ROWS.map((row, i) => {
+  const isFirst = i === 0 || CHECKLIST_ROWS[i - 1].chatter !== row.chatter;
+  let span = 0;
+  if (isFirst) {
+    span = 1;
+    for (let j = i + 1; j < CHECKLIST_ROWS.length && CHECKLIST_ROWS[j].chatter === row.chatter; j++) span++;
+  }
+  return { isFirst, span };
+});
+
 interface Props {
   archivedData?: any;
   isReadOnly?: boolean;
@@ -73,21 +102,32 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
     saveData();
   }, [data, isReadOnly, isLoading]);
 
-  // CYCLE LOGIC: Empty -> OK -> OBS -> CRIT -> Empty
-  const cycleStatus = (key: string) => {
+  // Selector de 1 clic: clic en una celda abre un popover junto al cursor
+  // para fijar el estado directo (sin tener que ciclar Vacío→OK→OBS→CRIT→N/A).
+  const [picker, setPicker] = useState<{ key: string; top: number; left: number } | null>(null);
+
+  const openPicker = (e: React.MouseEvent, key: string) => {
     if (isReadOnly) return;
-    setData(prev => {
-      const current = prev[key];
-      let next = Status.EMPTY;
-      if (!current) next = Status.OK;
-      else if (current === Status.OK) next = Status.OBS;
-      else if (current === Status.OBS) next = Status.CRIT;
-      else if (current === Status.CRIT) next = Status.NA;
-      else if (current === Status.NA) next = Status.EMPTY;
-      
-      return { ...prev, [key]: next };
-    });
+    const PW = 180, PH = 250; // tamaño aprox del popover, para no desbordar la ventana
+    const left = Math.min(e.clientX, window.innerWidth - PW - 12);
+    const top = Math.min(e.clientY, window.innerHeight - PH - 12);
+    setPicker({ key, top: Math.max(8, top), left: Math.max(8, left) });
   };
+
+  const setCellStatus = (value: Status) => {
+    if (isReadOnly || !picker) return;
+    const key = picker.key;
+    setData(prev => ({ ...prev, [key]: value }));
+    setPicker(null);
+  };
+
+  // Cerrar el selector con Escape.
+  useEffect(() => {
+    if (!picker) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPicker(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [picker]);
 
   const batchFillDay = (day: number) => {
       if(isReadOnly) return;
@@ -254,14 +294,22 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
             {CHECKLIST_ROWS.map((row, rowIdx) => {
               const chatterColor = CHATTER_COLORS[row.chatter] || CHATTER_COLORS['default'];
               const accountColor = ACCOUNT_COLORS[row.cuenta] || ACCOUNT_COLORS['default'];
+              const block = CHATTER_BLOCKS[rowIdx];
+              const isBlockStart = block.isFirst && rowIdx !== 0; // divisor entre chatters (no en la 1ra fila)
+              const blockTop = isBlockStart ? 'border-t-4 border-t-gray-300 dark:border-t-gray-600' : '';
               return (
               <tr key={rowIdx} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 border-b border-r-4 border-gray-200 dark:border-gray-700 p-2 font-bold text-gray-800 dark:text-gray-200 truncate text-xs uppercase tracking-wide">
-                  <div className={`py-1 px-2 rounded-md ${chatterColor} text-center`}>
-                    {row.chatter}
-                  </div>
-                </td>
-                <td className="sticky left-32 z-10 bg-white dark:bg-gray-800 border-b border-r-4 border-gray-200 dark:border-gray-700 p-2 font-medium text-gray-600 dark:text-gray-400 truncate shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)] text-xs">
+                {block.isFirst && (
+                  <td
+                    rowSpan={block.span}
+                    className={`sticky left-0 z-10 bg-white dark:bg-gray-800 border-r-4 border-gray-200 dark:border-gray-700 p-2 align-middle ${blockTop}`}
+                  >
+                    <div className={`py-1.5 px-2 rounded-md ${chatterColor} text-center font-bold text-xs uppercase tracking-wide`}>
+                      {row.chatter}
+                    </div>
+                  </td>
+                )}
+                <td className={`sticky left-32 z-10 bg-white dark:bg-gray-800 border-b border-r-4 border-gray-200 dark:border-gray-700 p-2 font-medium text-gray-600 dark:text-gray-400 truncate shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)] text-xs ${blockTop}`}>
                    <div className={`py-1 px-2 rounded-md border ${accountColor} text-center`}>
                     {row.cuenta}
                   </div>
@@ -273,27 +321,30 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
                       {SUB_HEADERS.map((_, colIdx) => {
                         const key = cellKey(row, day, colIdx);
                         const currentStatus = data[key] || Status.EMPTY;
-                        
-                        const cellBaseClass = isToday 
-                          ? 'border-t-2 border-b-2 border-blue-100 dark:border-blue-900 bg-blue-50/30 dark:bg-blue-900/20' 
-                          : 'border-b border-r border-gray-200 dark:border-gray-700';
 
-                        const rightBorderClass = colIdx === 3 
+                        const topBorder = isBlockStart
+                          ? blockTop
+                          : (isToday ? 'border-t-2 border-t-blue-100 dark:border-t-blue-900' : '');
+                        const cellBaseClass = isToday
+                          ? `${topBorder} border-b-2 border-b-blue-100 dark:border-b-blue-900 bg-blue-50/30 dark:bg-blue-900/20`
+                          : `${topBorder} border-b border-gray-200 dark:border-gray-700`;
+
+                        const rightBorderClass = colIdx === 3
                           ? (isToday ? 'border-r-4 border-r-blue-300 dark:border-r-blue-700' : 'border-r-4 border-r-gray-300 dark:border-r-gray-600')
                           : (isToday ? 'border-r border-blue-100 dark:border-blue-800' : 'border-r border-gray-200 dark:border-gray-700');
 
                         return (
-                          <td 
-                            key={key} 
-                            onClick={() => cycleStatus(key)}
+                          <td
+                            key={key}
+                            onClick={(e) => openPicker(e, key)}
                             className={`${cellBaseClass} ${rightBorderClass} p-0 h-10 cursor-pointer hover:brightness-95 active:scale-95 transition-all text-center`}
                           >
                             <div className={`
-                                w-full h-full flex items-center justify-center font-bold text-xs
+                                w-full h-full flex items-center justify-center font-black text-base leading-none
                                 ${getCellColor(currentStatus)}
                                 ${currentStatus === Status.EMPTY && isToday ? 'hover:bg-blue-100 dark:hover:bg-blue-900/30' : ''}
                             `}>
-                                {currentStatus}
+                                {STATUS_SYMBOLS[currentStatus] || ''}
                             </div>
                           </td>
                         );
@@ -325,6 +376,36 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
           </tbody>
         </table>
       </div>
+
+      {/* Selector de estado de 1 clic */}
+      {picker && (
+        <div className="fixed inset-0 z-[60]" onClick={() => setPicker(null)}>
+          <div
+            className="absolute w-44 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-1.5 flex flex-col gap-1"
+            style={{ top: picker.top, left: picker.left }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Marcar estado</div>
+            {STATUS_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setCellStatus(opt.value)}
+                className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-bold transition-colors ${opt.cls}`}
+              >
+                <span className="w-5 h-5 flex items-center justify-center rounded-full bg-white/60 dark:bg-black/20 font-black">{opt.symbol}</span>
+                {opt.label}
+              </button>
+            ))}
+            <button
+              onClick={() => setCellStatus(Status.EMPTY)}
+              className="flex items-center gap-2 px-2 py-1.5 mt-0.5 pt-2 rounded-lg text-xs font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-t border-gray-100 dark:border-gray-700"
+            >
+              <span className="w-5 h-5 flex items-center justify-center">🧹</span>
+              Limpiar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
