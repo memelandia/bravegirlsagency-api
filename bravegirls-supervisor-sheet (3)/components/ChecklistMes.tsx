@@ -1,9 +1,23 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { CHECKLIST_ROWS, Status, STATUS_COLORS, CHATTER_COLORS, ACCOUNT_COLORS } from '../types';
+import { CHECKLIST_ROWS, ChecklistRow, Status, STATUS_COLORS, CHATTER_COLORS, ACCOUNT_COLORS } from '../types';
 import { supervisionAPI } from '../api-service';
 
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
-const SUB_HEADERS = ['Tiempos', 'Scripts', 'Precios', 'Masivos'];
+const SUB_HEADERS = ['Tiempos', 'Script/PPV', 'Precios', 'Masivos'];
+
+// Un color distintivo por categoría (mismo orden que SUB_HEADERS) para que el
+// supervisor diferencie las columnas de un vistazo en la grilla de 31 días.
+const SUB_HEADER_STYLES = [
+  'bg-sky-600 text-white border-sky-700',       // Tiempos
+  'bg-violet-600 text-white border-violet-700', // Script/PPV
+  'bg-emerald-600 text-white border-emerald-700', // Precios
+  'bg-amber-500 text-gray-900 border-amber-600',  // Masivos
+];
+
+// Clave estable por identidad (chatter + cuenta), NO por posición de fila.
+// Así reordenar / agregar / quitar chatters no desalinea los datos guardados.
+const cellKey = (row: ChecklistRow, day: number, colIdx: number) =>
+  `${row.chatter}|${row.cuenta}|${day}|${colIdx}`;
 
 interface Props {
   archivedData?: any;
@@ -80,9 +94,9 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
       if (!confirm(`¿Llenar todas las celdas vacías del Día ${day} con 'OK'?`)) return;
 
       const updates: Record<string, Status> = {};
-      CHECKLIST_ROWS.forEach((row, rowIdx) => {
+      CHECKLIST_ROWS.forEach((row) => {
           SUB_HEADERS.forEach((_, colIdx) => {
-              const key = `${rowIdx}-${day}-${colIdx}`;
+              const key = cellKey(row, day, colIdx);
               if (!data[key]) {
                   updates[key] = Status.OK;
               }
@@ -95,9 +109,9 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
   const getDailyScore = (day: number) => {
     let total = 0;
     let score = 0;
-    CHECKLIST_ROWS.forEach((row, rowIdx) => {
+    CHECKLIST_ROWS.forEach((row) => {
         SUB_HEADERS.forEach((_, colIdx) => {
-            const key = `${rowIdx}-${day}-${colIdx}`;
+            const key = cellKey(row, day, colIdx);
             const val = data[key];
             if (val && val !== Status.NA) {
                 total++;
@@ -114,14 +128,14 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
 
   useEffect(() => {
     if (scrollContainerRef.current) {
-      const scrollPos = (todayDate - 1) * 320; 
+      const scrollPos = (todayDate - 1) * 384;
       scrollContainerRef.current.scrollTo({ left: scrollPos, behavior: 'smooth' });
     }
   }, [todayDate]);
 
   const scrollToToday = () => {
      if (scrollContainerRef.current) {
-      const scrollPos = (todayDate - 1) * 320; 
+      const scrollPos = (todayDate - 1) * 384;
       scrollContainerRef.current.scrollTo({ left: scrollPos, behavior: 'smooth' });
     }
   };
@@ -130,11 +144,11 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
       const headerRow = ['Chatter', 'Cuenta', ...DAYS.flatMap(d => SUB_HEADERS.map(s => `Dia ${d} - ${s}`))];
       const csvRows = [headerRow.join(',')];
 
-      CHECKLIST_ROWS.forEach((row, rowIdx) => {
+      CHECKLIST_ROWS.forEach((row) => {
           const rowData = [row.chatter, row.cuenta];
           DAYS.forEach(day => {
               SUB_HEADERS.forEach((_, colIdx) => {
-                  const key = `${rowIdx}-${day}-${colIdx}`;
+                  const key = cellKey(row, day, colIdx);
                   rowData.push(data[key] || '');
               });
           });
@@ -218,12 +232,13 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
                 return (
                   <React.Fragment key={day}>
                     {SUB_HEADERS.map((sub, idx) => (
-                      <th 
-                        key={`${day}-${idx}`} 
+                      <th
+                        key={`${day}-${idx}`}
                         className={`
-                          font-normal text-[9px] px-0.5 border-b border-gray-600 border-r min-w-[60px] w-20 uppercase tracking-tight overflow-hidden text-ellipsis whitespace-nowrap
-                          ${idx === 3 ? 'border-r-4 border-r-gray-800' : 'border-r-gray-700'}
-                          ${isToday ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 border-b-blue-200 font-bold' : 'bg-[#1F2937] dark:bg-gray-900 text-gray-300'}
+                          font-bold text-[11px] px-1 py-1.5 h-9 border-b border-r min-w-[74px] w-24 uppercase tracking-tight overflow-hidden text-ellipsis whitespace-nowrap
+                          ${SUB_HEADER_STYLES[idx]}
+                          ${idx === 3 ? 'border-r-4 border-r-gray-800' : ''}
+                          ${isToday ? 'ring-2 ring-inset ring-blue-300 dark:ring-blue-200 brightness-110' : ''}
                         `}
                       >
                         {sub}
@@ -256,7 +271,7 @@ const ChecklistMes: React.FC<Props> = ({ archivedData, isReadOnly = false, onSho
                   return (
                     <React.Fragment key={day}>
                       {SUB_HEADERS.map((_, colIdx) => {
-                        const key = `${rowIdx}-${day}-${colIdx}`;
+                        const key = cellKey(row, day, colIdx);
                         const currentStatus = data[key] || Status.EMPTY;
                         
                         const cellBaseClass = isToday 

@@ -31,15 +31,12 @@ interface ChatterPerformance {
 
 interface AccountHealth {
   name: string;
-  whales: number;
-  loyalty: number;
   totalBilling: number;
 }
 
 const Metricas: React.FC<Props> = ({ archivedData }) => {
   const [weeklyData, setWeeklyData] = useState<WeeklySupervisionRow[]>([]);
   const [checklistData, setChecklistData] = useState<Record<string, Status>>({});
-  const [vipData, setVipData] = useState<any[]>([]);
   const [errorData, setErrorData] = useState<ErrorLogEntry[]>([]);
   
   // Filters & State
@@ -58,11 +55,7 @@ const Metricas: React.FC<Props> = ({ archivedData }) => {
         const checklistData = await supervisionAPI.getChecklist();
         setChecklistData(checklistData);
 
-        // 3. VIP Data (Fans + Status)
-        const vipFansData = await supervisionAPI.getVipFans();
-        setVipData(vipFansData);
-
-        // 4. Errors Data
+        // 3. Errors Data
         const errorsData = await supervisionAPI.getErrores();
         setErrorData(errorsData);
 
@@ -77,7 +70,6 @@ const Metricas: React.FC<Props> = ({ archivedData }) => {
     if (archivedData) {
         setWeeklyData(archivedData.weekly || []);
         setChecklistData(archivedData.checklist || {});
-        setVipData(archivedData.vip || []);
         setErrorData(archivedData.errors || []);
     } else {
         loadAllData();
@@ -155,9 +147,9 @@ const Metricas: React.FC<Props> = ({ archivedData }) => {
     const checklistEntries = Object.entries(checklistData);
     const chatterScoresRaw: Record<string, number[]> = {};
 
-    CHECKLIST_ROWS.forEach((row, idx) => {
+    CHECKLIST_ROWS.forEach((row) => {
         if(!chatterScoresRaw[row.chatter]) chatterScoresRaw[row.chatter] = [];
-        const rowEntries = checklistEntries.filter(([key]) => key.startsWith(`${idx}-`));
+        const rowEntries = checklistEntries.filter(([key]) => key.startsWith(`${row.chatter}|${row.cuenta}|`));
         rowEntries.forEach(([_, status]) => {
             let val = 100;
             if (status === Status.OK) val = 100;
@@ -186,15 +178,7 @@ const Metricas: React.FC<Props> = ({ archivedData }) => {
 
     // 6. Account Stats (Filtered by Week)
     const accountStats: Record<string, AccountHealth> = {};
-    ACCOUNTS.forEach(a => accountStats[a] = { name: a, whales: 0, loyalty: 0, totalBilling: 0 });
-    
-    // VIP counts are static (current state), but Billing is filtered
-    vipData.forEach((fan: any) => {
-        if (fan.account && accountStats[fan.account]) {
-            if (fan.type === 'WHALE') accountStats[fan.account].whales += 1;
-            else accountStats[fan.account].loyalty += 1;
-        }
-    });
+    ACCOUNTS.forEach(a => accountStats[a] = { name: a, totalBilling: 0 });
 
     let globalFans = 0;
     activeWeeklyData.forEach(row => {
@@ -226,7 +210,7 @@ const Metricas: React.FC<Props> = ({ archivedData }) => {
         totalFans: globalFans,
         avgQuality: Object.values(chatterStats).reduce((acc, curr) => acc + curr.qualityScore, 0) / CHATTERS.length
     };
-  }, [weeklyData, checklistData, vipData, errorData, filterWeek]);
+  }, [weeklyData, checklistData, errorData, filterWeek]);
 
   const maxBilling = Math.max(...metrics.chatters.map(c => c.totalBilling), 1000);
   const topBillerName = metrics.chatters[0]?.name;
@@ -486,19 +470,17 @@ const Metricas: React.FC<Props> = ({ archivedData }) => {
                     </div>
                 </div>
 
-                {/* ACCOUNT HEALTH */}
+                {/* ACCOUNT BILLING */}
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                     <h3 className="text-lg font-black text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                        <span>💎</span> Salud de Cuentas (VIPs)
+                        <span>💰</span> Facturación por Cuenta
                     </h3>
-                    
+
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="text-left text-xs uppercase text-gray-400 border-b border-gray-100 dark:border-gray-700">
                                     <th className="pb-2">Cuenta</th>
-                                    <th className="pb-2 text-center">🐳 Ballenas</th>
-                                    <th className="pb-2 text-center">🌱 Fidelizar</th>
                                     <th className="pb-2 text-right">Facturación</th>
                                 </tr>
                             </thead>
@@ -510,8 +492,6 @@ const Metricas: React.FC<Props> = ({ archivedData }) => {
                                                 {acc.name}
                                             </span>
                                         </td>
-                                        <td className="py-3 text-center font-bold text-blue-900 dark:text-blue-300">{acc.whales}</td>
-                                        <td className="py-3 text-center text-green-700 dark:text-green-400">{acc.loyalty}</td>
                                         <td className="py-3 text-right font-mono text-gray-600 dark:text-gray-400">${acc.totalBilling.toLocaleString()}</td>
                                     </tr>
                                 ))}

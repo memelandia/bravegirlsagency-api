@@ -13,40 +13,44 @@ export interface ChecklistRow {
 }
 
 export const CHECKLIST_ROWS: ChecklistRow[] = [
-  { chatter: 'Nico', cuenta: 'Bellarey' },
-  { chatter: 'Nico', cuenta: 'Vicky' },
-  { chatter: 'Kari', cuenta: 'Bellarey' },
-  { chatter: 'Kari', cuenta: 'Vicky' },
-  { chatter: 'Alfonso', cuenta: 'Bellarey' },
-  { chatter: 'Alfonso', cuenta: 'Vicky' },
+  { chatter: 'Nico', cuenta: 'xvickyluna' },
+  { chatter: 'Nico', cuenta: 'lilymontero' },
+  { chatter: 'Alfonso', cuenta: 'xvickyluna' },
+  { chatter: 'Alfonso', cuenta: 'lilymontero' },
+  { chatter: 'Kari', cuenta: 'xvickyluna' },
+  { chatter: 'Kari', cuenta: 'lilymontero' },
   { chatter: 'Yaye', cuenta: 'Lexi' },
   { chatter: 'Yaye', cuenta: 'Carmen' },
-  { chatter: 'Yaye', cuenta: 'Lucy' },
-  { chatter: 'Carlo', cuenta: 'Lexi' },
-  { chatter: 'Carlo', cuenta: 'Carmen' },
-  { chatter: 'Carlo', cuenta: 'Lucy' },
-  { chatter: 'Leo', cuenta: 'Carmen' },
-  { chatter: 'Leo', cuenta: 'Lucy' },
-  { chatter: 'Leo', cuenta: 'Bellarey' },
-  { chatter: 'Leo', cuenta: 'Lexi' },
-  { chatter: 'Leo', cuenta: 'Vicky' },
-  { chatter: 'Leo', cuenta: 'Ariana' },
-  { chatter: 'Genesys', cuenta: 'Carmen' },
-  { chatter: 'Genesys', cuenta: 'Lucy' },
-  { chatter: 'Genesys', cuenta: 'Lexi' },
+  { chatter: 'Yaye', cuenta: 'KatieRose' },
+  { chatter: 'Camila', cuenta: 'Carmen' },
+  { chatter: 'Camila', cuenta: 'Lexi' },
+  { chatter: 'Camila', cuenta: 'KatieRose' },
+  { chatter: 'Camila', cuenta: 'Redcarmyn' },
+  { chatter: 'Mauricio', cuenta: 'KatieRose' },
+  { chatter: 'Mauricio', cuenta: 'Sarah' },
+  { chatter: 'Mauricio', cuenta: 'Carmen' },
+  { chatter: 'Mauricio', cuenta: 'Lexi' },
+  { chatter: 'Antonio', cuenta: 'KatieRose' },
+  { chatter: 'Antonio', cuenta: 'Carmen' },
+  { chatter: 'Antonio', cuenta: 'Lexi' },
+  { chatter: 'Antonio', cuenta: 'xvickyluna' },
+  { chatter: 'Antonio', cuenta: 'lilymontero' },
 ];
 
 export const VIP_ROWS = [
   'Carmen',
-  'Bellarey',
-  'Vicky',
   'Lexi',
-  'Lucy',
-  'Ariana'
+  'KatieRose',
+  'xvickyluna',
+  'lilymontero',
+  'LilyJane',
+  'Sarah',
+  // Lucy = alias interno para SweetBallerina
+  'Lucy'
 ];
 
-export const CHATTERS = ['Nico', 'Alfonso', 'Yaye', 'Kari', 'Carlo', 'Leo', 'Genesys'];
-export const ACCOUNTS = ['Carmen', 'Bellarey', 'Vicky', 'Lexi', 'Lucy', 'Ariana'];
+export const CHATTERS = ['Nico', 'Alfonso', 'Kari', 'Yaye', 'Camila', 'Mauricio', 'Antonio'];
+export const ACCOUNTS = ['Carmen', 'Redcarmyn', 'Lexi', 'KatieRose', 'xvickyluna', 'lilymontero', 'LilyJane', 'Sarah', 'Lucy'];
 
 // Color Mappings for Dropdowns/Badges (Light & Dark compatible)
 export const CHATTER_COLORS: Record<string, string> = {
@@ -54,19 +58,22 @@ export const CHATTER_COLORS: Record<string, string> = {
   'Alfonso': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
   'Yaye': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   'Kari': 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
-  'Carlo': 'bg-lime-100 text-lime-800 dark:bg-lime-900 dark:text-lime-200',
-  'Leo': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
-  'Genesys': 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
+  'Camila': 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900 dark:text-fuchsia-200',
+  'Mauricio': 'bg-lime-100 text-lime-800 dark:bg-lime-900 dark:text-lime-200',
+  'Antonio': 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
   'default': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
 };
 
 export const ACCOUNT_COLORS: Record<string, string> = {
   'Carmen': 'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/30 dark:text-red-300 dark:border-red-900',
-  'Bellarey': 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-900',
-  'Vicky': 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-900',
+  'Redcarmyn': 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100 dark:bg-fuchsia-900/30 dark:text-fuchsia-300 dark:border-fuchsia-900',
   'Lexi': 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-900',
+  'KatieRose': 'bg-pink-50 text-pink-700 border-pink-100 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-900',
+  'xvickyluna': 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-900',
+  'lilymontero': 'bg-teal-50 text-teal-700 border-teal-100 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-900',
+  'LilyJane': 'bg-orange-50 text-orange-700 border-orange-100 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-900',
+  'Sarah': 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-900',
   'Lucy': 'bg-cyan-50 text-cyan-700 border-cyan-100 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-900',
-  'Ariana': 'bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-900',
   'default': 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-300'
 };
 
@@ -324,9 +331,125 @@ export interface OMMember {
 }
 
 // IDs de miembros de OnlyMonster que NO son chatters.
-// 24792 = Franco Ponce (admin), 25135 = jonatan benitez, 56895 = Aldi sanchez
+// 24792 = Admin operativo, 25135 = jonatan benitez, 56895 = Aldi sanchez
 // 139826 = existe en chattersData pero no en members (no-chatter)
 // Actualizar manualmente cuando cambie el equipo no-chatter.
 export const EXCLUDED_MEMBER_IDS: number[] = [
   24792, 25135, 56895, 139826
 ];
+
+// ═══════════════════════════════════════════
+// ORGANIGRAMA (asignaciones chatter × cuenta × turno)
+// ═══════════════════════════════════════════
+
+export enum Shift {
+  MORNING = 'MORNING',
+  AFTERNOON = 'AFTERNOON',
+  NIGHT = 'NIGHT'
+}
+
+export const SHIFT_LABELS: Record<Shift, string> = {
+  [Shift.MORNING]: '🌅 Mañana',
+  [Shift.AFTERNOON]: '☀️ Tarde',
+  [Shift.NIGHT]: '🌙 Noche'
+};
+
+export const SHIFT_HOURS: Record<Shift, string> = {
+  [Shift.MORNING]: '7:00 — 14:00',
+  [Shift.AFTERNOON]: '14:00 — 21:00',
+  [Shift.NIGHT]: '21:00 — 04:00'
+};
+
+// Paletas Tailwind por turno (claro / oscuro). Pensadas para fondos suaves de drop zone.
+export const SHIFT_STYLES: Record<Shift, { bg: string; border: string; text: string; ring: string }> = {
+  [Shift.MORNING]:   { bg: 'bg-amber-50 dark:bg-amber-900/20',   border: 'border-amber-300 dark:border-amber-700',   text: 'text-amber-800 dark:text-amber-200',   ring: 'ring-amber-400' },
+  [Shift.AFTERNOON]: { bg: 'bg-orange-50 dark:bg-orange-900/20', border: 'border-orange-300 dark:border-orange-700', text: 'text-orange-800 dark:text-orange-200', ring: 'ring-orange-400' },
+  [Shift.NIGHT]:     { bg: 'bg-indigo-50 dark:bg-indigo-900/20', border: 'border-indigo-300 dark:border-indigo-700', text: 'text-indigo-800 dark:text-indigo-200', ring: 'ring-indigo-400' }
+};
+
+export interface Assignment {
+  shift: Shift;
+  accountId: number;
+  chatterId: number;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUTOMATIZACIÓN / ALERTAS
+// ═══════════════════════════════════════════════════════════════
+
+export type AlertLevel = 'critical' | 'warning' | 'info';
+export type AlertCategory = 'S1' | 'S2' | 'S3' | 'S4' | 'D5' | 'D6' | 'D7';
+
+export interface Alert {
+  id: number;
+  level: AlertLevel;
+  category: AlertCategory;
+  accountId: number | null;
+  userId: number | null;
+  title: string;
+  body: string | null;
+  metadata: Record<string, any> | null;
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+  createdAt: string;
+}
+
+export const ALERT_LEVEL_STYLES: Record<AlertLevel, { bg: string; border: string; text: string; emoji: string }> = {
+  critical: { bg: 'bg-red-50 dark:bg-red-900/20',     border: 'border-red-300 dark:border-red-700',     text: 'text-red-800 dark:text-red-200',     emoji: '🔴' },
+  warning:  { bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-300 dark:border-amber-700', text: 'text-amber-800 dark:text-amber-200', emoji: '🟡' },
+  info:     { bg: 'bg-blue-50 dark:bg-blue-900/20',   border: 'border-blue-300 dark:border-blue-700',   text: 'text-blue-800 dark:text-blue-200',   emoji: '🔵' }
+};
+
+export const ALERT_CATEGORY_LABELS: Record<AlertCategory, string> = {
+  S1: 'Caída chatter/cuenta semanal',
+  S2: 'Caída subs nuevos semanal',
+  S3: 'Caída facturación cuenta semanal',
+  S4: 'Chargeback',
+  D5: 'Chatter sin PPV',
+  D6: 'Reply time alto',
+  D7: 'Baja conversión PPV'
+};
+
+export interface WeeklyReportAccount {
+  accountId: number;
+  thisRevenue: number;
+  prevRevenue: number;
+  thisNewSubs: number;
+  prevNewSubs: number;
+}
+export interface WeeklyReportChatter {
+  userId: number;
+  accountId: number;
+  thisRevenue: number;
+  prevRevenue: number;
+  thisPaid: number;
+  thisSold: number;
+}
+export interface WeeklyReportChargeback {
+  id: string;
+  accountId: number;
+  userId: number | null;
+  fanId: string | null;
+  chatId: string | null;
+  amount: number;
+  occurredAt: string;
+}
+
+/**
+ * Construye la URL de OnlyFans para abrir un chat con un fan.
+ * IMPORTANTE: el link solo funciona si el supervisor está logueado en la
+ * cuenta de OnlyFans correspondiente a la modelo. Mostrar el nombre de la
+ * modelo en el UI para que sepa en qué cuenta debe estar logueado.
+ */
+export function buildOnlyFansChatLink(chatId: string | number | null, fanId?: string | number | null): string | null {
+  const id = chatId ?? fanId;
+  if (!id) return null;
+  return `https://onlyfans.com/my/chats/chat/${id}/`;
+}
+export interface WeeklyReport {
+  weekStart: string;
+  previousWeekStart: string;
+  accounts: WeeklyReportAccount[];
+  chatters: WeeklyReportChatter[];
+  chargebacks: WeeklyReportChargeback[];
+}
