@@ -19,6 +19,7 @@
  *   /api/supervision?type=gamification-feed       (GET ?limit=5)
  *   /api/supervision?type=gamification-history    (GET ?chatter_id=X&limit=20)
  *   /api/supervision?type=gamification-medals     (GET ?chatter_id=X)
+ *   /api/supervision?type=gamification-all        (GET ?chatter_id=&from=&to=&model_id=&limit=) — auditoría/supervisor
  *
  * Las URLs viejas (/api/supervision/checklist, etc) siguen funcionando
  * gracias a rewrites en vercel.json.
@@ -62,6 +63,7 @@ module.exports = async function handler(req, res) {
       case 'gamification-feed':       return await handleGamificationFeed(req, res);
       case 'gamification-history':    return await handleGamificationHistory(req, res);
       case 'gamification-medals':     return await handleGamificationMedals(req, res);
+      case 'gamification-all':        return await handleGamificationAll(req, res);
       default:
         return res.status(400).json({
           success: false,
@@ -409,17 +411,17 @@ async function handleChatterGoal(req, res) {
 
 // Catálogo hardcoded. Server-side es la fuente de verdad para puntos.
 const OBJECTIVES_CATALOG = [
-  { id: 'videocall_premium',    label: 'Videollamada premium',       icon: '💎', tier: 'high',     mode: 'amount', multiplier: 0.50, min_amount: 0,   points_min: 1,  description: 'El fan paga una videollamada en vivo con la modelo. Puntos = 50% del monto vendido.' },
-  { id: 'custom_video_premium', label: 'Video personalizado premium', icon: '🎬', tier: 'high',     mode: 'amount', multiplier: 0.45, min_amount: 0,   points_min: 1,  description: 'El fan paga un video grabado a medida con guion suyo. Puntos = 45% del monto.' },
-  { id: 'panties_sale',         label: 'Venta de braguitas',          icon: '👙', tier: 'high',     mode: 'amount', multiplier: 0.40, min_amount: 0,   points_min: 1,  description: 'El fan compra braguitas reales usadas de la modelo. Puntos = 40% del monto.' },
-  { id: 'script_pro_complete',  label: 'Script PRO completo',         icon: '📜', tier: 'high',     mode: 'fixed',  points_fixed: 50, description: 'Cumpliste un guion de chatting completo (greeting → discovery → escalada → cierre → upsell). Puntos fijos: 50.' },
-  { id: 'fetish_video',         label: 'Video de fetiche exclusivo',  icon: '🔥', tier: 'medium',   mode: 'amount', multiplier: 0.30, min_amount: 0,   points_min: 1,  description: 'Video exclusivo del fetiche personal del fan (no genérico de bóveda). Puntos = 30% del monto.' },
-  { id: 'vault_premium_video',  label: 'Video de bóveda caro',        icon: '🗝️', tier: 'medium',   mode: 'amount', multiplier: 0.25, min_amount: 0,   points_min: 1,  description: 'Venta de video premium de la bóveda (tier alto). Puntos = 25% del monto.' },
-  { id: 'tip_premium',          label: 'Tip premium del fan',         icon: '💰', tier: 'high',     mode: 'amount', multiplier: 0.30, min_amount: 100, points_min: 30, description: 'El fan envió un regalo/tip a la modelo de $100 o más sin pedir contenido a cambio. Puntos = 30% del tip (mín. 30).' },
-  { id: 'reactivation',         label: 'Reactivación de fan inactivo', icon: '🔁', tier: 'medium',  mode: 'amount', multiplier: 0.35, min_amount: 0,   points_min: 25, description: 'Lograste que un fan que llevaba 30+ días sin gastar volviera a comprar. Puntos = 35% de la primera compra de reactivación (mín. 25).' },
-  { id: 'bundle_sale',          label: 'Pack de contenido (+$100)',   icon: '🎁', tier: 'high',     mode: 'amount', multiplier: 0.35, min_amount: 100, points_min: 1,  description: 'Cerraste la venta de un pack de contenido valuado en $100 o más. Puntos = 35% del valor del pack.' },
-  { id: 'ig_follow',            label: 'Follow de Instagram',         icon: '❤️', tier: 'low',      mode: 'fixed',  points_fixed: 5,  description: 'El fan empezó a seguir a la modelo en Instagram. Puntos fijos: 5.' },
-  { id: 'ig_close_friends',     label: 'Mejores amigos IG',           icon: '⭐', tier: 'low',      mode: 'fixed',  points_fixed: 8,  description: 'El fan fue agregado a la lista de mejores amigos de Instagram de la modelo. Puntos fijos: 8.' }
+  { id: 'videocall_premium',    label: 'Videollamada premium',       icon: '💎', tier: 'high',     mode: 'amount', multiplier: 0.50, min_amount: 0,   points_min: 1,   description: 'El fan paga una videollamada en vivo con la modelo. Puntos = 50% del monto vendido.' },
+  { id: 'custom_video_premium', label: 'Video personalizado premium', icon: '🎬', tier: 'high',     mode: 'amount', multiplier: 0.50, min_amount: 0,   points_min: 1,   description: 'El fan paga un video grabado a medida con guion suyo. Puntos = 50% del monto.' },
+  { id: 'panties_sale',         label: 'Venta de braguitas',          icon: '👙', tier: 'high',     mode: 'amount', multiplier: 0.50, min_amount: 0,   points_min: 1,   description: 'El fan compra braguitas reales usadas de la modelo. Puntos = 50% del monto.' },
+  { id: 'script_pro_complete',  label: 'Script PRO completo',         icon: '📜', tier: 'high',     mode: 'fixed',  points_fixed: 100, description: 'Cumpliste un guion de chatting completo (greeting → discovery → escalada → cierre → upsell). Puntos fijos: 100.' },
+  { id: 'fetish_video',         label: 'Video de fetiche exclusivo',  icon: '🔥', tier: 'high',     mode: 'amount', multiplier: 0.40, min_amount: 0,   points_min: 1,   description: 'Video exclusivo del fetiche personal del fan (no genérico de bóveda). Puntos = 40% del monto.' },
+  { id: 'vault_premium_video',  label: 'Video de bóveda caro',        icon: '🗝️', tier: 'medium',   mode: 'amount', multiplier: 0.30, min_amount: 0,   points_min: 1,   description: 'Venta de video premium de la bóveda (tier alto). Puntos = 30% del monto.' },
+  { id: 'tip_premium',          label: 'Tip premium del fan',         icon: '💰', tier: 'high',     mode: 'amount', multiplier: 0.30, min_amount: 100, points_min: 30,  description: 'El fan envió un regalo/tip a la modelo de $100 o más sin pedir contenido a cambio. Puntos = 30% del tip (mín. 30).' },
+  { id: 'reactivation',         label: 'Reactivación de fan inactivo', icon: '🔁', tier: 'high',    mode: 'fixed',  points_fixed: 40, description: 'Lograste que un fan que llevaba 30+ días sin gastar volviera a comprar. Puntos fijos: 40.' },
+  { id: 'bundle_sale',          label: 'Pack de contenido (+$100)',   icon: '🎁', tier: 'high',     mode: 'amount', multiplier: 0.40, min_amount: 100, points_min: 1,   description: 'Cerraste la venta de un pack de contenido valuado en $100 o más. Puntos = 40% del valor del pack.' },
+  { id: 'ig_follow',            label: 'Follow de Instagram',         icon: '❤️', tier: 'low',      mode: 'fixed',  points_fixed: 20, description: 'El fan empezó a seguir a la modelo en Instagram. Puntos fijos: 20.' },
+  { id: 'ig_close_friends',     label: 'Mejores amigos IG',           icon: '⭐', tier: 'low',      mode: 'fixed',  points_fixed: 20, description: 'El fan fue agregado a la lista de mejores amigos de Instagram de la modelo. Puntos fijos: 20.' }
 ];
 
 const OBJECTIVES_BY_ID = Object.fromEntries(OBJECTIVES_CATALOG.map(o => [o.id, o]));
@@ -650,4 +652,74 @@ async function handleGamificationMedals(req, res) {
   });
 
   return res.status(200).json({ success: true, data });
+}
+
+// ── 7. ALL (auditoría supervisor) ──
+// Devuelve completions con filtros opcionales: chatter_id, model_id, from, to, limit
+async function handleGamificationAll(req, res) {
+  if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' });
+  await ensureGamificationTable();
+
+  const { chatter_id, model_id, from, to } = req.query;
+  const limit = Math.min(parseInt(req.query.limit, 10) || 500, 2000);
+
+  // Construcción dinámica de WHERE
+  const conds = [];
+  if (chatter_id) conds.push(sql`chatter_id = ${chatter_id}`);
+  if (model_id)   conds.push(sql`model_id = ${model_id}`);
+  if (from)       conds.push(sql`completed_at >= ${from + 'T00:00:00.000Z'}`);
+  if (to)         conds.push(sql`completed_at <= ${to + 'T23:59:59.999Z'}`);
+
+  let rows;
+  if (conds.length === 0) {
+    const r = await sql`
+      SELECT id, chatter_id, chatter_name, objective_id, objective_label,
+             points, sale_amount, model_id, model_name, fan_reference, notes, completed_at
+      FROM gamification_completions
+      ORDER BY completed_at DESC
+      LIMIT ${limit}
+    `;
+    rows = r.rows;
+  } else {
+    // Combinar condiciones con AND usando placeholders posicionales — @vercel/postgres
+    // no soporta composición de fragmentos templated, así que usamos query plana.
+    const whereParts = [];
+    const params = [];
+    if (chatter_id) { params.push(chatter_id); whereParts.push(`chatter_id = $${params.length}`); }
+    if (model_id)   { params.push(model_id);   whereParts.push(`model_id = $${params.length}`); }
+    if (from)       { params.push(from + 'T00:00:00.000Z'); whereParts.push(`completed_at >= $${params.length}`); }
+    if (to)         { params.push(to + 'T23:59:59.999Z');   whereParts.push(`completed_at <= $${params.length}`); }
+    params.push(limit);
+
+    const queryText = `
+      SELECT id, chatter_id, chatter_name, objective_id, objective_label,
+             points, sale_amount, model_id, model_name, fan_reference, notes, completed_at
+      FROM gamification_completions
+      WHERE ${whereParts.join(' AND ')}
+      ORDER BY completed_at DESC
+      LIMIT $${params.length}
+    `;
+    const { db } = require('@vercel/postgres');
+    const client = await db.connect();
+    try {
+      const r = await client.query(queryText, params);
+      rows = r.rows;
+    } finally {
+      client.release();
+    }
+  }
+
+  const data = rows.map(r => ({
+    ...r,
+    points: parseInt(r.points, 10),
+    sale_amount: r.sale_amount !== null ? parseFloat(r.sale_amount) : null,
+    icon: OBJECTIVES_BY_ID[r.objective_id]?.icon || '✨'
+  }));
+
+  return res.status(200).json({
+    success: true,
+    data,
+    total: data.length,
+    filters: { chatter_id: chatter_id || null, model_id: model_id || null, from: from || null, to: to || null, limit }
+  });
 }
