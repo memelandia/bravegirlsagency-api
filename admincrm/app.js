@@ -189,7 +189,7 @@
       message: String(err?.message || err || 'unknown').slice(0, 2000),
       stack: err?.stack ? String(err.stack).slice(0, 8000) : null,
       url: String(location.href).slice(0, 500),
-      route: location.hash.replace('#', '') || 'resumen',
+      route: parseRoute(location.hash),
       user_agent: navigator.userAgent.slice(0, 500),
       ...extra
     };
@@ -312,13 +312,13 @@
     document.getElementById('mes-selector').value = savedMes;
     const t = document.getElementById('mes-display-text');
     if (t) t.textContent = fmtMesNice(savedMes);
-    navigate(location.hash.replace('#', '') || 'resumen');
+    navigate(parseRoute(location.hash));
   }
 
   // Cualquier cambio externo del hash (onclick="location.hash='X'", botón back, etc) navega
   window.addEventListener('hashchange', () => {
     if (document.getElementById('app').classList.contains('hidden')) return;
-    navigate(location.hash.replace('#', '') || 'resumen');
+    navigate(parseRoute(location.hash));
   });
 
   document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -360,11 +360,31 @@
   });
 
   // ───────── Routing por hash ─────────
+  // Extrae la ruta base ignorando query string (`facturas?tipo=X` → `facturas`).
+  function parseRoute(raw) {
+    const s = String(raw || '').replace(/^#/, '');
+    const q = s.indexOf('?');
+    return (q >= 0 ? s.slice(0, q) : s) || 'resumen';
+  }
+  window._parseRoute = parseRoute; // exposed para debug
+
   function navigate(route) {
-    location.hash = route;
+    // Preserva query string si la ruta no la incluye
+    const cur = String(location.hash || '').replace(/^#/, '');
+    const curBase = parseRoute(cur);
+    const routeBase = parseRoute(route);
+    const routeHasQuery = String(route).includes('?');
+    // Si cambia de sección, tirar la query; si es la misma y sin query nueva, preservar
+    if (routeHasQuery || curBase !== routeBase) {
+      location.hash = route;
+    } else {
+      const q = cur.indexOf('?') >= 0 ? cur.slice(cur.indexOf('?')) : '';
+      location.hash = routeBase + q;
+    }
     document.querySelectorAll('.nav-item').forEach(el => {
-      el.classList.toggle('active', el.dataset.route === route);
+      el.classList.toggle('active', el.dataset.route === routeBase);
     });
+    route = routeBase; // usar solo la base para el switch de más abajo
 
     const titles = {
       resumen:     ['Dashboard Administrativo & Contable', 'Resumen general del mes'],
@@ -1107,7 +1127,7 @@
         if (entity === 'modelos') modelosCache = null;
         if (entity === 'planes') planesCache = null;
         // Re-renderizar la vista actual (catalogo, facturacion, etc.)
-        const route = location.hash.replace('#', '') || 'resumen';
+        const route = parseRoute(location.hash);
         if (route === 'catalogo') showEntityList(entity);
         else navigate(route);
       } catch (e) {
@@ -2445,7 +2465,12 @@
     view.innerHTML = Skel.full();
     try {
       const mes = currentMes();
-      const filtroTipo = sessionStorage.getItem('facturas_filtro_tipo') || '';
+      // Deep-link: filtro por tipo vive en el hash (#facturas?tipo=X). Compat con
+      // sessionStorage anterior si venís de una URL vieja.
+      const hashParams = new URLSearchParams((location.hash.split('?')[1] || ''));
+      const filtroTipo = hashParams.get('tipo')
+        || sessionStorage.getItem('facturas_filtro_tipo')
+        || '';
       const params = {};
       if (mes) params.mes = mes;
       if (filtroTipo) params.tipo = filtroTipo;
@@ -2512,7 +2537,13 @@
       `;
 
       document.getElementById('facturas-filtro-tipo')?.addEventListener('change', (e) => {
-        sessionStorage.setItem('facturas_filtro_tipo', e.target.value);
+        const val = e.target.value;
+        // Persistir en el hash para deep-link; refresh de página conserva filtro.
+        const hp = new URLSearchParams((location.hash.split('?')[1] || ''));
+        if (val) hp.set('tipo', val); else hp.delete('tipo');
+        const base = location.hash.split('?')[0] || '#facturas';
+        history.replaceState(null, '', base + (hp.toString() ? '?' + hp.toString() : ''));
+        sessionStorage.setItem('facturas_filtro_tipo', val);
         renderFacturas(view);
       });
 
@@ -4243,19 +4274,50 @@
           }
           const flash = view.querySelector(`.reconc-save-flash[data-cuenta-id="${cuentaId}"]`);
           if (flash) {
+            flash.textContent = '✓';
             flash.style.opacity = '1';
-            setTimeout(() => { flash.style.opacity = '0'; }, 800);
+            setTimeout(() => { flash.style.opacity = '0'; }, 900);
           }
         } catch (err) {
+          const flash = view.querySelector(`.reconc-save-flash[data-cuenta-id="${cuentaId}"]`);
+          if (flash) { flash.textContent = '⚠'; flash.style.opacity = '1'; }
           toast('Error guardando: ' + err.message, 'error');
+        } finally {
+          input._saving = false;
         }
       };
-      view.querySelectorAll('.reconc-input').forEach(inp => {
-        inp.addEventListener('blur', () => saveCell(inp));
-        inp.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+
+      // Debounce por celda: 400ms sin nuevo evento y se dispara el save.
+      // Event delegation en el tbody: un solo listener aunque re-renderemos.
+      const tbody = view.querySelector('.reconc-table tbody');
+      if (tbody) {
+        const scheduleSave = (input) => {
+          if (input._saving) return;
+          clearTimeout(input._saveTimer);
+          const flash = view.querySelector(`.reconc-save-flash[data-cuenta-id="${input.dataset.cuentaId}"]`);
+          if (flash) { flash.textContent = '⏳'; flash.style.opacity = '1'; }
+          input._saveTimer = setTimeout(() => {
+            input._saving = true;
+            saveCell(input);
+          }, 400);
+        };
+        tbody.addEventListener('input', (e) => {
+          if (e.target.classList.contains('reconc-input')) scheduleSave(e.target);
         });
-      });
+        tbody.addEventListener('blur', (e) => {
+          if (e.target.classList.contains('reconc-input') && e.target._saveTimer) {
+            clearTimeout(e.target._saveTimer);
+            e.target._saving = true;
+            saveCell(e.target);
+          }
+        }, true);
+        tbody.addEventListener('keydown', (e) => {
+          if (e.target.classList.contains('reconc-input') && e.key === 'Enter') {
+            e.preventDefault();
+            e.target.blur();
+          }
+        });
+      }
     } catch (err) {
       view.innerHTML = `<div class="card center" style="padding:30px"><div class="muted">Error cargando reconciliación: ${escapeHtml(err.message)}</div></div>`;
     }
@@ -4487,8 +4549,11 @@
         api('pnl', { params: { mes: mesPrev } }).catch(() => null)
       ]);
       // OM (parte agencia) ya está contabilizado como gasto del mes en "Otros gastos".
-      const totalGastos = p.pagos_chatters + p.pagos_supervisor + p.pagos_equipo_fijo + p.gastos_otros;
-      const prevTotalGastos = pPrev ? (pPrev.pagos_chatters + pPrev.pagos_supervisor + pPrev.pagos_equipo_fijo + pPrev.gastos_otros) : 0;
+      // Comisiones de transacción (Binance/Wise/Skrill) suman como egreso separado.
+      const comTx = p.gastos_comision_tx || 0;
+      const prevComTx = pPrev ? (pPrev.gastos_comision_tx || 0) : 0;
+      const totalGastos = p.pagos_chatters + p.pagos_supervisor + p.pagos_equipo_fijo + p.gastos_otros + comTx;
+      const prevTotalGastos = pPrev ? (pPrev.pagos_chatters + pPrev.pagos_supervisor + pPrev.pagos_equipo_fijo + pPrev.gastos_otros + prevComTx) : 0;
 
       // Helper para badge de Δ vs mes anterior
       const delta = (curr, prev, opts = {}) => {
@@ -4569,6 +4634,7 @@
             ${pnlLine('Pago supervisor (Jony)', p.pagos_supervisor, pPrev?.pagos_supervisor, { color: 'var(--red)', minus: true, invert: true })}
             ${pnlLine('Equipo fijo (sueldos)', p.pagos_equipo_fijo, pPrev?.pagos_equipo_fijo, { color: 'var(--red)', minus: true, invert: true })}
             ${pnlLine('Otros gastos del mes', p.gastos_otros, pPrev?.gastos_otros, { color: 'var(--red)', minus: true, invert: true })}
+            ${pnlLine('Comisiones de transacción', comTx, prevComTx, { color: 'var(--red)', minus: true, invert: true })}
             <div class="pnl-card-total">
               <span>Total egresos</span>
               <strong style="color:var(--red)">−${fmtMoney(totalGastos)}</strong>
@@ -5026,7 +5092,7 @@
         });
         toast('Archivo subido ✓', 'success');
         closeModal();
-        const route = location.hash.replace('#', '') || 'resumen';
+        const route = parseRoute(location.hash);
         if (route === 'archivos' || route === 'contabilidad') navigate(route);
       } catch (err) {
         toast('Error: ' + err.message, 'error');
@@ -5648,7 +5714,7 @@
         toast(`Factura externa #${numero} emitida para ${receptor.nombre}`, 'success');
         close();
         // refresh facturas list if currently displayed
-        if ((location.hash.replace('#', '') || 'resumen') === 'facturas') {
+        if ((parseRoute(location.hash)) === 'facturas') {
           navigate('facturas');
         }
       } catch (err) {
@@ -5773,7 +5839,7 @@
     const newMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     input.value = newMes;
     sessionStorage.setItem('admin_mes', newMes);
-    const route = location.hash.replace('#', '') || 'resumen';
+    const route = parseRoute(location.hash);
     navigate(route);
   }
 
@@ -5822,7 +5888,7 @@
         sessionStorage.setItem('admin_mes', newMes);
         refreshMesDisplay();
         closePicker();
-        const route = location.hash.replace('#', '') || 'resumen';
+        const route = parseRoute(location.hash);
         navigate(route);
       });
     });
@@ -5873,7 +5939,7 @@
     sessionStorage.setItem('admin_mes', today);
     refreshMesDisplay();
     syncPickerToSelected();
-    const route = location.hash.replace('#', '') || 'resumen';
+    const route = parseRoute(location.hash);
     navigate(route);
   });
   setTimeout(refreshMesDisplay, 0);

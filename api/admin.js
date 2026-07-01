@@ -132,6 +132,31 @@ async function ensureCiudadColumns() {
   _ensuredCiudadColumns = true;
 }
 
+// Índices de performance sobre queries por-mes/entidad que hoy escanean tabla.
+let _ensuredPerfIndexes = false;
+async function ensurePerfIndexes() {
+  if (_ensuredPerfIndexes) return;
+  await sql`CREATE INDEX IF NOT EXISTS idx_chatter_pagos_chatter_mes ON chatter_pagos_mes(chatter_id, mes)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_cierre_chatter_cuenta_mes_cuenta_mes ON cierre_chatter_cuenta_mes(cuenta_id, mes)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_cierre_chatter_cuenta_mes_chatter_mes ON cierre_chatter_cuenta_mes(chatter_id, mes)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_cierre_cuenta_mes_cuenta ON cierre_cuenta_mes(cuenta_id, mes)`;
+  _ensuredPerfIndexes = true;
+}
+
+// Snapshot materializado del P&L por mes — sirve como cache para pnl-anual.
+let _ensuredPnlSnapshot = false;
+async function ensurePnlSnapshot() {
+  if (_ensuredPnlSnapshot) return;
+  await sql`
+    CREATE TABLE IF NOT EXISTS pnl_mes_snapshot (
+      mes         CHAR(7) PRIMARY KEY,
+      kpis        JSONB NOT NULL,
+      updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  _ensuredPnlSnapshot = true;
+}
+
 
 let _ensuredContratistasArchivo = false;
 async function ensureContratistasArchivo() {
@@ -788,10 +813,11 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ success: false, error: 'mes y cierres[] requeridos' });
       }
 
-      const results = [];
-      for (const c of cierres) {
+      // Ejecuta UPSERTs en paralelo (Promise.all) para eliminar la latencia N×
+      // secuencial contra Neon. Con 20 cuentas pasamos de ~2s a ~200ms.
+      const cierresValidos = cierres.filter(c => Number(c.cuenta_id));
+      const results = await Promise.all(cierresValidos.map(async (c) => {
         const cuentaId = Number(c.cuenta_id);
-        if (!cuentaId) continue;
         const factTotal = Number(c.fact_total || 0);
         const suscripciones = Number(c.suscripciones || 0);
         const masivos = Number(c.masivos || 0);
@@ -807,8 +833,6 @@ module.exports = async function handler(req, res) {
         const estado = c.estado_resumen || 'pendiente';
         const pagoRecibido = Number(c.pago_recibido || 0);
         const observaciones = c.observaciones || null;
-
-        // Calcular total_a_cobrar (facturación: base sobre fact_total)
         const baseComision = factTotal;
         const gananciaAgencia = baseComision * porcentaje / 100;
         const totalACobrar = gananciaAgencia + softwareOm + ventasPorFuera + ig
@@ -850,8 +874,8 @@ module.exports = async function handler(req, res) {
             updated_at = CURRENT_TIMESTAMP
           RETURNING *
         `;
-        results.push(r.rows[0]);
-      }
+        return r.rows[0];
+      }));
 
       return res.status(200).json({ success: true, count: results.length, data: results });
     }
@@ -1129,6 +1153,7 @@ module.exports = async function handler(req, res) {
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
       await ensureResumenOverridesTable();
       await ensureGastosSoftDelete();
+      await ensurePerfIndexes();
 
       const mes = req.query.mes;
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
@@ -1424,11 +1449,13 @@ module.exports = async function handler(req, res) {
         try {
           // Desactivar todas las asignaciones actuales
           await sql`UPDATE chatter_cuenta_asignacion SET activo = FALSE WHERE chatter_id = ${chatterId}`;
-          // Reactivar/insertar las nuevas
-          for (const cuentaId of cuentaIds) {
+          // Reactivar/insertar en un solo INSERT multirow para evitar N roundtrips.
+          if (cuentaIds.length > 0) {
+            const uniqueIds = [...new Set(cuentaIds.map(Number).filter(Boolean))];
             await sql`
               INSERT INTO chatter_cuenta_asignacion (chatter_id, cuenta_id, activo)
-              VALUES (${chatterId}, ${cuentaId}, TRUE)
+              SELECT ${chatterId}, cid, TRUE
+              FROM UNNEST(${uniqueIds}::int[]) AS t(cid)
               ON CONFLICT (chatter_id, cuenta_id) DO UPDATE SET activo = TRUE
             `;
           }
@@ -1670,19 +1697,28 @@ module.exports = async function handler(req, res) {
 
       await sql`BEGIN`;
       try {
-        // 1) borrar el detalle previo y reinsertar (más simple que upsert N filas)
+        // 1) borrar el detalle previo y reinsertar todo en un solo INSERT multirow
         await sql`DELETE FROM cierre_chatter_cuenta_mes WHERE mes = ${mes} AND chatter_id = ${chatterId}`;
+        const detallesValidos = (b.detalles || [])
+          .map(d => ({
+            cuenta_id: Number(d.cuenta_id),
+            fact: Number(d.fact_chatter || 0),
+            pct: Number(d.porcentaje_comision || 0),
+            obs: d.observaciones || null
+          }))
+          .filter(d => d.cuenta_id && d.fact > 0);
         let comisionesTotal = 0;
-        for (const d of (b.detalles || [])) {
-          const cuentaId = Number(d.cuenta_id);
-          const fact = Number(d.fact_chatter || 0);
-          const pct = Number(d.porcentaje_comision || 0);
-          if (!cuentaId || fact <= 0) continue;
-          const comision = fact * pct / 100;
-          comisionesTotal += comision;
+        if (detallesValidos.length > 0) {
+          const cuentaIds = detallesValidos.map(d => d.cuenta_id);
+          const facts = detallesValidos.map(d => d.fact);
+          const pcts = detallesValidos.map(d => d.pct);
+          const obss = detallesValidos.map(d => d.obs);
+          comisionesTotal = detallesValidos.reduce((s, d) => s + d.fact * d.pct / 100, 0);
           await sql`
             INSERT INTO cierre_chatter_cuenta_mes (mes, chatter_id, cuenta_id, fact_chatter, porcentaje_comision, observaciones)
-            VALUES (${mes}, ${chatterId}, ${cuentaId}, ${fact}, ${pct}, ${d.observaciones || null})
+            SELECT ${mes}, ${chatterId}, cid, ft, pc, ob
+            FROM UNNEST(${cuentaIds}::int[], ${facts}::numeric[], ${pcts}::numeric[], ${obss}::text[])
+              AS t(cid, ft, pc, ob)
           `;
         }
 
@@ -1757,11 +1793,14 @@ module.exports = async function handler(req, res) {
       if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
       await ensureCobroComisionColumn();
 
+      // Devuelve montos en moneda original + USD-equivalente. La UI puede mostrar
+      // ambos, pero cualquier consolidación cross-modelo debe usar los *_usd.
       const r = await sql`
-        SELECT c.id, c.mes, c.cuenta_id, c.total_a_cobrar, c.pago_recibido,
+        SELECT c.id, c.mes, c.cuenta_id,
+               c.total_a_cobrar, c.pago_recibido,
                COALESCE(c.comision_transaccion, 0) AS comision_transaccion,
                (COALESCE(c.total_a_cobrar, 0) - COALESCE(c.pago_recibido, 0) - COALESCE(c.comision_transaccion, 0)) AS pago_pendiente,
-               c.estado_resumen, c.medio_pago, c.moneda, c.observaciones,
+               c.estado_resumen, c.medio_pago, c.moneda, c.cotizacion_eur, c.observaciones,
                cu.nombre_cuenta, cu.tipo,
                m.id AS modelo_id, m.nombre AS modelo_nombre, m.moneda_default
         FROM cierre_cuenta_mes c
@@ -1770,7 +1809,18 @@ module.exports = async function handler(req, res) {
         WHERE c.mes = ${mes}
         ORDER BY m.nombre, cu.nombre_cuenta
       `;
-      return res.status(200).json({ success: true, data: r.rows });
+      const data = r.rows.map(row => {
+        const cot = row.cotizacion_eur != null ? Number(row.cotizacion_eur) : null;
+        const factor = (row.moneda === 'EUR' && cot && cot > 0) ? cot : 1;
+        return {
+          ...row,
+          total_a_cobrar_usd: Number((Number(row.total_a_cobrar || 0) * factor).toFixed(2)),
+          pago_recibido_usd: Number((Number(row.pago_recibido || 0) * factor).toFixed(2)),
+          comision_transaccion_usd: Number((Number(row.comision_transaccion || 0) * factor).toFixed(2)),
+          pago_pendiente_usd: Number((Number(row.pago_pendiente || 0) * factor).toFixed(2))
+        };
+      });
+      return res.status(200).json({ success: true, data });
     }
 
     // ─── ACTUALIZAR pago de un cierre (cobros) ─────────────
@@ -1993,6 +2043,13 @@ module.exports = async function handler(req, res) {
       const pagosSup = await sql`SELECT COALESCE(SUM(neto_a_pagar), 0) AS pagos FROM supervisor_comision_mes WHERE mes = ${mes}`;
       const equipo = await sql`SELECT COALESCE(SUM(sueldo_mensual_usd), 0) AS sueldos FROM equipo_fijo WHERE activo = TRUE`;
       const gastos = await sql`SELECT COALESCE(SUM(monto), 0) AS otros FROM gastos_mes WHERE mes = ${mes} AND deleted_at IS NULL`;
+      // Comisiones de transacción (Binance/Wise/Skrill) — antes se restaban solo del
+      // pendiente en Cobros; ahora también son un egreso real del P&L.
+      const comisionTx = await sql`
+        SELECT COALESCE(SUM(COALESCE(comision_transaccion,0)
+                            * CASE WHEN moneda='EUR' THEN COALESCE(NULLIF(cotizacion_eur,0),1) ELSE 1 END), 0) AS total
+        FROM cierre_cuenta_mes WHERE mes = ${mes}
+      `;
 
       const c = cierres.rows[0];
       const ingreso = Number(c.ingreso_bruto);
@@ -2002,11 +2059,10 @@ module.exports = async function handler(req, res) {
       // Desde este punto, el OM agencia se carga manualmente en "gastos_mes".
       const pOm = 0;
       const pGas = Number(gastos.rows[0].otros);
-      const netoOwner = ingreso - pChat - pSup - pEq - pOm - pGas;
+      const pComTx = Number(comisionTx.rows[0].total || 0);
+      const netoOwner = ingreso - pChat - pSup - pEq - pOm - pGas - pComTx;
 
-      return res.status(200).json({
-        success: true,
-        mes,
+      const kpis = {
         fact_total: Number(c.fact_total),
         suscripciones: Number(c.suscripciones),
         fact_sin_subs: Number(c.fact_sin_subs),
@@ -2017,8 +2073,43 @@ module.exports = async function handler(req, res) {
         pagos_equipo_fijo: pEq,
         gasto_om_agencia: pOm,
         gastos_otros: pGas,
+        gastos_comision_tx: pComTx,
         neto_owner: netoOwner
+      };
+
+      // Guardar snapshot (fire-and-forget: no bloquea la respuesta)
+      ensurePnlSnapshot().then(() => sql`
+        INSERT INTO pnl_mes_snapshot (mes, kpis, updated_at)
+        VALUES (${mes}, ${JSON.stringify(kpis)}::jsonb, CURRENT_TIMESTAMP)
+        ON CONFLICT (mes) DO UPDATE SET
+          kpis = EXCLUDED.kpis, updated_at = CURRENT_TIMESTAMP
+      `).catch(err => console.warn('pnl-snapshot write failed:', err.message));
+
+      return res.status(200).json({ success: true, mes, ...kpis });
+    }
+
+    // GET ?action=pnl-anual&meses=12
+    // Devuelve los últimos N meses desde el snapshot (no recalcula). Si un mes falta,
+    // devuelve kpis=null para que la UI muestre "sin datos".
+    if (action === 'pnl-anual') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensurePnlSnapshot();
+      const meses = Math.max(1, Math.min(36, Number(req.query.meses) || 12));
+      const now = new Date();
+      const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const listado = getRecentMonths(mesActual, meses);
+      const rows = await sql`
+        SELECT mes, kpis, updated_at FROM pnl_mes_snapshot
+        WHERE mes = ANY(${listado}::text[])
+        ORDER BY mes ASC
+      `;
+      const byMes = new Map(rows.rows.map(r => [String(r.mes), r]));
+      const data = listado.map(m => {
+        const r = byMes.get(m);
+        return { mes: m, kpis: r ? r.kpis : null, updated_at: r ? r.updated_at : null };
       });
+      return res.status(200).json({ success: true, data });
     }
 
     // ─── DB STATS (chequeo rápido para debug) ──────────
@@ -2403,9 +2494,12 @@ module.exports = async function handler(req, res) {
       const lineas = [];
 
       // 1) INGRESOS: cobros recibidos del mes (cierre_cuenta_mes)
+      //    Todo se normaliza a USD (EUR × cotización) — el libro mayor mezcla monedas
+      //    y las estadísticas siempre deben quedar en USD.
       const cobros = await sql`
         SELECT cu.nombre_cuenta, m.nombre AS modelo, cc.pago_recibido, cc.total_a_cobrar,
-               cc.medio_pago, cc.estado_resumen, cc.moneda, cc.updated_at, cc.id AS cierre_id
+               cc.medio_pago, cc.estado_resumen, cc.moneda, cc.cotizacion_eur,
+               cc.updated_at, cc.id AS cierre_id
         FROM cierre_cuenta_mes cc
         JOIN cuentas cu ON cu.id = cc.cuenta_id
         JOIN modelos m  ON m.id = cu.modelo_id
@@ -2413,14 +2507,20 @@ module.exports = async function handler(req, res) {
         ORDER BY cc.updated_at ASC
       `;
       cobros.rows.forEach(c => {
+        const cot = c.cotizacion_eur != null ? Number(c.cotizacion_eur) : null;
+        const factor = (c.moneda === 'EUR' && cot && cot > 0) ? cot : 1;
+        const montoUsd = Number(c.pago_recibido) * factor;
         lineas.push({
           fecha: c.updated_at,
           tipo: 'ingreso',
           concepto: `Cobro · ${c.modelo} (${c.nombre_cuenta})`,
           categoria: 'cobro_modelo',
           subcategoria: c.medio_pago || null,
-          monto: Number(c.pago_recibido),
-          moneda: c.moneda || 'USD',
+          monto: Number(montoUsd.toFixed(2)),
+          moneda: 'USD',
+          moneda_original: c.moneda || 'USD',
+          monto_original: Number(c.pago_recibido),
+          cotizacion_eur: cot,
           ref: { tipo: 'cierre', id: c.cierre_id }
         });
       });
@@ -2768,7 +2868,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({
       success: false,
       error: 'unknown action',
-      hint: 'usa ?action=login | logout | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | envios-update | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl | log-error | ica-generate | ica-list | ica-get | ica-mark-signed | archivo-upload | archivos-list | archivo-get | archivo-update | archivo-delete | modelo-tma-upload | libro-mayor | reconciliacion-mes | reconciliacion-save'
+      hint: 'usa ?action=login | logout | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | envios-update | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl | log-error | ica-generate | ica-list | ica-get | ica-mark-signed | archivo-upload | archivos-list | archivo-get | archivo-update | archivo-delete | modelo-tma-upload | libro-mayor | reconciliacion-mes | reconciliacion-save | pnl-anual | factura-get'
     });
 
   } catch (error) {
