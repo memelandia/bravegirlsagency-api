@@ -371,6 +371,7 @@
       catalogo:    ['Catálogo', 'Gestión de modelos, chatters, cuentas, equipo y planes'],
       facturacion: ['Facturación a Modelos', 'Cargá el cierre del mes y generá la factura'],
       liquidacion: ['Liquidación Chatters', 'Cálculo de comisiones, incentivos y envíos'],
+      reconciliacion: ['Reconciliación de Facturación', 'Cuadrar bruta OF vs lo declarado por chatters'],
       cobros:      ['Cobros a Modelos', 'Control de pagos recibidos por modelo'],
       supervisor:  ['Supervisor · Jony', 'Comisión automática del supervisor'],
       ganancias:   ['Ganancias (P&L)', 'Estado de resultados de la agencia'],
@@ -390,6 +391,7 @@
     if (route === 'catalogo')    return renderCatalogo(view);
     if (route === 'facturacion') return renderFacturacion(view);
     if (route === 'liquidacion') return renderLiquidacion(view);
+    if (route === 'reconciliacion') return renderReconciliacion(view);
     if (route === 'cobros')      return renderCobros(view);
     if (route === 'supervisor')  return renderSupervisor(view);
     if (route === 'ganancias')   return renderGanancias(view);
@@ -4043,6 +4045,219 @@
       });
     } catch (e) {
       view.innerHTML = `<div class="card center muted">⚠️ ${e.message}</div>`;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // FASE 3 · VISTA: RECONCILIACIÓN (bruta OF vs declarado chatters)
+  //   Control interno del owner. suscripciones/masivos NO afectan
+  //   la factura a la modelo (siguen calculadas como fact_total × %).
+  // ═══════════════════════════════════════════════════════
+  async function renderReconciliacion(view) {
+    const mes = currentMes();
+    view.innerHTML = Skel.full();
+    try {
+      const r = await api('reconciliacion-mes', { params: { mes } });
+      const cuentas = r.cuentas || [];
+      const k = r.kpis || {};
+
+      const balColor = k.balance_neto > 1 ? 'var(--green)'
+                     : k.balance_neto < -1 ? 'var(--red)'
+                     : 'var(--text-mute)';
+
+      // Agrupar por modelo (mismo patrón que renderCobros)
+      const groups = {};
+      cuentas.forEach(c => {
+        if (!groups[c.modelo_id]) groups[c.modelo_id] = { modelo: c.modelo, items: [] };
+        groups[c.modelo_id].items.push(c);
+      });
+
+      const rowsHtml = Object.values(groups).map(g => {
+        const gHue = hueOfName(g.modelo);
+        const header = `
+          <tr class="reconc-group-header">
+            <td colspan="9" style="padding:14px 12px 8px 12px;background:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.06)">
+              <span class="pill-entity" style="--ent-hue:${gHue};font-size:0.9rem;padding:4px 12px"><strong>${escapeHtml(g.modelo)}</strong></span>
+            </td>
+          </tr>`;
+
+        const cuentaRows = g.items.map(c => {
+          const diffCls = c.estado === 'positivo' ? 'reconc-diff-pos'
+                        : c.estado === 'negativo' ? 'reconc-diff-neg'
+                        : 'reconc-diff-cero';
+          const diffSign = c.diferencia_usd > 0 ? '+' : '';
+          const diffTitle = `OF neto: ${fmtMoney(c.neto_of_usd)} − Chatters: ${fmtMoney(c.declarado_chatters_usd)}`;
+
+          const brutaCell = c.tiene_cierre
+            ? `<span style="color:#FDE047;font-weight:700">${fmtMoney(c.bruta_usd)}</span>`
+            : `<span class="reconc-badge-sin-cierre" title="Cargá el cierre en Facturación a Modelos">Sin cierre</span>`;
+
+          const eurBadge = c.moneda === 'EUR'
+            ? ` <span class="reconc-eur-badge" title="Convertido a USD">€→$${c.cotizacion_eur ? ' @ ' + c.cotizacion_eur : ''}</span>`
+            : '';
+
+          const chattersRowsHtml = c.chatters.map(ch => {
+            const cHue = hueOfName(ch.chatter || '');
+            const noDecl = ch.no_declaro
+              ? '<span class="reconc-badge-no-declaro">No declaró</span>'
+              : '';
+            return `
+              <tr class="reconc-chatter-sub" data-cuenta-sub="${c.cuenta_id}" style="display:none">
+                <td colspan="2" style="padding:6px 12px 6px 40px">
+                  <span class="pill-entity" style="--ent-hue:${cHue};font-size:0.78rem;padding:2px 9px">${escapeHtml(ch.chatter)}</span>
+                  ${noDecl}
+                </td>
+                <td colspan="6" style="padding:6px 8px;text-align:right;color:var(--text-mute);font-size:0.82rem">Declarado por este chatter</td>
+                <td style="padding:6px 12px;text-align:right;color:${ch.no_declaro ? 'var(--red)' : '#7DD3FC'};font-weight:700;font-variant-numeric:tabular-nums">${fmtMoney(ch.fact_chatter || 0)}</td>
+              </tr>`;
+          }).join('');
+
+          const cuentaMain = `
+            <tr class="reconc-cuenta-row">
+              <td style="padding:10px 12px;color:var(--text-mute);font-size:0.86rem">${escapeHtml(c.nombre_cuenta)}${eurBadge}</td>
+              <td style="padding:10px 8px;text-align:right;font-variant-numeric:tabular-nums">${brutaCell}</td>
+              <td style="padding:10px 8px;text-align:right">
+                <input type="number" step="0.01" class="reconc-input reconc-subs" data-cuenta-id="${c.cuenta_id}" value="${c.suscripciones_raw || 0}" placeholder="0.00">
+              </td>
+              <td style="padding:10px 8px;text-align:right">
+                <input type="number" step="0.01" class="reconc-input reconc-mas" data-cuenta-id="${c.cuenta_id}" value="${c.masivos_raw || 0}" placeholder="0.00">
+              </td>
+              <td class="reconc-neto" data-cuenta-id="${c.cuenta_id}" style="padding:10px 8px;text-align:right;font-weight:700;color:#fff;font-variant-numeric:tabular-nums">${fmtMoney(c.neto_of_usd)}</td>
+              <td style="padding:10px 8px;text-align:right;color:#7DD3FC;font-weight:700;font-variant-numeric:tabular-nums">${fmtMoney(c.declarado_chatters_usd)}</td>
+              <td class="reconc-diff-cell" data-cuenta-id="${c.cuenta_id}" style="padding:10px 8px;text-align:right;font-variant-numeric:tabular-nums" title="${escapeHtml(diffTitle)}">
+                <span class="reconc-diff ${diffCls}">${diffSign}${fmtMoney(c.diferencia_usd)}</span>
+              </td>
+              <td style="padding:10px 8px;text-align:center">
+                <span class="reconc-save-flash" data-cuenta-id="${c.cuenta_id}" style="opacity:0;color:var(--green);font-weight:700;transition:opacity .3s">✓</span>
+              </td>
+              <td style="padding:10px 8px;text-align:center">
+                <button class="btn-ghost-small reconc-expand" data-cuenta-id="${c.cuenta_id}" title="Ver chatters">▾</button>
+              </td>
+            </tr>
+            ${chattersRowsHtml}`;
+          return cuentaMain;
+        }).join('');
+
+        return header + cuentaRows;
+      }).join('');
+
+      view.innerHTML = `
+        <div class="reconc-toolbar" style="margin-bottom:16px">
+          <div class="muted" style="font-size:0.9rem">Comparación entre lo <strong>bruto OF</strong> (menos suscripciones y masivos) y la <strong>suma declarada por chatters</strong> del mes ${fmtMesNice(mes)}.</div>
+        </div>
+
+        <div class="kpi-row reconc-kpi-row" style="margin-bottom:18px">
+          <div class="kpi-mini big highlight" style="border-color:${balColor}">
+            <div class="kpi-mini-lbl">Balance neto</div>
+            <div class="kpi-mini-val" style="color:${balColor}">${k.balance_neto >= 0 ? '+' : ''}${fmtMoney(k.balance_neto || 0)}</div>
+            <div class="kpi-mini-sub" style="color:var(--text-mute);font-size:0.72rem">${k.cuentas_con_datos || 0} cuentas con datos</div>
+          </div>
+          <div class="kpi-mini">
+            <div class="kpi-mini-lbl">Δ a favor (positivo)</div>
+            <div class="kpi-mini-val" style="color:var(--green)">+${fmtMoney(k.total_diferencias_positivas || 0)}</div>
+            <div class="kpi-mini-sub" style="color:var(--text-mute);font-size:0.72rem">${k.cuentas_positivas || 0} cuentas</div>
+          </div>
+          <div class="kpi-mini">
+            <div class="kpi-mini-lbl">Δ déficit (negativo)</div>
+            <div class="kpi-mini-val" style="color:var(--red)">${fmtMoney(k.total_diferencias_negativas || 0)}</div>
+            <div class="kpi-mini-sub" style="color:var(--text-mute);font-size:0.72rem">${k.cuentas_negativas || 0} cuentas</div>
+          </div>
+          <div class="kpi-mini">
+            <div class="kpi-mini-lbl">Cuentas cuadran</div>
+            <div class="kpi-mini-val" style="color:var(--text-mute)">${k.cuentas_cuadran || 0}</div>
+            <div class="kpi-mini-sub" style="color:var(--text-mute);font-size:0.72rem">${k.cuentas_sin_cierre || 0} sin cierre</div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="reconc-table-wrap" style="overflow-x:auto">
+            <table class="reconc-table" style="width:100%;border-collapse:collapse;font-size:0.86rem;min-width:900px">
+              <thead>
+                <tr style="background:rgba(255,255,255,0.03)">
+                  <th style="padding:10px 12px;text-align:left;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-mute);font-weight:800">Cuenta</th>
+                  <th style="padding:10px 8px;text-align:right;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-mute);font-weight:800">Bruta OF</th>
+                  <th style="padding:10px 8px;text-align:right;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-mute);font-weight:800;width:110px">Subs (in)</th>
+                  <th style="padding:10px 8px;text-align:right;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-mute);font-weight:800;width:110px">Masivos (in)</th>
+                  <th style="padding:10px 8px;text-align:right;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-mute);font-weight:800">Neto OF</th>
+                  <th style="padding:10px 8px;text-align:right;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-mute);font-weight:800">Declarado</th>
+                  <th style="padding:10px 8px;text-align:right;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-mute);font-weight:800">Diferencia</th>
+                  <th style="width:30px"></th>
+                  <th style="width:40px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml || `<tr><td colspan="9" class="empty-state center" style="padding:40px"><div class="big">📋</div><div>No hay cuentas activas para reconciliar en ${fmtMesNice(mes)}.</div></td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Expand/collapse chatters sub-rows
+      view.querySelectorAll('.reconc-expand').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.cuentaId;
+          const subs = view.querySelectorAll(`.reconc-chatter-sub[data-cuenta-sub="${id}"]`);
+          const isOpen = subs.length && subs[0].style.display !== 'none';
+          subs.forEach(s => { s.style.display = isOpen ? 'none' : 'table-row'; });
+          btn.textContent = isOpen ? '▾' : '▴';
+        });
+      });
+
+      // Save inline (blur o Enter) para subs y masivos
+      const saveCell = async (input) => {
+        const cuentaId = Number(input.dataset.cuentaId);
+        const row = view.querySelector(`.reconc-cuenta-row .reconc-input.reconc-subs[data-cuenta-id="${cuentaId}"]`).closest('tr');
+        const subsInput = row.querySelector('.reconc-subs');
+        const masInput  = row.querySelector('.reconc-mas');
+        const body = {
+          mes,
+          cuenta_id: cuentaId,
+          suscripciones: Number(subsInput.value || 0),
+          masivos:       Number(masInput.value || 0)
+        };
+        try {
+          await api('reconciliacion-save', { method: 'POST', body });
+          // Refrescar sólo esta cuenta: recalcular neto/diferencia en cliente
+          const target = cuentas.find(c => c.cuenta_id === cuentaId);
+          if (target) {
+            const factor = (target.moneda === 'EUR' && target.cotizacion_eur && target.cotizacion_eur > 0) ? target.cotizacion_eur : 1;
+            target.suscripciones_raw = body.suscripciones;
+            target.masivos_raw = body.masivos;
+            target.suscripciones_usd = Number((body.suscripciones * factor).toFixed(2));
+            target.masivos_usd = Number((body.masivos * factor).toFixed(2));
+            target.neto_of_usd = Number((target.bruta_usd - target.suscripciones_usd - target.masivos_usd).toFixed(2));
+            target.diferencia_usd = Number((target.neto_of_usd - target.declarado_chatters_usd).toFixed(2));
+            const netoCell = view.querySelector(`.reconc-neto[data-cuenta-id="${cuentaId}"]`);
+            if (netoCell) netoCell.textContent = fmtMoney(target.neto_of_usd);
+            const diffCell = view.querySelector(`.reconc-diff-cell[data-cuenta-id="${cuentaId}"]`);
+            if (diffCell) {
+              const diff = target.diferencia_usd;
+              const cls = Math.abs(diff) < 1 ? 'reconc-diff-cero'
+                        : diff > 0 ? 'reconc-diff-pos' : 'reconc-diff-neg';
+              const sign = diff > 0 ? '+' : '';
+              diffCell.querySelector('.reconc-diff').className = 'reconc-diff ' + cls;
+              diffCell.querySelector('.reconc-diff').textContent = sign + fmtMoney(diff);
+              diffCell.title = `OF neto: ${fmtMoney(target.neto_of_usd)} − Chatters: ${fmtMoney(target.declarado_chatters_usd)}`;
+            }
+          }
+          const flash = view.querySelector(`.reconc-save-flash[data-cuenta-id="${cuentaId}"]`);
+          if (flash) {
+            flash.style.opacity = '1';
+            setTimeout(() => { flash.style.opacity = '0'; }, 800);
+          }
+        } catch (err) {
+          toast('Error guardando: ' + err.message, 'error');
+        }
+      };
+      view.querySelectorAll('.reconc-input').forEach(inp => {
+        inp.addEventListener('blur', () => saveCell(inp));
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+        });
+      });
+    } catch (err) {
+      view.innerHTML = `<div class="card center" style="padding:30px"><div class="muted">Error cargando reconciliación: ${escapeHtml(err.message)}</div></div>`;
     }
   }
 

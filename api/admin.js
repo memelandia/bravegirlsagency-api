@@ -2566,11 +2566,209 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // ═══════════════════════════════════════════════════════
+    // RECONCILIACIÓN — bruta OF vs lo declarado por chatters
+    //   Sin migraciones. Reusa cierre_cuenta_mes (fact_total,
+    //   suscripciones, masivos) + cierre_chatter_cuenta_mes.
+    //   suscripciones/masivos son control INTERNO — no afectan
+    //   total_a_cobrar de la factura a la modelo.
+    // ═══════════════════════════════════════════════════════
+
+    // GET ?action=reconciliacion-mes&mes=YYYY-MM
+    if (action === 'reconciliacion-mes') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      await ensureAsignTable();
+
+      const mes = req.query.mes;
+      if (!mes) return res.status(400).json({ success: false, error: 'mes requerido' });
+
+      // A: cuentas activas + cierre del mes (LEFT JOIN)
+      const cuentasRes = await sql`
+        SELECT cu.id AS cuenta_id, cu.nombre_cuenta,
+               m.id AS modelo_id, m.nombre AS modelo,
+               COALESCE(cc.moneda,'USD') AS moneda,
+               cc.cotizacion_eur,
+               COALESCE(cc.fact_total,0)    AS fact_total,
+               COALESCE(cc.suscripciones,0) AS suscripciones,
+               COALESCE(cc.masivos,0)       AS masivos,
+               (cc.id IS NOT NULL)          AS tiene_cierre
+        FROM cuentas cu
+        JOIN modelos m ON m.id = cu.modelo_id
+        LEFT JOIN cierre_cuenta_mes cc ON cc.cuenta_id = cu.id AND cc.mes = ${mes}
+        WHERE cu.activa = TRUE AND m.activa = TRUE
+        ORDER BY LOWER(m.nombre), LOWER(cu.nombre_cuenta)
+      `;
+
+      // B: declaraciones de chatters del mes
+      const declRes = await sql`
+        SELECT cm.cuenta_id, cm.chatter_id, ch.nombre AS chatter,
+               COALESCE(cm.fact_chatter,0) AS fact_chatter
+        FROM cierre_chatter_cuenta_mes cm
+        JOIN chatters_admin ch ON ch.id = cm.chatter_id
+        WHERE cm.mes = ${mes}
+      `;
+      const declByCuenta = {};
+      declRes.rows.forEach(d => {
+        const k = String(d.cuenta_id);
+        if (!declByCuenta[k]) declByCuenta[k] = [];
+        declByCuenta[k].push({
+          chatter_id: d.chatter_id,
+          chatter: d.chatter,
+          fact_chatter: Number(d.fact_chatter),
+          asignado: false // se marca abajo con Query C
+        });
+      });
+
+      // C: asignaciones activas
+      const asignRes = await sql`
+        SELECT a.chatter_id, a.cuenta_id, ch.nombre AS chatter
+        FROM chatter_cuenta_asignacion a
+        JOIN chatters_admin ch ON ch.id = a.chatter_id
+        WHERE a.activo = TRUE
+      `;
+      const asignByCuenta = {};
+      asignRes.rows.forEach(a => {
+        const k = String(a.cuenta_id);
+        if (!asignByCuenta[k]) asignByCuenta[k] = [];
+        asignByCuenta[k].push({ chatter_id: a.chatter_id, chatter: a.chatter });
+      });
+
+      // Mergear: por cada cuenta, marcar asignados en decl y agregar los asignados
+      // que NO declararon como filas "no_declaro"
+      const cuentas = cuentasRes.rows.map(c => {
+        const moneda = c.moneda || 'USD';
+        const cot = c.cotizacion_eur != null ? Number(c.cotizacion_eur) : null;
+        const factor = (moneda === 'EUR' && cot && cot > 0) ? cot : 1;
+        const bruta = Number(c.fact_total) * factor;
+        const subs  = Number(c.suscripciones) * factor;
+        const mas   = Number(c.masivos) * factor;
+        const neto  = bruta - subs - mas;
+
+        const key = String(c.cuenta_id);
+        const declaraciones = (declByCuenta[key] || []).slice();
+        const asignaciones = asignByCuenta[key] || [];
+
+        // Marcar asignado=true en las declaraciones cuyo chatter está asignado
+        const asignIds = new Set(asignaciones.map(a => a.chatter_id));
+        declaraciones.forEach(d => { d.asignado = asignIds.has(d.chatter_id); });
+
+        // Agregar filas "no_declaro" para asignados sin declaración
+        const declIds = new Set(declaraciones.map(d => d.chatter_id));
+        asignaciones.forEach(a => {
+          if (!declIds.has(a.chatter_id)) {
+            declaraciones.push({
+              chatter_id: a.chatter_id,
+              chatter: a.chatter,
+              fact_chatter: 0,
+              asignado: true,
+              no_declaro: true
+            });
+          }
+        });
+
+        // Ordenar: primero los que más declararon, no_declaro al final
+        declaraciones.sort((a, b) => {
+          if (a.no_declaro && !b.no_declaro) return 1;
+          if (!a.no_declaro && b.no_declaro) return -1;
+          return b.fact_chatter - a.fact_chatter;
+        });
+
+        const declarado = declaraciones.reduce((s, d) => s + Number(d.fact_chatter || 0), 0);
+        const diff = neto - declarado;
+        let estado = 'sin_datos';
+        if (c.tiene_cierre || declaraciones.length > 0) {
+          if (Math.abs(diff) < 1) estado = 'cuadra';
+          else if (diff > 0) estado = 'positivo';
+          else estado = 'negativo';
+        }
+
+        return {
+          cuenta_id: c.cuenta_id,
+          modelo_id: c.modelo_id,
+          modelo: c.modelo,
+          nombre_cuenta: c.nombre_cuenta,
+          moneda,
+          cotizacion_eur: cot,
+          bruta_usd: Number(bruta.toFixed(2)),
+          suscripciones_usd: Number(subs.toFixed(2)),
+          masivos_usd: Number(mas.toFixed(2)),
+          // También devolvemos los valores en moneda original para el input inline
+          suscripciones_raw: Number(c.suscripciones),
+          masivos_raw: Number(c.masivos),
+          neto_of_usd: Number(neto.toFixed(2)),
+          declarado_chatters_usd: Number(declarado.toFixed(2)),
+          diferencia_usd: Number(diff.toFixed(2)),
+          estado,
+          tiene_cierre: !!c.tiene_cierre,
+          chatters: declaraciones
+        };
+      });
+
+      // KPIs
+      const kpis = {
+        cuentas_con_datos: 0,
+        cuentas_sin_cierre: 0,
+        total_diferencias_positivas: 0,
+        total_diferencias_negativas: 0,
+        balance_neto: 0,
+        cuentas_cuadran: 0,
+        cuentas_positivas: 0,
+        cuentas_negativas: 0
+      };
+      cuentas.forEach(c => {
+        if (!c.tiene_cierre) kpis.cuentas_sin_cierre++;
+        if (c.estado === 'sin_datos') return;
+        kpis.cuentas_con_datos++;
+        if (c.estado === 'cuadra') kpis.cuentas_cuadran++;
+        else if (c.estado === 'positivo') {
+          kpis.cuentas_positivas++;
+          kpis.total_diferencias_positivas += c.diferencia_usd;
+        } else if (c.estado === 'negativo') {
+          kpis.cuentas_negativas++;
+          kpis.total_diferencias_negativas += c.diferencia_usd;
+        }
+        kpis.balance_neto += c.diferencia_usd;
+      });
+      ['total_diferencias_positivas','total_diferencias_negativas','balance_neto'].forEach(k => {
+        kpis[k] = Number(kpis[k].toFixed(2));
+      });
+
+      return res.status(200).json({ success: true, mes, cuentas, kpis });
+    }
+
+    // POST ?action=reconciliacion-save
+    // body: { mes, cuenta_id, suscripciones, masivos }
+    if (action === 'reconciliacion-save') {
+      const auth = await checkAuth(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.msg });
+      if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'POST required' });
+
+      const b = req.body || {};
+      const mes = String(b.mes || '').trim();
+      const cuentaId = Number(b.cuenta_id);
+      if (!/^\d{4}-\d{2}$/.test(mes)) return res.status(400).json({ success: false, error: 'mes inválido' });
+      if (!cuentaId) return res.status(400).json({ success: false, error: 'cuenta_id requerido' });
+      const subs = b.suscripciones != null && b.suscripciones !== '' ? Number(b.suscripciones) : 0;
+      const mas  = b.masivos != null && b.masivos !== '' ? Number(b.masivos) : 0;
+
+      const r = await sql`
+        INSERT INTO cierre_cuenta_mes (mes, cuenta_id, fact_total, suscripciones, masivos, updated_at)
+        VALUES (${mes}, ${cuentaId}, 0, ${subs}, ${mas}, CURRENT_TIMESTAMP)
+        ON CONFLICT (mes, cuenta_id) DO UPDATE SET
+          suscripciones = EXCLUDED.suscripciones,
+          masivos       = EXCLUDED.masivos,
+          updated_at    = CURRENT_TIMESTAMP
+        RETURNING id, suscripciones, masivos
+      `;
+      return res.status(200).json({ success: true, data: r.rows[0] });
+    }
+
 
     return res.status(400).json({
       success: false,
       error: 'unknown action',
-      hint: 'usa ?action=login | logout | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | envios-update | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl | log-error | ica-generate | ica-list | ica-get | ica-mark-signed | archivo-upload | archivos-list | archivo-get | archivo-update | archivo-delete | modelo-tma-upload | libro-mayor'
+      hint: 'usa ?action=login | logout | verify | catalog | stats | cierre-modelo | cierre-save | factura-create | facturas-list | factura-get | resumen-override | resumen-mes | gastos | tx-fee | tx-fee-history | chatter-cuentas | liquidacion-mes | liquidacion-save | envios-update | cobros-mes | cobros-update | supervisor-mes | incentivos | pnl | log-error | ica-generate | ica-list | ica-get | ica-mark-signed | archivo-upload | archivos-list | archivo-get | archivo-update | archivo-delete | modelo-tma-upload | libro-mayor | reconciliacion-mes | reconciliacion-save'
     });
 
   } catch (error) {
